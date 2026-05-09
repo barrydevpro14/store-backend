@@ -1,14 +1,20 @@
 package org.store.stock.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.vente.domain.model.LigneCommandeVente;
 
 import java.math.BigDecimal;
+
+@Getter
+@Setter
 @Entity
 @Table(name = SortieStock.TABLE_NAME)
 public class SortieStock extends AuditableEntity {
     public static final String TABLE_NAME = "sortie_stock";
+
     @ManyToOne(fetch = FetchType.LAZY)
     private LigneCommandeVente ligneVente;
 
@@ -25,52 +31,4 @@ public class SortieStock extends AuditableEntity {
 
     @Column(precision = 19, scale = 2)
     private BigDecimal marge;
-
-    public LigneCommandeVente getLigneVente() {
-        return ligneVente;
-    }
-
-    public void setLigneVente(LigneCommandeVente ligneVente) {
-        this.ligneVente = ligneVente;
-    }
-
-    public EntreeStock getEntreeStock() {
-        return entreeStock;
-    }
-
-    public void setEntreeStock(EntreeStock entreeStock) {
-        this.entreeStock = entreeStock;
-    }
-
-    public int getQuantiteSortie() {
-        return quantiteSortie;
-    }
-
-    public void setQuantiteSortie(int quantiteSortie) {
-        this.quantiteSortie = quantiteSortie;
-    }
-
-    public BigDecimal getPrixAchat() {
-        return prixAchat;
-    }
-
-    public void setPrixAchat(BigDecimal prixAchat) {
-        this.prixAchat = prixAchat;
-    }
-
-    public BigDecimal getPrixVente() {
-        return prixVente;
-    }
-
-    public void setPrixVente(BigDecimal prixVente) {
-        this.prixVente = prixVente;
-    }
-
-    public BigDecimal getMarge() {
-        return marge;
-    }
-
-    public void setMarge(BigDecimal marge) {
-        this.marge = marge;
-    }
 }

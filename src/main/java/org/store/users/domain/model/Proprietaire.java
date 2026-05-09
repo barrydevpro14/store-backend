@@ -3,8 +3,12 @@ package org.store.users.domain.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 import org.store.magasin.domain.model.Entreprise;
 
+@Getter
+@Setter
 @Entity
 @Table(name = Proprietaire.TABLE_NAME)
 public class Proprietaire extends Utilisateur {
@@ -12,12 +16,4 @@ public class Proprietaire extends Utilisateur {
 
     @OneToOne(mappedBy = "proprietaire")
     private Entreprise entreprise;
-
-    public Entreprise getEntreprise() {
-        return entreprise;
-    }
-
-    public void setEntreprise(Entreprise entreprise) {
-        this.entreprise = entreprise;
-    }
 }

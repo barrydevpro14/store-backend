@@ -1,6 +1,8 @@
 package org.store.notification.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.common.base.AuditableEntity;
 import org.store.notification.domain.enums.CanalNotification;
@@ -11,7 +13,12 @@ import org.store.vente.domain.model.FactureClient;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
+@Entity
+@Table(name = Notification.TABLE_NAME)
 public class Notification extends AuditableEntity {
+    public static final String TABLE_NAME = "notification";
 
     private String titre;
 
@@ -41,93 +48,4 @@ public class Notification extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Echeance echeance;
-
-
-    public String getTitre() {
-        return titre;
-    }
-
-    public void setTitre(String titre) {
-        this.titre = titre;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public CanalNotification getCanal() {
-        return canal;
-    }
-
-    public void setCanal(CanalNotification canal) {
-        this.canal = canal;
-    }
-
-    public NotificationStatut getStatut() {
-        return statut;
-    }
-
-    public void setStatut(NotificationStatut statut) {
-        this.statut = statut;
-    }
-
-    public LocalDateTime getDateEnvoi() {
-        return dateEnvoi;
-    }
-
-    public void setDateEnvoi(LocalDateTime dateEnvoi) {
-        this.dateEnvoi = dateEnvoi;
-    }
-
-    public LocalDate getProchaineTentative() {
-        return prochaineTentative;
-    }
-
-    public void setProchaineTentative(LocalDate prochaineTentative) {
-        this.prochaineTentative = prochaineTentative;
-    }
-
-    public int getNombreTentatives() {
-        return nombreTentatives;
-    }
-
-    public void setNombreTentatives(int nombreTentatives) {
-        this.nombreTentatives = nombreTentatives;
-    }
-
-    public Account getDestinataire() {
-        return destinataire;
-    }
-
-    public void setDestinataire(Account destinataire) {
-        this.destinataire = destinataire;
-    }
-
-    public FactureClient getFactureClient() {
-        return factureClient;
-    }
-
-    public void setFactureClient(FactureClient factureClient) {
-        this.factureClient = factureClient;
-    }
-
-    public FactureAchat getFactureAchat() {
-        return factureAchat;
-    }
-
-    public void setFactureAchat(FactureAchat factureAchat) {
-        this.factureAchat = factureAchat;
-    }
-
-    public Echeance getEcheance() {
-        return echeance;
-    }
-
-    public void setEcheance(Echeance echeance) {
-        this.echeance = echeance;
-    }
 }

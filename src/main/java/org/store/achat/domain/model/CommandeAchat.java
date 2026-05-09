@@ -1,6 +1,8 @@
 package org.store.achat.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
@@ -8,8 +10,10 @@ import org.store.magasin.domain.model.Magasin;
 import java.time.LocalDate;
 import java.util.List;
 
+@Getter
+@Setter
 @Entity
-@Table
+@Table(name = CommandeAchat.TABLE_NAME)
 public class CommandeAchat extends AuditableEntity {
     public static final String TABLE_NAME = "commande_achat";
 
@@ -29,52 +33,4 @@ public class CommandeAchat extends AuditableEntity {
     private List<LigneCommandeAchat> lignes;
 
     private LocalDate date;
-
-    public String getReference() {
-        return reference;
-    }
-
-    public void setReference(String reference) {
-        this.reference = reference;
-    }
-
-    public CommandeAchatStatut getStatut() {
-        return statut;
-    }
-
-    public void setStatut(CommandeAchatStatut statut) {
-        this.statut = statut;
-    }
-
-    public Fournisseur getFournisseur() {
-        return fournisseur;
-    }
-
-    public void setFournisseur(Fournisseur fournisseur) {
-        this.fournisseur = fournisseur;
-    }
-
-    public Magasin getMagasin() {
-        return magasin;
-    }
-
-    public void setMagasin(Magasin magasin) {
-        this.magasin = magasin;
-    }
-
-    public List<LigneCommandeAchat> getLignes() {
-        return lignes;
-    }
-
-    public void setLignes(List<LigneCommandeAchat> lignes) {
-        this.lignes = lignes;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
 }

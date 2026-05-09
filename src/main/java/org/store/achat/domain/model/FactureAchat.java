@@ -1,6 +1,8 @@
 package org.store.achat.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.base.AuditableEntity;
 
@@ -8,6 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+@Getter
+@Setter
 @Entity
 @Table(name = FactureAchat.TABLE_NAME)
 public class FactureAchat extends AuditableEntity {
@@ -34,68 +38,4 @@ public class FactureAchat extends AuditableEntity {
     private LocalDate date;
 
     private LocalDate dateEcheance;
-
-    public String getNumero() {
-        return numero;
-    }
-
-    public void setNumero(String numero) {
-        this.numero = numero;
-    }
-
-    public StatutFacture getStatut() {
-        return statut;
-    }
-
-    public void setStatut(StatutFacture statut) {
-        this.statut = statut;
-    }
-
-    public BigDecimal getMontantTotal() {
-        return montantTotal;
-    }
-
-    public void setMontantTotal(BigDecimal montantTotal) {
-        this.montantTotal = montantTotal;
-    }
-
-    public CommandeAchat getCommande() {
-        return commande;
-    }
-
-    public void setCommande(CommandeAchat commande) {
-        this.commande = commande;
-    }
-
-    public BigDecimal getMontantPaye() {
-        return montantPaye;
-    }
-
-    public void setMontantPaye(BigDecimal montantPaye) {
-        this.montantPaye = montantPaye;
-    }
-
-    public List<PaiementAchat> getPaiements() {
-        return paiements;
-    }
-
-    public void setPaiements(List<PaiementAchat> paiements) {
-        this.paiements = paiements;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
-
-    public LocalDate getDateEcheance() {
-        return dateEcheance;
-    }
-
-    public void setDateEcheance(LocalDate dateEcheance) {
-        this.dateEcheance = dateEcheance;
-    }
 }

@@ -3,8 +3,12 @@ package org.store.users.domain.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 import org.store.magasin.domain.model.Magasin;
 
+@Getter
+@Setter
 @Entity
 @Table(name = Employe.TABLE_NAME)
 public class Employe extends Utilisateur {
@@ -12,12 +16,4 @@ public class Employe extends Utilisateur {
 
     @ManyToOne
     private Magasin magasin;
-
-    public Magasin getMagasin() {
-        return magasin;
-    }
-
-    public void setMagasin(Magasin magasin) {
-        this.magasin = magasin;
-    }
 }
