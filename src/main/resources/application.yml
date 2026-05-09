@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: store
+  datasource:
+    url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
+    username: ${DB_USERNAME:barrydevit}
+    password: ${DB_PASSWORD:passer}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
