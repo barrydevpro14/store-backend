@@ -1,8 +1,6 @@
 package org.store.notification.domain.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
@@ -10,8 +8,10 @@ import org.store.notification.domain.enums.CanalNotification;
 
 @Getter
 @Setter
+@Entity
+@Table(name = NotificationTemplate.TABLE_NAME)
 public class NotificationTemplate extends AuditableEntity {
-
+    public static final String TABLE_NAME = "notification_template";
     @Column(unique = true)
     private String code;
 
