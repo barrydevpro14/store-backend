@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.store.property.JwtProperties;
 import org.store.security.application.dto.UserPrincipal;
-import org.store.security.application.service.JwtService;
+import org.store.security.application.service.IJwtService;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -22,10 +22,10 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
+    private final IJwtService jwtService;
     private final JwtProperties properties;
 
-    public JwtAuthenticationFilter(JwtService jwtService, JwtProperties properties) {
+    public JwtAuthenticationFilter(IJwtService jwtService, JwtProperties properties) {
         this.jwtService = jwtService;
         this.properties = properties;
     }

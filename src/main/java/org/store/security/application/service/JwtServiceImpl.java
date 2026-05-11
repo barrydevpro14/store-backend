@@ -19,17 +19,18 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class JwtService {
-    private final Logger logger = LoggerFactory.getLogger(JwtService.class);
+public class JwtServiceImpl implements IJwtService {
+    private final Logger logger = LoggerFactory.getLogger(JwtServiceImpl.class);
 
     private final JwtProperties properties;
     private final SecretKey secretKey;
 
-    public JwtService(JwtProperties properties) {
+    public JwtServiceImpl(JwtProperties properties) {
         this.properties = properties;
         this.secretKey = Keys.hmacShaKeyFor(properties.secret().getBytes());
     }
 
+    @Override
     public String generateToken(UserPrincipal principal) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + properties.expiration().accessToken().toMillis());
@@ -46,6 +47,7 @@ public class JwtService {
                 .compact();
     }
 
+    @Override
     public boolean isTokenValid(String token) {
         try {
             parseClaims(token);
@@ -56,6 +58,7 @@ public class JwtService {
         }
     }
 
+    @Override
     public UserPrincipal extractUserPrincipal(String token) {
         Claims claims = parseClaims(token);
 
