@@ -5,7 +5,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 
 @Getter
 @Setter

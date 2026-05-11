@@ -1,4 +1,4 @@
-package org.store.magasin.application.service;
+package org.store.entreprise.application.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -6,9 +6,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.store.magasin.application.dto.EntrepriseRequest;
-import org.store.magasin.domain.model.Entreprise;
-import org.store.magasin.domain.repository.EntrepriseRepository;
+import org.store.entreprise.application.dto.EntrepriseRequest;
+import org.store.entreprise.domain.model.Entreprise;
+import org.store.entreprise.domain.repository.EntrepriseRepository;
 import org.store.users.domain.model.Proprietaire;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -20,13 +20,13 @@ public class AccountServiceImpl implements IAccountService {
     }
 
     @Override
-    public Account create(AccountRequest info, Role role) {
-        if (accountRepository.findByUsername(info.username()).isPresent()) {
-            throw new UniqueResourceException("account.username.exists", info.username());
+    public Account create(AccountRequest accountRequest, Role role) {
+        if (accountRepository.findByUsername(accountRequest.username()).isPresent()) {
+            throw new UniqueResourceException("account.username.exists", accountRequest.username());
         }
         Account account = new Account();
-        account.setUsername(info.username());
-        account.setPassword(passwordEncoder.encode(info.password()));
+        account.setUsername(accountRequest.username());
+        account.setPassword(passwordEncoder.encode(accountRequest.password()));
         account.setEnabled(true);
         account.setLocked(false);
         account.setRole(role);

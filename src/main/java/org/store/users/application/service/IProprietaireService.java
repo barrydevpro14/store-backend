@@ -6,5 +6,5 @@ import org.store.users.domain.model.Proprietaire;
 
 public interface IProprietaireService {
 
-    Proprietaire create(UtilisateurRequest info, Account account);
+    Proprietaire create(UtilisateurRequest utilisateurRequest, Account account);
 }

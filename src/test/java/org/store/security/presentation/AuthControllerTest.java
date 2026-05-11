@@ -9,7 +9,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
-import org.store.magasin.application.dto.EntrepriseRequest;
+import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.application.dto.AuthResponse;

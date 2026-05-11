@@ -1,4 +1,4 @@
-package org.store.magasin.application.dto;
+package org.store.entreprise.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

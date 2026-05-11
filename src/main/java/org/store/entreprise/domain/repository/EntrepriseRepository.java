@@ -1,7 +1,7 @@
-package org.store.magasin.domain.repository;
+package org.store.entreprise.domain.repository;
 
 import org.store.common.repository.BaseRepository;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 
 public interface EntrepriseRepository extends BaseRepository<Entreprise> {
 }

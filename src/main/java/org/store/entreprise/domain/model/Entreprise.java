@@ -1,10 +1,11 @@
-package org.store.magasin.domain.model;
+package org.store.entreprise.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.common.base.AuditableEntity;
+import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
 import org.store.users.domain.model.Proprietaire;
 

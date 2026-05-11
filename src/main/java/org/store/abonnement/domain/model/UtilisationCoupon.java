@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.BaseEntity;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 
 @Getter
 @Setter

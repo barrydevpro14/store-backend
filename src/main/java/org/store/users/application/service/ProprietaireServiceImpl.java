@@ -16,14 +16,14 @@ public class ProprietaireServiceImpl implements IProprietaireService {
     }
 
     @Override
-    public Proprietaire create(UtilisateurRequest info, Account account) {
+    public Proprietaire create(UtilisateurRequest utilisateurRequest, Account account) {
         Proprietaire proprietaire = new Proprietaire();
         proprietaire.setAccount(account);
-        proprietaire.setNom(info.nom());
-        proprietaire.setPrenom(info.prenom());
-        proprietaire.setEmail(info.email());
-        proprietaire.setTelephone(info.telephone());
-        proprietaire.setAdresse(info.adresse());
+        proprietaire.setNom(utilisateurRequest.nom());
+        proprietaire.setPrenom(utilisateurRequest.prenom());
+        proprietaire.setEmail(utilisateurRequest.email());
+        proprietaire.setTelephone(utilisateurRequest.telephone());
+        proprietaire.setAdresse(utilisateurRequest.adresse());
         return proprietaireRepository.save(proprietaire);
     }
 }

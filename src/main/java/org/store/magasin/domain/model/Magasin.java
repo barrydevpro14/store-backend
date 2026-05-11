@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
+import org.store.entreprise.domain.model.Entreprise;
 import org.store.users.domain.model.Employe;
 import org.store.vente.domain.model.Client;
 

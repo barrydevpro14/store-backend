@@ -1,8 +1,8 @@
-package org.store.magasin.infrastructure.repository;
+package org.store.entreprise.infrastructure.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.store.magasin.domain.model.Entreprise;
-import org.store.magasin.domain.repository.EntrepriseRepository;
+import org.store.entreprise.domain.model.Entreprise;
+import org.store.entreprise.domain.repository.EntrepriseRepository;
 
 import java.util.UUID;
 

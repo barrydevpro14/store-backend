@@ -10,7 +10,7 @@ import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.AbonnementRepository;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 
 import java.time.LocalDate;
 

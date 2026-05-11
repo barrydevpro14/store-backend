@@ -1,7 +1,7 @@
 package org.store.security.application.service;
 
 import org.junit.jupiter.api.Test;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;

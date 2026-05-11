@@ -7,7 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.magasin.application.dto.MagasinRequest;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.repository.MagasinRepository;
 

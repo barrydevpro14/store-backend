@@ -6,5 +6,5 @@ import org.store.security.domain.model.Role;
 
 public interface IAccountService {
 
-    Account create(AccountRequest info, Role role);
+    Account create(AccountRequest accountRequest, Role role);
 }

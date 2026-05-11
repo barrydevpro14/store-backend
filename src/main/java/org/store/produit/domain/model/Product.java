@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.common.model.PieceJointe;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 
 import java.util.ArrayList;
 import java.util.List;

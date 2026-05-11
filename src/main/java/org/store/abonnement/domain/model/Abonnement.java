@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.common.base.AuditableEntity;
-import org.store.magasin.domain.model.Entreprise;
+import org.store.entreprise.domain.model.Entreprise;
 
 import java.time.LocalDate;
 
