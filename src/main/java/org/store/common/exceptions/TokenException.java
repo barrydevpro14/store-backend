@@ -1,7 +1,7 @@
 package org.store.common.exceptions;
 
-public class TokenException extends RuntimeException {
-    public TokenException(String message) {
-        super(message);
+public class TokenException extends LocalizedRuntimeException {
+    public TokenException(String messageKey, Object... args) {
+        super(messageKey, args);
     }
 }

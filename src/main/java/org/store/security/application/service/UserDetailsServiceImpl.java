@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
-import org.store.security.domain.repository.AccountJpaRepository;
+import org.store.security.domain.repository.AccountRepository;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -21,9 +21,9 @@ import java.util.Collections;
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final AccountJpaRepository accountRepository;
+    private final AccountRepository accountRepository;
 
-    public UserDetailsServiceImpl(AccountJpaRepository accountRepository) {
+    public UserDetailsServiceImpl(AccountRepository accountRepository) {
         this.accountRepository = accountRepository;
     }
 

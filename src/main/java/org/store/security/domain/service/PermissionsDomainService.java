@@ -3,11 +3,11 @@ package org.store.security.domain.service;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.security.domain.model.Permissions;
-import org.store.security.domain.repository.PermissionsJpaRepository;
+import org.store.security.domain.repository.PermissionsRepository;
 
 @Service
-public class PermissionsDomainService extends GlobalService<Permissions, PermissionsJpaRepository> {
-    public PermissionsDomainService(PermissionsJpaRepository repository) {
+public class PermissionsDomainService extends GlobalService<Permissions, PermissionsRepository> {
+    public PermissionsDomainService(PermissionsRepository repository) {
         super(repository);
     }
 }

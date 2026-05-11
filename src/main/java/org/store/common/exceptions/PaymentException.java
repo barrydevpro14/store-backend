@@ -4,14 +4,17 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public class PaymentException extends RuntimeException {
-    private int statusCode;
-    public PaymentException(String message) {
-        super(message);
+public class PaymentException extends LocalizedRuntimeException {
+
+    private final int statusCode;
+
+    public PaymentException(String messageKey, Object... args) {
+        super(messageKey, args);
         this.statusCode = HttpStatus.NOT_ACCEPTABLE.value();
     }
-    public PaymentException(String message, int code) {
-        super(message, new Throwable(String.valueOf(code)));
-    }
 
+    public PaymentException(int statusCode, String messageKey, Object... args) {
+        super(messageKey, args);
+        this.statusCode = statusCode;
+    }
 }

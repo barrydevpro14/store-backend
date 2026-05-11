@@ -1,16 +1,15 @@
 package org.store.common.service;
 
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.store.common.base.BaseEntity;
 import org.store.common.exceptions.EntityException;
+import org.store.common.repository.BaseRepository;
 
 import java.util.List;
 import java.util.UUID;
 
-public abstract class GlobalService<E extends BaseEntity, R extends JpaRepository<E, UUID>> {
+public abstract class GlobalService<E extends BaseEntity, R extends BaseRepository<E>> {
 
     protected final R repository;
 
@@ -24,7 +23,7 @@ public abstract class GlobalService<E extends BaseEntity, R extends JpaRepositor
 
     public E findById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Entité introuvable : " + id));
+                .orElseThrow(() -> new EntityException("entity.notFound", id));
     }
 
     public List<E> findAll() {
@@ -45,7 +44,7 @@ public abstract class GlobalService<E extends BaseEntity, R extends JpaRepositor
 
     public void deleteById(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityException("Entité introuvable : " + id);
+            throw new EntityException("entity.notFound", id);
         }
         repository.deleteById(id);
     }
