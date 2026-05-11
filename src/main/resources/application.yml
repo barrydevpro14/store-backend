@@ -18,3 +18,12 @@ management:
     web:
       exposure:
         include: health
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:ou2FiLzTm0GTFqbSGOG1kJf0Qe7kGDdOQmRU8t7Csgi35C17SSET83HMY75BS61ujph877iw8y6VEVdsMEp14A==}
+    header: Authorization
+    prefix: "Bearer "
+    expiration:
+      access-token: 1h
+      refresh-token: 7d

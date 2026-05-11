@@ -7,7 +7,7 @@ public record UserPrincipal(
         UUID userId,
         UUID entrepriseId,
         UUID magasinId,
-        String email,
+        String username,
         List<String> permissions
 ) {
     public boolean hasPermission(String permission) {
