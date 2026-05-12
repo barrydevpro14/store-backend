@@ -13,6 +13,7 @@ import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.common.exceptions.EntityException;
 import org.store.entreprise.application.dto.EntrepriseRequest;
+import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.dto.MagasinRequest;
@@ -92,6 +93,31 @@ class RegisterPropertyServiceImplTest {
 
         assertThat(response.accessToken()).isEqualTo("access.token");
         assertThat(response.refreshToken()).isEqualTo("refresh-uuid");
+        verify(abonnementService).createTrial(entreprise, plan);
+    }
+
+    @Test
+    void registerEntrepriseByAdmin_should_return_entreprise_response() {
+        Role role = new Role();
+        PlanAbonnement plan = new PlanAbonnement();
+        Account account = accountWithId();
+        Proprietaire proprietaire = new Proprietaire();
+        Entreprise entreprise = entrepriseWithId();
+        entreprise.setSigle("ACME");
+        Magasin magasin = magasinWithId();
+        proprietaire.setEntreprise(entreprise);
+
+        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(role);
+        when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);
+        when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
+        when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
+        when(entrepriseService.create(eq(validRequest.entreprise()), eq(proprietaire))).thenReturn(entreprise);
+        when(magasinService.create(eq(validRequest.magasin()), eq(entreprise))).thenReturn(magasin);
+
+        EntrepriseResponse response = service.registerEntrepriseByAdmin(validRequest);
+
+        assertThat(response.id()).isEqualTo(entreprise.getId());
+        assertThat(response.sigle()).isEqualTo("ACME");
         verify(abonnementService).createTrial(entreprise, plan);
     }
 

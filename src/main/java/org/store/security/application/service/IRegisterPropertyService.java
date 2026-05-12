@@ -1,8 +1,10 @@
 package org.store.security.application.service;
 
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.security.application.dto.AccountResponse;
 import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.RegisterPropertyRequest;
+import org.store.security.domain.model.Account;
 
 public interface IRegisterPropertyService {
 
@@ -13,8 +15,21 @@ public interface IRegisterPropertyService {
     AuthResponse register(RegisterPropertyRequest request);
 
     /**
-     * Création pilotée par un ADMIN : même flux que {@link #register} mais retourne uniquement
-     * l'entreprise créée (pas de tokens — l'ADMIN ne se connecte pas à la place du proprietaire).
+     * Création pilotée par un ADMIN : même flux que {@link #register} mais renvoie l'account créé
+     * (avec les infos du proprietaire) — pas de tokens.
      */
-    EntrepriseResponse adminCreate(RegisterPropertyRequest request);
+    AccountResponse registerOwnerByAdmin(RegisterPropertyRequest request);
+
+    /**
+     * Création pilotée par un ADMIN d'une entreprise (et de son propriétaire) : même flux que
+     * {@link #registerOwnerByAdmin} mais renvoie la {@link EntrepriseResponse} de l'entreprise créée.
+     */
+    EntrepriseResponse registerEntrepriseByAdmin(RegisterPropertyRequest request);
+
+    /**
+     * Orchestration commune : crée le compte + le proprietaire + l'entreprise + le premier magasin
+     * + l'abonnement trial. Le {@code roleName} est le libellé du rôle à attribuer au compte
+     * (ex. "PROPRIETAIRE"). Retourne le compte créé (avec sa chaîne d'entités liées).
+     */
+    Account createAccount(RegisterPropertyRequest request, String roleName);
 }

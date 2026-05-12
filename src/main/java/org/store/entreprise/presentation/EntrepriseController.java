@@ -40,8 +40,7 @@ public class EntrepriseController {
     @PostMapping
     @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
     public ResponseEntity<EntrepriseResponse> create(@Valid @RequestBody RegisterPropertyRequest request) {
-        EntrepriseResponse response = registerPropertyService.adminCreate(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(registerPropertyService.registerEntrepriseByAdmin(request));
     }
 
     @GetMapping

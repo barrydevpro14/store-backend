@@ -12,6 +12,7 @@ import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
+import org.store.security.application.dto.AccountResponse;
 import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.RegisterPropertyRequest;
 import org.store.security.application.dto.UserPrincipal;
@@ -63,21 +64,31 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
     @Override
     @Transactional
     public AuthResponse register(RegisterPropertyRequest request) {
-        CreateResult result = doCreate(request);
-        UserPrincipal principal = userPrincipalFactory.build(result.account());
+        Account account = createAccount(request, ROLE_PROPRIETAIRE);
+        UserPrincipal principal = userPrincipalFactory.build(account);
         String accessToken = jwtService.generateToken(principal);
-        String refreshToken = refreshTokenService.create(result.account());
+        String refreshToken = refreshTokenService.create(account);
         return new AuthResponse(accessToken, refreshToken);
     }
 
     @Override
     @Transactional
-    public EntrepriseResponse adminCreate(RegisterPropertyRequest request) {
-        return new EntrepriseResponse(doCreate(request).entreprise());
+    public AccountResponse registerOwnerByAdmin(RegisterPropertyRequest request) {
+        return new AccountResponse(createAccount(request, ROLE_PROPRIETAIRE));
     }
 
-    private CreateResult doCreate(RegisterPropertyRequest request) {
-        Role role = roleService.findByLibelle(ROLE_PROPRIETAIRE);
+    @Override
+    @Transactional
+    public EntrepriseResponse registerEntrepriseByAdmin(RegisterPropertyRequest request) {
+        Account account = createAccount(request, ROLE_PROPRIETAIRE);
+        Proprietaire proprietaire = (Proprietaire) account.getUser();
+        return new EntrepriseResponse(proprietaire.getEntreprise());
+    }
+
+    @Override
+    @Transactional
+    public Account createAccount(RegisterPropertyRequest request, String roleName) {
+        Role role = roleService.findByLibelle(roleName);
         PlanAbonnement plan = planAbonnementService.findFirstTrialActif();
 
         Account account = accountService.create(request.account(), role);
@@ -89,8 +100,6 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
         entreprise.setMagasins(List.of(magasin));
         abonnementService.createTrial(entreprise, plan);
 
-        return new CreateResult(account, entreprise);
+        return account;
     }
-
-    private record CreateResult(Account account, Entreprise entreprise) {}
 }

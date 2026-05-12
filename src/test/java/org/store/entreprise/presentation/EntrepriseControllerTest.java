@@ -79,15 +79,16 @@ class EntrepriseControllerTest {
     }
 
     @Test
-    void should_return_201_when_admin_creates_entreprise() throws Exception {
-        when(registerPropertyService.adminCreate(any(RegisterPropertyRequest.class))).thenReturn(sample());
+    void should_return_201_with_entreprise_response_when_admin_creates() throws Exception {
+        when(registerPropertyService.registerEntrepriseByAdmin(any(RegisterPropertyRequest.class))).thenReturn(sample());
 
         mockMvc.perform(post(EntrepriseController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRegisterBody())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(entrepriseId.toString()))
-                .andExpect(jsonPath("$.sigle").value("ACME"));
+                .andExpect(jsonPath("$.sigle").value("ACME"))
+                .andExpect(jsonPath("$.raisonSociale").value("ACME SARL"));
     }
 
     @Test
