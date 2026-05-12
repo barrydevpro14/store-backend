@@ -84,6 +84,23 @@ class AuthControllerTest {
     }
 
     @Test
+    void should_return_400_when_register_payload_telephone_format_invalid() throws Exception {
+        String bodyBadTelephone = """
+                {
+                  "account": {"username": "john.doe", "password": "S3cretPwd!"},
+                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "+221770000000", "adresse": "Dakar"},
+                  "entreprise": {"sigle": "ACME", "raisonSociale": "ACME SARL", "ninea": "NINEA-123", "rccm": "RCCM-456", "adresse": "Dakar"},
+                  "magasin": {"nom": "Magasin Centre", "adresse": "Dakar Centre"}
+                }
+                """;
+
+        mockMvc.perform(post(AuthController.BASE_PATH + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyBadTelephone))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void should_return_400_when_register_payload_telephone_blank() throws Exception {
         String bodyWithoutTelephone = """
                 {
@@ -179,7 +196,7 @@ class AuthControllerTest {
     private RegisterPropertyRequest validRegisterBody() {
         return new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
-                new UtilisateurRequest("Doe", "John", "john@example.com", "+221700000000", "Dakar"),
+                new UtilisateurRequest("Doe", "John", "john@example.com", "770000000", "Dakar"),
                 new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"),
                 new MagasinRequest("Magasin Centre", "Dakar Centre")
         );
