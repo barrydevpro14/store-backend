@@ -9,10 +9,10 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.i18n.IMessageSourceService;
 import org.store.security.domain.model.Account;
-import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
-import org.store.security.domain.repository.AccountRepository;
+import org.store.security.domain.service.AccountDomainService;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -21,17 +21,25 @@ import java.util.Collections;
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final AccountRepository accountRepository;
+    private final AccountDomainService accountDomainService;
+    private final IPermissionsService permissionsService;
+    private final IMessageSourceService messageSourceService;
 
-    public UserDetailsServiceImpl(AccountRepository accountRepository) {
-        this.accountRepository = accountRepository;
+    public UserDetailsServiceImpl(AccountDomainService accountDomainService,
+                                  IPermissionsService permissionsService,
+                                  IMessageSourceService messageSourceService) {
+        this.accountDomainService = accountDomainService;
+        this.permissionsService = permissionsService;
+        this.messageSourceService = messageSourceService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Account account = accountRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Compte introuvable : " + username));
+        Account account = accountDomainService.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        messageSourceService.getMessage("account.notFound", new Object[]{username})
+                ));
 
         return User.builder()
                 .username(account.getUsername())
@@ -44,12 +52,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     private Collection<? extends GrantedAuthority> extractAuthorities(Account account) {
         Role role = account.getRole();
-        if (role == null || role.getPermissions() == null) {
+        if (role == null) {
             return Collections.emptyList();
         }
-        return role.getPermissions().stream()
-                .map(Permissions::getCode)
-                .filter(code -> code != null && !code.isBlank())
+        return permissionsService.findAllByRoleId(role.getId()).stream()
                 .map(SimpleGrantedAuthority::new)
                 .toList();
     }

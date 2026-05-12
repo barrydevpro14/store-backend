@@ -3,6 +3,7 @@ package org.store.security.application.enums;
 public enum Claim {
     ENTREPRISE("entrepriseId"),
     MAGASIN("magasinId"),
+    ROLE("role"),
     USERNAME("username"),
     PERMISSIONS("permissions");
 

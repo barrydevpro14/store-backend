@@ -5,7 +5,6 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;
-import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.model.Proprietaire;
@@ -16,6 +15,12 @@ import java.util.UUID;
 
 @Service
 public class UserPrincipalFactoryImpl implements IUserPrincipalFactory {
+
+    private final IPermissionsService permissionsService;
+
+    public UserPrincipalFactoryImpl(IPermissionsService permissionsService) {
+        this.permissionsService = permissionsService;
+    }
 
     @Override
     public UserPrincipal build(Account account) {
@@ -37,12 +42,14 @@ public class UserPrincipalFactoryImpl implements IUserPrincipalFactory {
                 }
             }
         }
+        Role role = account.getRole();
         return new UserPrincipal(
                 account.getId(),
                 entrepriseId,
                 magasinId,
                 account.getUsername(),
-                extractPermissions(account.getRole())
+                role.getLibelle(),
+                permissionsService.findAllByRoleId(role.getId())
         );
     }
 
@@ -52,15 +59,5 @@ public class UserPrincipalFactoryImpl implements IUserPrincipalFactory {
             return null;
         }
         return magasins.get(0).getId();
-    }
-
-    private List<String> extractPermissions(Role role) {
-        if (role == null || role.getPermissions() == null) {
-            return List.of();
-        }
-        return role.getPermissions().stream()
-                .map(Permissions::getCode)
-                .filter(code -> code != null && !code.isBlank())
-                .toList();
     }
 }

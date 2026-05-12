@@ -60,6 +60,7 @@ class JwtServiceImplTest {
         assertThat(extracted.entrepriseId()).isEqualTo(original.entrepriseId());
         assertThat(extracted.magasinId()).isEqualTo(original.magasinId());
         assertThat(extracted.username()).isEqualTo(original.username());
+        assertThat(extracted.role()).isEqualTo(original.role());
         assertThat(extracted.permissions()).containsExactlyElementsOf(original.permissions());
     }
 
@@ -69,6 +70,7 @@ class JwtServiceImplTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "john.doe",
+                "PROPRIETAIRE",
                 List.of("PROPRIETAIRE_ACCESS")
         );
     }

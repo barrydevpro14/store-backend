@@ -12,7 +12,7 @@ import org.store.common.exceptions.UniqueResourceException;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
-import org.store.security.domain.repository.AccountRepository;
+import org.store.security.domain.service.AccountDomainService;
 
 import java.util.Optional;
 
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 class AccountServiceImplTest {
 
     @Mock
-    private AccountRepository accountRepository;
+    private AccountDomainService accountDomainService;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -40,14 +40,14 @@ class AccountServiceImplTest {
         AccountRequest request = new AccountRequest("john.doe", "S3cretPwd!");
         Role role = new Role();
 
-        when(accountRepository.findByUsername("john.doe")).thenReturn(Optional.empty());
+        when(accountDomainService.findByUsername("john.doe")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("S3cretPwd!")).thenReturn("hashed");
-        when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(accountDomainService.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Account result = service.create(request, role);
 
         ArgumentCaptor<Account> captor = ArgumentCaptor.forClass(Account.class);
-        verify(accountRepository).save(captor.capture());
+        verify(accountDomainService).save(captor.capture());
         Account saved = captor.getValue();
         assertThat(saved.getUsername()).isEqualTo("john.doe");
         assertThat(saved.getPassword()).isEqualTo("hashed");
@@ -60,19 +60,19 @@ class AccountServiceImplTest {
     @Test
     void should_throw_unique_resource_when_username_already_exists() {
         AccountRequest request = new AccountRequest("john.doe", "S3cretPwd!");
-        when(accountRepository.findByUsername("john.doe")).thenReturn(Optional.of(new Account()));
+        when(accountDomainService.findByUsername("john.doe")).thenReturn(Optional.of(new Account()));
 
         assertThatThrownBy(() -> service.create(request, new Role()))
                 .isInstanceOf(UniqueResourceException.class);
 
-        verify(accountRepository, never()).save(any());
+        verify(accountDomainService, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
     }
 
     @Test
     void should_return_account_when_findByUsername_exists() {
         Account account = new Account();
-        when(accountRepository.findByUsername("john.doe")).thenReturn(Optional.of(account));
+        when(accountDomainService.findByUsername("john.doe")).thenReturn(Optional.of(account));
 
         Account result = service.findByUsername("john.doe");
 
@@ -81,7 +81,7 @@ class AccountServiceImplTest {
 
     @Test
     void should_throw_entity_exception_when_findByUsername_unknown() {
-        when(accountRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+        when(accountDomainService.findByUsername("ghost")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findByUsername("ghost"))
                 .isInstanceOf(EntityException.class);

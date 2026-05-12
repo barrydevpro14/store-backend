@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.security.domain.model.Account;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Proprietaire;
-import org.store.users.domain.repository.ProprietaireRepository;
+import org.store.users.domain.service.ProprietaireDomainService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class ProprietaireServiceImplTest {
 
     @Mock
-    private ProprietaireRepository proprietaireRepository;
+    private ProprietaireDomainService proprietaireDomainService;
 
     @InjectMocks
     private ProprietaireServiceImpl service;
@@ -31,12 +31,12 @@ class ProprietaireServiceImplTest {
                 "Doe", "John", "john@example.com", "+221700000000", "Dakar"
         );
         Account account = new Account();
-        when(proprietaireRepository.save(any(Proprietaire.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(proprietaireDomainService.save(any(Proprietaire.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Proprietaire result = service.create(request, account);
 
         ArgumentCaptor<Proprietaire> captor = ArgumentCaptor.forClass(Proprietaire.class);
-        verify(proprietaireRepository).save(captor.capture());
+        verify(proprietaireDomainService).save(captor.capture());
         Proprietaire saved = captor.getValue();
         assertThat(saved.getAccount()).isSameAs(account);
         assertThat(saved.getNom()).isEqualTo("Doe");

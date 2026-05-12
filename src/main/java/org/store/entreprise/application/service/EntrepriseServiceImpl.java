@@ -3,16 +3,16 @@ package org.store.entreprise.application.service;
 import org.springframework.stereotype.Service;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.entreprise.domain.repository.EntrepriseRepository;
+import org.store.entreprise.domain.service.EntrepriseDomainService;
 import org.store.users.domain.model.Proprietaire;
 
 @Service
 public class EntrepriseServiceImpl implements IEntrepriseService {
 
-    private final EntrepriseRepository entrepriseRepository;
+    private final EntrepriseDomainService entrepriseDomainService;
 
-    public EntrepriseServiceImpl(EntrepriseRepository entrepriseRepository) {
-        this.entrepriseRepository = entrepriseRepository;
+    public EntrepriseServiceImpl(EntrepriseDomainService entrepriseDomainService) {
+        this.entrepriseDomainService = entrepriseDomainService;
     }
 
     @Override
@@ -25,6 +25,6 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
         entreprise.setRccm(entrepriseRequest.rccm());
         entreprise.setAdresse(entrepriseRequest.adresse());
         entreprise.setTrialUsed(true);
-        return entrepriseRepository.save(entreprise);
+        return entrepriseDomainService.save(entreprise);
     }
 }

@@ -1,18 +1,20 @@
 package org.store.magasin.application.service;
 
 import org.springframework.stereotype.Service;
-import org.store.magasin.application.dto.MagasinRequest;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.domain.model.Magasin;
-import org.store.magasin.domain.repository.MagasinRepository;
+import org.store.magasin.domain.service.MagasinDomainService;
+
+import java.util.UUID;
 
 @Service
 public class MagasinServiceImpl implements IMagasinService {
 
-    private final MagasinRepository magasinRepository;
+    private final MagasinDomainService magasinDomainService;
 
-    public MagasinServiceImpl(MagasinRepository magasinRepository) {
-        this.magasinRepository = magasinRepository;
+    public MagasinServiceImpl(MagasinDomainService magasinDomainService) {
+        this.magasinDomainService = magasinDomainService;
     }
 
     @Override
@@ -21,6 +23,11 @@ public class MagasinServiceImpl implements IMagasinService {
         magasin.setEntreprise(entreprise);
         magasin.setNom(magasinRequest.nom());
         magasin.setAdresse(magasinRequest.adresse());
-        return magasinRepository.save(magasin);
+        return magasinDomainService.save(magasin);
+    }
+
+    @Override
+    public Magasin findById(UUID id) {
+        return magasinDomainService.findById(id);
     }
 }

@@ -2,21 +2,21 @@ package org.store.abonnement.application.service;
 
 import org.springframework.stereotype.Service;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.repository.PlanAbonnementRepository;
+import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.common.exceptions.EntityException;
 
 @Service
 public class PlanAbonnementServiceImpl implements IPlanAbonnementService {
 
-    private final PlanAbonnementRepository planAbonnementRepository;
+    private final PlanAbonnementDomainService planAbonnementDomainService;
 
-    public PlanAbonnementServiceImpl(PlanAbonnementRepository planAbonnementRepository) {
-        this.planAbonnementRepository = planAbonnementRepository;
+    public PlanAbonnementServiceImpl(PlanAbonnementDomainService planAbonnementDomainService) {
+        this.planAbonnementDomainService = planAbonnementDomainService;
     }
 
     @Override
     public PlanAbonnement findFirstTrialActif() {
-        return planAbonnementRepository.findFirstByTrialTrueAndActifTrue()
+        return planAbonnementDomainService.findFirstTrialActif()
                 .orElseThrow(() -> new EntityException("plan.trial.notFound"));
     }
 }

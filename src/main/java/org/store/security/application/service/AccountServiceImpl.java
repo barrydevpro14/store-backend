@@ -7,22 +7,22 @@ import org.store.common.exceptions.UniqueResourceException;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
-import org.store.security.domain.repository.AccountRepository;
+import org.store.security.domain.service.AccountDomainService;
 
 @Service
 public class AccountServiceImpl implements IAccountService {
 
-    private final AccountRepository accountRepository;
+    private final AccountDomainService accountDomainService;
     private final PasswordEncoder passwordEncoder;
 
-    public AccountServiceImpl(AccountRepository accountRepository, PasswordEncoder passwordEncoder) {
-        this.accountRepository = accountRepository;
+    public AccountServiceImpl(AccountDomainService accountDomainService, PasswordEncoder passwordEncoder) {
+        this.accountDomainService = accountDomainService;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public Account create(AccountRequest accountRequest, Role role) {
-        if (accountRepository.findByUsername(accountRequest.username()).isPresent()) {
+        if (accountDomainService.findByUsername(accountRequest.username()).isPresent()) {
             throw new UniqueResourceException("account.username.exists", accountRequest.username());
         }
         Account account = new Account();
@@ -31,12 +31,12 @@ public class AccountServiceImpl implements IAccountService {
         account.setEnabled(true);
         account.setLocked(false);
         account.setRole(role);
-        return accountRepository.save(account);
+        return accountDomainService.save(account);
     }
 
     @Override
     public Account findByUsername(String username) {
-        return accountRepository.findByUsername(username)
+        return accountDomainService.findByUsername(username)
                 .orElseThrow(() -> new EntityException("account.notFound", username));
     }
 }

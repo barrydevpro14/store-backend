@@ -13,7 +13,7 @@ import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.RefreshToken;
-import org.store.security.domain.repository.RefreshTokenRepository;
+import org.store.security.domain.service.RefreshTokenDomainService;
 import org.store.users.domain.model.Proprietaire;
 
 import java.time.Duration;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 class RefreshTokenServiceImplTest {
 
     @Mock
-    private RefreshTokenRepository refreshTokenRepository;
+    private RefreshTokenDomainService refreshTokenDomainService;
 
     @Mock
     private IJwtService jwtService;
@@ -52,7 +52,7 @@ class RefreshTokenServiceImplTest {
                 "Bearer ",
                 new JwtProperties.Expiration(Duration.ofHours(1), Duration.ofDays(7))
         );
-        service = new RefreshTokenServiceImpl(refreshTokenRepository, jwtService, userPrincipalFactory, jwtProperties);
+        service = new RefreshTokenServiceImpl(refreshTokenDomainService, jwtService, userPrincipalFactory, jwtProperties);
     }
 
     @Test
@@ -60,7 +60,7 @@ class RefreshTokenServiceImplTest {
         Proprietaire user = new Proprietaire();
         Account account = new Account();
         account.setUser(user);
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(refreshTokenDomainService.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
         String token = service.create(account);
 
@@ -68,7 +68,7 @@ class RefreshTokenServiceImplTest {
         UUID.fromString(token);
 
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository).save(captor.capture());
+        verify(refreshTokenDomainService).save(captor.capture());
         RefreshToken saved = captor.getValue();
         assertThat(saved.getToken()).isEqualTo(token);
         assertThat(saved.getUser()).isSameAs(user);
@@ -89,7 +89,7 @@ class RefreshTokenServiceImplTest {
         token.setRevoked(false);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
 
-        when(refreshTokenRepository.findByToken("rt-value")).thenReturn(Optional.of(token));
+        when(refreshTokenDomainService.findByToken("rt-value")).thenReturn(Optional.of(token));
         when(userPrincipalFactory.build(account)).thenReturn(samplePrincipal());
         when(jwtService.generateToken(any(UserPrincipal.class))).thenReturn("new.access.token");
 
@@ -101,7 +101,7 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void should_throw_unauthorised_when_refresh_token_not_found() {
-        when(refreshTokenRepository.findByToken("unknown")).thenReturn(Optional.empty());
+        when(refreshTokenDomainService.findByToken("unknown")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.refresh("unknown"))
                 .isInstanceOf(UnauthorisedException.class);
@@ -115,7 +115,7 @@ class RefreshTokenServiceImplTest {
         token.setToken("rt-value");
         token.setRevoked(true);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
-        when(refreshTokenRepository.findByToken("rt-value")).thenReturn(Optional.of(token));
+        when(refreshTokenDomainService.findByToken("rt-value")).thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> service.refresh("rt-value"))
                 .isInstanceOf(UnauthorisedException.class);
@@ -127,7 +127,7 @@ class RefreshTokenServiceImplTest {
         token.setToken("rt-value");
         token.setRevoked(false);
         token.setExpiryDate(LocalDateTime.now().minusDays(1));
-        when(refreshTokenRepository.findByToken("rt-value")).thenReturn(Optional.of(token));
+        when(refreshTokenDomainService.findByToken("rt-value")).thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> service.refresh("rt-value"))
                 .isInstanceOf(UnauthorisedException.class);
@@ -138,13 +138,13 @@ class RefreshTokenServiceImplTest {
         RefreshToken token = new RefreshToken();
         token.setToken("rt-value");
         token.setRevoked(false);
-        when(refreshTokenRepository.findByToken("rt-value")).thenReturn(Optional.of(token));
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(refreshTokenDomainService.findByToken("rt-value")).thenReturn(Optional.of(token));
+        when(refreshTokenDomainService.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.revoke("rt-value");
 
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository).save(captor.capture());
+        verify(refreshTokenDomainService).save(captor.capture());
         assertThat(captor.getValue().isRevoked()).isTrue();
     }
 
@@ -153,23 +153,23 @@ class RefreshTokenServiceImplTest {
         RefreshToken token = new RefreshToken();
         token.setToken("rt-value");
         token.setRevoked(true);
-        when(refreshTokenRepository.findByToken("rt-value")).thenReturn(Optional.of(token));
+        when(refreshTokenDomainService.findByToken("rt-value")).thenReturn(Optional.of(token));
 
         service.revoke("rt-value");
 
-        verify(refreshTokenRepository, never()).save(any());
+        verify(refreshTokenDomainService, never()).save(any());
     }
 
     @Test
     void should_silently_succeed_when_revoking_unknown_token() {
-        when(refreshTokenRepository.findByToken("unknown")).thenReturn(Optional.empty());
+        when(refreshTokenDomainService.findByToken("unknown")).thenReturn(Optional.empty());
 
         service.revoke("unknown");
 
-        verify(refreshTokenRepository, never()).save(any());
+        verify(refreshTokenDomainService, never()).save(any());
     }
 
     private UserPrincipal samplePrincipal() {
-        return new UserPrincipal(UUID.randomUUID(), null, null, "user", List.of());
+        return new UserPrincipal(UUID.randomUUID(), null, null, "user", "PROPRIETAIRE", List.of());
     }
 }

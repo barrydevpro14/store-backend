@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.PlanAbonnementRepository;
+import org.store.security.application.enums.PermissionCode;
 import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.repository.PermissionsRepository;
@@ -15,6 +16,7 @@ import org.store.security.domain.repository.RoleRepository;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -23,9 +25,9 @@ public class DataInitializer implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private static final String ROLE_PROPRIETAIRE = "PROPRIETAIRE";
-    private static final String ROLE_EMPLOYE = "EMPLOYE";
-    private static final String PERMISSION_PROPRIETAIRE_ACCESS = "PROPRIETAIRE_ACCESS";
-    private static final String PERMISSION_EMPLOYE_ACCESS = "EMPLOYE_ACCESS";
+    private static final String ROLE_MANAGER = "MANAGER";
+    private static final String ROLE_VENDEUR = "VENDEUR";
+
     private static final String PLAN_TRIAL_NOM = "Essai";
 
     private final PermissionsRepository permissionsRepository;
@@ -43,16 +45,19 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        Permissions propAccess = ensurePermission(PERMISSION_PROPRIETAIRE_ACCESS);
-        Permissions empAccess = ensurePermission(PERMISSION_EMPLOYE_ACCESS);
+        Permissions propAccess = ensurePermission(PermissionCode.PROPRIETAIRE_ACCESS);
+        Permissions empAccess = ensurePermission(PermissionCode.EMPLOYE_ACCESS);
+        Permissions empCreate = ensurePermission(PermissionCode.EMPLOYE_CREATE);
 
-        ensureRole(ROLE_PROPRIETAIRE, "Propriétaire d'une entreprise", new LinkedHashSet<>(Set.of(propAccess)));
-        ensureRole(ROLE_EMPLOYE, "Employé rattaché à un magasin", new LinkedHashSet<>(Set.of(empAccess)));
+        ensureRole(ROLE_PROPRIETAIRE, "Propriétaire d'une entreprise", Set.of(propAccess, empCreate));
+        ensureRole(ROLE_MANAGER, "Manager d'un magasin", Set.of(empAccess, empCreate));
+        ensureRole(ROLE_VENDEUR, "Vendeur d'un magasin", Set.of(empAccess));
 
         ensureTrialPlan();
     }
 
-    private Permissions ensurePermission(String code) {
+    private Permissions ensurePermission(PermissionCode permissionCode) {
+        String code = permissionCode.name();
         return permissionsRepository.findByCode(code).orElseGet(() -> {
             Permissions p = new Permissions();
             p.setCode(code);
@@ -61,15 +66,34 @@ public class DataInitializer implements ApplicationRunner {
         });
     }
 
-    private void ensureRole(String libelle, String description, Set<Permissions> permissions) {
-        roleRepository.findByLibelle(libelle).orElseGet(() -> {
-            Role role = new Role();
-            role.setLibelle(libelle);
-            role.setDescription(description);
-            role.setPermissions(permissions);
+    private void ensureRole(String libelle, String description, Set<Permissions> requiredPermissions) {
+        Role role = roleRepository.findByLibelle(libelle).orElseGet(() -> {
+            Role created = new Role();
+            created.setLibelle(libelle);
+            created.setDescription(description);
+            created.setPermissions(new LinkedHashSet<>());
             log.info("DataInitializer: création rôle '{}'", libelle);
-            return roleRepository.save(role);
+            return roleRepository.save(created);
         });
+
+        Set<Permissions> current = role.getPermissions();
+        if (current == null) {
+            current = new LinkedHashSet<>();
+            role.setPermissions(current);
+        }
+        boolean changed = false;
+        for (Permissions required : requiredPermissions) {
+            boolean alreadyPresent = current.stream()
+                    .anyMatch(p -> Objects.equals(p.getId(), required.getId()));
+            if (!alreadyPresent) {
+                current.add(required);
+                changed = true;
+            }
+        }
+        if (changed) {
+            log.info("DataInitializer: synchronisation permissions du rôle '{}'", libelle);
+            roleRepository.save(role);
+        }
     }
 
     private void ensureTrialPlan() {

@@ -1,0 +1,31 @@
+package org.store.users.application.dto;
+
+import org.store.users.domain.model.Employe;
+
+import java.util.UUID;
+
+public record EmployeResponse(
+        UUID id,
+        String nom,
+        String prenom,
+        String email,
+        String telephone,
+        String adresse,
+        String username,
+        String role,
+        UUID magasinId
+) {
+    public EmployeResponse(Employe employe) {
+        this(
+                employe.getId(),
+                employe.getNom(),
+                employe.getPrenom(),
+                employe.getEmail(),
+                employe.getTelephone(),
+                employe.getAdresse(),
+                employe.getAccount().getUsername(),
+                employe.getAccount().getRole().getLibelle(),
+                employe.getMagasin().getId()
+        );
+    }
+}

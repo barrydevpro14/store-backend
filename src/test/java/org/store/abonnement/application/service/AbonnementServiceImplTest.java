@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.repository.AbonnementRepository;
+import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.entreprise.domain.model.Entreprise;
 
 import java.time.LocalDate;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class AbonnementServiceImplTest {
 
     @Mock
-    private AbonnementRepository abonnementRepository;
+    private AbonnementDomainService abonnementDomainService;
 
     @InjectMocks
     private AbonnementServiceImpl service;
@@ -32,12 +32,12 @@ class AbonnementServiceImplTest {
     void should_create_trial_abonnement_for_30_days_with_active_status() {
         Entreprise entreprise = new Entreprise();
         PlanAbonnement plan = new PlanAbonnement();
-        when(abonnementRepository.save(any(Abonnement.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(abonnementDomainService.save(any(Abonnement.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Abonnement result = service.createTrial(entreprise, plan);
 
         ArgumentCaptor<Abonnement> captor = ArgumentCaptor.forClass(Abonnement.class);
-        verify(abonnementRepository).save(captor.capture());
+        verify(abonnementDomainService).save(captor.capture());
         Abonnement saved = captor.getValue();
         assertThat(saved.getEntreprise()).isSameAs(entreprise);
         assertThat(saved.getPlan()).isSameAs(plan);

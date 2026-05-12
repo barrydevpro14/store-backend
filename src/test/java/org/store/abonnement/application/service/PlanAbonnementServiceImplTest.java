@@ -6,7 +6,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.repository.PlanAbonnementRepository;
+import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.common.exceptions.EntityException;
 
 import java.util.Optional;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class PlanAbonnementServiceImplTest {
 
     @Mock
-    private PlanAbonnementRepository planAbonnementRepository;
+    private PlanAbonnementDomainService planAbonnementDomainService;
 
     @InjectMocks
     private PlanAbonnementServiceImpl service;
@@ -27,7 +27,7 @@ class PlanAbonnementServiceImplTest {
     @Test
     void should_return_plan_when_trial_actif_exists() {
         PlanAbonnement plan = new PlanAbonnement();
-        when(planAbonnementRepository.findFirstByTrialTrueAndActifTrue()).thenReturn(Optional.of(plan));
+        when(planAbonnementDomainService.findFirstTrialActif()).thenReturn(Optional.of(plan));
 
         PlanAbonnement result = service.findFirstTrialActif();
 
@@ -36,7 +36,7 @@ class PlanAbonnementServiceImplTest {
 
     @Test
     void should_throw_entity_exception_when_no_trial_plan_actif() {
-        when(planAbonnementRepository.findFirstByTrialTrueAndActifTrue()).thenReturn(Optional.empty());
+        when(planAbonnementDomainService.findFirstTrialActif()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findFirstTrialActif())
                 .isInstanceOf(EntityException.class);

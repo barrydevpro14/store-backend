@@ -40,6 +40,7 @@ public class JwtServiceImpl implements IJwtService {
                 .claim(Claim.ENTREPRISE.getKey(), principal.entrepriseId() != null ? principal.entrepriseId().toString() : null)
                 .claim(Claim.MAGASIN.getKey(), principal.magasinId() != null ? principal.magasinId().toString() : null)
                 .claim(Claim.USERNAME.getKey(), principal.username())
+                .claim(Claim.ROLE.getKey(), principal.role())
                 .claim(Claim.PERMISSIONS.getKey(), principal.permissions())
                 .setIssuedAt(now)
                 .setExpiration(expiration)
@@ -66,10 +67,11 @@ public class JwtServiceImpl implements IJwtService {
         UUID entrepriseId = parseUuid(claims.get(Claim.ENTREPRISE.getKey(), String.class));
         UUID magasinId = parseUuid(claims.get(Claim.MAGASIN.getKey(), String.class));
         String username = claims.get(Claim.USERNAME.getKey(), String.class);
+        String role = claims.get(Claim.ROLE.getKey(), String.class);
         @SuppressWarnings("unchecked")
         List<String> permissions = claims.get(Claim.PERMISSIONS.getKey(), List.class);
 
-        return new UserPrincipal(userId, entrepriseId, magasinId, username, permissions);
+        return new UserPrincipal(userId, entrepriseId, magasinId, username, role, permissions);
     }
 
     private Claims parseClaims(String token) {

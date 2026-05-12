@@ -1,25 +1,36 @@
 package org.store.security.application.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;
-import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.model.Proprietaire;
 
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class UserPrincipalFactoryImplTest {
 
-    private final UserPrincipalFactoryImpl factory = new UserPrincipalFactoryImpl();
+    @Mock
+    private IPermissionsService permissionsService;
+
+    private UserPrincipalFactoryImpl factory;
+
+    @BeforeEach
+    void setUp() {
+        factory = new UserPrincipalFactoryImpl(permissionsService);
+    }
 
     @Test
     void should_build_principal_with_entreprise_and_first_magasin_for_proprietaire() {
@@ -30,7 +41,9 @@ class UserPrincipalFactoryImplTest {
         Proprietaire proprietaire = new Proprietaire();
         proprietaire.setEntreprise(entreprise);
 
-        Account account = accountWith("john.doe", proprietaire, roleWith("PROPRIETAIRE_ACCESS"));
+        Role role = roleWith("PROPRIETAIRE");
+        Account account = accountWith("john.doe", proprietaire, role);
+        when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of("PROPRIETAIRE_ACCESS"));
 
         UserPrincipal principal = factory.build(account);
 
@@ -38,6 +51,7 @@ class UserPrincipalFactoryImplTest {
         assertThat(principal.entrepriseId()).isEqualTo(entreprise.getId());
         assertThat(principal.magasinId()).isEqualTo(magasin.getId());
         assertThat(principal.username()).isEqualTo("john.doe");
+        assertThat(principal.role()).isEqualTo("PROPRIETAIRE");
         assertThat(principal.permissions()).containsExactly("PROPRIETAIRE_ACCESS");
     }
 
@@ -50,32 +64,29 @@ class UserPrincipalFactoryImplTest {
         Employe employe = new Employe();
         employe.setMagasin(magasin);
 
-        Account account = accountWith("emp", employe, roleWith("EMPLOYE_ACCESS"));
+        Role role = roleWith("MANAGER");
+        Account account = accountWith("emp", employe, role);
+        when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
 
         UserPrincipal principal = factory.build(account);
 
         assertThat(principal.entrepriseId()).isEqualTo(entreprise.getId());
         assertThat(principal.magasinId()).isEqualTo(magasin.getId());
-        assertThat(principal.permissions()).containsExactly("EMPLOYE_ACCESS");
+        assertThat(principal.role()).isEqualTo("MANAGER");
+        assertThat(principal.permissions()).containsExactlyInAnyOrder("EMPLOYE_ACCESS", "EMPLOYE_CREATE");
     }
 
     @Test
     void should_build_principal_with_null_tenant_when_user_is_null() {
-        Account account = accountWith("admin", null, roleWith());
+        Role role = roleWith("ADMIN");
+        Account account = accountWith("admin", null, role);
+        when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of());
 
         UserPrincipal principal = factory.build(account);
 
         assertThat(principal.entrepriseId()).isNull();
         assertThat(principal.magasinId()).isNull();
-        assertThat(principal.permissions()).isEmpty();
-    }
-
-    @Test
-    void should_return_empty_permissions_when_role_is_null() {
-        Account account = accountWith("admin", null, null);
-
-        UserPrincipal principal = factory.build(account);
-
+        assertThat(principal.role()).isEqualTo("ADMIN");
         assertThat(principal.permissions()).isEmpty();
     }
 
@@ -101,15 +112,10 @@ class UserPrincipalFactoryImplTest {
         return e;
     }
 
-    private Role roleWith(String... codes) {
+    private Role roleWith(String libelle) {
         Role role = new Role();
-        Set<Permissions> permissions = new LinkedHashSet<>();
-        for (String code : codes) {
-            Permissions p = new Permissions();
-            p.setCode(code);
-            permissions.add(p);
-        }
-        role.setPermissions(permissions);
+        role.setId(UUID.randomUUID());
+        role.setLibelle(libelle);
         return role;
     }
 }

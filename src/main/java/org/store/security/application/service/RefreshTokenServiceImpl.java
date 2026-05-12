@@ -8,7 +8,7 @@ import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.RefreshToken;
-import org.store.security.domain.repository.RefreshTokenRepository;
+import org.store.security.domain.service.RefreshTokenDomainService;
 import org.store.users.domain.model.Utilisateur;
 
 import java.time.LocalDateTime;
@@ -17,16 +17,16 @@ import java.util.UUID;
 @Service
 public class RefreshTokenServiceImpl implements IRefreshTokenService {
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenDomainService refreshTokenDomainService;
     private final IJwtService jwtService;
     private final IUserPrincipalFactory userPrincipalFactory;
     private final JwtProperties jwtProperties;
 
-    public RefreshTokenServiceImpl(RefreshTokenRepository refreshTokenRepository,
+    public RefreshTokenServiceImpl(RefreshTokenDomainService refreshTokenDomainService,
                                    IJwtService jwtService,
                                    IUserPrincipalFactory userPrincipalFactory,
                                    JwtProperties jwtProperties) {
-        this.refreshTokenRepository = refreshTokenRepository;
+        this.refreshTokenDomainService = refreshTokenDomainService;
         this.jwtService = jwtService;
         this.userPrincipalFactory = userPrincipalFactory;
         this.jwtProperties = jwtProperties;
@@ -40,13 +40,13 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         token.setUser(account.getUser());
         token.setExpiryDate(LocalDateTime.now().plus(jwtProperties.expiration().refreshToken()));
         token.setRevoked(false);
-        return refreshTokenRepository.save(token).getToken();
+        return refreshTokenDomainService.save(token).getToken();
     }
 
     @Override
     @Transactional(readOnly = true)
     public AuthResponse refresh(String refreshTokenValue) {
-        RefreshToken token = refreshTokenRepository.findByToken(refreshTokenValue)
+        RefreshToken token = refreshTokenDomainService.findByToken(refreshTokenValue)
                 .orElseThrow(() -> new UnauthorisedException("refreshToken.invalid"));
 
         if (token.isRevoked()) {
@@ -69,10 +69,10 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
     @Override
     @Transactional
     public void revoke(String refreshTokenValue) {
-        refreshTokenRepository.findByToken(refreshTokenValue).ifPresent(token -> {
+        refreshTokenDomainService.findByToken(refreshTokenValue).ifPresent(token -> {
             if (!token.isRevoked()) {
                 token.setRevoked(true);
-                refreshTokenRepository.save(token);
+                refreshTokenDomainService.save(token);
             }
         });
     }

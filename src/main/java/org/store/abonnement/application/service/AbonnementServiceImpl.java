@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.repository.AbonnementRepository;
+import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.entreprise.domain.model.Entreprise;
 
 import java.time.LocalDate;
@@ -14,10 +14,10 @@ public class AbonnementServiceImpl implements IAbonnementService {
 
     private static final int TRIAL_DAYS = 30;
 
-    private final AbonnementRepository abonnementRepository;
+    private final AbonnementDomainService abonnementDomainService;
 
-    public AbonnementServiceImpl(AbonnementRepository abonnementRepository) {
-        this.abonnementRepository = abonnementRepository;
+    public AbonnementServiceImpl(AbonnementDomainService abonnementDomainService) {
+        this.abonnementDomainService = abonnementDomainService;
     }
 
     @Override
@@ -30,6 +30,6 @@ public class AbonnementServiceImpl implements IAbonnementService {
         abonnement.setActif(true);
         abonnement.setRenouvellementAuto(false);
         abonnement.setStatut(AbonnementStatut.ACTIF);
-        return abonnementRepository.save(abonnement);
+        return abonnementDomainService.save(abonnement);
     }
 }

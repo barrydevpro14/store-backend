@@ -8,7 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.entreprise.domain.repository.EntrepriseRepository;
+import org.store.entreprise.domain.service.EntrepriseDomainService;
 import org.store.users.domain.model.Proprietaire;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class EntrepriseServiceImplTest {
 
     @Mock
-    private EntrepriseRepository entrepriseRepository;
+    private EntrepriseDomainService entrepriseDomainService;
 
     @InjectMocks
     private EntrepriseServiceImpl service;
@@ -31,12 +31,12 @@ class EntrepriseServiceImplTest {
                 "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"
         );
         Proprietaire proprietaire = new Proprietaire();
-        when(entrepriseRepository.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(entrepriseDomainService.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Entreprise result = service.create(request, proprietaire);
 
         ArgumentCaptor<Entreprise> captor = ArgumentCaptor.forClass(Entreprise.class);
-        verify(entrepriseRepository).save(captor.capture());
+        verify(entrepriseDomainService).save(captor.capture());
         Entreprise saved = captor.getValue();
         assertThat(saved.getProprietaire()).isSameAs(proprietaire);
         assertThat(saved.getSigle()).isEqualTo("ACME");

@@ -4,15 +4,15 @@ import org.springframework.stereotype.Service;
 import org.store.security.domain.model.Account;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Proprietaire;
-import org.store.users.domain.repository.ProprietaireRepository;
+import org.store.users.domain.service.ProprietaireDomainService;
 
 @Service
 public class ProprietaireServiceImpl implements IProprietaireService {
 
-    private final ProprietaireRepository proprietaireRepository;
+    private final ProprietaireDomainService proprietaireDomainService;
 
-    public ProprietaireServiceImpl(ProprietaireRepository proprietaireRepository) {
-        this.proprietaireRepository = proprietaireRepository;
+    public ProprietaireServiceImpl(ProprietaireDomainService proprietaireDomainService) {
+        this.proprietaireDomainService = proprietaireDomainService;
     }
 
     @Override
@@ -24,6 +24,6 @@ public class ProprietaireServiceImpl implements IProprietaireService {
         proprietaire.setEmail(utilisateurRequest.email());
         proprietaire.setTelephone(utilisateurRequest.telephone());
         proprietaire.setAdresse(utilisateurRequest.adresse());
-        return proprietaireRepository.save(proprietaire);
+        return proprietaireDomainService.save(proprietaire);
     }
 }
