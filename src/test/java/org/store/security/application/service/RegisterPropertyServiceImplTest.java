@@ -7,14 +7,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.repository.PlanAbonnementRepository;
 import org.store.common.exceptions.EntityException;
 import org.store.entreprise.application.dto.EntrepriseRequest;
-import org.store.magasin.application.dto.MagasinRequest;
 import org.store.entreprise.application.service.IEntrepriseService;
-import org.store.magasin.application.service.IMagasinService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinRequest;
+import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.application.dto.AuthResponse;
@@ -22,13 +22,11 @@ import org.store.security.application.dto.RegisterPropertyRequest;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
-import org.store.security.domain.repository.RoleRepository;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.application.service.IProprietaireService;
 import org.store.users.domain.model.Proprietaire;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,8 +45,8 @@ class RegisterPropertyServiceImplTest {
     @Mock private IEntrepriseService entrepriseService;
     @Mock private IMagasinService magasinService;
     @Mock private IAbonnementService abonnementService;
-    @Mock private RoleRepository roleRepository;
-    @Mock private PlanAbonnementRepository planAbonnementRepository;
+    @Mock private IRoleService roleService;
+    @Mock private IPlanAbonnementService planAbonnementService;
     @Mock private IJwtService jwtService;
     @Mock private IUserPrincipalFactory userPrincipalFactory;
     @Mock private IRefreshTokenService refreshTokenService;
@@ -78,8 +76,8 @@ class RegisterPropertyServiceImplTest {
         Magasin magasin = magasinWithId();
         UserPrincipal principal = new UserPrincipal(account.getId(), entreprise.getId(), magasin.getId(), "john.doe", List.of());
 
-        when(roleRepository.findByLibelle("PROPRIETAIRE")).thenReturn(Optional.of(role));
-        when(planAbonnementRepository.findFirstByTrialTrueAndActifTrue()).thenReturn(Optional.of(plan));
+        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(role);
+        when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);
         when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
         when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
         when(entrepriseService.create(eq(validRequest.entreprise()), eq(proprietaire))).thenReturn(entreprise);
@@ -96,8 +94,9 @@ class RegisterPropertyServiceImplTest {
     }
 
     @Test
-    void should_throw_entity_exception_when_role_proprietaire_not_found() {
-        when(roleRepository.findByLibelle("PROPRIETAIRE")).thenReturn(Optional.empty());
+    void should_propagate_entity_exception_when_role_proprietaire_not_found() {
+        when(roleService.findByLibelle("PROPRIETAIRE"))
+                .thenThrow(new EntityException("role.notFound", "PROPRIETAIRE"));
 
         assertThatThrownBy(() -> service.register(validRequest))
                 .isInstanceOf(EntityException.class);
@@ -106,9 +105,10 @@ class RegisterPropertyServiceImplTest {
     }
 
     @Test
-    void should_throw_entity_exception_when_trial_plan_not_found() {
-        when(roleRepository.findByLibelle("PROPRIETAIRE")).thenReturn(Optional.of(new Role()));
-        when(planAbonnementRepository.findFirstByTrialTrueAndActifTrue()).thenReturn(Optional.empty());
+    void should_propagate_entity_exception_when_trial_plan_not_found() {
+        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(new Role());
+        when(planAbonnementService.findFirstTrialActif())
+                .thenThrow(new EntityException("plan.trial.notFound"));
 
         assertThatThrownBy(() -> service.register(validRequest))
                 .isInstanceOf(EntityException.class);

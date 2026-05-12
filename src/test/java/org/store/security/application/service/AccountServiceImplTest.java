@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.domain.model.Account;
@@ -66,5 +67,23 @@ class AccountServiceImplTest {
 
         verify(accountRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void should_return_account_when_findByUsername_exists() {
+        Account account = new Account();
+        when(accountRepository.findByUsername("john.doe")).thenReturn(Optional.of(account));
+
+        Account result = service.findByUsername("john.doe");
+
+        assertThat(result).isSameAs(account);
+    }
+
+    @Test
+    void should_throw_entity_exception_when_findByUsername_unknown() {
+        when(accountRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findByUsername("ghost"))
+                .isInstanceOf(EntityException.class);
     }
 }

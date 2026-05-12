@@ -7,4 +7,6 @@ import org.store.security.domain.model.Role;
 public interface IAccountService {
 
     Account create(AccountRequest accountRequest, Role role);
+
+    Account findByUsername(String username);
 }

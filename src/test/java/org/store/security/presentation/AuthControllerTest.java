@@ -84,6 +84,23 @@ class AuthControllerTest {
     }
 
     @Test
+    void should_return_400_when_register_payload_telephone_blank() throws Exception {
+        String bodyWithoutTelephone = """
+                {
+                  "account": {"username": "john.doe", "password": "S3cretPwd!"},
+                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "", "adresse": "Dakar"},
+                  "entreprise": {"sigle": "ACME", "raisonSociale": "ACME SARL", "ninea": "NINEA-123", "rccm": "RCCM-456", "adresse": "Dakar"},
+                  "magasin": {"nom": "Magasin Centre", "adresse": "Dakar Centre"}
+                }
+                """;
+
+        mockMvc.perform(post(AuthController.BASE_PATH + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyWithoutTelephone))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void should_return_200_with_both_tokens_when_login_valid_credentials() throws Exception {
         LoginRequest body = new LoginRequest("john.doe", "S3cretPwd!");
         when(loginService.login(any(LoginRequest.class)))

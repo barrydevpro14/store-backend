@@ -7,7 +7,7 @@ public record UtilisateurRequest(
         @NotBlank String nom,
         @NotBlank String prenom,
         @NotBlank @Email String email,
-        String telephone,
+        @NotBlank String telephone,
         String adresse
 ) {
 }

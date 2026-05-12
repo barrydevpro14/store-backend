@@ -2,6 +2,7 @@ package org.store.security.application.service;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.domain.model.Account;
@@ -31,5 +32,11 @@ public class AccountServiceImpl implements IAccountService {
         account.setLocked(false);
         account.setRole(role);
         return accountRepository.save(account);
+    }
+
+    @Override
+    public Account findByUsername(String username) {
+        return accountRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityException("account.notFound", username));
     }
 }

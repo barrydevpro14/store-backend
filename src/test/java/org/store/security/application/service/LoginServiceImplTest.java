@@ -13,10 +13,8 @@ import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.LoginRequest;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.domain.model.Account;
-import org.store.security.domain.repository.AccountRepository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +28,7 @@ import static org.mockito.Mockito.when;
 class LoginServiceImplTest {
 
     @Mock private AuthenticationManager authenticationManager;
-    @Mock private AccountRepository accountRepository;
+    @Mock private IAccountService accountService;
     @Mock private IJwtService jwtService;
     @Mock private IUserPrincipalFactory userPrincipalFactory;
     @Mock private IRefreshTokenService refreshTokenService;
@@ -46,7 +44,7 @@ class LoginServiceImplTest {
         account.setUsername("john.doe");
         UserPrincipal principal = new UserPrincipal(account.getId(), null, null, "john.doe", List.of());
 
-        when(accountRepository.findByUsername("john.doe")).thenReturn(Optional.of(account));
+        when(accountService.findByUsername("john.doe")).thenReturn(account);
         when(userPrincipalFactory.build(account)).thenReturn(principal);
         when(jwtService.generateToken(principal)).thenReturn("access.token");
         when(refreshTokenService.create(account)).thenReturn("refresh-uuid");
@@ -67,15 +65,16 @@ class LoginServiceImplTest {
         assertThatThrownBy(() -> service.login(request))
                 .isInstanceOf(BadCredentialsException.class);
 
-        verify(accountRepository, never()).findByUsername(any());
+        verify(accountService, never()).findByUsername(any());
         verify(refreshTokenService, never()).create(any());
         verify(jwtService, never()).generateToken(any());
     }
 
     @Test
-    void should_throw_entity_exception_when_account_not_found_after_authentication() {
+    void should_propagate_entity_exception_when_account_not_found_after_authentication() {
         LoginRequest request = new LoginRequest("ghost", "pwd");
-        when(accountRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+        when(accountService.findByUsername("ghost"))
+                .thenThrow(new EntityException("account.notFound", "ghost"));
 
         assertThatThrownBy(() -> service.login(request))
                 .isInstanceOf(EntityException.class);
