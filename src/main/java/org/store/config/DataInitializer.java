@@ -15,9 +15,12 @@ import org.store.security.domain.repository.PermissionsRepository;
 import org.store.security.domain.repository.RoleRepository;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 @Component
 public class DataInitializer implements ApplicationRunner {
@@ -30,6 +33,60 @@ public class DataInitializer implements ApplicationRunner {
     private static final String ROLE_ADMIN = "ADMIN";
 
     private static final String PLAN_TRIAL_NOM = "Essai";
+
+    private static final String[] AUTH_PERMISSIONS = {
+            "AUTH_LOGIN", "AUTH_LOGOUT", "AUTH_REFRESH_TOKEN", "AUTH_RESET_PASSWORD", "AUTH_CHANGE_PASSWORD"
+    };
+    private static final String[] USER_PERMISSIONS = {
+            "USER_CREATE", "USER_UPDATE", "USER_DELETE", "USER_READ", "USER_LOCK", "USER_UNLOCK", "USER_ASSIGN_ROLE"
+    };
+    private static final String[] COMPANY_PERMISSIONS = {
+            "COMPANY_CREATE", "COMPANY_UPDATE", "COMPANY_READ", "COMPANY_DELETE"
+    };
+    private static final String[] STORE_PERMISSIONS = {
+            "STORE_CREATE", "STORE_UPDATE", "STORE_DELETE", "STORE_READ", "STORE_ASSIGN_MANAGER"
+    };
+    private static final String[] PRODUCT_PERMISSIONS = {
+            "PRODUCT_CREATE", "PRODUCT_UPDATE", "PRODUCT_DELETE", "PRODUCT_READ",
+            "PRODUCT_IMPORT", "PRODUCT_EXPORT", "PRODUCT_UPLOAD_IMAGE"
+    };
+    private static final String[] STOCK_PERMISSIONS = {
+            "STOCK_READ", "STOCK_ENTRY", "STOCK_EXIT", "STOCK_ADJUSTMENT", "STOCK_INVENTORY", "STOCK_TRANSFER"
+    };
+    private static final String[] PURCHASE_PERMISSIONS = {
+            "PURCHASE_CREATE", "PURCHASE_UPDATE", "PURCHASE_DELETE", "PURCHASE_READ", "PURCHASE_APPROVE", "PURCHASE_PAY"
+    };
+    private static final String[] SALE_PERMISSIONS = {
+            "SALE_CREATE", "SALE_UPDATE", "SALE_DELETE", "SALE_READ", "SALE_PAY", "SALE_CANCEL"
+    };
+    private static final String[] EXPENSE_PERMISSIONS = {
+            "EXPENSE_CREATE", "EXPENSE_UPDATE", "EXPENSE_DELETE", "EXPENSE_READ", "EXPENSE_PAY"
+    };
+    private static final String[] PAYMENT_PERMISSIONS = {
+            "PAYMENT_CREATE", "PAYMENT_READ", "PAYMENT_CANCEL", "PAYMENT_REFUND"
+    };
+    private static final String[] SUBSCRIPTION_PERMISSIONS = {
+            "SUBSCRIPTION_CREATE", "SUBSCRIPTION_UPDATE", "SUBSCRIPTION_CANCEL", "SUBSCRIPTION_READ"
+    };
+    private static final String[] DOCUMENT_PERMISSIONS = {
+            "DOCUMENT_UPLOAD", "DOCUMENT_READ", "DOCUMENT_DELETE", "DOCUMENT_DOWNLOAD"
+    };
+    private static final String[] DASHBOARD_PERMISSIONS = {
+            "DASHBOARD_READ", "REPORT_EXPORT", "REPORT_FINANCIAL", "REPORT_STOCK", "REPORT_SALES"
+    };
+    private static final String[] SETTINGS_PERMISSIONS = {
+            "SETTINGS_UPDATE", "SETTINGS_READ"
+    };
+    private static final String[] AUDIT_PERMISSIONS = {
+            "AUDIT_READ", "AUDIT_EXPORT"
+    };
+
+    private static final String[][] ALL_GRANULAR_MODULES = {
+            AUTH_PERMISSIONS, USER_PERMISSIONS, COMPANY_PERMISSIONS, STORE_PERMISSIONS,
+            PRODUCT_PERMISSIONS, STOCK_PERMISSIONS, PURCHASE_PERMISSIONS, SALE_PERMISSIONS,
+            EXPENSE_PERMISSIONS, PAYMENT_PERMISSIONS, SUBSCRIPTION_PERMISSIONS,
+            DOCUMENT_PERMISSIONS, DASHBOARD_PERMISSIONS, SETTINGS_PERMISSIONS, AUDIT_PERMISSIONS
+    };
 
     private final PermissionsRepository permissionsRepository;
     private final RoleRepository roleRepository;
@@ -46,21 +103,90 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        Permissions propAccess = ensurePermission(PermissionCode.PROPRIETAIRE_ACCESS);
-        Permissions empAccess = ensurePermission(PermissionCode.EMPLOYE_ACCESS);
-        Permissions empCreate = ensurePermission(PermissionCode.EMPLOYE_CREATE);
-        Permissions adminAccess = ensurePermission(PermissionCode.ADMIN_ACCESS);
+        Map<String, Permissions> catalog = new LinkedHashMap<>();
+        for (PermissionCode legacy : PermissionCode.values()) {
+            catalog.put(legacy.name(), ensurePermission(legacy.name()));
+        }
+        for (String[] module : ALL_GRANULAR_MODULES) {
+            for (String code : module) {
+                catalog.put(code, ensurePermission(code));
+            }
+        }
 
-        ensureRole(ROLE_PROPRIETAIRE, "Propriétaire d'une entreprise", Set.of(propAccess, empCreate));
-        ensureRole(ROLE_MANAGER, "Manager d'un magasin", Set.of(empAccess, empCreate));
-        ensureRole(ROLE_VENDEUR, "Vendeur d'un magasin", Set.of(empAccess));
-        ensureRole(ROLE_ADMIN, "Administrateur SaaS", Set.of(adminAccess));
+        ensureRole(ROLE_ADMIN, "Administrateur SaaS", resolveAll(catalog, catalog.keySet().toArray(new String[0])));
+
+        ensureRole(ROLE_PROPRIETAIRE, "Propriétaire d'une entreprise", resolveAll(catalog, ownerPermissionCodes()));
+
+        ensureRole(ROLE_MANAGER, "Manager d'un magasin", resolveAll(catalog, managerPermissionCodes()));
+
+        ensureRole(ROLE_VENDEUR, "Vendeur d'un magasin", resolveAll(catalog, vendeurPermissionCodes()));
 
         ensureTrialPlan();
     }
 
-    private Permissions ensurePermission(PermissionCode permissionCode) {
-        String code = permissionCode.name();
+    private String[] ownerPermissionCodes() {
+        return Stream.of(
+                AUTH_PERMISSIONS,
+                USER_PERMISSIONS,
+                new String[]{"COMPANY_READ", "COMPANY_UPDATE"},
+                STORE_PERMISSIONS,
+                PRODUCT_PERMISSIONS,
+                STOCK_PERMISSIONS,
+                PURCHASE_PERMISSIONS,
+                SALE_PERMISSIONS,
+                EXPENSE_PERMISSIONS,
+                PAYMENT_PERMISSIONS,
+                SUBSCRIPTION_PERMISSIONS,
+                DOCUMENT_PERMISSIONS,
+                DASHBOARD_PERMISSIONS,
+                SETTINGS_PERMISSIONS,
+                AUDIT_PERMISSIONS,
+                new String[]{PermissionCode.PROPRIETAIRE_ACCESS.name(), PermissionCode.EMPLOYE_CREATE.name()}
+        ).flatMap(Stream::of).toArray(String[]::new);
+    }
+
+    private String[] managerPermissionCodes() {
+        return Stream.of(
+                AUTH_PERMISSIONS,
+                new String[]{"USER_READ", "USER_CREATE", "USER_UPDATE"},
+                new String[]{"COMPANY_READ"},
+                new String[]{"STORE_READ", "STORE_UPDATE"},
+                PRODUCT_PERMISSIONS,
+                STOCK_PERMISSIONS,
+                PURCHASE_PERMISSIONS,
+                SALE_PERMISSIONS,
+                EXPENSE_PERMISSIONS,
+                PAYMENT_PERMISSIONS,
+                DOCUMENT_PERMISSIONS,
+                new String[]{"DASHBOARD_READ", "REPORT_STOCK", "REPORT_SALES", "REPORT_FINANCIAL"},
+                new String[]{PermissionCode.EMPLOYE_ACCESS.name(), PermissionCode.EMPLOYE_CREATE.name()}
+        ).flatMap(Stream::of).toArray(String[]::new);
+    }
+
+    private String[] vendeurPermissionCodes() {
+        return Stream.of(
+                AUTH_PERMISSIONS,
+                new String[]{"PRODUCT_READ"},
+                new String[]{"STOCK_READ"},
+                SALE_PERMISSIONS,
+                new String[]{"PAYMENT_CREATE", "PAYMENT_READ"},
+                new String[]{PermissionCode.EMPLOYE_ACCESS.name()}
+        ).flatMap(Stream::of).toArray(String[]::new);
+    }
+
+    private Set<Permissions> resolveAll(Map<String, Permissions> catalog, String[] codes) {
+        Set<Permissions> result = new LinkedHashSet<>();
+        for (String code : codes) {
+            Permissions p = catalog.get(code);
+            if (p == null) {
+                throw new IllegalStateException("DataInitializer: permission inconnue dans le catalog : " + code);
+            }
+            result.add(p);
+        }
+        return result;
+    }
+
+    private Permissions ensurePermission(String code) {
         return permissionsRepository.findByCode(code).orElseGet(() -> {
             Permissions p = new Permissions();
             p.setCode(code);
