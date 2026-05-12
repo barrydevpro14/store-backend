@@ -1,5 +1,7 @@
 package org.store.security.application.service;
 
+import org.store.security.application.service.impl.CurrentUserServiceImpl;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;

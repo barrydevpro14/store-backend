@@ -1,4 +1,6 @@
-package org.store.users.application.service;
+package org.store.users.application.service.impl;
+
+import org.store.users.application.service.*;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

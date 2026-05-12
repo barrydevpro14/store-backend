@@ -1,4 +1,6 @@
-package org.store.security.application.service;
+package org.store.security.application.service.impl;
+
+import org.store.security.application.service.*;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,13 +27,8 @@ public class AccountServiceImpl implements IAccountService {
         if (accountDomainService.findByUsername(accountRequest.username()).isPresent()) {
             throw new UniqueResourceException("account.username.exists", accountRequest.username());
         }
-        Account account = new Account();
-        account.setUsername(accountRequest.username());
-        account.setPassword(passwordEncoder.encode(accountRequest.password()));
-        account.setEnabled(true);
-        account.setLocked(false);
-        account.setRole(role);
-        return accountDomainService.save(account);
+        String hashedPassword = passwordEncoder.encode(accountRequest.password());
+        return accountDomainService.create(accountRequest.username(), hashedPassword, role);
     }
 
     @Override

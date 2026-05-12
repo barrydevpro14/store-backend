@@ -1,8 +1,9 @@
 package org.store.users.application.service;
 
+import org.store.users.application.service.impl.ProprietaireServiceImpl;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -12,8 +13,6 @@ import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.service.ProprietaireDomainService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,24 +25,16 @@ class ProprietaireServiceImplTest {
     private ProprietaireServiceImpl service;
 
     @Test
-    void should_create_proprietaire_with_account_and_personal_info() {
+    void create_should_delegate_to_domain_service() {
         UtilisateurRequest request = new UtilisateurRequest(
-                "Doe", "John", "john@example.com", "+221700000000", "Dakar"
+                "Doe", "John", "john@example.com", "770000000", "Dakar"
         );
         Account account = new Account();
-        when(proprietaireDomainService.save(any(Proprietaire.class))).thenAnswer(inv -> inv.getArgument(0));
+        Proprietaire expected = new Proprietaire();
+        when(proprietaireDomainService.create(request, account)).thenReturn(expected);
 
         Proprietaire result = service.create(request, account);
 
-        ArgumentCaptor<Proprietaire> captor = ArgumentCaptor.forClass(Proprietaire.class);
-        verify(proprietaireDomainService).save(captor.capture());
-        Proprietaire saved = captor.getValue();
-        assertThat(saved.getAccount()).isSameAs(account);
-        assertThat(saved.getNom()).isEqualTo("Doe");
-        assertThat(saved.getPrenom()).isEqualTo("John");
-        assertThat(saved.getEmail()).isEqualTo("john@example.com");
-        assertThat(saved.getTelephone()).isEqualTo("+221700000000");
-        assertThat(saved.getAdresse()).isEqualTo("Dakar");
-        assertThat(result).isSameAs(saved);
+        assertThat(result).isSameAs(expected);
     }
 }

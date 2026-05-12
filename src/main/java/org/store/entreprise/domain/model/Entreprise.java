@@ -24,6 +24,7 @@ public class Entreprise extends AuditableEntity {
     private String rccm;
     private String adresse;
     private boolean trialUsed = false;
+    private boolean actif = true;
 
     @OneToMany(mappedBy = "entreprise", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Abonnement> abonnements;

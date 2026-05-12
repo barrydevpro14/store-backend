@@ -13,7 +13,7 @@ import java.util.UUID;
 public interface MagasinRepository extends BaseRepository<Magasin> {
 
     @Query("""
-            SELECT new org.store.magasin.application.dto.MagasinResponse(m.id, m.nom, m.adresse, m.actif, m.entreprise.id)
+            SELECT new org.store.magasin.application.dto.MagasinResponse(m)
             FROM Magasin m
             WHERE m.entreprise.id = :entrepriseId
             """)

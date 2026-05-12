@@ -1,22 +1,18 @@
 package org.store.abonnement.application.service;
 
+import org.store.abonnement.application.service.impl.AbonnementServiceImpl;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.entreprise.domain.model.Entreprise;
 
-import java.time.LocalDate;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,23 +25,14 @@ class AbonnementServiceImplTest {
     private AbonnementServiceImpl service;
 
     @Test
-    void should_create_trial_abonnement_for_30_days_with_active_status() {
+    void createTrial_should_delegate_to_domain_service() {
         Entreprise entreprise = new Entreprise();
         PlanAbonnement plan = new PlanAbonnement();
-        when(abonnementDomainService.save(any(Abonnement.class))).thenAnswer(inv -> inv.getArgument(0));
+        Abonnement expected = new Abonnement();
+        when(abonnementDomainService.createTrial(entreprise, plan)).thenReturn(expected);
 
         Abonnement result = service.createTrial(entreprise, plan);
 
-        ArgumentCaptor<Abonnement> captor = ArgumentCaptor.forClass(Abonnement.class);
-        verify(abonnementDomainService).save(captor.capture());
-        Abonnement saved = captor.getValue();
-        assertThat(saved.getEntreprise()).isSameAs(entreprise);
-        assertThat(saved.getPlan()).isSameAs(plan);
-        assertThat(saved.getDateDebut()).isEqualTo(LocalDate.now());
-        assertThat(saved.getDateFin()).isEqualTo(LocalDate.now().plusDays(30));
-        assertThat(saved.isActif()).isTrue();
-        assertThat(saved.isRenouvellementAuto()).isFalse();
-        assertThat(saved.getStatut()).isEqualTo(AbonnementStatut.ACTIF);
-        assertThat(result).isSameAs(saved);
+        assertThat(result).isSameAs(expected);
     }
 }

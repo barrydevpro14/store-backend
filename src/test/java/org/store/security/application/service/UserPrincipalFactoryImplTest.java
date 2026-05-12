@@ -1,5 +1,7 @@
 package org.store.security.application.service;
 
+import org.store.security.application.service.impl.UserPrincipalFactoryImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

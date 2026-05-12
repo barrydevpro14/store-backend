@@ -1,10 +1,13 @@
-package org.store.security.application.service;
+package org.store.security.application.service.impl;
+
+import org.store.security.application.service.*;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
@@ -60,6 +63,20 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
     @Override
     @Transactional
     public AuthResponse register(RegisterPropertyRequest request) {
+        CreateResult result = doCreate(request);
+        UserPrincipal principal = userPrincipalFactory.build(result.account());
+        String accessToken = jwtService.generateToken(principal);
+        String refreshToken = refreshTokenService.create(result.account());
+        return new AuthResponse(accessToken, refreshToken);
+    }
+
+    @Override
+    @Transactional
+    public EntrepriseResponse adminCreate(RegisterPropertyRequest request) {
+        return new EntrepriseResponse(doCreate(request).entreprise());
+    }
+
+    private CreateResult doCreate(RegisterPropertyRequest request) {
         Role role = roleService.findByLibelle(ROLE_PROPRIETAIRE);
         PlanAbonnement plan = planAbonnementService.findFirstTrialActif();
 
@@ -72,9 +89,8 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
         entreprise.setMagasins(List.of(magasin));
         abonnementService.createTrial(entreprise, plan);
 
-        UserPrincipal principal = userPrincipalFactory.build(account);
-        String accessToken = jwtService.generateToken(principal);
-        String refreshToken = refreshTokenService.create(account);
-        return new AuthResponse(accessToken, refreshToken);
+        return new CreateResult(account, entreprise);
     }
+
+    private record CreateResult(Account account, Entreprise entreprise) {}
 }

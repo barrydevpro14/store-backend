@@ -1,4 +1,6 @@
-package org.store.security.application.service;
+package org.store.security.application.service.impl;
+
+import org.store.security.application.service.*;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

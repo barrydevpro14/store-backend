@@ -1,8 +1,9 @@
 package org.store.security.application.service;
 
+import org.store.security.application.service.impl.AccountServiceImpl;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,25 +38,18 @@ class AccountServiceImplTest {
     private AccountServiceImpl service;
 
     @Test
-    void should_create_account_with_encoded_password_when_username_available() {
+    void create_should_encode_password_and_delegate_to_domain() {
         AccountRequest request = new AccountRequest("john.doe", "S3cretPwd!");
         Role role = new Role();
+        Account expected = new Account();
 
         when(accountDomainService.findByUsername("john.doe")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("S3cretPwd!")).thenReturn("hashed");
-        when(accountDomainService.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(accountDomainService.create(eq("john.doe"), eq("hashed"), eq(role))).thenReturn(expected);
 
         Account result = service.create(request, role);
 
-        ArgumentCaptor<Account> captor = ArgumentCaptor.forClass(Account.class);
-        verify(accountDomainService).save(captor.capture());
-        Account saved = captor.getValue();
-        assertThat(saved.getUsername()).isEqualTo("john.doe");
-        assertThat(saved.getPassword()).isEqualTo("hashed");
-        assertThat(saved.isEnabled()).isTrue();
-        assertThat(saved.isLocked()).isFalse();
-        assertThat(saved.getRole()).isSameAs(role);
-        assertThat(result).isSameAs(saved);
+        assertThat(result).isSameAs(expected);
     }
 
     @Test
@@ -65,7 +60,7 @@ class AccountServiceImplTest {
         assertThatThrownBy(() -> service.create(request, new Role()))
                 .isInstanceOf(UniqueResourceException.class);
 
-        verify(accountDomainService, never()).save(any());
+        verify(accountDomainService, never()).create(any(), any(), any());
         verify(passwordEncoder, never()).encode(any());
     }
 

@@ -1,5 +1,7 @@
 package org.store.magasin.application.service;
 
+import org.store.magasin.application.service.impl.MagasinServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,31 +72,26 @@ class MagasinServiceImplTest {
     }
 
     @Test
-    void should_create_magasin_with_passed_entreprise() {
+    void create_should_delegate_to_domain_service() {
         MagasinRequest request = new MagasinRequest("Magasin Centre", "Dakar Centre");
-        when(magasinDomainService.save(any(Magasin.class))).thenAnswer(inv -> inv.getArgument(0));
+        Magasin expected = magasinIn(entreprise);
+        when(magasinDomainService.create(request, entreprise)).thenReturn(expected);
 
         Magasin result = service.create(request, entreprise);
 
-        ArgumentCaptor<Magasin> captor = ArgumentCaptor.forClass(Magasin.class);
-        verify(magasinDomainService).save(captor.capture());
-        Magasin saved = captor.getValue();
-        assertThat(saved.getEntreprise()).isSameAs(entreprise);
-        assertThat(saved.getNom()).isEqualTo("Magasin Centre");
-        assertThat(saved.isActif()).isTrue();
-        assertThat(result).isSameAs(saved);
+        assertThat(result).isSameAs(expected);
     }
 
     @Test
     void create_response_should_scope_to_current_entreprise() {
         MagasinRequest request = new MagasinRequest("Magasin Plage", "Saly");
+        Magasin created = magasinIn(entreprise);
+        created.setNom("Magasin Plage");
+        created.setAdresse("Saly");
+
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(magasinDomainService.save(any(Magasin.class))).thenAnswer(inv -> {
-            Magasin m = inv.getArgument(0);
-            m.setId(UUID.randomUUID());
-            return m;
-        });
+        when(magasinDomainService.create(request, entreprise)).thenReturn(created);
 
         MagasinResponse response = service.create(request);
 

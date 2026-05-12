@@ -1,4 +1,6 @@
-package org.store.magasin.application.service;
+package org.store.magasin.application.service.impl;
+
+import org.store.magasin.application.service.*;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,12 +36,7 @@ public class MagasinServiceImpl implements IMagasinService {
 
     @Override
     public Magasin create(MagasinRequest magasinRequest, Entreprise entreprise) {
-        Magasin magasin = new Magasin();
-        magasin.setEntreprise(entreprise);
-        magasin.setNom(magasinRequest.nom());
-        magasin.setAdresse(magasinRequest.adresse());
-        magasin.setActif(true);
-        return magasinDomainService.save(magasin);
+        return magasinDomainService.create(magasinRequest, entreprise);
     }
 
     @Override

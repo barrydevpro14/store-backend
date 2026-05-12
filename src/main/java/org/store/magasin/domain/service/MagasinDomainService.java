@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.repository.MagasinRepository;
@@ -14,6 +16,15 @@ import java.util.UUID;
 public class MagasinDomainService extends GlobalService<Magasin, MagasinRepository> {
     public MagasinDomainService(MagasinRepository repository) {
         super(repository);
+    }
+
+    public Magasin create(MagasinRequest magasinRequest, Entreprise entreprise) {
+        Magasin magasin = new Magasin();
+        magasin.setEntreprise(entreprise);
+        magasin.setNom(magasinRequest.nom());
+        magasin.setAdresse(magasinRequest.adresse());
+        magasin.setActif(true);
+        return save(magasin);
     }
 
     public Page<MagasinResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {

@@ -168,6 +168,34 @@
 
 ---
 
+## 7. CRUD Entreprise + activate/deactivate — `EntrepriseServiceImpl` + `RegisterPropertyServiceImpl.adminCreate`
+
+**Endpoints** (`@PreAuthorize` au niveau **méthode**, permissions mixtes) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `POST` | `/api/v1/entreprises` | `ADMIN_ACCESS` | Crée une entreprise complète (account + proprietaire + entreprise + magasin + trial). Délègue à `IRegisterPropertyService.adminCreate` (même flow que `/auth/register` mais sans génération de tokens) (201) |
+| `GET` | `/api/v1/entreprises?page=&size=` | `ADMIN_ACCESS` | Liste paginée toutes entreprises (200, `Page<EntrepriseResponse>`) |
+| `GET` | `/api/v1/entreprises/{id}` | `ADMIN_ACCESS` | Read par id (200) |
+| `PATCH` | `/api/v1/entreprises/{id}/activate` | `ADMIN_ACCESS` | Soft‑activate (200) |
+| `PATCH` | `/api/v1/entreprises/{id}/deactivate` | `ADMIN_ACCESS` | Soft‑delete (200) |
+| `GET` | `/api/v1/entreprises/me` | `PROPRIETAIRE_ACCESS` | Proprietaire lit sa propre entreprise (200) |
+| `PUT` | `/api/v1/entreprises/me` | `PROPRIETAIRE_ACCESS` | Proprietaire modifie infos de sa propre entreprise (200) |
+
+**`EntrepriseRequest`** : `@NotBlank sigle`, `@NotBlank raisonSociale`, `ninea`, `rccm`, `adresse`.
+
+**`EntrepriseResponse`** : `id, sigle, raisonSociale, ninea, rccm, adresse, actif, trialUsed`. Constructeur secondaire `(Entreprise)`.
+
+**Champ `actif`** : flag visuel uniquement (pas d'effet métier en MVP). Ajouté via `V3__add_entreprise_actif.sql` (`BOOLEAN NOT NULL DEFAULT TRUE`).
+
+**Référentiel** :
+- Permission `ADMIN_ACCESS` (enum `PermissionCode`).
+- Rôle `ADMIN` seedé (`DataInitializer`). ⚠️ Aucun compte ADMIN auto‑créé — à provisionner manuellement en BDD.
+
+**Création admin (POST)** : réutilise `IRegisterPropertyService.adminCreate(RegisterPropertyRequest)` qui partage le helper privé `doCreate` avec `register` (extraction d'un record interne `CreateResult(Account, Entreprise)`). ADMIN n'obtient pas de tokens — le nouveau proprietaire devra `POST /auth/login` pour se connecter.
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

@@ -1,5 +1,7 @@
 package org.store.security.application.service;
 
+import org.store.security.application.service.impl.RoleServiceImpl;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

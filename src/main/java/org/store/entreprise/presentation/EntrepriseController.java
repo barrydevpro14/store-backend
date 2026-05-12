@@ -1,0 +1,82 @@
+package org.store.entreprise.presentation;
+
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.store.entreprise.application.dto.EntrepriseRequest;
+import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.service.IEntrepriseService;
+import org.store.security.application.dto.RegisterPropertyRequest;
+import org.store.security.application.service.IRegisterPropertyService;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping(EntrepriseController.BASE_PATH)
+public class EntrepriseController {
+
+    public static final String BASE_PATH = "/api/v1/entreprises";
+
+    private final IEntrepriseService entrepriseService;
+    private final IRegisterPropertyService registerPropertyService;
+
+    public EntrepriseController(IEntrepriseService entrepriseService,
+                                IRegisterPropertyService registerPropertyService) {
+        this.entrepriseService = entrepriseService;
+        this.registerPropertyService = registerPropertyService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> create(@Valid @RequestBody RegisterPropertyRequest request) {
+        EntrepriseResponse response = registerPropertyService.adminCreate(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<Page<EntrepriseResponse>> list(Pageable pageable) {
+        return ResponseEntity.ok(entrepriseService.findAll(pageable));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(entrepriseService.findResponseById(id));
+    }
+
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> activate(@PathVariable UUID id) {
+        return ResponseEntity.ok(entrepriseService.activate(id));
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> deactivate(@PathVariable UUID id) {
+        return ResponseEntity.ok(entrepriseService.deactivate(id));
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> getMine() {
+        return ResponseEntity.ok(entrepriseService.findCurrentUserEntreprise());
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> updateMine(@Valid @RequestBody EntrepriseRequest entrepriseRequest) {
+        return ResponseEntity.ok(entrepriseService.updateCurrentUserEntreprise(entrepriseRequest));
+    }
+}

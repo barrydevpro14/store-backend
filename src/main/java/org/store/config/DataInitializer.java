@@ -27,6 +27,7 @@ public class DataInitializer implements ApplicationRunner {
     private static final String ROLE_PROPRIETAIRE = "PROPRIETAIRE";
     private static final String ROLE_MANAGER = "MANAGER";
     private static final String ROLE_VENDEUR = "VENDEUR";
+    private static final String ROLE_ADMIN = "ADMIN";
 
     private static final String PLAN_TRIAL_NOM = "Essai";
 
@@ -48,10 +49,12 @@ public class DataInitializer implements ApplicationRunner {
         Permissions propAccess = ensurePermission(PermissionCode.PROPRIETAIRE_ACCESS);
         Permissions empAccess = ensurePermission(PermissionCode.EMPLOYE_ACCESS);
         Permissions empCreate = ensurePermission(PermissionCode.EMPLOYE_CREATE);
+        Permissions adminAccess = ensurePermission(PermissionCode.ADMIN_ACCESS);
 
         ensureRole(ROLE_PROPRIETAIRE, "Propriétaire d'une entreprise", Set.of(propAccess, empCreate));
         ensureRole(ROLE_MANAGER, "Manager d'un magasin", Set.of(empAccess, empCreate));
         ensureRole(ROLE_VENDEUR, "Vendeur d'un magasin", Set.of(empAccess));
+        ensureRole(ROLE_ADMIN, "Administrateur SaaS", Set.of(adminAccess));
 
         ensureTrialPlan();
     }

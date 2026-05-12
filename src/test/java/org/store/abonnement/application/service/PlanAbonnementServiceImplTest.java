@@ -1,5 +1,7 @@
 package org.store.abonnement.application.service;
 
+import org.store.abonnement.application.service.impl.PlanAbonnementServiceImpl;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

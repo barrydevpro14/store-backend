@@ -1,5 +1,7 @@
 package org.store.security.application.service;
 
+import org.store.security.application.service.impl.JwtServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.store.property.JwtProperties;
