@@ -134,6 +134,40 @@
 
 ---
 
+## 6. CRUD Magasin + activate/deactivate — `MagasinServiceImpl`
+
+**Endpoints** (`@PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")` au niveau classe) :
+
+| Méthode | Endpoint | Action |
+|---|---|---|
+| `POST` | `/api/v1/magasins` | Crée un magasin dans l'entreprise du caller (201) |
+| `GET` | `/api/v1/magasins?page=0&size=10&sort=nom,asc` | Liste paginée des magasins de l'entreprise courante (200, `Page<MagasinResponse>`) |
+| `GET` | `/api/v1/magasins/{id}` | Lit un magasin (200) |
+| `PUT` | `/api/v1/magasins/{id}` | Met à jour `nom`/`adresse` (200) |
+| `PATCH` | `/api/v1/magasins/{id}/activate` | Soft‑activate (`actif=true`) (200) |
+| `PATCH` | `/api/v1/magasins/{id}/deactivate` | Soft‑delete (`actif=false`) (200) |
+
+**`MagasinRequest`** : `@NotBlank nom`, `@NotBlank adresse`.
+
+**`MagasinResponse`** : `id, nom, adresse, actif, entrepriseId`. Constructeur secondaire `(Magasin)`.
+
+**Champ `actif`** : flag visuel uniquement (pas d'effet métier en MVP — n'empêche pas les ventes/achats sur ce magasin). Ajouté via `V2__add_magasin_actif.sql` (`BOOLEAN NOT NULL DEFAULT TRUE`).
+
+**Règle métier (toutes opérations)** : `ensureBelongsToCurrentEntreprise(magasin)` — `magasin.entreprise.id == currentUser.entrepriseId` sinon `ForbiddenException("magasin.notOwned")`.
+
+**Pagination** : query JPQL custom dans `MagasinRepository.findResponsesByEntrepriseId` — projection directe vers `MagasinResponse` via `SELECT new ... MagasinResponse(...)`, `countQuery` séparée. Évite de matérialiser les entités complètes.
+
+**Dépendances injectées** dans `MagasinServiceImpl` :
+| Dépendance | Pourquoi |
+|---|---|
+| `MagasinDomainService` | CRUD Magasin + query projetée paginée |
+| `IEntrepriseService` | Chargement de l'entreprise du caller (`findById`) |
+| `ICurrentUserService` | `UserPrincipal` du SecurityContext |
+
+**`IMagasinService.create(MagasinRequest, Entreprise) → Magasin`** : signature interne conservée (utilisée par le flow d'inscription propriétaire) ; le controller utilise la nouvelle `create(MagasinRequest) → MagasinResponse` qui scope automatiquement sur l'entreprise du caller.
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

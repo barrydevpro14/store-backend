@@ -6,6 +6,8 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.entreprise.domain.service.EntrepriseDomainService;
 import org.store.users.domain.model.Proprietaire;
 
+import java.util.UUID;
+
 @Service
 public class EntrepriseServiceImpl implements IEntrepriseService {
 
@@ -26,5 +28,10 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
         entreprise.setAdresse(entrepriseRequest.adresse());
         entreprise.setTrialUsed(true);
         return entrepriseDomainService.save(entreprise);
+    }
+
+    @Override
+    public Entreprise findById(UUID id) {
+        return entrepriseDomainService.findById(id);
     }
 }

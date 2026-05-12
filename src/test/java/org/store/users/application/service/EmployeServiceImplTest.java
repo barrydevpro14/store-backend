@@ -106,6 +106,7 @@ class EmployeServiceImplTest {
         when(permissionsService.findAllByRoleId(managerRole.getId()))
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(employeDomainService.existsByMagasinIdAndRolePermissionCode(magasinId, "EMPLOYE_CREATE")).thenReturn(false);
         when(accountService.create(eq(validAccount), eq(managerRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
@@ -127,6 +128,7 @@ class EmployeServiceImplTest {
         when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(accountService.create(eq(validAccount), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
@@ -147,6 +149,7 @@ class EmployeServiceImplTest {
         when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(accountService.create(eq(validAccount), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
@@ -194,6 +197,7 @@ class EmployeServiceImplTest {
         when(permissionsService.findAllByRoleId(managerRole.getId()))
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(employeDomainService.existsByMagasinIdAndRolePermissionCode(magasinId, "EMPLOYE_CREATE")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request("MANAGER", magasinId)))
@@ -217,6 +221,8 @@ class EmployeServiceImplTest {
         when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(foreignMagasinId)).thenReturn(foreignMagasin);
+        when(magasinService.ensureAccessibleByCurrentUser(foreignMagasin))
+                .thenThrow(new ForbiddenException("magasin.notOwned"));
 
         assertThatThrownBy(() -> service.create(request("VENDEUR", foreignMagasinId)))
                 .isInstanceOf(ForbiddenException.class);
@@ -236,6 +242,8 @@ class EmployeServiceImplTest {
         when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(otherMagasinId)).thenReturn(otherMagasin);
+        when(magasinService.ensureAccessibleByCurrentUser(otherMagasin))
+                .thenThrow(new ForbiddenException("magasin.notOwned"));
 
         assertThatThrownBy(() -> service.create(request("VENDEUR", otherMagasinId)))
                 .isInstanceOf(ForbiddenException.class);

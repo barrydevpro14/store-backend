@@ -18,8 +18,6 @@ import org.store.users.application.dto.EmployeResponse;
 import org.store.users.domain.service.EmployeDomainService;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 
 @Service
 public class EmployeServiceImpl implements IEmployeService {
@@ -61,8 +59,9 @@ public class EmployeServiceImpl implements IEmployeService {
             throw new ForbiddenException("employe.create.elevatedRole.forbidden");
         }
 
-        Magasin magasin = magasinService.findById(employeRequest.magasinId());
-        ensureMagasinOwnedByCurrentUser(magasin, currentUser);
+        Magasin magasin = magasinService.ensureAccessibleByCurrentUser(
+                magasinService.findById(employeRequest.magasinId())
+        );
 
         if (askedRoleIsElevated
                 && employeDomainService.existsByMagasinIdAndRolePermissionCode(magasin.getId(), PermissionCode.EMPLOYE_CREATE.name())) {
@@ -72,18 +71,5 @@ public class EmployeServiceImpl implements IEmployeService {
         Account account = accountService.create(employeRequest.account(), role);
 
         return employeDomainService.create(employeRequest.utilisateur(), account, magasin);
-    }
-
-    private void ensureMagasinOwnedByCurrentUser(Magasin magasin, UserPrincipal currentUser) {
-        if (currentUser.hasPermission(PermissionCode.PROPRIETAIRE_ACCESS)) {
-            UUID magasinEntrepriseId = magasin.getEntreprise() != null ? magasin.getEntreprise().getId() : null;
-            if (!Objects.equals(magasinEntrepriseId, currentUser.entrepriseId())) {
-                throw new ForbiddenException("magasin.notOwned");
-            }
-            return;
-        }
-        if (!Objects.equals(magasin.getId(), currentUser.magasinId())) {
-            throw new ForbiddenException("magasin.notOwned");
-        }
     }
 }
