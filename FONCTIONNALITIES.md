@@ -168,7 +168,7 @@
 
 ---
 
-## 7. CRUD Entreprise + activate/deactivate — `EntrepriseServiceImpl` + `RegisterPropertyServiceImpl.adminCreate`
+## 7. CRUD Entreprise + activate/deactivate — `EntrepriseServiceImpl` + `RegisterPropertyServiceImpl.registerEntrepriseByAdmin`
 
 **Endpoints** (`@PreAuthorize` au niveau **méthode**, permissions mixtes) :
 
@@ -192,7 +192,67 @@
 - Permission `ADMIN_ACCESS` (enum `PermissionCode`).
 - Rôle `ADMIN` seedé (`DataInitializer`). ⚠️ Aucun compte ADMIN auto‑créé — à provisionner manuellement en BDD.
 
-**Création admin (POST)** : réutilise `IRegisterPropertyService.adminCreate(RegisterPropertyRequest)` qui partage le helper privé `doCreate` avec `register` (extraction d'un record interne `CreateResult(Account, Entreprise)`). ADMIN n'obtient pas de tokens — le nouveau proprietaire devra `POST /auth/login` pour se connecter.
+**Création admin (POST)** : le controller délègue à `IRegisterPropertyService.registerEntrepriseByAdmin(RegisterPropertyRequest)` qui retourne directement un `EntrepriseResponse`. Cette méthode appelle `createAccount(request, "PROPRIETAIRE")` (orchestration commune : Account + Proprietaire + Entreprise + Magasin + abonnement trial) puis extrait `proprietaire.getEntreprise()` et renvoie le DTO. ADMIN n'obtient pas de tokens — le nouveau proprietaire devra `POST /auth/login` pour se connecter.
+
+> **Pourquoi la méthode vit dans `IRegisterPropertyService`** : `RegisterPropertyServiceImpl` injecte déjà `IEntrepriseService` pour orchestrer l'inscription. Mettre la méthode dans `IEntrepriseService` créerait un cycle de DI. La règle "le service qui orchestre déjà héberge la méthode" tranche.
+
+---
+
+## 8. Strategy `UserPrincipalContextStrategy` — composition de UserPrincipal
+
+**Pas un endpoint** — pattern interne invoqué par `UserPrincipalFactoryImpl.build(Account)`.
+
+**Package** : `org.store.security.application.strategies`
+
+**Interface** :
+```java
+public interface UserPrincipalContextStrategy {
+    Class<? extends Utilisateur> targetType();
+    UserPrincipalContext resolve(Utilisateur user);
+}
+```
+
+**Record retour** : `UserPrincipalContext(UUID entrepriseId, UUID magasinId)` (+ `empty()` statique).
+
+**Trois implémentations** (`@Component`) :
+- `ProprietairePrincipalContextStrategy` (targetType = `Proprietaire`) → `(entreprise.id, null)`. Un OWNER n'est pas rattaché à un magasin précis.
+- `EmployePrincipalContextStrategy` (targetType = `Employe`) → `(magasin.entreprise.id, magasin.id)`.
+- `UtilisateurPrincipalContextStrategy` (targetType = `Utilisateur`) → fallback `empty()` (ADMIN typiquement).
+
+**Dispatch dans `UserPrincipalFactoryImpl`** (zéro `instanceof`, "most-specific wins") :
+```java
+strategies.stream()
+    .filter(s -> s.targetType().isInstance(user))
+    .reduce((a, b) -> a.targetType().isAssignableFrom(b.targetType()) ? b : a)
+    .map(s -> s.resolve(user))
+    .orElseGet(UserPrincipalContext::empty);
+```
+
+**Règle générale** : tout dispatch par sous-type d'entité doit suivre ce pattern (cf. ARCHITECTURE.md règle 28).
+
+---
+
+## 9. Seed permissions et rôles ERP — `DataInitializer`
+
+**Pas un endpoint** — bootstrap idempotent au démarrage de l'app (`ApplicationRunner`).
+
+**Référence** : `src/main/resources/static/liste_roles_permissions.md` + matrice du PDF `Roles Permissions Erp Saas.pdf` (archivé hors repo).
+
+**Rôles seedés** (4) :
+| Code | Description | Notes |
+|---|---|---|
+| `ADMIN` | Administrateur SaaS | Toutes les 79 permissions (= `SUPER_ADMIN` sémantiquement) |
+| `PROPRIETAIRE` | Propriétaire d'une entreprise | ≈ `OWNER` du PDF — toutes permissions sauf `COMPANY_CREATE`/`DELETE` |
+| `MANAGER` | Manager d'un magasin | Absorbe MANAGER + MAGASINIER + COMPTABLE du PDF |
+| `VENDEUR` | Vendeur d'un magasin | `AUTH_*`, `SALE_*`, `PAYMENT_CREATE/READ`, `PRODUCT_READ`, `STOCK_READ` |
+
+**Permissions seedées** (79) :
+- **4 anciennes conservées** pour compat code : `PROPRIETAIRE_ACCESS`, `EMPLOYE_ACCESS`, `EMPLOYE_CREATE`, `ADMIN_ACCESS` (référencées par `@PreAuthorize` actuels).
+- **75 nouvelles** au format `MODULE_ACTION` : `AUTH_*` (5), `USER_*` (7), `COMPANY_*` (4), `STORE_*` (5), `PRODUCT_*` (7), `STOCK_*` (6), `PURCHASE_*` (6), `SALE_*` (6), `EXPENSE_*` (5), `PAYMENT_*` (4), `SUBSCRIPTION_*` (4), `DOCUMENT_*` (4), `DASHBOARD_READ + REPORT_*` (5), `SETTINGS_*` (2), `AUDIT_*` (2).
+
+**Idempotence** : `findByCode` / `findByLibelle` ; ajoute uniquement les permissions manquantes au rôle. Sûr à re-exécuter.
+
+**Dette assumée** : le code Java actuel (`@PreAuthorize('PROPRIETAIRE_ACCESS')`, etc.) référence encore les 4 anciennes permissions. La migration vers la nomenclature granulaire (`COMPANY_READ`, `STORE_CREATE`, ...) est reportée. L'enum `PermissionCode` n'est **pas** mis à jour (4 valeurs uniquement).
 
 ---
 

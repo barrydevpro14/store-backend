@@ -304,8 +304,41 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
 ### Naming
 
 19. **Controller** : `public static final String BASE_PATH = "/api/v1/<scope>"` + `@RequestMapping(BASE_PATH)`. Pas de `@PathVariable("version")`.
-20. **Service applicatif** : interface `I<X>Service` + impl `<X>ServiceImpl`. Injection via l'interface.
+20. **Service applicatif** : interface `I<X>Service` + impl `<X>ServiceImpl`. **L'impl vit dans `<module>/application/service/impl/`** (cohérence transverse). Injection via l'interface.
 21. **`<Entity>JpaRepository extends JpaRepository, <Entity>Repository`** ; `<Entity>Repository extends BaseRepository<E>` (port pur).
+
+### Controllers minimaux
+
+22. **Aucune logique métier dans le controller** : handler = `return service.method(request)`. Interdit : cast d'entité, `new <X>Response(...)`, getter-chain dans un agrégat, orchestration multi-services, branches métier. Si du code "déborde", créer une méthode publique dans `I<X>Service` qui retourne déjà le `<X>Response` final. Choisir le service qui **orchestre déjà** la chaîne pour éviter les cycles de DI (vu : `IRegisterPropertyService.registerEntrepriseByAdmin` plutôt que `IEntrepriseService.createByAdmin`).
+
+### DTO Response — sous-DTO
+
+23. **Sous-DTO Response pour sous-entité** : si un `<X>Response` agrège **≥ 3 champs** d'une autre entité réutilisable (Utilisateur, Magasin, Entreprise…), créer un `<Y>Response` dédié (`AccountResponse(..., UserResponse user)`) plutôt que de mettre les champs à plat. Le sous-DTO suit la règle **Response(Entity)**. JSON hiérarchique, DRY, évolutif.
+
+### Query JPQL — projection
+
+24. **`SELECT new <X>Response(entity)` dans `@Query`** : projection JPQL via le constructeur secondaire de Response, jamais la liste des champs (DRY, pas de désync sur ajout de champ). Pré-requis : règle Response(Entity) appliquée.
+25. **Toute `@Query` JPQL/SQL en text block `"""..."""`**, jamais en string concat.
+
+### Domaine — création d'entité
+
+26. **`create()` vit dans le DomainService** : construction (`new` + setters + `save`) dans `<X>DomainService.create(...)`. L'app service délègue + applique les règles métier (permissions, scoping, exceptions). Sépare "persistance" (domain) de "orchestration" (application).
+
+### Pas de méthodes privées dans les services applicatifs
+
+27. **Aucune méthode privée** dans les `<X>ServiceImpl`. Toute factorisation devient une méthode publique de `I<X>Service`, **paramétrée plutôt que spécialisée** (ex. `createAccount(request, String roleName)` au lieu de `doCreate(request)` qui hardcodait `ROLE_PROPRIETAIRE`). Exceptions tolérées : helpers triviaux sur DTO ou objet utilitaire (pas un service métier).
+
+### Strategy pattern pour dispatch par sous-type
+
+28. **Pas de `if (x instanceof A) ... else if (x instanceof B) ...`** dans le code de dispatch métier. Pattern : interface `<X>Strategy { Class<? extends Parent> targetType(); <Y> resolve(Parent x); }` + impls `@Component` + Spring injecte `List<Strategy>` + dispatch `most-specific-wins` :
+    ```java
+    strategies.stream()
+        .filter(s -> s.targetType().isInstance(x))
+        .reduce((a, b) -> a.targetType().isAssignableFrom(b.targetType()) ? b : a)
+        .map(s -> s.resolve(x))
+        .orElseGet(<X>Result::empty);
+    ```
+    La sous-classe gagne sur la super-classe → la strategy sur `Parent` sert de fallback. Exemple : `security/application/strategies/UserPrincipalContextStrategy` avec impls Proprietaire/Employe/Utilisateur.
 
 ---
 

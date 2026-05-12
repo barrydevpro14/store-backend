@@ -7,7 +7,59 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-12
+**Date :** 2026-05-12 (après-midi/soir)
+**Sujet :** CRUD Magasin, CRUD Entreprise (ADMIN vs PROPRIETAIRE), refactor `registerEntrepriseByAdmin` (cycle DI), extraction `UserResponse`, Strategy pattern `UserPrincipalContextStrategy` (élimination `instanceof`), seed ERP (4 rôles + 79 permissions selon matrice PDF)
+
+**Ce qui a été fait :**
+
+1. **CRUD Magasin** — `IMagasinService` étendu : `findAll(Pageable)`, `findResponseById`, `activate`, `deactivate`, `updateMine`. Controller `MagasinController` (`@PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")` par défaut au niveau classe). Soft-delete via `actif=false`. Scoping : OWNER voit/édite tous les magasins de son entreprise, MANAGER scopé sur son magasin. Pagination via `@Query` custom + text block.
+
+2. **CRUD Entreprise** — `IEntrepriseService` étendu : `findAll(Pageable)`, `findResponseById`, `activate`, `deactivate`, `findCurrentUserEntreprise`, `updateCurrentUserEntreprise`. Controller : ADMIN sur `POST/GET/PATCH /entreprises[/{id}]`, PROPRIETAIRE sur `/me`. `EntrepriseRepository.findAllProjected` utilise `SELECT new EntrepriseResponse(e)` (convention).
+
+3. **`SELECT new <X>Response(entity)` dans `@Query`** — convention adoptée : projection JPQL via le constructeur secondaire de Response, jamais la liste des champs en clair (DRY, pas de désync). Appliquée à `EntrepriseRepository.findAllProjected` et `MagasinRepository.findResponsesByEntrepriseId`.
+
+4. **`create()` dans DomainService** — toute construction d'entité (`new` + setters + `save`) vit dans `<X>DomainService.create(...)`. Les ServiceImpl applicatifs délèguent et appliquent les règles métier. `EntrepriseDomainService.create(EntrepriseRequest, Proprietaire)` et `MagasinDomainService.create(MagasinRequest, Entreprise)`.
+
+5. **Réorganisation packages `impl`** — toutes les classes `<X>ServiceImpl` déplacées dans `<module>/application/service/impl/`. Cohérence transverse, plus de mélange interface/impl dans `service/`.
+
+6. **`registerOwnerByAdmin` → `registerEntrepriseByAdmin`** — un ADMIN crée une entreprise via `POST /entreprises`. Premier essai : controller appelait `createAccount` directement + cast + `new EntrepriseResponse(...)` → règle "pas de logique métier au controller" violée. Tentative #1 : `IEntrepriseService.createByAdmin` → **cycle de DI** (`EntrepriseServiceImpl` injectait `IRegisterPropertyService` qui injectait déjà `IEntrepriseService`). Solution : méthode `IRegisterPropertyService.registerEntrepriseByAdmin(RegisterPropertyRequest) → EntrepriseResponse` (le service qui orchestre déjà héberge la méthode). Controller = 1 ligne.
+
+7. **Extraction `UserResponse` DTO** — `AccountResponse` exposait à plat `(nom, prenom, email, telephone, adresse)` du `Utilisateur` lié. Refactor en `AccountResponse(..., UserResponse user)`. Nouveau record `users/application/dto/UserResponse(...)` avec constructeur `UserResponse(Utilisateur)`. Convention nouvelle : sous-DTO Response pour sous-entité (≥ 3 champs, réutilisable).
+
+8. **Strategy pattern `UserPrincipalContextStrategy`** — élimination du `if (user instanceof Proprietaire) ... else if (user instanceof Employe)` dans `UserPrincipalFactoryImpl`. Nouveau package `security/application/strategies/` : record `UserPrincipalContext(entrepriseId, magasinId)`, interface `UserPrincipalContextStrategy(targetType, resolve)`, 3 impls (`ProprietairePrincipalContextStrategy`, `EmployePrincipalContextStrategy`, `UtilisateurPrincipalContextStrategy` fallback ADMIN). Factory injecte `List<Strategy>` et dispatch via `reduce` "most-specific wins" (`targetType.isAssignableFrom`). Modification utilisateur : `Proprietaire` ne porte plus de `magasinId` (un OWNER n'est rattaché à aucun magasin précis).
+
+9. **Seed ERP** (`DataInitializer`) — adoption de la nomenclature granulaire du PDF `Roles Permissions Erp Saas.pdf` **sans casser le code existant** : 4 rôles (PROPRIETAIRE, MANAGER, VENDEUR, ADMIN = SUPER_ADMIN sémantiquement) + 79 permissions (4 anciennes conservées pour compat + 75 nouvelles MODULE_ACTION). Mapping selon la matrice PDF avec MANAGER absorbant Magasinier+Comptable. ADMIN = toutes permissions. PROPRIETAIRE ≈ OWNER du PDF. VENDEUR limité à SALE_* + lecture produits/stock. `static/liste_roles_permissions.md` archivé dans `resources/static/`.
+
+10. **Pas de méthodes privées dans les services applicatifs** — règle posée. Toute factorisation devient une méthode publique de `I<X>Service`, paramétrée plutôt que spécialisée. Exemple : ancien `private doCreate(RegisterPropertyRequest)` qui hardcodait `ROLE_PROPRIETAIRE` → méthode publique `IRegisterPropertyService.createAccount(RegisterPropertyRequest, String roleName)`.
+
+11. **Pas de logique métier dans le controller** — règle posée. Handler = `return service.method(request)`. Pas de cast, pas de `new Response(...)`, pas de getter-chain, pas d'orchestration multi-services. Si du code "déborde", créer une méthode publique dans `I<X>Service` qui retourne déjà le Response final. Choisir le service qui orchestre déjà pour éviter les cycles de DI.
+
+**Décisions / arbitrages :**
+
+- **Sens du cycle DI** : `IRegisterPropertyService` injecte `IEntrepriseService` (déjà fait). Donc toute méthode applicative qui doit orchestrer "inscription + retour entreprise" vit côté `IRegisterPropertyService`, pas l'inverse.
+- **`Proprietaire` n'a pas de `magasinId`** dans `UserPrincipal` : l'OWNER possède tous les magasins de son entreprise, pas un magasin unique. Conséquence : strategy `ProprietairePrincipalContextStrategy` renvoie `(entreprise.id, null)`. Le `magasinId` n'est porté que par le rôle `Employe`.
+- **Strategy dispatch "most-specific wins"** : `reduce((a, b) -> a.targetType.isAssignableFrom(b.targetType) ? b : a)` — la sous-classe gagne sur la super-classe. Permet à `UtilisateurPrincipalContextStrategy` d'être un fallback générique (ADMIN) tout en laissant `Proprietaire`/`Employe` matcher en priorité.
+- **Seed ERP additif, pas remplaçant** : on ajoute 75 permissions nouvelles à côté des 4 anciennes (PROPRIETAIRE_ACCESS, EMPLOYE_ACCESS, EMPLOYE_CREATE, ADMIN_ACCESS) pour que le code Java actuel (`@PreAuthorize`, `PermissionCode` enum) continue de fonctionner. Le refactor des `@PreAuthorize` vers la nomenclature granulaire (`COMPANY_READ`, `STORE_CREATE`, ...) est reporté à plus tard.
+- **Sous-DTO Response (`UserResponse`)** : critères d'extraction = ≥ 3 champs d'une autre entité + sous-objet réutilisable (Utilisateur l'est : Proprietaire, Employe, Admin). Le JSON devient hiérarchique au lieu de plat.
+- **`MANAGER` du seed absorbe Magasinier+Comptable** : on n'introduit pas les rôles MAGASINIER/COMPTABLE/CAISSIER/SUPPORT du PDF pour le moment. MANAGER = manager opérationnel + gestion stock + reporting financier.
+
+**Où on s'est arrêté :**
+
+- **152 tests verts** (143 → 152 avec les nouveaux tests strategies)
+- Commits dev : `6342cdd` Reorg packages impl + CRUD entreprise, `b55eaed` CRUD entreprise + UserResponse, `d16d6c0` Refactor Strategy pattern UserPrincipal, `f71b148` Seed permissions et rôles ERP
+- La BD au boot sera seedée avec 4 rôles + 79 permissions selon la matrice (idempotent)
+
+**Prochaine étape recommandée :**
+
+1. **Migration progressive des `@PreAuthorize`** vers la nomenclature granulaire : remplacer `PROPRIETAIRE_ACCESS` par `COMPANY_READ/UPDATE` + `STORE_*` selon l'endpoint, `EMPLOYE_CREATE` par `USER_CREATE`, etc. Toucher l'enum `PermissionCode` (ajouter les 75 valeurs) et tous les sites d'appel.
+2. **CRUD `Product`** — premier module métier post-auth. Suit les patterns établis (Request/Response avec entity constructor, DomainService.create, ServiceImpl + interface, controller avec BASE_PATH, tests unit + slice web). Permission `PRODUCT_CREATE/READ/UPDATE/DELETE` désormais en BD.
+3. **Endpoint listing employés** par magasin (manager voit ses employés, owner voit tous).
+4. **Frontend** : `src/lib/api/client.ts` + pages `(auth)/login`+`register`.
+
+---
+
+### Session du 2026-05-12 (matinée)
+
 **Sujet :** Flyway, validators custom (@Phone, @EnumValue, @DatePattern, @Uuid), `PermissionCode` enum, refactorisation app→domain service partout, création d'employés avec règles propriétaire/manager, `CurrentUserService`, doc `FONCTIONNALITIES.md`
 
 **Ce qui a été fait :**
