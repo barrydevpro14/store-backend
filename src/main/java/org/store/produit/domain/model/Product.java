@@ -34,6 +34,10 @@ public class Product extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Entreprise entreprise;
 
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "image_principal_id")
+    private PieceJointe imagePrincipal;
+
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "product_id")
     private List<PieceJointe> images = new ArrayList<>();

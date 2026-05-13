@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: store
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
     username: ${DB_USERNAME:barrydevit}
@@ -39,3 +44,10 @@ security:
   rbac:
     sync: ${RBAC_SYNC:false}
     file: ${RBAC_FILE:classpath:security/roles-permissions.yml}
+
+upload:
+  allowed-image-types:
+    - image/jpeg
+    - image/png
+    - image/webp
+    - image/gif
