@@ -19,4 +19,7 @@ public class PieceJointe extends BaseEntity {
     private byte[] document;
 
     private LocalDate date;
+
+    @Column(name = "content_type", nullable = false, length = 100)
+    private String contentType;
 }

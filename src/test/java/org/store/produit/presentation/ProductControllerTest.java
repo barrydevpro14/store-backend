@@ -13,6 +13,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.produit.application.dto.CategoryProductResponse;
@@ -34,6 +35,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -203,5 +206,40 @@ class ProductControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$[0]").value(id1.toString()))
                 .andExpect(jsonPath("$[1]").value(id2.toString()));
+    }
+
+    @Test
+    void should_serve_image_principal_with_detected_content_type() throws Exception {
+        byte[] payload = new byte[]{1, 2, 3};
+        when(productService.getImagePrincipal(eq(productId)))
+                .thenReturn(new ImageDownloadResponse(payload, "image/png"));
+
+        mockMvc.perform(get(ProductController.BASE_PATH + "/" + productId + "/image"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(content().bytes(payload));
+    }
+
+    @Test
+    void should_serve_gallery_image_with_detected_content_type() throws Exception {
+        UUID imgId = UUID.randomUUID();
+        byte[] payload = new byte[]{4, 5, 6};
+        when(productService.getImage(eq(productId), eq(imgId)))
+                .thenReturn(new ImageDownloadResponse(payload, "image/jpeg"));
+
+        mockMvc.perform(get(ProductController.BASE_PATH + "/" + productId + "/images/" + imgId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/jpeg"))
+                .andExpect(content().bytes(payload));
+    }
+
+    @Test
+    void should_return_204_when_gallery_image_deleted() throws Exception {
+        UUID imgId = UUID.randomUUID();
+
+        mockMvc.perform(delete(ProductController.BASE_PATH + "/" + productId + "/images/" + imgId))
+                .andExpect(status().isNoContent());
+
+        verify(productService).deleteImage(productId, imgId);
     }
 }

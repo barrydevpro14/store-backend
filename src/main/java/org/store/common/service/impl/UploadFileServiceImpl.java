@@ -37,6 +37,7 @@ public class UploadFileServiceImpl implements IUploadFileService {
             PieceJointe pieceJointe = new PieceJointe();
             pieceJointe.setDocument(file.getBytes());
             pieceJointe.setDate(LocalDate.now());
+            pieceJointe.setContentType(contentType.toLowerCase());
             return pieceJointe;
         } catch (IOException e) {
             throw new BadArgumentException("upload.file.readFailed", e.getMessage());

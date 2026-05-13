@@ -24,7 +24,7 @@ class UploadFileServiceImplTest {
     );
 
     @Test
-    void buildImage_should_return_pieceJointe_with_bytes_and_today() {
+    void buildImage_should_return_pieceJointe_with_bytes_date_and_content_type() {
         byte[] payload = new byte[]{1, 2, 3, 4};
         MultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", payload);
 
@@ -32,13 +32,15 @@ class UploadFileServiceImplTest {
 
         assertThat(pieceJointe.getDocument()).isEqualTo(payload);
         assertThat(pieceJointe.getDate()).isEqualTo(LocalDate.now());
+        assertThat(pieceJointe.getContentType()).isEqualTo("image/png");
     }
 
     @Test
     void buildImage_should_accept_jpeg_webp_gif() {
         for (String contentType : new String[]{"image/jpeg", "image/webp", "image/gif"}) {
             MultipartFile file = new MockMultipartFile("file", "img", contentType, new byte[]{1});
-            assertThat(service.buildImage(file)).isNotNull();
+            PieceJointe pieceJointe = service.buildImage(file);
+            assertThat(pieceJointe.getContentType()).isEqualTo(contentType);
         }
     }
 

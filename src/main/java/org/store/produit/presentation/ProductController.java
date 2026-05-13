@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.service.IProductService;
@@ -87,5 +88,30 @@ public class ProductController {
     public ResponseEntity<List<UUID>> uploadImages(@PathVariable UUID id,
                                                    @RequestPart("files") List<MultipartFile> files) {
         return ResponseEntity.status(HttpStatus.CREATED).body(productService.uploadImages(id, files));
+    }
+
+    @GetMapping("/{id}/image")
+    @PreAuthorize("hasAuthority('PRODUCT_READ')")
+    public ResponseEntity<byte[]> viewImagePrincipal(@PathVariable UUID id) {
+        ImageDownloadResponse download = productService.getImagePrincipal(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .body(download.content());
+    }
+
+    @GetMapping("/{id}/images/{imageId}")
+    @PreAuthorize("hasAuthority('PRODUCT_READ')")
+    public ResponseEntity<byte[]> viewImage(@PathVariable UUID id, @PathVariable UUID imageId) {
+        ImageDownloadResponse download = productService.getImage(id, imageId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .body(download.content());
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @PreAuthorize("hasAuthority('PRODUCT_UPLOAD_IMAGE')")
+    public ResponseEntity<Void> deleteImage(@PathVariable UUID id, @PathVariable UUID imageId) {
+        productService.deleteImage(id, imageId);
+        return ResponseEntity.noContent().build();
     }
 }

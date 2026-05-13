@@ -5,6 +5,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.model.PieceJointe;
@@ -160,5 +162,35 @@ public class ProductServiceImpl implements IProductService {
         List<PieceJointe> built = uploadFileService.buildImages(files);
         productDomainService.addImages(product, built);
         return built.stream().map(PieceJointe::getId).toList();
+    }
+
+    /** Retourne le binaire et le content-type de l'image principale après contrôle d'appartenance. */
+    @Override
+    public ImageDownloadResponse getImagePrincipal(UUID id) {
+        Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(id));
+        PieceJointe imagePrincipal = product.getImagePrincipal();
+        if (imagePrincipal == null) {
+            throw new EntityException("product.image.notFound");
+        }
+        return new ImageDownloadResponse(imagePrincipal.getDocument(), imagePrincipal.getContentType());
+    }
+
+    /** Retourne le binaire et le content-type d'une image de la galerie après contrôle d'appartenance produit et galerie. */
+    @Override
+    public ImageDownloadResponse getImage(UUID productId, UUID imageId) {
+        Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(productId));
+        PieceJointe image = productDomainService.findImageInProduct(product, imageId)
+                .orElseThrow(() -> new EntityException("product.image.galleryImageNotFound", imageId));
+        return new ImageDownloadResponse(image.getDocument(), image.getContentType());
+    }
+
+    /** Supprime une image de la galerie après contrôle d'appartenance ; orphanRemoval purge la `PieceJointe`. */
+    @Override
+    @Transactional
+    public void deleteImage(UUID productId, UUID imageId) {
+        Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(productId));
+        PieceJointe image = productDomainService.findImageInProduct(product, imageId)
+                .orElseThrow(() -> new EntityException("product.image.galleryImageNotFound", imageId));
+        productDomainService.removeImage(product, image);
     }
 }

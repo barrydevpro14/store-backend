@@ -12,6 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.IUploadFileService;
@@ -458,5 +460,127 @@ class ProductServiceImplTest {
 
         verify(uploadFileService, never()).buildImages(any());
         verify(productDomainService, never()).addImages(any(), any());
+    }
+
+    @Test
+    void getImagePrincipal_should_return_bytes_and_stored_content_type() {
+        Product product = sampleProduct(entreprise);
+        PieceJointe pj = new PieceJointe();
+        byte[] payload = new byte[]{1, 2, 3};
+        pj.setDocument(payload);
+        pj.setContentType("image/png");
+        product.setImagePrincipal(pj);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+
+        ImageDownloadResponse response = service.getImagePrincipal(productId);
+
+        assertThat(response.content()).isEqualTo(payload);
+        assertThat(response.contentType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void getImagePrincipal_should_throw_when_absent() {
+        Product product = sampleProduct(entreprise);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+
+        assertThatThrownBy(() -> service.getImagePrincipal(productId))
+                .isInstanceOf(EntityException.class);
+    }
+
+    @Test
+    void getImagePrincipal_should_throw_forbidden_when_other_entreprise() {
+        Entreprise other = new Entreprise();
+        other.setId(UUID.randomUUID());
+        Product foreign = sampleProduct(other);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(foreign);
+
+        assertThatThrownBy(() -> service.getImagePrincipal(productId))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void getImage_should_return_bytes_and_stored_content_type() {
+        Product product = sampleProduct(entreprise);
+        PieceJointe img = new PieceJointe();
+        UUID imgId = UUID.randomUUID();
+        img.setId(imgId);
+        byte[] payload = new byte[]{4, 5, 6};
+        img.setDocument(payload);
+        img.setContentType("image/jpeg");
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+        when(productDomainService.findImageInProduct(product, imgId)).thenReturn(java.util.Optional.of(img));
+
+        ImageDownloadResponse response = service.getImage(productId, imgId);
+
+        assertThat(response.content()).isEqualTo(payload);
+        assertThat(response.contentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void getImage_should_throw_when_not_in_gallery() {
+        Product product = sampleProduct(entreprise);
+        UUID imgId = UUID.randomUUID();
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+        when(productDomainService.findImageInProduct(product, imgId)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> service.getImage(productId, imgId))
+                .isInstanceOf(EntityException.class);
+    }
+
+    @Test
+    void deleteImage_should_remove_image_when_present() {
+        Product product = sampleProduct(entreprise);
+        PieceJointe img = new PieceJointe();
+        UUID imgId = UUID.randomUUID();
+        img.setId(imgId);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+        when(productDomainService.findImageInProduct(product, imgId)).thenReturn(java.util.Optional.of(img));
+
+        service.deleteImage(productId, imgId);
+
+        verify(productDomainService).removeImage(product, img);
+    }
+
+    @Test
+    void deleteImage_should_throw_when_image_absent() {
+        Product product = sampleProduct(entreprise);
+        UUID imgId = UUID.randomUUID();
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+        when(productDomainService.findImageInProduct(product, imgId)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteImage(productId, imgId))
+                .isInstanceOf(EntityException.class);
+
+        verify(productDomainService, never()).removeImage(any(), any());
+    }
+
+    @Test
+    void deleteImage_should_throw_forbidden_when_other_entreprise() {
+        Entreprise other = new Entreprise();
+        other.setId(UUID.randomUUID());
+        Product foreign = sampleProduct(other);
+        UUID imgId = UUID.randomUUID();
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(foreign);
+
+        assertThatThrownBy(() -> service.deleteImage(productId, imgId))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(productDomainService, never()).removeImage(any(), any());
     }
 }

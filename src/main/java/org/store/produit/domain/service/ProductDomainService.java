@@ -55,4 +55,15 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         product.getImages().addAll(images);
         return save(product);
     }
+
+    public Optional<PieceJointe> findImageInProduct(Product product, UUID imageId) {
+        return product.getImages().stream()
+                .filter(image -> image.getId().equals(imageId))
+                .findFirst();
+    }
+
+    public void removeImage(Product product, PieceJointe image) {
+        product.getImages().remove(image);
+        save(product);
+    }
 }

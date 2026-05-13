@@ -3,6 +3,7 @@ package org.store.produit.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.Product;
@@ -66,4 +67,19 @@ public interface IProductService {
      * Téléverse plusieurs images dans la galerie d'un produit de l'entreprise du caller. Retourne les ids des images créées.
      */
     List<UUID> uploadImages(UUID id, List<MultipartFile> files);
+
+    /**
+     * Retourne le binaire de l'image principale d'un produit de l'entreprise du caller, avec le content-type détecté.
+     */
+    ImageDownloadResponse getImagePrincipal(UUID id);
+
+    /**
+     * Retourne le binaire d'une image de la galerie d'un produit de l'entreprise du caller, avec le content-type détecté.
+     */
+    ImageDownloadResponse getImage(UUID productId, UUID imageId);
+
+    /**
+     * Supprime une image de la galerie d'un produit de l'entreprise du caller.
+     */
+    void deleteImage(UUID productId, UUID imageId);
 }
