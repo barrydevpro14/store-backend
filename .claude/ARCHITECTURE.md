@@ -340,6 +340,17 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
     ```
     La sous-classe gagne sur la super-classe → la strategy sur `Parent` sert de fallback. Exemple : `security/application/strategies/UserPrincipalContextStrategy` avec impls Proprietaire/Employe/Utilisateur.
 
+### Documentation des services applicatifs (process métier)
+
+29. **Tout service applicatif (`<X>ServiceImpl`) doit être documenté en javadoc** — c'est l'endroit où vit la logique métier, donc l'endroit qui mérite l'effort de doc. Périmètre obligatoire :
+    - **Javadoc de classe** : responsabilité du service en 1–3 phrases, garanties éventuelles (idempotent, transactionnel, stratégie particulière).
+    - **Javadoc sur chaque méthode publique** : entrée (rôle de chaque paramètre non trivial), règles métier appliquées, exceptions levées avec leur clé i18n, sortie attendue. Pour une orchestration multi-étapes, lister les étapes numérotées.
+    - **Commentaires de section** dans les méthodes longues (> 30 lignes) pour marquer les étapes ; commentaires inline pour expliquer le **pourquoi** d'un choix non évident (invariant, contrainte JPA, choix de comparaison par ID vs equals, etc.) — jamais pour décrire **quoi** le code fait (les identifiants y suffisent).
+    - **Langue** : français pour la documentation, anglais pour les messages de log/identifiants (cohérence projet).
+    - **Référence** : voir `RolesPermissionsSyncServiceImpl` comme modèle.
+
+    L'intention : un nouveau développeur (ou Claude dans 3 semaines) doit comprendre un use case sans relire les services appelés. Les `<X>DomainService` et controllers restent libres de doc (auto-documentants par convention).
+
 ---
 
 ## Conventions de commits
