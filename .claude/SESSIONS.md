@@ -7,7 +7,62 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-13 (suite — après-midi/soir)
+**Date :** 2026-05-13 (soirée)
+**Sujet :** Listing galerie `GET /products/{id}/images` + simplification `ProductResponse` (URL `image` au lieu d'`imagePrincipalId`, sous-DTOs Summary pour category/quality), démarrage du **module Stock** par les fonctionnalités fondations 1 et 2 : CRUD Fournisseur (scopé entreprise) et CRUD ProductFournisseur (lien produit ↔ fournisseur avec prix d'achat, référence fournisseur et origine — base de la traçabilité multi-fournisseur)
+
+**Ce qui a été fait :**
+
+1. **Listing galerie produit** — `GET /api/v1/products/{id}/images` (permission `PRODUCT_READ`) retourne `List<ImageMetadataResponse{id, date, contentType, url}>` où `url` est le path relatif `/api/v1/products/{productId}/images/{imageId}` directement utilisable par le frontend dans `<img src={img.url}>`. DTO `ImageMetadataResponse` créé dans `produit/application/dto` (path produit dans l'URL → spécifique au module). `IProductService.listImages(UUID)` scopé via `ensureBelongsToCurrentEntreprise`.
+
+2. **Simplification `ProductResponse`** — 3 itérations successives :
+   - V1 (rejetée) : ajout endpoint séparé `GET /products/{id}/image-info` avec factory `ImageMetadataResponse.forPrincipal(...)`.
+   - V2 (proposée par l'utilisateur) : ajout direct du champ `image` (URL relative) dans `ProductResponse`, suppression de `imagePrincipalId`. Plus naturel, pas d'endpoint séparé.
+   - V3 (itération) : remplacement de `CategoryProductResponse category` + `QualityResponse quality` (complets, 4 champs chacun) par juste `String category` + `String quality` (libellés) — testée puis rollback car le frontend a besoin des ids pour l'édition (`<select>`).
+   - V4 (forme finale) : **`CategoryProductSummaryResponse(id, libelle)`** et **`QualitySummaryResponse(id, libelle)`** créés dans `produit/application/dto/`. `ProductResponse.category`/`quality` exposent juste id+libelle (pas les `description`/`entrepriseId` qui polluent). Le frontend a tout pour afficher + éditer.
+
+3. **Lancement du module Stock** — analyse de la spec utilisateur (8 modèles d'entités, multi-fournisseur, FIFO, lots, dates d'expiration, valorisation, inventaire). Toutes les entités domain existent déjà dans `org.store.{achat, inventaire, produit, stock}.domain.*` (entités + ports + adapters + domain services vides). Il manque tout ce qui est couche application + presentation + tests. Établissement d'une feuille de route en **12 fonctionnalités** (TODO.md). Traitement itératif "1 par 1".
+
+4. **Fonctionnalité 1 : CRUD Fournisseur** — FK `@ManyToOne Entreprise` ajoutée sur `Fournisseur` (héritage `Person` inchangé). Migration Flyway **V7** (NOT NULL direct, table vide). Enum `PermissionCode` enrichi de `SUPPLIER_{CRUD}` (4 nouvelles valeurs, total enum = 20). YAML aligné (ADMIN/PROPRIETAIRE/MANAGER = CRUD, VENDEUR = READ seul). DTOs `FournisseurRequest`(validations `@Email`/`@Phone`) + `FournisseurResponse(Fournisseur)` exposant raison sociale + contact + traçabilité. `FournisseurDomainService` enrichi (projection JPQL scopée + queries unicité reference). `IFournisseurService` + impl : scoping `ICurrentUserService`, unicité `reference` par entreprise (skippée si null/blank pour permettre les fournisseurs sans code interne). Controller `/api/v1/suppliers`. 13 tests service + 7 controller.
+
+5. **Fonctionnalité 2 : CRUD ProductFournisseur** — entité enrichie de `referenceFournisseur` + `origine` (selon spec), `product_id`/`fournisseur_id` promus en NOT NULL. Migration Flyway **V8** (3 ALTER + 2 index). Sous-DTOs **`ProductSummaryResponse(id, nom, reference)`** dans `produit/application/dto` et **`FournisseurSummaryResponse(id, nom)`** dans `achat/application/dto`. DTOs `ProductFournisseurRequest(productId, fournisseurId, prixAchat, refFournisseur?, origine?)` avec validations + `ProductFournisseurResponse(ProductFournisseur)` avec sous-DTOs imbriqués. `ProductFournisseurDomainService` enrichi : projection JPQL avec scoping via `product.entreprise.id`, query par produit, unicité paire. `IProductFournisseurService` + impl `@Transactional(readOnly=true)` : scoping cross-entity (délégation à `IProductService.ensureBelongsToCurrentEntreprise` + `IFournisseurService.ensureBelongsToCurrentEntreprise`), unicité `(product, fournisseur)`, update limité aux champs informationnels (prix/refFournisseur/origine — FK product/fournisseur immuables). Controller `/api/v1/product-suppliers` avec filtre optionnel `?productId=`. **Permissions réutilisées `SUPPLIER_*`** (pas de nouvelles permissions — qui gère les fournisseurs gère leurs tarifs). 13 tests service + 8 controller.
+
+**Décisions / arbitrages :**
+
+- **`ProductResponse.image` (URL) plutôt qu'endpoint séparé `/image-info`** : choix utilisateur — éviter une 2e requête pour récupérer l'URL d'une image qui n'apparaîtra que dans le contexte du produit affiché. Une seule donnée fournie naturellement avec le `ProductResponse`.
+- **Sous-DTOs Summary (id + libellé seuls) plutôt que sous-DTOs complets** : itération avec l'utilisateur. Les sous-DTOs CRUD complets (`CategoryProductResponse`, `QualityResponse`) ont 4 champs (id, libelle, description, entrepriseId) — trop pour un payload Product. Les Summary exposent seulement ce dont le frontend a besoin (affichage par libellé, édition par id). Pattern à reproduire pour les futurs sous-DTOs.
+- **`ProductSummaryResponse(id, nom, reference)` exposé avec 3 champs** : reference du produit ajoutée car potentiellement utile (catalogue, scan code barre futur), pas que id + libellé.
+- **Spec Fournisseur vs réalité** : la spec utilisateur listait `private String entreprise` (raison sociale fournisseur) + `private String email` + `@ManyToOne Magasin magasin`. En réalité : `Fournisseur extends Person` apporte déjà nom (raison sociale), email, telephone, adresse. Pas besoin d'ajouter ces champs. Le scoping `Magasin` proposé dans la spec → écarté au profit de `Entreprise` (un fournisseur sert tous les magasins du tenant, plus naturel).
+- **Permissions `SUPPLIER_*` nouvelles (pas `PURCHASE_*`)** : permission granulaire spécifique à la gestion fournisseur ; `PURCHASE_*` sera réservé aux transactions (commandes/factures).
+- **`SUPPLIER_*` réutilisées pour `ProductFournisseur`** : pas de nouvelle permission `PRODUCT_SUPPLIER_*` créée. Qui gère les fournisseurs gère leurs tarifs. Évite la prolifération de permissions. À séparer si un jour besoin d'accès différencié (ex : tarification réservée au comptable).
+- **`reference` Fournisseur skippable** : la convention `ensureReferenceAvailable` skip si `null` ou `blank`. Permet de créer des fournisseurs "informels" sans code interne, tout en gardant l'unicité quand un code est saisi.
+- **`product` et `fournisseur` immuables après création** sur `ProductFournisseur` : update modifie seulement prix/refFournisseur/origine. Pour changer la paire, on supprime + recrée. Plus simple, plus traçable, évite les comportements bizarres en cas de modification cross-fournisseur.
+- **`ImageMetadataResponse` dans `produit/application/dto` (pas `common/dto`)** : l'URL hardcode le path `/api/v1/products/...`, donc le DTO devient spécifique au module produit. `ImageDownloadResponse` reste dans `common/dto` (générique pour tout binaire).
+- **Feuille de route stock en 12 phases** : permet d'avoir une vision claire de bout en bout (achat → stock → vente → inventaire → reporting) tout en livrant en mode incrémental. Phase actuelle : 2/12.
+
+**Où on s'est arrêté :**
+
+- **300 tests verts** (255 → 300, +45 cette session : 4 listing galerie + 20 Fournisseur + 21 ProductFournisseur).
+- **4 commits poussés sur `origin/dev`** :
+  - `3184aa0` "Listing galerie + URL image principale dans ProductResponse"
+  - `beb16b8` "CRUD Fournisseur (module stock - fonctionnalité 1)"
+  - `cd1988f` "CRUD ProductFournisseur (module stock - fonctionnalité 2)"
+- **Migrations Flyway pendantes** au prochain démarrage : V7 (FK entreprise sur fournisseur), V8 (referenceFournisseur + origine + NOT NULL sur product_fournisseur).
+- **Enum `PermissionCode`** : 20 valeurs (4 legacy + 12 produit/qualité/catégorie + 4 supplier).
+- **Permissions YAML** : 99 valeurs.
+- **Sous-DTOs Summary disponibles** : `CategoryProductSummaryResponse`, `QualitySummaryResponse`, `ProductSummaryResponse`, `FournisseurSummaryResponse`.
+- **Phases 1-2 du module Stock livrées**. Phases 3-12 restent à faire.
+
+**Prochaine étape recommandée :**
+
+1. **Fonctionnalité 3 : Entrée stock manuelle** — `POST /api/v1/stocks/entries`. Cœur du module stock. Crée une `EntreeStock` (lot FIFO avec qty initiale + restante = qty, prix d'achat, numéro de lot optionnel, date d'expiration optionnelle, lien optionnel vers `productFournisseur`) + upsert `Stock` (incrémente `quantiteDisponible`, recalcule `prixAchatMoyen` pondéré) + journalise `MouvementStock(type=ENTREE_ACHAT)` avec `stockAvant`/`stockApres`. Permission `STOCK_ENTRY`. Réutilise les `SUPPLIER_*` patterns pour scoping.
+2. **Fonctionnalité 4 : Consultation stock** — `GET /stocks?magasinId=&productId=`, `GET /stocks/{id}`. Read-only sur l'état courant.
+3. **Fonctionnalité 5 : Consultation mouvements** — `GET /stocks/movements?...` (journal immuable).
+4. **Fonctionnalité 6 : Sortie stock FIFO** — `POST /stocks/exits`, consomme les `EntreeStock` du plus ancien au plus récent.
+5. **Migration progressive des `@PreAuthorize` legacy** vers les permissions granulaires — reportée mais à planifier.
+
+---
+
+### Session du 2026-05-13 (suite — après-midi/soir)
 **Sujet :** CRUD CategoryProduct + Quality + Product (scopés par entreprise, permissions granulaires), `Product.imagePrincipal` + galerie `images`, service `IUploadFileService` (commun, valide MIME images, externalise config via `UploadProperties`), endpoints upload/visualisation/suppression image principale et galerie, bascule de la détection magic bytes vers un champ `contentType` stocké sur `PieceJointe`
 
 **Ce qui a été fait :**

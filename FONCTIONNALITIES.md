@@ -392,6 +392,85 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
+## 15. Listing galerie produit — `ProductServiceImpl.listImages`
+
+**Endpoint** : `GET /api/v1/products/{id}/images` (permission `PRODUCT_READ`)
+
+**Sortie** : `List<ImageMetadataResponse{id, date, contentType, url}>`. Le champ `url` est un path relatif `/api/v1/products/{productId}/images/{imageId}` directement utilisable côté front (`<img src={img.url}>`), pas besoin de connaître la convention de routing.
+
+**DTO** `ImageMetadataResponse` dans `produit/application/dto/` (le path produit est dans l'URL → DTO spécifique au module). 2 constructeurs :
+- `(PieceJointe, UUID productId)` pour une image de la galerie (`/images/{imageId}`).
+- factory `forPrincipal(PieceJointe, UUID productId)` pour l'image principale (`/image`) — **non câblée dans ce passage** mais l'utilisateur a préféré exposer directement l'URL via `ProductResponse.image`.
+
+**Règle** : `IProductService.listImages(UUID)` scopé via `ensureBelongsToCurrentEntreprise`. Pas de pagination (la galerie est rarement énorme — à voir si > 100 images).
+
+**Limite actuelle** : pas d'endpoint d'ordonnancement / réordonnancement de la galerie. Les images sont retournées dans l'ordre d'insertion (FIFO).
+
+---
+
+## 16. CRUD Fournisseur — `FournisseurServiceImpl`
+
+**Endpoints** (`/api/v1/suppliers`) :
+
+| Méthode | Endpoint | Permission |
+|---|---|---|
+| `POST` | `/api/v1/suppliers` | `SUPPLIER_CREATE` |
+| `GET` | `/api/v1/suppliers?page=&size=` | `SUPPLIER_READ` |
+| `GET` | `/api/v1/suppliers/{id}` | `SUPPLIER_READ` |
+| `PUT` | `/api/v1/suppliers/{id}` | `SUPPLIER_UPDATE` |
+| `DELETE` | `/api/v1/suppliers/{id}` | `SUPPLIER_DELETE` |
+
+**`FournisseurRequest`** : `@NotBlank nom`, `prenom`, `@Email email`, `@Phone telephone`, `adresse`, `reference`, `origine`.
+
+**`FournisseurResponse`** : `id, nom, prenom, email, telephone, adresse, reference, origine, entrepriseId`. Constructeur secondaire `(Fournisseur)`.
+
+**Modèle** : `Fournisseur extends Person` (héritage JOINED → table `person` pour les champs nom/prenom/email/telephone/adresse, table `fournisseur` pour `reference` + `origine` + FK `entreprise_id`). Migration `V7__add_entreprise_to_fournisseur.sql` (NOT NULL + FK + index).
+
+**Règles** :
+- Scoping `ensureBelongsToCurrentEntreprise(fournisseur)` sur toutes les opérations.
+- Unicité de `reference` par entreprise via `existsByReferenceAndEntrepriseId` — **skippée si `null` ou `blank`** pour autoriser les fournisseurs sans code interne.
+- En update, l'unicité est revérifiée uniquement si `reference` a changé.
+
+**Dépendances** : `FournisseurDomainService`, `IEntrepriseService`, `ICurrentUserService`.
+
+---
+
+## 17. CRUD ProductFournisseur — `ProductFournisseurServiceImpl`
+
+**Endpoints** (`/api/v1/product-suppliers`, permissions réutilisées `SUPPLIER_*`) :
+
+| Méthode | Endpoint | Action |
+|---|---|---|
+| `POST` | `/api/v1/product-suppliers` | Crée un lien produit ↔ fournisseur (201) |
+| `GET` | `/api/v1/product-suppliers?page=&size=` | Liste tous les liens de l'entreprise (200) |
+| `GET` | `/api/v1/product-suppliers?productId={id}` | Liste les fournisseurs d'un produit donné (200) |
+| `GET` | `/api/v1/product-suppliers/{id}` | Détail d'un lien (200) |
+| `PUT` | `/api/v1/product-suppliers/{id}` | Met à jour prixAchat / referenceFournisseur / origine (200) |
+| `DELETE` | `/api/v1/product-suppliers/{id}` | Supprime le lien (204) |
+
+**`ProductFournisseurRequest`** : `@NotNull productId`, `@NotNull fournisseurId`, `@NotNull @DecimalMin("0.0", inclusive=false) prixAchat`, `referenceFournisseur` (max 100), `origine` (max 100).
+
+**`ProductFournisseurResponse`** : `id, ProductSummaryResponse product, FournisseurSummaryResponse fournisseur, prixAchat, referenceFournisseur, origine`. Sous-DTOs imbriqués (règle 23). Constructeur secondaire `(ProductFournisseur)`.
+
+**Sous-DTOs réutilisables** :
+- `ProductSummaryResponse(id, nom, reference)` dans `produit/application/dto`
+- `FournisseurSummaryResponse(id, nom)` dans `achat/application/dto`
+
+**Modèle** : `ProductFournisseur` enrichi de `referenceFournisseur` (max 100, code interne fournisseur pour ce produit) et `origine` (max 100, pays/marque). `product` et `fournisseur` promus en `optional=false` + colonnes `NOT NULL`. Migration `V8__add_traceability_to_product_fournisseur.sql` (2 `ALTER NOT NULL` + 2 nouvelles colonnes + 2 index).
+
+**Règles** :
+- **Scoping cross-entity** : `IProductService.ensureBelongsToCurrentEntreprise(product)` + `IFournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)` à la création. À la lecture, scoping via `product.entreprise.id`.
+- Unicité paire `(productId, fournisseurId)` via `existsByProductIdAndFournisseurId` — un même produit ne peut avoir le même fournisseur 2 fois.
+- **Update limité** aux champs informationnels (prixAchat, referenceFournisseur, origine). Les FK `product`/`fournisseur` sont **immuables** — pour changer la paire, supprimer + recréer.
+
+**Permissions réutilisées `SUPPLIER_*`** (pas de `PRODUCT_SUPPLIER_*` créées). Qui gère les fournisseurs gère leurs tarifs. À séparer plus tard si besoin d'accès différencié (ex : tarification réservée au comptable).
+
+**Service `@Transactional(readOnly = true)` au niveau classe** pour les lectures (permet aux projections JPQL d'accéder aux sous-relations LAZY pendant le mapping). `@Transactional` override sur les mutations.
+
+**Dépendances** : `ProductFournisseurDomainService`, `IProductService`, `IFournisseurService`, `ICurrentUserService`.
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).
