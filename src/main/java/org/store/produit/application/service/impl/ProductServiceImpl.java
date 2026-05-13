@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
+import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.model.PieceJointe;
@@ -192,5 +193,14 @@ public class ProductServiceImpl implements IProductService {
         PieceJointe image = productDomainService.findImageInProduct(product, imageId)
                 .orElseThrow(() -> new EntityException("product.image.galleryImageNotFound", imageId));
         productDomainService.removeImage(product, image);
+    }
+
+    /** Retourne les métadonnées des images de la galerie après contrôle d'appartenance. */
+    @Override
+    public List<ImageMetadataResponse> listImages(UUID productId) {
+        Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(productId));
+        return product.getImages().stream()
+                .map(image -> new ImageMetadataResponse(image, productId))
+                .toList();
     }
 }

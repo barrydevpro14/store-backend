@@ -16,14 +16,15 @@ import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.produit.application.dto.CategoryProductResponse;
+import org.store.produit.application.dto.CategoryProductSummaryResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.common.model.PieceJointe;
-import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.impl.ProductServiceImpl;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
@@ -121,7 +122,9 @@ class ProductServiceImplTest {
         assertThat(response.id()).isEqualTo(productId);
         assertThat(response.reference()).isEqualTo("PN-195-65-R15");
         assertThat(response.entrepriseId()).isEqualTo(entrepriseId);
+        assertThat(response.category().id()).isEqualTo(categoryId);
         assertThat(response.category().libelle()).isEqualTo("Pneus");
+        assertThat(response.quality().id()).isEqualTo(qualityId);
         assertThat(response.quality().libelle()).isEqualTo("Premium");
     }
 
@@ -200,8 +203,8 @@ class ProductServiceImplTest {
     void findAllByCurrentEntreprise_should_paginate() {
         Pageable pageable = PageRequest.of(0, 10);
         ProductResponse sample = new ProductResponse(productId, "Pneu", "PN-1", "desc",
-                new CategoryProductResponse(categoryId, "Pneus", null, entrepriseId),
-                new QualityResponse(qualityId, "Premium", null, entrepriseId),
+                new CategoryProductSummaryResponse(categoryId, "Pneus"),
+                new QualitySummaryResponse(qualityId, "Premium"),
                 entrepriseId, null);
         Page<ProductResponse> page = new PageImpl<>(List.of(sample), pageable, 1);
 
@@ -318,11 +321,10 @@ class ProductServiceImplTest {
     }
 
     @Test
-    void findResponseById_should_expose_image_principal_id_when_set() {
+    void findResponseById_should_expose_image_url_when_set() {
         Product product = sampleProduct(entreprise);
         PieceJointe img = new PieceJointe();
-        UUID imgId = UUID.randomUUID();
-        img.setId(imgId);
+        img.setId(UUID.randomUUID());
         product.setImagePrincipal(img);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -330,11 +332,11 @@ class ProductServiceImplTest {
 
         ProductResponse response = service.findResponseById(productId);
 
-        assertThat(response.imagePrincipalId()).isEqualTo(imgId);
+        assertThat(response.image()).isEqualTo("/api/v1/products/" + productId + "/image");
     }
 
     @Test
-    void findResponseById_should_return_null_image_principal_id_when_absent() {
+    void findResponseById_should_return_null_image_url_when_absent() {
         Product product = sampleProduct(entreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -342,7 +344,7 @@ class ProductServiceImplTest {
 
         ProductResponse response = service.findResponseById(productId);
 
-        assertThat(response.imagePrincipalId()).isNull();
+        assertThat(response.image()).isNull();
     }
 
     @Test
@@ -358,8 +360,7 @@ class ProductServiceImplTest {
         Product product = sampleProduct(entreprise);
         MultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[]{1, 2, 3});
         PieceJointe built = new PieceJointe();
-        UUID newImgId = UUID.randomUUID();
-        built.setId(newImgId);
+        built.setId(UUID.randomUUID());
         Product saved = sampleProduct(entreprise);
         saved.setImagePrincipal(built);
 
@@ -370,7 +371,7 @@ class ProductServiceImplTest {
 
         ProductResponse response = service.uploadImagePrincipal(productId, file);
 
-        assertThat(response.imagePrincipalId()).isEqualTo(newImgId);
+        assertThat(response.image()).isEqualTo("/api/v1/products/" + productId + "/image");
     }
 
     @Test
@@ -582,5 +583,58 @@ class ProductServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(productDomainService, never()).removeImage(any(), any());
+    }
+
+    @Test
+    void listImages_should_return_metadata_for_each_image() {
+        Product product = sampleProduct(entreprise);
+        PieceJointe img1 = new PieceJointe();
+        UUID id1 = UUID.randomUUID();
+        img1.setId(id1);
+        img1.setDate(java.time.LocalDate.of(2026, 5, 13));
+        img1.setContentType("image/png");
+        PieceJointe img2 = new PieceJointe();
+        UUID id2 = UUID.randomUUID();
+        img2.setId(id2);
+        img2.setDate(java.time.LocalDate.of(2026, 5, 14));
+        img2.setContentType("image/jpeg");
+        product.getImages().addAll(List.of(img1, img2));
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+
+        List<ImageMetadataResponse> result = service.listImages(productId);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).id()).isEqualTo(id1);
+        assertThat(result.get(0).contentType()).isEqualTo("image/png");
+        assertThat(result.get(0).url()).isEqualTo("/api/v1/products/" + productId + "/images/" + id1);
+        assertThat(result.get(1).id()).isEqualTo(id2);
+        assertThat(result.get(1).url()).isEqualTo("/api/v1/products/" + productId + "/images/" + id2);
+    }
+
+    @Test
+    void listImages_should_return_empty_when_no_images() {
+        Product product = sampleProduct(entreprise);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(product);
+
+        List<ImageMetadataResponse> result = service.listImages(productId);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void listImages_should_throw_forbidden_when_other_entreprise() {
+        Entreprise other = new Entreprise();
+        other.setId(UUID.randomUUID());
+        Product foreign = sampleProduct(other);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productDomainService.findById(productId)).thenReturn(foreign);
+
+        assertThatThrownBy(() -> service.listImages(productId))
+                .isInstanceOf(ForbiddenException.class);
     }
 }

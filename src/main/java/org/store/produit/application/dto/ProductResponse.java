@@ -9,10 +9,10 @@ public record ProductResponse(
         String nom,
         String reference,
         String description,
-        CategoryProductResponse category,
-        QualityResponse quality,
+        CategoryProductSummaryResponse category,
+        QualitySummaryResponse quality,
         UUID entrepriseId,
-        UUID imagePrincipalId
+        String image
 ) {
     public ProductResponse(Product product) {
         this(
@@ -20,10 +20,10 @@ public record ProductResponse(
                 product.getNom(),
                 product.getReference(),
                 product.getDescription(),
-                new CategoryProductResponse(product.getCategoryProduct()),
-                new QualityResponse(product.getQuality()),
+                new CategoryProductSummaryResponse(product.getCategoryProduct()),
+                new QualitySummaryResponse(product.getQuality()),
                 product.getEntreprise().getId(),
-                product.getImagePrincipal() != null ? product.getImagePrincipal().getId() : null
+                product.getImagePrincipal() != null ? "/api/v1/products/" + product.getId() + "/image" : null
         );
     }
 }

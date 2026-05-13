@@ -16,10 +16,11 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
-import org.store.produit.application.dto.CategoryProductResponse;
+import org.store.produit.application.dto.CategoryProductSummaryResponse;
+import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
-import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.IProductService;
 
 import java.util.List;
@@ -73,8 +74,8 @@ class ProductControllerTest {
 
     private ProductResponse sample() {
         return new ProductResponse(productId, "Pneu 195/65 R15", "PN-195-65-R15", "Pneu été",
-                new CategoryProductResponse(categoryId, "Pneus", null, entrepriseId),
-                new QualityResponse(qualityId, "Premium", null, entrepriseId),
+                new CategoryProductSummaryResponse(categoryId, "Pneus"),
+                new QualitySummaryResponse(qualityId, "Premium"),
                 entrepriseId, null);
     }
 
@@ -93,7 +94,9 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(productId.toString()))
                 .andExpect(jsonPath("$.reference").value("PN-195-65-R15"))
                 .andExpect(jsonPath("$.category.id").value(categoryId.toString()))
+                .andExpect(jsonPath("$.category.libelle").value("Pneus"))
                 .andExpect(jsonPath("$.quality.id").value(qualityId.toString()))
+                .andExpect(jsonPath("$.quality.libelle").value("Premium"))
                 .andExpect(jsonPath("$.entrepriseId").value(entrepriseId.toString()));
     }
 
@@ -141,8 +144,8 @@ class ProductControllerTest {
     @Test
     void should_return_200_when_updated() throws Exception {
         ProductResponse updated = new ProductResponse(productId, "Nouveau", "PN-NEW", "desc",
-                new CategoryProductResponse(categoryId, "Pneus", null, entrepriseId),
-                new QualityResponse(qualityId, "Premium", null, entrepriseId),
+                new CategoryProductSummaryResponse(categoryId, "Pneus"),
+                new QualitySummaryResponse(qualityId, "Premium"),
                 entrepriseId, null);
         when(productService.update(eq(productId), any(ProductRequest.class))).thenReturn(updated);
 
@@ -164,11 +167,11 @@ class ProductControllerTest {
 
     @Test
     void should_return_200_when_image_uploaded() throws Exception {
-        UUID imagePrincipalId = UUID.randomUUID();
         ProductResponse withImage = new ProductResponse(productId, "Pneu", "PN-1", "desc",
-                new CategoryProductResponse(categoryId, "Pneus", null, entrepriseId),
-                new QualityResponse(qualityId, "Premium", null, entrepriseId),
-                entrepriseId, imagePrincipalId);
+                new CategoryProductSummaryResponse(categoryId, "Pneus"),
+                new QualitySummaryResponse(qualityId, "Premium"),
+                entrepriseId,
+                "/api/v1/products/" + productId + "/image");
         when(productService.uploadImagePrincipal(eq(productId), any())).thenReturn(withImage);
 
         MockMultipartFile file = new MockMultipartFile("file", "logo.png", "image/png", new byte[]{1, 2, 3});
@@ -180,7 +183,7 @@ class ProductControllerTest {
                             return req;
                         }))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.imagePrincipalId").value(imagePrincipalId.toString()));
+                .andExpect(jsonPath("$.image").value("/api/v1/products/" + productId + "/image"));
     }
 
     @Test
@@ -241,5 +244,23 @@ class ProductControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(productService).deleteImage(productId, imgId);
+    }
+
+    @Test
+    void should_return_gallery_metadata_list() throws Exception {
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        ImageMetadataResponse m1 = new ImageMetadataResponse(id1, java.time.LocalDate.of(2026, 5, 13), "image/png",
+                "/api/v1/products/" + productId + "/images/" + id1);
+        ImageMetadataResponse m2 = new ImageMetadataResponse(id2, java.time.LocalDate.of(2026, 5, 14), "image/jpeg",
+                "/api/v1/products/" + productId + "/images/" + id2);
+        when(productService.listImages(eq(productId))).thenReturn(List.of(m1, m2));
+
+        mockMvc.perform(get(ProductController.BASE_PATH + "/" + productId + "/images"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(id1.toString()))
+                .andExpect(jsonPath("$[0].contentType").value("image/png"))
+                .andExpect(jsonPath("$[0].url").value("/api/v1/products/" + productId + "/images/" + id1))
+                .andExpect(jsonPath("$[1].id").value(id2.toString()));
     }
 }

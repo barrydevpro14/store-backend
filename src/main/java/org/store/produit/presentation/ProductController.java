@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
+import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.service.IProductService;
@@ -113,5 +114,11 @@ public class ProductController {
     public ResponseEntity<Void> deleteImage(@PathVariable UUID id, @PathVariable UUID imageId) {
         productService.deleteImage(id, imageId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/images")
+    @PreAuthorize("hasAuthority('PRODUCT_READ')")
+    public ResponseEntity<List<ImageMetadataResponse>> listImages(@PathVariable UUID id) {
+        return ResponseEntity.ok(productService.listImages(id));
     }
 }
