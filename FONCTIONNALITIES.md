@@ -252,7 +252,143 @@ strategies.stream()
 
 **Idempotence** : `findByCode` / `findByLibelle` ; ajoute uniquement les permissions manquantes au rôle. Sûr à re-exécuter.
 
-**Dette assumée** : le code Java actuel (`@PreAuthorize('PROPRIETAIRE_ACCESS')`, etc.) référence encore les 4 anciennes permissions. La migration vers la nomenclature granulaire (`COMPANY_READ`, `STORE_CREATE`, ...) est reportée. L'enum `PermissionCode` n'est **pas** mis à jour (4 valeurs uniquement).
+**Dette assumée** : le code Java actuel (`@PreAuthorize('PROPRIETAIRE_ACCESS')`, etc.) référence encore les 4 anciennes permissions. La migration vers la nomenclature granulaire (`COMPANY_READ`, `STORE_CREATE`, ...) est partielle : l'enum `PermissionCode` contient désormais 16 valeurs (4 legacy + 12 granulaires `CATEGORY_PRODUCT_*` / `QUALITY_*` / `PRODUCT_*` utilisées par les controllers produits). Les 70+ permissions YAML restantes ne sont pas encore typées en enum.
+
+---
+
+## 10. CRUD Catégorie de produit — `CategoryProductServiceImpl`
+
+**Endpoints** (`/api/v1/category-products`, permissions granulaires) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `POST` | `/api/v1/category-products` | `CATEGORY_PRODUCT_CREATE` | Crée une catégorie pour l'entreprise du caller (201) |
+| `GET` | `/api/v1/category-products?page=&size=` | `CATEGORY_PRODUCT_READ` | Liste paginée des catégories de l'entreprise courante (200) |
+| `GET` | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_READ` | Lit une catégorie (200, scopée) |
+| `PUT` | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_UPDATE` | Met à jour `libelle`/`description` (200) |
+| `DELETE` | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_DELETE` | Supprime (204) |
+
+**`CategoryProductRequest`** : `@NotBlank @Size(max=255) libelle`, `@Size(max=255) description`.
+
+**`CategoryProductResponse`** : `id, libelle, description, entrepriseId`. Constructeur secondaire `(CategoryProduct)`.
+
+**Scoping multi-tenant** : FK `@ManyToOne Entreprise entreprise` sur l'entité (migration `V4__add_entreprise_to_category_quality.sql`). `ensureBelongsToCurrentEntreprise(category)` sur toutes les opérations (`categoryProduct.notOwned`).
+
+**Unicité libellé par entreprise** : `existsByLibelleAndEntrepriseId` avant create. À l'update : vérification skippée si le libellé n'a pas changé.
+
+**Pagination** : `SELECT new CategoryProductResponse(c) FROM CategoryProduct c WHERE c.entreprise.id = :entrepriseId` (projection JPQL via le constructeur secondaire).
+
+**Dépendances** : `CategoryProductDomainService`, `IEntrepriseService`, `ICurrentUserService`.
+
+---
+
+## 11. CRUD Qualité — `QualityServiceImpl`
+
+**Endpoints** (`/api/v1/qualities`) — structure identique à CategoryProduct, permissions `QUALITY_*`. Mêmes règles de scoping, mêmes patterns Request/Response/projection/unicité. Voir section 10.
+
+---
+
+## 12. CRUD Produit — `ProductServiceImpl`
+
+**Endpoints** (`/api/v1/products`) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `POST` | `/api/v1/products` | `PRODUCT_CREATE` | Crée un produit dans l'entreprise du caller (201) |
+| `GET` | `/api/v1/products?page=&size=` | `PRODUCT_READ` | Liste paginée des produits de l'entreprise (200) |
+| `GET` | `/api/v1/products/{id}` | `PRODUCT_READ` | Lit un produit (200, scopé) |
+| `PUT` | `/api/v1/products/{id}` | `PRODUCT_UPDATE` | Met à jour nom/reference/description + catégorie/qualité (200) |
+| `DELETE` | `/api/v1/products/{id}` | `PRODUCT_DELETE` | Supprime (204) |
+
+**`ProductRequest`** : `@NotBlank @Size(max=255) nom`, `@NotBlank @Size(max=255) reference`, `@Size(max=1000) description`, `@NotNull UUID categoryProductId`, `@NotNull UUID qualityId`.
+
+**`ProductResponse`** (sous-DTOs imbriqués — règle 23) : `id, nom, reference, description, CategoryProductResponse category, QualityResponse quality, entrepriseId, UUID imagePrincipalId`. Constructeur secondaire `(Product)`. `imagePrincipalId` = id de la `PieceJointe` ou `null` si pas d'image principale.
+
+**Règles métier** :
+
+| Règle | Mécanisme |
+|---|---|
+| Le produit appartient à l'entreprise du caller | `ensureBelongsToCurrentEntreprise(product)` sur read/update/delete |
+| La `categoryProductId` doit appartenir à la même entreprise | `categoryProductService.ensureBelongsToCurrentEntreprise(...)` à create/update |
+| La `qualityId` doit appartenir à la même entreprise | `qualityService.ensureBelongsToCurrentEntreprise(...)` à create/update |
+| `reference` unique par entreprise | `existsByReferenceAndEntrepriseId` à create, skippé si inchangé en update |
+
+**`@Transactional(readOnly = true)` au niveau classe** (lectures), override `@Transactional` sur les mutations. Permet aux projections JPQL lazy d'accéder à `categoryProduct`/`quality` lors du mapping en `ProductResponse`.
+
+**Exceptions** :
+- `EntityException("product.notFound" | "categoryProduct.notFound" | "quality.notFound")`.
+- `ForbiddenException("product.notOwned" | "categoryProduct.notOwned" | "quality.notOwned")`.
+- `UniqueResourceException("product.reference.alreadyExists")`.
+
+**Dépendances** : `ProductDomainService`, `ICategoryProductService`, `IQualityService`, `IEntrepriseService`, `ICurrentUserService`, `IUploadFileService` (pour les endpoints image).
+
+---
+
+## 13. Upload de fichiers — `UploadFileServiceImpl`
+
+**Pas un endpoint** — service technique transverse dans `org.store.common.service`.
+
+**Interface** :
+```java
+public interface IUploadFileService {
+    PieceJointe buildImage(MultipartFile file);
+    List<PieceJointe> buildImages(List<MultipartFile> files);
+}
+```
+
+**Comportement** :
+- Valide non-vacuité du fichier (`upload.file.empty`).
+- Valide MIME image contre `UploadProperties.allowedImageTypes` (configurable, par défaut `image/{jpeg,png,webp,gif}`). Erreur : `upload.file.invalidImageType`.
+- Wrap `IOException` (lecture des bytes) en `BadArgumentException("upload.file.readFailed")`.
+- Construit une `PieceJointe` non persistée avec `document=bytes`, `date=LocalDate.now()`, `contentType=file.getContentType().toLowerCase()`.
+- `buildImages` : valide non-vide (`upload.files.empty`), puis applique `buildImage` en boucle (s'arrête au premier invalide).
+
+**Configuration externe** (`record UploadProperties(Set<String> allowedImageTypes)`, `@ConfigurationProperties("upload")`) :
+```yaml
+upload:
+  allowed-image-types:
+    - image/jpeg
+    - image/png
+    - image/webp
+    - image/gif
+```
+Constructeur compact qui normalise en minuscules + rend immutable. Modification = changement YAML, **zéro Java**.
+
+**Multipart** (`application.yml`) : `spring.servlet.multipart.{enabled=true, max-file-size=5MB, max-request-size=6MB}`.
+
+---
+
+## 14. Image principale et galerie produit — `ProductServiceImpl` (suite)
+
+**Endpoints image** :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `PUT` | `/api/v1/products/{id}/image` | `PRODUCT_UPLOAD_IMAGE` | Upload (remplace) l'image principale, body multipart `file` (200, `ProductResponse`) |
+| `DELETE` | `/api/v1/products/{id}/image` | `PRODUCT_UPLOAD_IMAGE` | Supprime l'image principale (idempotent, 204) |
+| `GET` | `/api/v1/products/{id}/image` | `PRODUCT_READ` | Sert le blob avec le bon `Content-Type` (200, `byte[]`) |
+| `POST` | `/api/v1/products/{id}/images` | `PRODUCT_UPLOAD_IMAGE` | Upload cumulatif de plusieurs images dans la galerie, body multipart `files` (201, `List<UUID>`) |
+| `GET` | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_READ` | Sert le blob d'une image de la galerie (200, `byte[]`) |
+| `DELETE` | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_UPLOAD_IMAGE` | Retire une image de la galerie (orphanRemoval purge la `PieceJointe`) (204) |
+
+**Modèle** :
+- `Product.imagePrincipal` — `@OneToOne(fetch=LAZY, cascade=ALL, orphanRemoval=true) PieceJointe`. Migration `V5__add_image_principal_to_product.sql`.
+- `Product.images` — `@OneToMany(fetch=LAZY, cascade=ALL, orphanRemoval=true) List<PieceJointe>` (galerie indépendante de `imagePrincipal`).
+- `PieceJointe.contentType` — `@Column(name="content_type", nullable=false, length=100) String` (migration `V6__add_content_type_to_piece_jointe.sql`). Rempli à l'upload depuis `file.getContentType()` (lowercased). **Source de vérité** pour servir l'image avec le bon `Content-Type`.
+
+**DTO retour** (visualisation) — `ImageDownloadResponse(byte[] content, String contentType)` dans `common/dto`. Le controller transforme en `ResponseEntity.ok().contentType(MediaType.parseMediaType(...)).body(...)`.
+
+**Règles** :
+- `ensureBelongsToCurrentEntreprise(product)` sur toutes les opérations.
+- `getImagePrincipal` lève `EntityException("product.image.notFound")` si pas d'image.
+- `getImage` / `deleteImage` lèvent `EntityException("product.image.galleryImageNotFound")` si imageId pas dans la galerie du product.
+- Le `setImagePrincipal(product, null)` ou `removeImage(product, image)` déclenche la suppression effective de la `PieceJointe` via `orphanRemoval=true`.
+
+**Performance** : la visualisation lit directement `pieceJointe.getContentType()` (champ stocké), pas de détection runtime. Extensible à tout MIME (PDF, factures, docs) sans modif code Java.
+
+**Limitations actuelles** :
+- Pas d'endpoint listing de la galerie (`GET /{id}/images` retournant la liste des métadonnées). Le client doit connaître les ids à l'avance (retournés à l'upload).
+- Pas de validation de taille applicative (s'appuie sur la limite Spring `max-file-size=5MB`, renvoie 400 `MaxUploadSizeExceededException` au-delà — handler i18n custom à ajouter si besoin).
 
 ---
 

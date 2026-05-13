@@ -7,7 +7,100 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-13
+**Date :** 2026-05-13 (suite — après-midi/soir)
+**Sujet :** CRUD CategoryProduct + Quality + Product (scopés par entreprise, permissions granulaires), `Product.imagePrincipal` + galerie `images`, service `IUploadFileService` (commun, valide MIME images, externalise config via `UploadProperties`), endpoints upload/visualisation/suppression image principale et galerie, bascule de la détection magic bytes vers un champ `contentType` stocké sur `PieceJointe`
+
+**Ce qui a été fait :**
+
+1. **Pré-requis transverses** :
+   - FK `@ManyToOne Entreprise entreprise` ajoutée sur `CategoryProduct` et `Quality` (modèle modifié avec validation explicite de l'utilisateur). Migration Flyway **V4** (`add_entreprise_to_category_quality.sql`, NOT NULL + FK + index).
+   - Enum `PermissionCode` enrichi de **12 valeurs granulaires** : `CATEGORY_PRODUCT_{CRUD}`, `QUALITY_{CRUD}`, `PRODUCT_{CRUD}` (passe de 4 à 16 valeurs).
+   - `roles-permissions.yml` aligné : ajout `CATEGORY_PRODUCT_*` + `QUALITY_*` (ADMIN/PROPRIETAIRE/MANAGER = CRUD, VENDEUR = READ seul). Permissions `PRODUCT_*` déjà présentes.
+   - i18n FR/EN : 9 clés (`categoryProduct.{notFound,libelle.alreadyExists,notOwned}`, `quality.*`, `product.{notFound,reference.alreadyExists,notOwned}`).
+
+2. **CRUD CategoryProduct** (référentiel scopé entreprise) — DTOs `CategoryProductRequest` + `CategoryProductResponse(CategoryProduct)`, `CategoryProductDomainService` enrichi (`create`, queries scopées + unicité libellé), `ICategoryProductService` + impl scoping via `ICurrentUserService` (unicité libellé skippée si inchangée en update), controller `/api/v1/category-products` (POST/GET paginé/GET id/PUT/DELETE) avec `@PreAuthorize` granulaires. 14 tests service + 6 controller.
+
+3. **CRUD Quality** — calqué sur CategoryProduct. Mêmes structures, mêmes permissions adaptées. 14 + 6 tests.
+
+4. **CRUD Product** — DTOs avec **sous-DTOs imbriqués** `CategoryProductResponse` + `QualityResponse` (règle 23), `ProductDomainService.create(request, category, quality, entreprise)`, `IProductService` + impl `@Transactional(readOnly=true)` au niveau classe. **Cohérence cross-tenant** : vérif que catégorie & qualité utilisées appartiennent bien à l'entreprise du caller (via `ensureBelongsToCurrentEntreprise` cross-services). Unicité `reference` par entreprise, skippée si inchangée. Controller `/api/v1/products` avec `@PreAuthorize('PRODUCT_*')`. 15 + 7 tests.
+
+5. **`Product.imagePrincipal`** — relation `@OneToOne(fetch=LAZY, cascade=ALL, orphanRemoval=true) PieceJointe`, **indépendante** de la galerie `images` (choix explicite). Migration Flyway **V5** (`add_image_principal_to_product.sql`). `ProductResponse` expose `imagePrincipalId` (id seul, pas le blob). `ProductRequest` inchangé (upload via endpoint dédié).
+
+6. **`IUploadFileService` + `UploadFileServiceImpl`** (`common/service/`) — service technique réutilisable. Une seule méthode au début : `buildImage(MultipartFile) → PieceJointe` (validation non-vide + MIME `image/{jpeg,png,webp,gif}`, lit les bytes, `date=now`). Wrap `IOException` en `BadArgumentException`.
+
+7. **Config multipart** : `application.yml` enrichi `spring.servlet.multipart.{enabled, max-file-size=5MB, max-request-size=6MB}`.
+
+8. **Endpoints upload/delete image principale** :
+   - `PUT /api/v1/products/{id}/image` (multipart `@RequestPart("file")`), `@PreAuthorize('PRODUCT_UPLOAD_IMAGE')` → 200 OK + `ProductResponse`.
+   - `DELETE /api/v1/products/{id}/image` → 204. orphanRemoval purge la `PieceJointe`.
+   - `ProductDomainService.setImagePrincipal(Product, PieceJointe)`.
+
+9. **Upload multiple — galerie `Product.images`** :
+   - `IUploadFileService.buildImages(List<MultipartFile>) → List<PieceJointe>` (réutilise `buildImage` en boucle, stop au 1er invalide).
+   - `ProductDomainService.addImages(Product, List<PieceJointe>) → Product` (append cumulatif).
+   - `IProductService.uploadImages(UUID, List<MultipartFile>) → List<UUID>` (retourne les ids des images créées pour affichage immédiat côté client).
+   - `POST /api/v1/products/{id}/images` (multipart `@RequestPart("files")`), `@PreAuthorize('PRODUCT_UPLOAD_IMAGE')` → 201 + `List<UUID>`.
+
+10. **Externalisation config types MIME** — record `UploadProperties` (`@ConfigurationProperties("upload")`, **aplati** après itération : initialement avec sous-record `Image`, puis nested, puis remis en fichier séparé, finalement aplati en `UploadProperties(Set<String> allowedImageTypes)` avec **constructeur compact** qui normalise (toLowerCase) + rend immutable. Évite la duplication de logique côté service. `application.yml` : bloc `upload.allowed-image-types`.
+
+11. **Visualisation et suppression d'image** :
+   - DTO `ImageDownloadResponse(byte[] content, String contentType)` dans `common/dto`.
+   - `ProductDomainService.findImageInProduct(Product, UUID) → Optional<PieceJointe>` + `removeImage(Product, PieceJointe)` (orphanRemoval purge).
+   - `IProductService.getImagePrincipal(UUID)` / `getImage(productId, imageId)` / `deleteImage(productId, imageId)`.
+   - Endpoints `GET /products/{id}/image` (`PRODUCT_READ`), `GET /products/{id}/images/{imageId}` (`PRODUCT_READ`), `DELETE /products/{id}/images/{imageId}` (`PRODUCT_UPLOAD_IMAGE`).
+   - Première implémentation via **détection magic bytes** dans `IUploadFileService.detectImageContentType(byte[])` : JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A`, GIF `GIF8`, WebP `RIFF...WEBP`, fallback `application/octet-stream`. Robuste, pas de modif modèle, mais limité aux 4 formats codés.
+
+12. **Bascule vers `contentType` stocké sur `PieceJointe`** (après réflexion) — ajout `@Column(name="content_type", nullable=false, length=100) String contentType` sur `PieceJointe` + migration Flyway **V6** (table vide → NOT NULL direct). `UploadFileServiceImpl.buildImage` stocke `file.getContentType()` (lowercased) à l'upload. Lecture directe via `pieceJointe.getContentType()`. **Suppression** de `detectImageContentType` (+30 lignes) et de ses 5 tests. Extensible à tout MIME (PDF/factures/docs) sans modif code.
+
+13. **Tests** : suite portée de 162 → **255 verts** (+93 sur la session). Structure :
+    - `CategoryProductServiceImplTest` (14) + `CategoryProductControllerTest` (6)
+    - `QualityServiceImplTest` (14) + `QualityControllerTest` (6)
+    - `ProductServiceImplTest` (24, dont upload image principale + galerie + visualisation + suppression) + `ProductControllerTest` (12)
+    - `UploadFileServiceImplTest` (9, après suppression des 5 magic bytes)
+
+14. **Convention "ne pas modifier les entités sans validation"** — formalisée en mémoire user après l'incident initial où j'avais proposé d'ajouter une FK Entreprise sur CategoryProduct/Quality sans demander. Désormais toute modif d'entité JPA passe par une demande explicite. Voir `feedback_ne_pas_modifier_entites.md`.
+
+15. **Convention commits projet** — formalisée en mémoire user : Conventional Commits FR informel, **jamais de `Co-Authored-By: Claude`**, pas de push automatique, `git add` ciblé. Voir `feedback_commit_style.md`.
+
+**Décisions / arbitrages :**
+
+- **FK Entreprise sur CategoryProduct/Quality** : décidée après que l'utilisateur a clarifié "chaque entreprise a ses catégories/qualités". Initialement il avait refusé, puis confirmé que sans FK on ne pouvait pas vraiment scoper → accepté la modif modèle. Règle "demander avant de modifier" appliquée.
+- **Permissions granulaires (vs legacy)** : ajout des 12 nouvelles permissions à l'enum + YAML dès le départ pour les nouveaux endpoints. Les permissions legacy (`PROPRIETAIRE_ACCESS` etc.) restent inchangées pour ne pas casser les contrôleurs existants. Migration progressive reportée.
+- **Référentiel scopé par entreprise, pas par magasin** : un produit appartient à une entreprise (pas à un magasin spécifique). Cohérent avec le modèle (`Product.entreprise` était déjà là). Le stock par magasin sera géré par le module `stock` (FIFO).
+- **`Product.imagePrincipal` indépendante de `images`** : choix utilisateur — pas de contrainte "imagePrincipal doit être dans images". Plus simple, moins de couplage.
+- **Galerie non exposée dans `ProductResponse`** : choix utilisateur — `ProductResponse` reste minimal, la galerie sera exposée via un endpoint dédié `GET /{id}/images` plus tard (non livré dans cette session).
+- **POST cumulatif sur galerie (vs PUT remplaçant)** : choix utilisateur. Le client doit utiliser DELETE pour retirer une image avant d'en ajouter une nouvelle s'il veut remplacer. Plus naturel pour une galerie.
+- **Format de retour `POST /images`** : `List<UUID>` plutôt que `ProductResponse` complet. Utile au client pour afficher immédiatement les nouvelles images sans rerequérir.
+- **`UploadProperties` aplati (vs nested record `Image`)** : itéré 3 fois (nested → record séparé `Image.java` → tentative `@Component` rejetée car casserait Spring → aplati). Forme finale : `UploadProperties(Set<String> allowedImageTypes)` avec constructeur compact qui normalise. Pas besoin de sous-record pour un seul champ.
+- **Magic bytes → contentType stocké** : magic bytes solide pour le périmètre images, mais le champ stocké :
+  - Extensible à tout MIME sans modif code (PDF, docs, factures à venir).
+  - Source de vérité unique (déclaration client à l'upload).
+  - Code service plus court, plus simple.
+  - Trade-off : si client envoie un mauvais Content-Type, on stocke le mensonge. Acceptable car validation du MIME contre `upload.allowed-image-types` est faite à l'upload.
+- **`PieceJointe.contentType NOT NULL` direct** (vs nullable + backfill) : tables vides en local, pas de données existantes à migrer. Si déploiement prod un jour avec données, faudra revoir.
+- **Multi-validations au lieu d'une seule** : pour upload, validation MIME se fait à l'upload (`UploadFileServiceImpl`) et le contentType résultant est stocké. On ne re-valide pas à la lecture (gain perf vs robustesse).
+
+**Où on s'est arrêté :**
+
+- **255 tests verts** (162 → 255, +93 cette session).
+- **2 commits poussés sur `origin/dev`** :
+  - `d008da0` "CRUD Catégorie/Qualité/Produit + upload image principale et galerie" (42 fichiers, +2829)
+  - `8bacfe4` "Visualisation/suppression image produit + contentType stocké sur PieceJointe" (14 fichiers, +272)
+- **Migrations Flyway pendantes** au prochain démarrage : V4 (FK entreprise sur category_product/quality), V5 (image_principal_id sur product), V6 (content_type sur piece_jointe).
+- **Permissions YAML** : 95 valeurs au total. `CATEGORY_PRODUCT_*` + `QUALITY_*` à synchroniser en BD au prochain boot avec `RBAC_SYNC=true`.
+- **Enum `PermissionCode`** : 16 valeurs (4 legacy + 12 granulaires).
+- **Galerie `Product.images`** : upload (POST), suppression individuelle (DELETE), visualisation (GET) câblés. Pas d'endpoint de listing (GET `/{id}/images` retournant `List<ImageMetadata>`) — reporté.
+
+**Prochaine étape recommandée :**
+
+1. **Endpoint listing galerie** — `GET /api/v1/products/{id}/images` qui retourne `List<ImageMetadata{id, date, contentType}>` pour qu'un client puisse récupérer la liste avant de demander chaque blob.
+2. **Migration progressive des `@PreAuthorize` legacy** — remplacer `PROPRIETAIRE_ACCESS` / `EMPLOYE_ACCESS` par les permissions granulaires correspondantes (`COMPANY_READ/UPDATE`, `STORE_*`, `USER_*` etc.). L'enum `PermissionCode` doit recevoir les 70+ valeurs granulaires restantes.
+3. **Module `stock`** — FIFO basé sur les produits créés (premier vrai use case du module stock). EntreeStock alimentée par CommandeAchat, SortieStock consommée par CommandeVente.
+4. **Frontend** : `src/lib/api/client.ts` (axios + intercepteur JWT) + pages `(auth)/login` et `(auth)/register` pour rendre le flux d'inscription/connexion testable bout en bout.
+
+---
+
+### Session du 2026-05-13 (matinée)
 **Sujet :** Externalisation RBAC (rôles + permissions) dans un YAML synchronisable, flag `security.rbac.sync`, i18n des exceptions, surcharge `LocalizedRuntimeException` avec cause, convention de documentation des services applicatifs (puis révision stricte), logs HTTP entrants/sortants + requestId MDC, GlobalException WARN/ERROR
 
 **Ce qui a été fait :**
