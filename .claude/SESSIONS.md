@@ -8,7 +8,7 @@
 ## 📌 Dernière session
 
 **Date :** 2026-05-13
-**Sujet :** Externalisation RBAC (rôles + permissions) dans un YAML synchronisable, flag `security.rbac.sync`, i18n des exceptions, surcharge `LocalizedRuntimeException` avec cause, convention de documentation des services applicatifs
+**Sujet :** Externalisation RBAC (rôles + permissions) dans un YAML synchronisable, flag `security.rbac.sync`, i18n des exceptions, surcharge `LocalizedRuntimeException` avec cause, convention de documentation des services applicatifs (puis révision stricte), logs HTTP entrants/sortants + requestId MDC, GlobalException WARN/ERROR
 
 **Ce qui a été fait :**
 
@@ -45,6 +45,28 @@
 
 12. **Tests** — `RolesPermissionsSyncServiceImplTest` (JUnit5 + Mockito) : 4 cas (création initiale, idempotence, mise à jour associations, détection orphelins sans suppression). Le YAML de test est embarqué via `ByteArrayResource`.
 
+13. **`HttpRequestLoggingFilter`** (`org/store/config/`, `@Component OncePerRequestFilter`) — trace chaque requête HTTP :
+    - `→ METHOD path from ip` à l'entrée + `← status METHOD path in Xms | request: {...} | response: {...}` à la sortie (status code inclus).
+    - `ContentCachingRequestWrapper(req, MAX_PAYLOAD_LENGTH*2)` + `ContentCachingResponseWrapper` pour relire les bodies sans empêcher controllers/clients de les consommer.
+    - **Masquage automatique** des champs sensibles par regex JSON : `password`, `accessToken`, `refreshToken`, `secret`, `token` → `"***"`.
+    - **Tronquage** bodies > 2 KB → `...[truncated]`. Skip binaire (`multipart/*`, `image/*`, `video/*`, `audio/*`, `octet-stream`) → `[binary]`.
+    - **Skip paths** : `/actuator/**`, `/swagger-ui/**`, `/v3/api-docs/**`.
+    - **`requestId` UUID dans MDC** posé au début, `MDC.clear()` en `finally` (anti-fuite entre requêtes sur thread recyclé).
+    - **`X-Forwarded-For`** privilégié sur `remoteAddr` (utile derrière reverse proxy).
+    - Pas branché via `addFilterBefore` dans `SecurityConfig` — Spring Security 7 refuse les références à des filtres hors chaîne Security. Le filtre `@Component` est auto-enregistré par Spring Boot dans la chaîne servlet avant `springSecurityFilterChain` — comportement voulu.
+
+14. **`logging.pattern.console`** dans `application.yml` enrichi avec `[%X{requestId:-}]` → chaque ligne de log porte automatiquement le requestId, facilitant le tracing.
+
+15. **`GlobalException` — log WARN/ERROR différencié** :
+    - 4xx → `logger.warn("HTTP {} - {}", statusCode, message)` (sans stack — c'est le client qui a mal appelé).
+    - 5xx → `logger.error("HTTP {} - {}", statusCode, message, cause)` (avec stack — c'est un bug serveur).
+    - Helper `buildError(message, status, throwable)` surchargé. `MethodArgumentNotValidException` et `ConstraintViolationException` loguent aussi en WARN avec les champs en erreur.
+    - Handlers 5xx (RestTemplate/NPE/Sse/Mail/catch-all `Exception`) passent l'exception au helper pour conserver la stack.
+
+16. **`HttpRequestLoggingFilterTest`** — 6 cas : MDC posé pendant la chaîne + clear après, log entrée+sortie avec status/durée, masquage `password` dans request body, masquage `accessToken/refreshToken` dans response body, skip actuator/swagger/openapi, priorité `X-Forwarded-For`. Capture via `ListAppender<ILoggingEvent>` Logback.
+
+17. **Révision règle 29** (convention doc services applicatifs) — d'abord posée comme "javadoc complète + commentaires de section + commentaires inline pour le **pourquoi**", puis **resserrée** à : **javadoc concise (1 phrase) sur classe + chaque méthode, AUCUN commentaire à l'intérieur du corps**. Justification : si le code nécessite un commentaire inline, c'est un signal de mauvais nommage ou de refactor manquant. Nettoyage en conséquence de `RolesPermissionsSyncServiceImpl` et `HttpRequestLoggingFilter`. Mémoire user `feedback_doc_service_applicatif.md` mise à jour.
+
 **Décisions / arbitrages :**
 
 - **Stratégie additive (vs strict / vs additif sans suppression assoc)** : choisie après comparaison. Raison : une mauvaise édition du YAML en prod ne doit jamais retirer silencieusement des droits à des utilisateurs. Le WARN signale l'écart, l'opérateur décide.
@@ -54,13 +76,18 @@
 - **Surcharge `LocalizedRuntimeException(key, cause, args)`** : la convention "constructeur unique" est étendue à "deux formes officielles". Justifié pour préserver la cause des wraps techniques (IO, parsing). À garder en tête pour les exceptions futures.
 - **Logs non i18n** : convention projet — les logs visent l'opérateur système, pas l'utilisateur final. Restent en anglais figé.
 - **Convention de doc — `<X>ServiceImpl` uniquement** : les DomainServices (passe-plats data) et controllers (handlers minimaux) sont auto-documentants. Doc concentrée là où vit la logique métier.
+- **Convention de doc révisée (resserrée)** : 1 phrase de javadoc par classe + 1 phrase par méthode, **zéro commentaire inline**. Le code doit parler de lui-même via le nommage ; un commentaire inline signale un refactor manquant.
+- **Filtre HTTP custom hors SecurityConfig** : Spring Security 7 (Spring Boot 4) refuse `addFilterBefore(x, F.class)` si `F` n'est pas un filtre de la chaîne Security. Solution adoptée : laisser le filtre `@Component OncePerRequestFilter` être auto-enregistré par Spring Boot dans la chaîne servlet (s'exécute avant `springSecurityFilterChain`).
+- **Logs HTTP en INFO** (vs DEBUG) : visibles en dev/prod par défaut. Les bodies sensibles sont masqués par regex (`"password":"***"`) — pas de risque de fuite tant que les champs déclarés couvrent les cas du projet.
+- **GlobalException — WARN 4xx / ERROR 5xx** : aligne le niveau de log sur la sévérité. Le client n'est pas un bug serveur → WARN suffit ; un 500 est anormal → ERROR + stack.
 
 **Où on s'est arrêté :**
 
-- **156 tests verts** (152 → 156 avec les 4 nouveaux).
-- 2 commits poussés sur `origin/dev` : `0115ca4` "Externalisation seed RBAC dans roles-permissions.yml + flag security.rbac.sync" + `bef46eb` "Documentation services applicatifs (convention + javadoc RBAC sync)".
+- **162 tests verts** (152 → 162 avec les 4 sync + 6 filter).
+- 5 commits poussés sur `origin/dev` : `0115ca4` "Externalisation seed RBAC dans roles-permissions.yml + flag security.rbac.sync" + `bef46eb` "Documentation services applicatifs (convention + javadoc RBAC sync)" + `1cf01e0` "Logs HTTP entrants/sortants + requestId MDC + GlobalException WARN/ERROR".
 - Sync RBAC **désactivée par défaut** (`RBAC_SYNC=false`). La BD locale a été seedée lors du test d'intégration (orphelins préexistants : rôle `EMPLOYE` + perm `EMPLOYE_ACCESS` sur `PROPRIETAIRE` — non-bloquants).
-- Convention de doc adoptée pour tous les futurs `<X>ServiceImpl`.
+- Convention de doc resserrée adoptée pour tous les futurs `<X>ServiceImpl`.
+- Logs HTTP actifs sur toutes les requêtes (hors paths techniques), avec `requestId` MDC propagé dans chaque ligne.
 
 **Prochaine étape recommandée :**
 
