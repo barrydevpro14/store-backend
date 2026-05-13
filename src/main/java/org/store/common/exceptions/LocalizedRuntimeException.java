@@ -14,6 +14,12 @@ public abstract class LocalizedRuntimeException extends RuntimeException {
         this.args = args;
     }
 
+    protected LocalizedRuntimeException(String messageKey, Throwable cause, Object... args) {
+        super(messageKey, cause);
+        this.messageKey = messageKey;
+        this.args = args;
+    }
+
     public Object[] getArgs() {
         return args == null ? new Object[0] : args;
     }

@@ -20,6 +20,7 @@
 - [x] **Strategy pattern `UserPrincipalContextStrategy`** (2026-05-12) — élimination `instanceof` dans `UserPrincipalFactoryImpl`. Package `security/application/strategies/` : `UserPrincipalContext`, interface + 3 impls (Proprietaire/Employe/Utilisateur fallback). Dispatch "most-specific wins".
 - [x] **Extraction `UserResponse` DTO** (2026-05-12) — `AccountResponse` agrège un `UserResponse` au lieu des 5 champs à plat. Constructeur `UserResponse(Utilisateur)`.
 - [x] **Seed ERP** (2026-05-12) — 4 rôles (PROPRIETAIRE, MANAGER, VENDEUR, ADMIN) + 79 permissions (4 anciennes + 75 nouvelles MODULE_ACTION) selon matrice PDF `Roles Permissions Erp Saas.pdf`. MANAGER absorbe Magasinier+Comptable. `DataInitializer` étendu (idempotent).
+- [x] **RBAC YAML synchronisable** (2026-05-13) — Externalisation rôles+permissions dans `src/main/resources/security/roles-permissions.yml`. `RbacProperties` (`security.rbac.sync` + `security.rbac.file`). `IRolesPermissionsSyncService` (additif + log des orphelins, jamais de suppression). `DataInitializer` allégé : appel conditionnel à `sync()` si `sync=true`. 4 tests unitaires (création, idempotence, mise à jour assoc, détection orphelins).
 
 ### Frontend
 - [ ] Vérifier l'install de TanStack React Query (clé `"root": "github:tanstack/react-query"` dans `package.json` est suspecte — l'import `@tanstack/react-query` fonctionne‑t‑il vraiment ?)

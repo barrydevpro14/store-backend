@@ -23,3 +23,8 @@ management:
     web:
       exposure:
         include: health
+
+security:
+  rbac:
+    sync: ${RBAC_SYNC:false}
+    file: ${RBAC_FILE:classpath:security/roles-permissions.yml}
