@@ -15,12 +15,20 @@ import java.math.BigDecimal;
 public class ProductFournisseur extends AuditableEntity {
     public static final String TABLE_NAME = "product_fournisseur";
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "fournisseur_id", nullable = false)
     private Fournisseur fournisseur;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal prixAchat;
+
+    @Column(name = "reference_fournisseur", length = 100)
+    private String referenceFournisseur;
+
+    @Column(length = 100)
+    private String origine;
 }
