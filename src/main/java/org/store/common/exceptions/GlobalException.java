@@ -34,9 +34,9 @@ public class GlobalException {
             String field = ((FieldError)error).getField();
             errors.add(new Error(field, errorMessage));
         });
-
-        return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
-                messageSourceService.getMessage("validation.error"), errors), HttpStatus.BAD_REQUEST);
+        String message = messageSourceService.getMessage("validation.error");
+        logger.warn("HTTP 400 - {} ({})", message, errors);
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message, errors), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -49,9 +49,9 @@ public class GlobalException {
             String message = violation.getMessage();
             errors.add(new Error(field, message));
         }
-
-        return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(),
-                messageSourceService.getMessage("validation.error"), errors), HttpStatus.BAD_REQUEST);
+        String message = messageSourceService.getMessage("validation.error");
+        logger.warn("HTTP 400 - {} ({})", message, errors);
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message, errors), HttpStatus.BAD_REQUEST);
     }
 
 
@@ -67,7 +67,7 @@ public class GlobalException {
 
     @ExceptionHandler(RestTemplateException.class)
     public ResponseEntity<ErrorResponse> restTemplate(RestTemplateException ex) {
-        return buildError(resolve(ex), HttpStatus.SERVICE_UNAVAILABLE.value());
+        return buildError(resolve(ex), HttpStatus.SERVICE_UNAVAILABLE.value(), ex);
     }
 
     @ExceptionHandler(BadArgumentException.class)
@@ -102,17 +102,17 @@ public class GlobalException {
 
     @ExceptionHandler(MailException.class)
     public ResponseEntity<ErrorResponse> mailException(MailException ex) {
-        return buildError(resolve(ex), HttpStatus.SERVICE_UNAVAILABLE.value());
+        return buildError(resolve(ex), HttpStatus.SERVICE_UNAVAILABLE.value(), ex);
     }
 
     @ExceptionHandler(NullPointerException.class)
     public ResponseEntity<ErrorResponse> nullPointerException(NullPointerException ex) {
-        return buildError(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
+        return buildError(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), ex);
     }
 
     @ExceptionHandler(SseException.class)
     public ResponseEntity<ErrorResponse> seeException(SseException ex) {
-        return buildError(resolve(ex), HttpStatus.SERVICE_UNAVAILABLE.value());
+        return buildError(resolve(ex), HttpStatus.SERVICE_UNAVAILABLE.value(), ex);
     }
 
     @ExceptionHandler(ForbiddenException.class)
@@ -132,8 +132,7 @@ public class GlobalException {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> errorServer(Exception ex) {
-        logger.error("error server", ex);
-        return buildError(messageSourceService.getMessage("error.unexpected"), HttpStatus.INTERNAL_SERVER_ERROR.value());
+        return buildError(messageSourceService.getMessage("error.unexpected"), HttpStatus.INTERNAL_SERVER_ERROR.value(), ex);
     }
 
 
@@ -143,7 +142,28 @@ public class GlobalException {
                 : ex.getMessage();
     }
 
+    /**
+     * Build une réponse d'erreur sans cause (utilisé pour les 4xx métier).
+     * Log automatiquement en WARN.
+     */
     private ResponseEntity<ErrorResponse> buildError(String message, int statusCode) {
+        return buildError(message, statusCode, null);
+    }
+
+    /**
+     * Build une réponse d'erreur avec cause optionnelle.
+     * Log en WARN sans stack si statusCode &lt; 500, en ERROR avec stack sinon.
+     */
+    private ResponseEntity<ErrorResponse> buildError(String message, int statusCode, Throwable cause) {
+        if (statusCode >= 500) {
+            if (cause != null) {
+                logger.error("HTTP {} - {}", statusCode, message, cause);
+            } else {
+                logger.error("HTTP {} - {}", statusCode, message);
+            }
+        } else {
+            logger.warn("HTTP {} - {}", statusCode, message);
+        }
         return new ResponseEntity<>(new ErrorResponse(statusCode, message, null), HttpStatus.valueOf(statusCode));
     }
 

@@ -24,6 +24,10 @@ management:
       exposure:
         include: health
 
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-}] %logger{36} - %msg%n"
+
 security:
   jwt:
     secret: ${JWT_SECRET:ou2FiLzTm0GTFqbSGOG1kJf0Qe7kGDdOQmRU8t7Csgi35C17SSET83HMY75BS61ujph877iw8y6VEVdsMEp14A==}

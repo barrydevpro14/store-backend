@@ -27,16 +27,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Synchronise les rôles et permissions définis dans le fichier YAML
- * (`security.rbac.file`, par défaut `classpath:security/roles-permissions.yml`)
- * avec la base de données.
- *
- * <p>Stratégie <b>additive</b> : on ne supprime jamais ; les éléments présents
- * en BD mais absents du YAML sont uniquement loggués en WARN (orphelins). Cela
- * évite qu'une mauvaise édition du YAML retire silencieusement des droits à des
- * utilisateurs en production.</p>
- *
- * <p>Idempotent : appeler {@link #sync()} N fois donne le même état final.</p>
+ * Synchronise les rôles et permissions du YAML ({@code security.rbac.file}) avec la base de données.
+ * Stratégie additive : aucune suppression, les orphelins sont seulement loggués.
  */
 @Service
 public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncService {
@@ -56,29 +48,14 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
     }
 
     /**
-     * Exécute la synchronisation en 4 étapes :
-     * <ol>
-     *   <li>Charger le YAML.</li>
-     *   <li>Insérer les permissions manquantes (collecte dans un catalog
-     *       en mémoire pour éviter les SELECTs lors de l'étape 3).</li>
-     *   <li>Insérer ou mettre à jour chaque rôle (associations).</li>
-     *   <li>Détecter les orphelins (permissions/rôles en BD absents du YAML)
-     *       et les logger sans rien supprimer.</li>
-     * </ol>
-     * Toute l'opération est transactionnelle : en cas d'erreur, rien n'est commité.
-     *
-     * @return un rapport listant ce qui a été ajouté, mis à jour et signalé orphelin.
+     * Exécute la synchronisation RBAC du YAML vers la base et retourne un rapport
+     * des entités ajoutées, mises à jour et orphelines.
      */
     @Override
     @Transactional
     public RbacSyncReport sync() {
-        // Étape 1 — chargement et parsing du YAML
         RbacConfig config = loadConfig();
 
-        // Étape 2 — synchronisation des permissions.
-        // Le catalog (Map<code, Permissions>) est rempli au fur et à mesure :
-        // on l'utilise à l'étape 3 pour résoudre les associations role↔permission
-        // sans refaire de SELECT par code.
         Map<String, Permissions> catalog = new LinkedHashMap<>();
         List<String> addedPermissions = new ArrayList<>();
         for (String code : config.permissions()) {
@@ -93,17 +70,12 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
             catalog.put(code, p);
         }
 
-        // Étape 3 — synchronisation des rôles + leurs associations.
-        // Délégué à ensureRole(), qui gère création/mise à jour/log des orphelins par rôle.
         List<String> addedRoles = new ArrayList<>();
         List<String> updatedRoles = new ArrayList<>();
         for (RoleDef roleDef : config.roles()) {
             ensureRole(roleDef, catalog, addedRoles, updatedRoles);
         }
 
-        // Étape 4 — détection des orphelins globaux (en BD, pas dans le YAML).
-        // On compare l'état BD à la déclaration YAML ; rien n'est supprimé,
-        // on se contente de prévenir l'opérateur.
         List<String> orphanPermissions = permissionsDomainService.findAll().stream()
                 .map(Permissions::getCode)
                 .filter(code -> !catalog.containsKey(code))
@@ -128,28 +100,13 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
     }
 
     /**
-     * Garantit qu'un rôle déclaré dans le YAML existe en BD avec au moins
-     * toutes les permissions listées.
-     *
-     * <p>Trois cas :</p>
-     * <ul>
-     *   <li><b>Rôle absent</b> → création avec ses permissions, ajouté à {@code addedRoles}.</li>
-     *   <li><b>Rôle existant, associations à compléter</b> → on ajoute les permissions
-     *       manquantes, le rôle est ajouté à {@code updatedRoles}.</li>
-     *   <li><b>Rôle existant, déjà à jour</b> → aucune écriture, aucune trace dans le rapport.</li>
-     * </ul>
-     *
-     * <p>Les permissions associées en BD mais absentes du YAML pour ce rôle sont
-     * loggées en WARN puis <b>conservées</b> (stratégie additive — voir la classe).</p>
-     *
-     * @throws RbacConfigException si le YAML référence une permission qui n'est pas
-     *         déclarée dans la section globale {@code permissions} (incohérence).
+     * Garantit qu'un rôle du YAML existe en BD avec au moins les permissions listées,
+     * en alimentant addedRoles ou updatedRoles selon le cas.
      */
     private void ensureRole(RoleDef roleDef,
                             Map<String, Permissions> catalog,
                             List<String> addedRoles,
                             List<String> updatedRoles) {
-        // Recherche par libellé (clé fonctionnelle du rôle, pas l'UUID).
         Role role = roleDomainService.findByLibelle(roleDef.libelle()).orElse(null);
         boolean created = false;
         if (role == null) {
@@ -163,22 +120,16 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
             created = true;
         }
 
-        // Garde-fou : si la collection lazy a été initialisée à null côté JPA.
         Set<Permissions> current = role.getPermissions();
         if (current == null) {
             current = new LinkedHashSet<>();
             role.setPermissions(current);
         }
 
-        // Ajout des associations manquantes — on s'appuie sur le catalog (étape 2)
-        // pour récupérer l'entité Permissions déjà persistée. La comparaison par
-        // ID évite les faux négatifs liés à equals/hashCode des entités JPA.
         boolean associationsChanged = false;
         for (String code : roleDef.permissions()) {
             Permissions required = catalog.get(code);
             if (required == null) {
-                // Le YAML est incohérent : un rôle référence une permission
-                // qui n'est pas déclarée dans la section globale `permissions`.
                 throw new RbacConfigException("rbac.config.unknownPermission", roleDef.libelle(), code);
             }
             boolean alreadyPresent = current.stream()
@@ -189,8 +140,6 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
             }
         }
 
-        // Orphelins par rôle : permissions en BD mais absentes du YAML pour ce rôle.
-        // On log mais on ne retire rien (stratégie additive).
         Set<String> yamlCodes = new LinkedHashSet<>(roleDef.permissions());
         current.stream()
                 .map(Permissions::getCode)
@@ -199,8 +148,6 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
                         "RBAC sync: role '{}' has permission '{}' in DB but not in YAML (kept)",
                         roleDef.libelle(), code));
 
-        // On ne persiste que si quelque chose a vraiment changé.
-        // `updatedRoles` ne contient pas les rôles fraîchement créés (déjà dans `addedRoles`).
         if (associationsChanged) {
             roleDomainService.save(role);
             if (!created) {
@@ -211,19 +158,13 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
     }
 
     /**
-     * Charge et parse le fichier YAML pointé par {@code security.rbac.file}.
-     *
-     * @throws RbacConfigException si la ressource est introuvable
-     *         ({@code rbac.config.fileMissing}), vide ({@code rbac.config.fileEmpty})
-     *         ou illisible ({@code rbac.config.loadFailed}).
+     * Charge et parse le fichier YAML pointé par security.rbac.file.
      */
     private RbacConfig loadConfig() {
         if (rbacProperties.file() == null || !rbacProperties.file().exists()) {
             throw new RbacConfigException("rbac.config.fileMissing", String.valueOf(rbacProperties.file()));
         }
         try (InputStream in = rbacProperties.file().getInputStream()) {
-            // SnakeYAML est inclus transitivement par Spring Boot (sert à parser
-            // application.yml) — pas de dépendance Maven supplémentaire requise.
             Map<String, Object> root = new Yaml().load(in);
             if (root == null) {
                 throw new RbacConfigException("rbac.config.fileEmpty", String.valueOf(rbacProperties.file()));
@@ -242,10 +183,7 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
     }
 
     /**
-     * Convertit une entrée brute du YAML (Map issu de SnakeYAML) en {@link RoleDef}.
-     * Le cast est sûr tant que le schéma YAML est respecté ; en cas d'erreur de
-     * schéma, une {@code ClassCastException} sera levée — c'est volontairement
-     * fail-fast, le YAML doit être correct au boot.
+     * Convertit une entrée YAML brute (Map SnakeYAML) en RoleDef.
      */
     @SuppressWarnings("unchecked")
     private RoleDef toRoleDef(Map<String, Object> entry) {

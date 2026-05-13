@@ -342,14 +342,14 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
 
 ### Documentation des services applicatifs (process métier)
 
-29. **Tout service applicatif (`<X>ServiceImpl`) doit être documenté en javadoc** — c'est l'endroit où vit la logique métier, donc l'endroit qui mérite l'effort de doc. Périmètre obligatoire :
-    - **Javadoc de classe** : responsabilité du service en 1–3 phrases, garanties éventuelles (idempotent, transactionnel, stratégie particulière).
-    - **Javadoc sur chaque méthode publique** : entrée (rôle de chaque paramètre non trivial), règles métier appliquées, exceptions levées avec leur clé i18n, sortie attendue. Pour une orchestration multi-étapes, lister les étapes numérotées.
-    - **Commentaires de section** dans les méthodes longues (> 30 lignes) pour marquer les étapes ; commentaires inline pour expliquer le **pourquoi** d'un choix non évident (invariant, contrainte JPA, choix de comparaison par ID vs equals, etc.) — jamais pour décrire **quoi** le code fait (les identifiants y suffisent).
-    - **Langue** : français pour la documentation, anglais pour les messages de log/identifiants (cohérence projet).
+29. **Tout service applicatif (`<X>ServiceImpl`) doit porter une javadoc concise**. Format strict :
+    - **Javadoc de classe** : 1 phrase qui annonce la responsabilité du service (+ 1 phrase si garantie particulière, ex. "Stratégie additive").
+    - **Javadoc sur chaque méthode** (publique ET privée) : 1 phrase qui annonce **ce que fait la méthode**, point. Pas d'énumération entrée/sortie/exceptions — les types et la signature suffisent.
+    - **Aucun commentaire à l'intérieur du corps des méthodes**. Si le code nécessite une explication inline, c'est qu'il manque un meilleur nom de variable / fonction, ou un refactor. Les identifiants doivent parler d'eux-mêmes.
+    - **Langue** : français pour les javadocs, anglais pour les logs/identifiants (cohérence projet).
     - **Référence** : voir `RolesPermissionsSyncServiceImpl` comme modèle.
 
-    L'intention : un nouveau développeur (ou Claude dans 3 semaines) doit comprendre un use case sans relire les services appelés. Les `<X>DomainService` et controllers restent libres de doc (auto-documentants par convention).
+    L'intention : la doc explique le **quoi** au survol (javadoc), le code explique le **comment** sans bruit visuel. Les `<X>DomainService` et controllers restent libres (auto-documentants par convention).
 
 ---
 

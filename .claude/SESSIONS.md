@@ -7,7 +7,70 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-12 (après-midi/soir)
+**Date :** 2026-05-13
+**Sujet :** Externalisation RBAC (rôles + permissions) dans un YAML synchronisable, flag `security.rbac.sync`, i18n des exceptions, surcharge `LocalizedRuntimeException` avec cause, convention de documentation des services applicatifs
+
+**Ce qui a été fait :**
+
+1. **YAML RBAC** — `src/main/resources/security/roles-permissions.yml` : 76 permissions (4 legacy + 72 granulaires `MODULE_ACTION`) + 4 rôles (ADMIN/PROPRIETAIRE/MANAGER/VENDEUR) avec liste explicite de codes par rôle. Source de vérité pour le seed.
+
+2. **`RbacProperties`** (`org.store.property`, record `@ConfigurationProperties("security.rbac")`) — 2 champs : `sync:boolean` + `file:Resource`. Spring résout automatiquement `classpath:security/roles-permissions.yml` en `ClassPathResource`.
+
+3. **`application*.yml`** — bloc `security.rbac` ajouté dans les 4 fichiers (`application.yml`, `application-dev.yml`, `application-prod.yml`, `application-test.yml`). Overrides env `RBAC_SYNC` / `RBAC_FILE`. **Default `sync: false`** : posture défensive — le seed est explicite, activé via `RBAC_SYNC=true` au boot.
+
+4. **`IRolesPermissionsSyncService` + `RolesPermissionsSyncServiceImpl`** (`security/application/service/...`) — orchestrateur de la synchronisation, **stratégie additive** :
+   - Étape 1 : charge YAML via SnakeYAML (déjà dans Spring Boot, pas de dépendance Maven ajoutée).
+   - Étape 2 : insère permissions manquantes, garde un `catalog Map<code, Permissions>` en mémoire pour éviter les SELECT en cascade lors de l'étape 3.
+   - Étape 3 : `ensureRole(...)` pour chaque rôle YAML — création ou ajout des associations manquantes ; **les associations existantes en BD mais absentes du YAML sont conservées + WARN log**.
+   - Étape 4 : log WARN des permissions/rôles orphelins (en BD, absents du YAML). Aucune suppression.
+   - Tout est `@Transactional`. Retourne un `RbacSyncReport(added/updated/orphan...)`.
+
+5. **DTOs** — `RbacConfig(permissions, List<RoleDef>)` + nested `RoleDef(libelle, description, permissions)` pour parser le YAML ; `RbacSyncReport` pour le rapport.
+
+6. **`RbacConfigException extends LocalizedRuntimeException`** (`common/exceptions/`) — 4 clés i18n FR/EN :
+   - `rbac.config.fileMissing`
+   - `rbac.config.fileEmpty`
+   - `rbac.config.loadFailed` (préserve la cause `IOException`)
+   - `rbac.config.unknownPermission` (rôle référence permission non déclarée globalement)
+
+7. **Surcharge `LocalizedRuntimeException(messageKey, Throwable cause, Object... args)`** — pour préserver la stacktrace racine quand on wrap une exception externe (IO, parsing, etc.). `RbacConfigException` expose aussi la surcharge.
+
+8. **`DataInitializer` allégé** — passe de ~250 lignes (hardcodage permissions/rôles) à ~50 lignes : appelle `syncService.sync()` si `rbacProperties.sync()=true`, sinon log "skipped". Conserve seulement `ensureTrialPlan()` (responsabilité distincte).
+
+9. **`PermissionsDomainService.findByCode(String)`** ajouté (était manquant).
+
+10. **Javadoc complète sur `RolesPermissionsSyncServiceImpl`** — javadoc de classe, javadoc sur chaque méthode publique (étapes numérotées + exceptions avec clés i18n), commentaires de section pour la navigation, commentaires inline pour le **pourquoi** (catalog en mémoire, comparaison par ID, distinction added/updated, etc.).
+
+11. **Nouvelle convention dans `ARCHITECTURE.md` (règle 29)** — **"Documentation des services applicatifs (process métier)"** : tout `<X>ServiceImpl` doit porter javadoc de classe + javadoc par méthode publique (entrée, règles, exceptions, sortie ; étapes numérotées si orchestration). Périmètre : services applicatifs uniquement (DomainServices et controllers libres). Modèle de référence : `RolesPermissionsSyncServiceImpl`. Règle sauvée en mémoire user (`feedback_doc_service_applicatif.md`).
+
+12. **Tests** — `RolesPermissionsSyncServiceImplTest` (JUnit5 + Mockito) : 4 cas (création initiale, idempotence, mise à jour associations, détection orphelins sans suppression). Le YAML de test est embarqué via `ByteArrayResource`.
+
+**Décisions / arbitrages :**
+
+- **Stratégie additive (vs strict / vs additif sans suppression assoc)** : choisie après comparaison. Raison : une mauvaise édition du YAML en prod ne doit jamais retirer silencieusement des droits à des utilisateurs. Le WARN signale l'écart, l'opérateur décide.
+- **Format YAML — liste explicite de permissions par rôle (vs groupes/includes)** : verbosité acceptée pour la lisibilité du diff git et l'absence d'ambiguïté.
+- **Trigger sync — au boot uniquement** : pas d'endpoint admin pour l'instant. Le flag `security.rbac.sync` contrôle l'exécution. Resync = redémarrage avec `RBAC_SYNC=true`.
+- **Default `sync: false`** : safety net pour éviter une modif YAML accidentelle qui pollue la BD. Le devops/dev active explicitement quand il veut.
+- **Surcharge `LocalizedRuntimeException(key, cause, args)`** : la convention "constructeur unique" est étendue à "deux formes officielles". Justifié pour préserver la cause des wraps techniques (IO, parsing). À garder en tête pour les exceptions futures.
+- **Logs non i18n** : convention projet — les logs visent l'opérateur système, pas l'utilisateur final. Restent en anglais figé.
+- **Convention de doc — `<X>ServiceImpl` uniquement** : les DomainServices (passe-plats data) et controllers (handlers minimaux) sont auto-documentants. Doc concentrée là où vit la logique métier.
+
+**Où on s'est arrêté :**
+
+- **156 tests verts** (152 → 156 avec les 4 nouveaux).
+- 2 commits poussés sur `origin/dev` : `0115ca4` "Externalisation seed RBAC dans roles-permissions.yml + flag security.rbac.sync" + `bef46eb` "Documentation services applicatifs (convention + javadoc RBAC sync)".
+- Sync RBAC **désactivée par défaut** (`RBAC_SYNC=false`). La BD locale a été seedée lors du test d'intégration (orphelins préexistants : rôle `EMPLOYE` + perm `EMPLOYE_ACCESS` sur `PROPRIETAIRE` — non-bloquants).
+- Convention de doc adoptée pour tous les futurs `<X>ServiceImpl`.
+
+**Prochaine étape recommandée :**
+
+1. **CRUD `Product`** — premier vrai module métier post-auth. Suit les patterns établis (Request/Response avec entity constructor, DomainService.create, ServiceImpl + interface, controller avec BASE_PATH, tests unit + slice web). **Appliquer la nouvelle convention de doc** (javadoc complète sur `ProductServiceImpl`).
+2. **Migration progressive des `@PreAuthorize`** vers la nomenclature granulaire : remplacer `PROPRIETAIRE_ACCESS` par `COMPANY_READ/UPDATE` + `STORE_*` selon l'endpoint, `EMPLOYE_CREATE` par `USER_CREATE`. Toucher l'enum `PermissionCode` (ajouter les 72 valeurs granulaires) et tous les sites d'appel.
+3. **Frontend** : `src/lib/api/client.ts` (axios + intercepteur JWT) + pages `(auth)/login` et `(auth)/register`.
+
+---
+
+### Session du 2026-05-12 (après-midi/soir)
 **Sujet :** CRUD Magasin, CRUD Entreprise (ADMIN vs PROPRIETAIRE), refactor `registerEntrepriseByAdmin` (cycle DI), extraction `UserResponse`, Strategy pattern `UserPrincipalContextStrategy` (élimination `instanceof`), seed ERP (4 rôles + 79 permissions selon matrice PDF)
 
 **Ce qui a été fait :**
