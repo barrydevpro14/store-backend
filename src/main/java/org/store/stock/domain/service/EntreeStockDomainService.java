@@ -1,11 +1,15 @@
 package org.store.stock.domain.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.EntreeStockRequest;
+import org.store.stock.application.dto.ExpiringLotResponse;
+import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.repository.EntreeStockRepository;
 
@@ -22,21 +26,32 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return repository.findAvailableLotsForFifo(magasinId, productId);
     }
 
-    public org.springframework.data.domain.Page<org.store.stock.application.dto.ExpiringLotResponse> findExpiringLots(
-            org.store.stock.application.dto.ExpiringLotsFilter filter, UUID entrepriseId) {
+    public Page<ExpiringLotResponse> findExpiringLots(ExpiringLotsFilter filter, UUID entrepriseId) {
         return repository.findExpiringLots(filter, entrepriseId, filter.toPageable());
     }
 
+    /** Création d'une entrée stock manuelle (sans commande achat). */
     public EntreeStock create(EntreeStockRequest entreeStockRequest, Magasin magasin, Product produit, ProductFournisseur productFournisseur) {
+        return create(new EntreeStockCreate(
+                magasin, produit, productFournisseur,
+                entreeStockRequest.quantite(), entreeStockRequest.prixAchat(),
+                entreeStockRequest.numeroLot(), entreeStockRequest.dateExpiration(),
+                null
+        ));
+    }
+
+    /** Création d'une entrée stock à partir d'un record groupé (peut être liée à une CommandeAchat). */
+    public EntreeStock create(EntreeStockCreate entreeStockCreate) {
         EntreeStock entreeStock = new EntreeStock();
-        entreeStock.setMagasin(magasin);
-        entreeStock.setProduit(produit);
-        entreeStock.setProductFournisseur(productFournisseur);
-        entreeStock.setQuantiteInitiale(entreeStockRequest.quantite());
-        entreeStock.setQuantiteRestante(entreeStockRequest.quantite());
-        entreeStock.setPrixAchat(entreeStockRequest.prixAchat());
-        entreeStock.setNumeroLot(entreeStockRequest.numeroLot());
-        entreeStock.setDateExpiration(entreeStockRequest.dateExpiration());
+        entreeStock.setMagasin(entreeStockCreate.magasin());
+        entreeStock.setProduit(entreeStockCreate.produit());
+        entreeStock.setProductFournisseur(entreeStockCreate.productFournisseur());
+        entreeStock.setQuantiteInitiale(entreeStockCreate.quantite());
+        entreeStock.setQuantiteRestante(entreeStockCreate.quantite());
+        entreeStock.setPrixAchat(entreeStockCreate.prixAchat());
+        entreeStock.setNumeroLot(entreeStockCreate.numeroLot());
+        entreeStock.setDateExpiration(entreeStockCreate.dateExpiration());
+        entreeStock.setCommandeAchat(entreeStockCreate.commandeAchat());
         return save(entreeStock);
     }
 }

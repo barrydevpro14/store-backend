@@ -1,0 +1,62 @@
+package org.store.achat.application.service.impl;
+
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.store.achat.application.dto.FactureAchatEcheanceFilter;
+import org.store.achat.application.dto.FactureAchatFilter;
+import org.store.achat.application.dto.FactureAchatResponse;
+import org.store.achat.application.service.IFactureAchatService;
+import org.store.achat.domain.model.FactureAchat;
+import org.store.achat.domain.service.FactureAchatDomainService;
+import org.store.common.exceptions.ForbiddenException;
+import org.store.common.service.ValidatorService;
+import org.store.security.application.dto.UserPrincipal;
+import org.store.security.application.service.ICurrentUserService;
+
+import java.util.UUID;
+
+/**
+ * Lecture des factures d'achat, scopée sur l'entreprise du caller.
+ */
+@Service
+@Transactional(readOnly = true)
+public class FactureAchatServiceImpl implements IFactureAchatService {
+
+    private final FactureAchatDomainService factureAchatDomainService;
+    private final ICurrentUserService currentUserService;
+    private final ValidatorService validatorService;
+
+    public FactureAchatServiceImpl(FactureAchatDomainService factureAchatDomainService,
+                                   ICurrentUserService currentUserService,
+                                   ValidatorService validatorService) {
+        this.factureAchatDomainService = factureAchatDomainService;
+        this.currentUserService = currentUserService;
+        this.validatorService = validatorService;
+    }
+
+    /** Retourne la facture après vérification d'appartenance à l'entreprise du caller. */
+    @Override
+    public FactureAchatResponse findResponseById(UUID id) {
+        FactureAchat facture = factureAchatDomainService.findById(id);
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        if (!facture.getCommande().getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
+            throw new ForbiddenException("factureAchat.notOwned");
+        }
+        return new FactureAchatResponse(facture);
+    }
+
+    /** Valide le filter et délègue la query scopée par entreprise. */
+    @Override
+    public Page<FactureAchatResponse> findAllByCurrentEntreprise(FactureAchatFilter factureAchatFilter) {
+        validatorService.validate(factureAchatFilter);
+        return factureAchatDomainService.findResponsesByFilter(factureAchatFilter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    /** Valide le filter et délègue la query d'échéances scopée par entreprise. */
+    @Override
+    public Page<FactureAchatResponse> findEcheances(FactureAchatEcheanceFilter factureAchatEcheanceFilter) {
+        validatorService.validate(factureAchatEcheanceFilter);
+        return factureAchatDomainService.findEcheances(factureAchatEcheanceFilter, currentUserService.getCurrent().entrepriseId());
+    }
+}
