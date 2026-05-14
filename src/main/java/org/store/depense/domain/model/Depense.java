@@ -3,6 +3,7 @@ package org.store.depense.domain.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
 
@@ -29,8 +30,10 @@ public class Depense extends AuditableEntity {
 
     private LocalDate dateDepense;
 
-    private LocalDate dateEcheance;
-
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal montant;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MoyenPaiement modePaiement;
 }
