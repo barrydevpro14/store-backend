@@ -7,7 +7,67 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-13 (soirée)
+**Date :** 2026-05-14
+**Sujet :** Module Stock complété de la fonctionnalité 3 à 11 (9 livraisons) — entrée stock manuelle, consultation stock, consultation mouvements, sortie FIFO (service interne), ajustement manuel (positif/négatif avec motifs), seuils d'approvisionnement, valorisation, reporting marges, listing lots expirants. Adoption du pattern **record `<X>Filter` validé par `ValidatorService`** comme convention (règle 30), création des helpers transverses `common/tools/` (`DateHelper`, `EnumHelper`, `UuidHelper`), séparation des conventions de codage en `CONVENTION_CODAGE_BACKEND.md` + `CONVENTION_CODAGE_FRONTEND.md`. 7 nouveaux records Filter (StockFilter, MouvementStockFilter, MouvementJournalize, ExpiringLotsFilter, MarginReportFilter, etc.), 4 DTOs Response date passés en `String` formatés via `DateHelper.format()` pour cohérence frontend.
+
+**Ce qui a été fait :**
+
+1. **Fonctionnalité 3 — Entrée stock manuelle** (`POST /api/v1/stocks/entries`) — création `EntreeStock` + upsert `Stock` (moyenne pondérée prix d'achat) + journalise `MouvementStock(ENTREE_ACHAT)`. Migration V9 (drop `Stock.productFournisseur` + UNIQUE `(magasin_id, produit_id)`). Sémantique `Stock` clarifiée : 1 ligne par paire (magasin, produit) ; le fournisseur reste sur `EntreeStock` pour préserver la traçabilité multi-fournisseur (validation décision Option A + A2 par l'utilisateur).
+
+2. **Fonctionnalité 4 — Consultation stock** (`GET /api/v1/stocks?...` + `GET /api/v1/stocks/{id}`) — paginé avec filtres optionnels. Premier usage du pattern **record `StockFilter`** validé par `ValidatorService.validate(filter)` côté service métier. Query JPQL via SpEL `:#{#filter.X}`.
+
+3. **Fonctionnalité 5 — Consultation mouvements** (`GET /api/v1/stock-movements?...`) — listing du journal avec filtres riches (stockId, magasinId, productId, type, période). Sous-DTO `MouvementDetailResponse` extrait. Création des helpers `common/tools/` (`DateHelper`, `EnumHelper`, `UuidHelper`).
+
+4. **Réorganisation des docs (.claude/)** — `ARCHITECTURE.md` réduit à la stack et structure, conventions séparées en `CONVENTION_CODAGE_BACKEND.md` (31 règles, incluant la nouvelle règle 30 "max 3 paramètres" et règle 31 "indentation + documentation multi-process") et `CONVENTION_CODAGE_FRONTEND.md`. `CLAUDE.md` mis à jour (6 → 7 fichiers).
+
+5. **Fonctionnalité 6 — Sortie stock FIFO (service interne)** — `ISortieStockService.create(...)` consomme les `EntreeStock` du plus ancien au plus récent (FIFO pur par `createdAt ASC`), crée une `SortieStock` par lot consommé avec marge pré-calculée, décrémente `Stock`, journalise `MouvementStock(SORTIE_VENTE)`. **Pas d'endpoint REST exposé** : sera consommé par le futur module Vente (`POST /sales`). Permission `STOCK_EXIT` réservée pour usage interne futur.
+
+6. **Fonctionnalité 7 — Ajustement stock manuel** (`POST /api/v1/stocks/adjustments`) — types `POSITIF` (mini entrée stock, fournisseur obligatoire) / `NEGATIF` (consomme FIFO sans créer de `SortieStock`). Motifs typés via enum (`RETROUVAILLE`, `PERTE`, `CASSE`, `VOL`, `ERREUR_INVENTAIRE`, `AUTRE`). Validation cohérence motif/type. Décision métier : **MANAGER conserve `STOCK_ADJUSTMENT`** (responsable opérationnel du magasin, fraude tracée a posteriori via `MouvementStock.createdBy` + audit listing).
+
+7. **Fonctionnalités 8, 9, 10, 11 livrées dans un commit groupé :**
+   - **8 — Seuils d'approvisionnement** : `PATCH /api/v1/stocks/{id}/threshold` + `GET /api/v1/stocks/below-threshold?magasinId=`
+   - **9 — Valorisation stock** : `GET /api/v1/stocks/valuation?magasinId=` retourne `valeurTotale = SUM(qty × prixAchatMoyen)`
+   - **10 — Reporting marges** : `GET /api/v1/reports/margins?...` agrège sur `SortieStock` JOIN `EntreeStock` avec filtres produit/fournisseur/période. Service dédié `IMarginReportService` + controller `MarginReportController`.
+   - **11 — Lots expirants** : `GET /api/v1/stocks/expiring-lots?magasinId=&daysAhead=N` retourne les `EntreeStock` avec `dateExpiration <= today+N` triés `ASC`. Service dédié `IExpiringLotsService`.
+
+**Décisions / arbitrages :**
+
+- **`Stock` unique par (magasin, produit)** — décision Option A (sémantique ERP classique). Le champ `Stock.productFournisseur` supprimé via migration V9. La traçabilité fournisseur passe par `EntreeStock.productFournisseur`. **Prix moyen pondéré (`Stock.prixAchatMoyen`) sert au reporting/affichage, JAMAIS pour le calcul de marge à la vente** : c'est le `prixAchat` du lot consommé (snapshot dans `SortieStock`) qui détermine la marge réelle.
+- **Pattern record `<X>Filter` validé par `ValidatorService`** systématisé (règle 30) : services métier prennent un filter en paramètre unique, validation Jakarta intégrée (`@NotNull`, `@Min`, `@DatePattern`, `@EnumValue`, `@Uuid`), méthodes utilitaires sur le record (`toPageable()`, `typeAsEnum()`, `fromDateTime()`/`toDateTime()` via helpers). **Exemption explicite des repositories Spring Data** : queries `@Query` gardent leurs params individuels via SpEL `:#{#filter.X}` (queries JPQL plus lisibles avec params nommés).
+- **Helpers transverses** dans `org.store.common.tools` (`DateHelper`, `EnumHelper`, `UuidHelper`) — stateless, réutilisables, format date par défaut `yyyy-MM-dd HH:mm:ss` (LocalDateTime) et `yyyy-MM-dd` (LocalDate). DTOs Response exposent les dates en `String` formatés (pas de timezone ambiguë côté client).
+- **Règle "indentation + documentation"** posée (règle 31) : toute méthode multi-process doit être indentée par blocs (lignes vides entre étapes logiques) et documentée (javadoc concise). Pas de commentaires inline.
+- **Sortie FIFO sans endpoint REST exposé** — la primitive technique est livrée comme service interne pour qu'elle soit consommée par le futur module Vente (1 vente = N appels au service de sortie). Évite le risque de fraude (vendre sans passer par la caisse + ajuster ensuite).
+- **Permission `STOCK_ADJUSTMENT` accordée à MANAGER** assumée — choix métier sauvegardé en project memory (`project_stock_adjustment_permission.md`). La fraude potentielle est tracée via `MouvementStock.createdBy` (audit a posteriori) plutôt que bloquée en amont.
+- **Date helpers** : aller-retour entre `String` (API), `LocalDate` (parsing intermédiaire) et `LocalDateTime` (BD). Garde `LocalDateTime` pour les comparaisons `>=`/`<=` sur `m.createdAt` (sinon Hibernate cast `LocalDate` en `startOfDay`, exclut la journée).
+- **Décision déléguée à l'utilisateur** sur la génération auto du numéro de lot : ✗ pas de génération (option A retenue — `numeroLot` reste saisi librement, optionnel).
+
+**Où on s'est arrêté :**
+
+- **356 tests verts** (300 → 356, +56 dans la session).
+- **7 commits poussés sur `origin/dev`** :
+  - `b74151e` — Entrée stock manuelle (fonct. 3)
+  - `7a9a9ee` — Consultation stock (fonct. 4)
+  - `d4d12d2` — Consultation mouvements + refactor filters/helpers (fonct. 5)
+  - `a5419ca` — Réorganisation conventions backend/frontend
+  - `e23045a` — Sortie stock FIFO service interne (fonct. 6)
+  - `270e7ef` — Ajustement stock manuel (fonct. 7)
+  - `47de2a6` — Seuils + valorisation + reporting marges + lots expirants (fonct. 8-11)
+- **Migration Flyway** : V9 (refactor Stock — drop productFournisseur + UNIQUE magasin/produit).
+- **Module Stock à 11/12 fonctionnalités livrées.** Reste : inventaire physique (fonct. 12).
+- **Score axes métier exigés** : 9/10 (Entrées/Sorties/Ajustements ✓, Traçabilité ✓, Fournisseurs ✓, Mouvements ✓, Seuils ✓, Valorisation ✓, Lots/Expirations ✓, FIFO ✓, Marges ✓, Inventaire ❌). LIFO non implémenté, non demandé.
+- **3 nouvelles règles de codage** inscrites dans `CONVENTION_CODAGE_BACKEND.md` : règle 30 (max 3 paramètres → records), règle 31 (indentation + doc multi-process). Helpers transverses `common/tools/` documentés.
+- **Nouvelles mémoires créées** : `feedback_max_3_parametres`, `feedback_indentation_documentation`, `project_stock_adjustment_permission`.
+
+**Prochaine étape recommandée :**
+
+1. **Fonctionnalité 12 — Inventaire physique** : endpoint pour comptage physique d'un magasin, écarts théorique vs réel, génération automatique d'`Ajustement` (positif si trouvé en plus, négatif si manquant) pour chaque ligne en écart. Boucle l'axe "Inventaires" du cahier des charges et termine le module Stock.
+2. Ou bascule vers le **module Vente** (cycle complet : panier → CommandeVente → LigneCommandeVente → appel interne FIFO `ISortieStockService.create(...)` → paiement → facture), prérequis vendeur sur le terrain.
+3. Ou **Recherche produit** (`GET /products/search?q=...` par nom/référence/code-barres) — utile au vendeur pour préparer la vente, simple et rapide.
+4. Reporting **marges groupées par produit / fournisseur / employé** (extension de la fonct. 10) si besoin de dashboards.
+
+---
+
+### Session du 2026-05-13 (soirée)
 **Sujet :** Listing galerie `GET /products/{id}/images` + simplification `ProductResponse` (URL `image` au lieu d'`imagePrincipalId`, sous-DTOs Summary pour category/quality), démarrage du **module Stock** par les fonctionnalités fondations 1 et 2 : CRUD Fournisseur (scopé entreprise) et CRUD ProductFournisseur (lien produit ↔ fournisseur avec prix d'achat, référence fournisseur et origine — base de la traçabilité multi-fournisseur)
 
 **Ce qui a été fait :**
