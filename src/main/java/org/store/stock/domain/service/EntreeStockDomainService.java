@@ -9,10 +9,17 @@ import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.repository.EntreeStockRepository;
 
+import java.util.List;
+import java.util.UUID;
+
 @Service
 public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeStockRepository> {
     public EntreeStockDomainService(EntreeStockRepository repository) {
         super(repository);
+    }
+
+    public List<EntreeStock> findAvailableLotsForFifo(UUID magasinId, UUID productId) {
+        return repository.findAvailableLotsForFifo(magasinId, productId);
     }
 
     public EntreeStock create(EntreeStockRequest entreeStockRequest, Magasin magasin, Product produit, ProductFournisseur productFournisseur) {
