@@ -1,9 +1,12 @@
 package org.store.stock.domain.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
+import org.store.stock.application.dto.StockResponse;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.repository.StockRepository;
 
@@ -20,6 +23,10 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
 
     public Optional<Stock> findByMagasinIdAndProduitId(UUID magasinId, UUID produitId) {
         return repository.findByMagasinIdAndProduitId(magasinId, produitId);
+    }
+
+    public Page<StockResponse> findResponsesByFilters(UUID entrepriseId, UUID magasinId, UUID productId, Pageable pageable) {
+        return repository.findResponsesByFilters(entrepriseId, magasinId, productId, pageable);
     }
 
     public Stock upsertOnEntry(Magasin magasin, Product produit, int quantite, BigDecimal prixAchat) {
