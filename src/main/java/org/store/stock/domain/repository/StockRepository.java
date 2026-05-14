@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
+import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.domain.model.Stock;
 
 import java.util.Optional;
@@ -26,4 +27,29 @@ public interface StockRepository extends BaseRepository<Stock> {
     Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,
                                               @Param("entrepriseId") UUID entrepriseId,
                                               Pageable pageable);
+
+    @Query("""
+            SELECT new org.store.stock.application.dto.StockResponse(s)
+            FROM Stock s
+            WHERE s.magasin.entreprise.id = :entrepriseId
+              AND s.magasin.id = :#{#filter.magasinId}
+              AND s.seuilApprovisionnement > 0
+              AND s.quantiteDisponible <= s.seuilApprovisionnement
+            """)
+    Page<StockResponse> findResponsesBelowThreshold(@Param("filter") StockFilter filter,
+                                                    @Param("entrepriseId") UUID entrepriseId,
+                                                    Pageable pageable);
+
+    @Query("""
+            SELECT new org.store.stock.application.dto.StockValuationResponse(
+                :magasinId,
+                SUM(s.quantiteDisponible * COALESCE(s.prixAchatMoyen, 0)),
+                COUNT(s)
+            )
+            FROM Stock s
+            WHERE s.magasin.entreprise.id = :entrepriseId
+              AND s.magasin.id = :magasinId
+            """)
+    StockValuationResponse computeValuation(@Param("entrepriseId") UUID entrepriseId,
+                                            @Param("magasinId") UUID magasinId);
 }

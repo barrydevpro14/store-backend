@@ -30,6 +30,20 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 
+    public Page<StockResponse> findResponsesBelowThreshold(StockFilter filter, UUID entrepriseId) {
+        return repository.findResponsesBelowThreshold(filter, entrepriseId, filter.toPageable());
+    }
+
+    public org.store.stock.application.dto.StockValuationResponse computeValuation(UUID magasinId, UUID entrepriseId) {
+        return repository.computeValuation(entrepriseId, magasinId);
+    }
+
+    /** Met à jour le seuil d'approvisionnement et persiste. */
+    public Stock updateThreshold(Stock stock, int seuilApprovisionnement) {
+        stock.setSeuilApprovisionnement(seuilApprovisionnement);
+        return save(stock);
+    }
+
     /**
      * Décrémente la quantité disponible du stock après une sortie (ne touche pas au prix d'achat moyen).
      */

@@ -8,6 +8,8 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
+import org.store.stock.application.dto.StockThresholdRequest;
+import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
@@ -15,7 +17,8 @@ import org.store.stock.domain.service.StockDomainService;
 import java.util.UUID;
 
 /**
- * Lecture du stock agrégé (par magasin × produit), scopée par entreprise du caller et par magasin accessible.
+ * Lecture du stock agrégé (par magasin × produit), scopée par entreprise du caller.
+ * Configure aussi le seuil d'approvisionnement et liste les stocks en alerte.
  */
 @Service
 @Transactional(readOnly = true)
@@ -49,5 +52,30 @@ public class StockServiceImpl implements IStockService {
     public Page<StockResponse> findAllByCurrentEntreprise(StockFilter filter) {
         validatorService.validate(filter);
         return stockDomainService.findResponsesByFilter(filter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    /** Valide le filter puis délègue la query "below threshold" scopée par entreprise du caller. */
+    @Override
+    public Page<StockResponse> findBelowThresholdByCurrentEntreprise(StockFilter filter) {
+        validatorService.validate(filter);
+        return stockDomainService.findResponsesBelowThreshold(filter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    /** Met à jour le seuil d'approvisionnement après vérification d'accès magasin. */
+    @Override
+    @Transactional
+    public StockResponse updateThreshold(UUID id, StockThresholdRequest stockThresholdRequest) {
+        validatorService.validate(stockThresholdRequest);
+        Stock stock = stockDomainService.findById(id);
+        magasinService.ensureAccessibleByCurrentUser(stock.getMagasin());
+        Stock updated = stockDomainService.updateThreshold(stock, stockThresholdRequest.seuilApprovisionnement());
+        return new StockResponse(updated);
+    }
+
+    /** Calcule la valorisation après vérification d'accès magasin. */
+    @Override
+    public StockValuationResponse computeValuation(UUID magasinId) {
+        magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
+        return stockDomainService.computeValuation(magasinId, currentUserService.getCurrent().entrepriseId());
     }
 }

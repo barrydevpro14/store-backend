@@ -19,6 +19,8 @@ import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
+import org.store.stock.application.dto.StockThresholdRequest;
+import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.impl.StockServiceImpl;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
@@ -125,5 +127,67 @@ class StockServiceImplTest {
         verify(validatorService).validate(filter);
         verify(stockDomainService).findResponsesByFilter(eq(filter), eq(entrepriseId));
         assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    void findBelowThreshold_should_validate_and_delegate() {
+        StockFilter filter = new StockFilter(magasinId, null, 0, 10);
+        Page<StockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(stockDomainService.findResponsesBelowThreshold(eq(filter), eq(entrepriseId))).thenReturn(page);
+
+        service.findBelowThresholdByCurrentEntreprise(filter);
+
+        verify(validatorService).validate(filter);
+        verify(stockDomainService).findResponsesBelowThreshold(eq(filter), eq(entrepriseId));
+    }
+
+    @Test
+    void updateThreshold_should_save_when_accessible() {
+        StockThresholdRequest req = new StockThresholdRequest(30);
+        Stock updated = new Stock();
+        updated.setId(stockId);
+        updated.setMagasin(magasin);
+        updated.setProduit(produit);
+        updated.setQuantiteDisponible(150);
+        updated.setSeuilApprovisionnement(30);
+        updated.setPrixAchatMoyen(new BigDecimal("13.33"));
+
+        when(stockDomainService.findById(stockId)).thenReturn(stock);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(stockDomainService.updateThreshold(stock, 30)).thenReturn(updated);
+
+        StockResponse response = service.updateThreshold(stockId, req);
+
+        assertThat(response.seuilApprovisionnement()).isEqualTo(30);
+        verify(validatorService).validate(req);
+    }
+
+    @Test
+    void updateThreshold_should_propagate_forbidden_when_magasin_not_accessible() {
+        StockThresholdRequest req = new StockThresholdRequest(30);
+
+        when(stockDomainService.findById(stockId)).thenReturn(stock);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin))
+                .thenThrow(new ForbiddenException("magasin.notOwned"));
+
+        assertThatThrownBy(() -> service.updateThreshold(stockId, req))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void computeValuation_should_check_access_and_delegate() {
+        StockValuationResponse expected = new StockValuationResponse(magasinId, new BigDecimal("5000.00"), 3L);
+
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(stockDomainService.computeValuation(magasinId, entrepriseId)).thenReturn(expected);
+
+        StockValuationResponse response = service.computeValuation(magasinId);
+
+        assertThat(response.valeurTotale()).isEqualByComparingTo(new BigDecimal("5000.00"));
+        assertThat(response.nombreLignes()).isEqualTo(3L);
     }
 }

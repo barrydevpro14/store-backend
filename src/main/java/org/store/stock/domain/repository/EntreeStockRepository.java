@@ -1,8 +1,12 @@
 package org.store.stock.domain.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.stock.application.dto.ExpiringLotResponse;
+import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.domain.model.EntreeStock;
 
 import java.util.List;
@@ -18,4 +22,19 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             ORDER BY e.createdAt ASC
             """)
     List<EntreeStock> findAvailableLotsForFifo(@Param("magasinId") UUID magasinId, @Param("productId") UUID productId);
+
+    @Query("""
+            SELECT new org.store.stock.application.dto.ExpiringLotResponse(e)
+            FROM EntreeStock e
+            WHERE e.magasin.entreprise.id = :entrepriseId
+              AND e.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.productId} IS NULL OR e.produit.id = :#{#filter.productId})
+              AND e.dateExpiration IS NOT NULL
+              AND e.dateExpiration <= :#{#filter.untilDate()}
+              AND e.quantiteRestante > 0
+            ORDER BY e.dateExpiration ASC
+            """)
+    Page<ExpiringLotResponse> findExpiringLots(@Param("filter") ExpiringLotsFilter filter,
+                                               @Param("entrepriseId") UUID entrepriseId,
+                                               Pageable pageable);
 }

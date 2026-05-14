@@ -22,6 +22,11 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return repository.findAvailableLotsForFifo(magasinId, productId);
     }
 
+    public org.springframework.data.domain.Page<org.store.stock.application.dto.ExpiringLotResponse> findExpiringLots(
+            org.store.stock.application.dto.ExpiringLotsFilter filter, UUID entrepriseId) {
+        return repository.findExpiringLots(filter, entrepriseId, filter.toPageable());
+    }
+
     public EntreeStock create(EntreeStockRequest entreeStockRequest, Magasin magasin, Product produit, ProductFournisseur productFournisseur) {
         EntreeStock entreeStock = new EntreeStock();
         entreeStock.setMagasin(magasin);

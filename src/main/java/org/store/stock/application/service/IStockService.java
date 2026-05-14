@@ -3,6 +3,7 @@ package org.store.stock.application.service;
 import org.springframework.data.domain.Page;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
+import org.store.stock.application.dto.StockThresholdRequest;
 
 import java.util.UUID;
 
@@ -18,4 +19,21 @@ public interface IStockService {
      * Le filter porte les critères (magasin, produit) + la pagination (page, size).
      */
     Page<StockResponse> findAllByCurrentEntreprise(StockFilter filter);
+
+    /**
+     * Liste paginée des stocks sous le seuil d'approvisionnement (quantiteDisponible &lt;= seuil
+     * et seuil &gt; 0) pour le magasin ciblé.
+     */
+    Page<StockResponse> findBelowThresholdByCurrentEntreprise(StockFilter filter);
+
+    /**
+     * Met à jour le seuil d'approvisionnement d'un stock après vérification d'accès magasin.
+     */
+    StockResponse updateThreshold(UUID id, StockThresholdRequest stockThresholdRequest);
+
+    /**
+     * Calcule la valorisation totale du stock d'un magasin (SUM(qty × prixAchatMoyen))
+     * après vérification d'accès magasin.
+     */
+    org.store.stock.application.dto.StockValuationResponse computeValuation(UUID magasinId);
 }
