@@ -471,6 +471,130 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
+## 28. Module Achat — Création atomique commande + facture + paiements — `AchatServiceImpl`
+
+**Endpoint** : `POST /api/v1/purchases` (auth requise, `@PreAuthorize("hasAuthority('PURCHASE_CREATE')")`)
+
+**Cas d'usage métier** : le manager appelle/visite le fournisseur, commande la marchandise, le livreur arrive avec la marchandise + la facture. Le manager renseigne tout en une seule fois (pas de réception partielle, pas de workflow multi-étapes).
+
+**Entrée** : `AchatRequest`
+```json
+{
+  "magasinId": "uuid",
+  "fournisseurId": "uuid",
+  "facture": { "numero": "F2026-001", "date": "2026-05-14", "dateEcheance": "2026-06-14" },
+  "lignes": [ { "productFournisseurId": "uuid", "quantite": 10, "prixUnitaire": 1500.00 } ],
+  "premierPaiement": { "montant": 5000.00, "modePaiement": "CASH" }  // optionnel
+}
+```
+
+**Flux atomique (transaction unique)** :
+1. Vérifier scoping magasin + fournisseur (entreprise du caller).
+2. Vérifier cohérence `productFournisseur.fournisseur == fournisseurId` pour chaque ligne (sinon `BadArgumentException("achat.fournisseur.productMismatch")`).
+3. Vérifier unicité `factureAchat.numero` par entreprise.
+4. Créer `CommandeAchat` avec référence auto via `ReferenceHelper.generate("CMD")` → format `CMD-yyyyMMdd-HHmmssSSS`.
+5. Créer `FactureAchat` liée à la commande, `montantFacture = SUM(qty × prixUnitaire)` calculé.
+6. Pour chaque ligne : créer `LigneCommandeAchat` + appeler `IEntreeStockService.create(...)` (entrée stock immédiate avec lot FIFO + upsert Stock + journalisation `MouvementStock(ENTREE_ACHAT)`).
+7. Si `premierPaiement` présent : créer `PaiementAchat` (vérifier `montant <= montantFacture`).
+
+**Sortie** : `AchatResponse{ commande, facture, lignes, paiements }` — HTTP 201.
+
+**Sous-services exposés** :
+- `ICommandeAchatService` : `findResponsesByFilter` (listing paginé), `findResponseById`.
+- `IFactureAchatService` : idem + `findEcheances(FactureAchatEcheanceFilter)` (factures impayées par fenêtre temporelle).
+- `IPaiementAchatService` : `addPayment(factureId, PaiementAchatRequest)` (vérifie `montantRestant`).
+
+**Endpoints additionnels** :
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `GET` | `/api/v1/purchases/orders?magasinId=&fournisseurId=&startDate=&endDate=&page=&size=` | `PURCHASE_READ` | Liste les commandes filtrées |
+| `GET` | `/api/v1/purchases/orders/{id}` | `PURCHASE_READ` | Détail commande |
+| `GET` | `/api/v1/purchases/invoices?...` | `PURCHASE_READ` | Liste les factures filtrées |
+| `GET` | `/api/v1/purchases/invoices/echeances?fromDate=&toDate=&page=&size=` | `PURCHASE_READ` | Factures impayées (avec dateEcheance dans la fenêtre) |
+| `GET` | `/api/v1/purchases/invoices/{id}` | `PURCHASE_READ` | Détail facture |
+| `POST` | `/api/v1/purchases/invoices/{id}/payments` | `PAYMENT_CREATE` | Ajoute un paiement à une facture |
+| `GET` | `/api/v1/purchases/invoices/{id}/payments` | `PAYMENT_READ` | Liste les paiements d'une facture |
+
+**Records `<X>Create`** (regroupement params >3, règle 30) :
+- `FactureAchatCreate(numero, date, dateEcheance)`
+- `LigneCommandeCreate(productFournisseur, quantite, prixUnitaire)`
+- `PaiementAchatCreate(facture, montant, modePaiement)`
+- Filtres : `CommandeAchatFilter`, `FactureAchatFilter`, `FactureAchatEcheanceFilter` (validés par `ValidatorService`).
+
+**Helper transverse** : `ReferenceHelper.generate(String base)` dans `org.store.common.tools` — retourne `"{base}-yyyyMMdd-HHmmssSSS"`. Utilisé pour références commande, à réutiliser pour futures références (facture vente, etc.).
+
+**Permissions** :
+- `PURCHASE_CREATE` / `PURCHASE_READ` (ADMIN/PROPRIETAIRE/MANAGER).
+- `PAYMENT_CREATE` / `PAYMENT_READ` (mêmes rôles).
+
+**Règles métier** :
+- Pas de réception partielle : 1 livraison = 1 commande + 1 facture + N lignes saisies en une fois.
+- `montantFacture` et `montantAccompte` **calculés** (jamais saisis directement).
+- `PaiementAchat.montant` ne peut pas dépasser `montantFacture - somme_paiements_existants` (`BadArgumentException("paiementAchat.montant.exceedsRemaining")`).
+
+**Tests** : 28 nouveaux tests (controller + services + domain). Suite à 384 / 384 verts.
+
+---
+
+## 29. Module Dépense — CRUD CategoryDepense + Depense — `CategoryDepenseServiceImpl`, `DepenseServiceImpl`
+
+### 29.a CategoryDepense — référentiel scopé par entreprise
+
+**Endpoints** (`/api/v1/expense-categories`) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `POST` | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_CREATE` | Crée une catégorie (201) |
+| `GET` | `/api/v1/expense-categories?page=&size=` | `EXPENSE_CATEGORY_READ` | Liste paginée (200) |
+| `GET` | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_READ` | Détail (200) |
+| `PUT` | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_UPDATE` | Mise à jour (200) |
+| `DELETE` | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_DELETE` | Suppression (204) |
+
+**`CategoryDepenseRequest`** : `@NotBlank @Size(max=100) nom`, `@Size(max=500) description`, `Boolean actif` (default true).
+
+**`CategoryDepenseResponse`** : `id, nom, description, actif`. Constructeur secondaire `(CategoryDepense)`.
+
+**Modèle** : `CategoryDepense` enrichi d'un `@ManyToOne(optional=false) Entreprise entreprise`. Migration **V10** : ajout FK `entreprise_id NOT NULL` + remplacement de l'unicité globale auto-générée sur `nom` par une unicité `(entreprise_id, nom)` (via bloc PostgreSQL `DO $$ ... $$` pour drop la contrainte auto-nommée Hibernate).
+
+**Règles** :
+- Scoping entreprise via `ICurrentUserService` (manager OU propriétaire).
+- Unicité `nom` par entreprise (`UniqueResourceException("categoryDepense.nom.alreadyExists")`).
+- Cross-tenant interdit : `ensureBelongsToCurrentEntreprise(category)` (sinon `ForbiddenException("categoryDepense.notOwned")`).
+
+---
+
+### 29.b Depense — opération scopée par magasin
+
+**Endpoints** (`/api/v1/depenses`) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `POST` | `/api/v1/depenses` | `EXPENSE_CREATE` | Crée une dépense (201) |
+| `GET` | `/api/v1/depenses?magasinId=&categoryId=&modePaiement=&startDate=&endDate=&page=&size=` | `EXPENSE_READ` | Liste paginée filtrée (200) |
+| `GET` | `/api/v1/depenses/total?magasinId=&categoryId=&modePaiement=&startDate=&endDate=` | `EXPENSE_READ` | Somme agrégée + nombre (200) |
+| `GET` | `/api/v1/depenses/{id}` | `EXPENSE_READ` | Détail (200) |
+| `PUT` | `/api/v1/depenses/{id}` | `EXPENSE_UPDATE` | Mise à jour (200) |
+| `DELETE` | `/api/v1/depenses/{id}` | `EXPENSE_DELETE` | Suppression (204) |
+
+**`DepenseRequest`** : `@NotNull UUID magasinId`, `@NotNull UUID categoryId`, `@NotBlank @Size(max=200) libelle`, `@Size(max=1000) description`, `@NotNull LocalDate dateDepense`, `@NotNull @DecimalMin("0.0", inclusive=false) BigDecimal montant`, `@NotNull MoyenPaiement modePaiement`.
+
+**`DepenseResponse`** : `id, MagasinSummaryResponse magasin, CategoryDepenseSummaryResponse category, libelle, description, dateDepense (String), montant, modePaiement, createdAt (String)`. Sous-DTOs Summary. Dates formatées via `DateHelper.format()`.
+
+**`DepenseFilter`** (record validé par `ValidatorService`, règle 30) : `@NotNull UUID magasinId`, `UUID categoryId`, `@EnumValue(MoyenPaiement.class) String modePaiement`, `@DatePattern("yyyy-MM-dd") String startDate`, `@DatePattern("yyyy-MM-dd") String endDate`, `@Min(0) int page`, `@Min(1) @Max(100) int size`. Méthodes utilitaires : `modePaiementAsEnum()`, `startDateTime()`, `endDateTime()`, `toPageable()`.
+
+**`DepenseTotalResponse`** : `magasinId, BigDecimal montantTotal, Long nombreDepenses`.
+
+**Modèle** : `Depense` lié à `@ManyToOne Magasin` + `@ManyToOne CategoryDepense`. Migration **V10** : ajout colonne `mode_paiement VARCHAR(20) NOT NULL DEFAULT 'CASH'` + `DROP COLUMN IF EXISTS date_echeance` (décision métier : une dépense est ponctuelle, pas une dette à échéance).
+
+**Règles** :
+- Scoping magasin : `magasinService.ensureAccessibleByCurrentUser(magasin)` à la création / lecture / update / delete (`ForbiddenException("magasin.notOwned")`).
+- Scoping cross-entité : `categoryDepenseService.ensureBelongsToCurrentEntreprise(category)` (`ForbiddenException("categoryDepense.notOwned")`).
+- Filtre listing : `magasinId` obligatoire, autres facultatifs. Query JPQL avec SpEL `:#{#filter.X}`.
+
+**Tests** : 15 nouveaux tests (controllers + service impls). Suite à **392 / 392 verts**.
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

@@ -7,7 +7,55 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-14
+**Date :** 2026-05-14 (soirée)
+**Sujet :** **Module Achat complet (F12-F14)** + **Module Dépense complet** — orchestration achat atomique (commande + facture + paiements + entrée stock), CRUD CategoryDepense scopé entreprise + CRUD Depense scopé magasin. `ReferenceHelper` ajouté pour la génération auto de références (`CMD-yyyyMMdd-HHmmssSSS`). Décision métier sur `Depense` : suppression de `dateEcheance` (pas pertinent — une dépense n'a pas d'échéance, c'est une dette ponctuelle).
+
+**Ce qui a été fait :**
+
+1. **Module Achat F12-F14 — commande + facture + paiements atomique** (`POST /api/v1/purchases` permission `PURCHASE_CREATE`) — flux métier unique : le manager appelle le fournisseur, reçoit la marchandise + facture en même temps. Endpoint orchestre dans une seule transaction : création `CommandeAchat` (référence auto via `ReferenceHelper.generate("CMD")`) + `FactureAchat` (numéro saisi unique par entreprise) + N lignes de produits avec entrée stock immédiate (réutilise `IEntreeStockService`) + premier paiement éventuel (`PaiementAchat`). Sous-services : `ICommandeAchatService`, `IFactureAchatService`, `IPaiementAchatService` + listings dédiés (`GET /purchases/orders`, `GET /purchases/invoices`, `GET /purchases/invoices/echeances`). Permissions : `PURCHASE_{CREATE,READ}` + `PAYMENT_{CREATE,READ}`. 11 DTOs + 5 `<X>Create` records (regroupement params >3 selon règle 30). Records helpers : `FactureAchatCreate`, `LigneCommandeCreate`, `PaiementAchatCreate`. Helper transverse `ReferenceHelper.generate(base)` dans `common/tools/`. 28 tests, 384 / 384 verts.
+
+2. **Module Dépense complet — CRUD CategoryDepense + CRUD Depense** — deux ressources REST distinctes :
+   - **`CategoryDepense`** scopé entreprise. Migration V10 : ajout FK `entreprise_id` NOT NULL + unicité `(entreprise_id, nom)` (au lieu de l'unicité globale auto-générée par Hibernate, drop via DO $$ dynamic SQL). DTO `CategoryDepenseRequest(nom, description, actif?)`, response avec id+nom+description+actif. Controller `/api/v1/expense-categories` avec `EXPENSE_CATEGORY_{CREATE,READ,UPDATE,DELETE}`.
+   - **`Depense`** scopé magasin. Champs : `magasin`, `category`, `libelle`, `description`, `dateDepense`, `montant`, `modePaiement (MoyenPaiement)`. Migration V10 : ajout colonne `mode_paiement` NOT NULL + `DROP COLUMN date_echeance` (décision suite à itération avec l'utilisateur : "dateEcheance n'est pas utile pour depense"). DTOs `DepenseRequest` (validations Jakarta) + `DepenseFilter` (record validé par `ValidatorService` selon règle 30 — magasinId, categoryId, modePaiement, startDate, endDate, page, size). Controller `/api/v1/depenses` avec `EXPENSE_{CREATE,READ,UPDATE,DELETE}` et endpoints `/total` (somme agrégée filtre) + listing paginé. `DepenseTotalResponse(magasinId, montantTotal, nombreDepenses)`. 15 tests, **392 / 392 verts**.
+
+3. **Helper `ReferenceHelper`** dans `common/tools/` — `generate(String base) → "{base}-yyyyMMdd-HHmmssSSS"`. Réutilisable pour toutes les références métier (commande achat, future facture vente, etc.).
+
+4. **Refactor itératif sur l'API `DepenseRequest`** :
+   - V1 : `String magasinId` + validateur `@Uuid` côté DTO.
+   - V2 : `UUID magasinId` parsé au controller, `@Valid` standard.
+   - V3 (finale) : `UUID magasinId` typé directement dans le record DTO (parsing Jackson natif + `@NotNull`). Itération avec l'utilisateur ("le dto aussi doit avoir UUID magasinId").
+
+**Décisions / arbitrages :**
+
+- **Achat = transaction atomique commande+facture+stock** — pas de réception partielle, pas de workflow multi-étapes. La manager renseigne tout d'un coup quand le livreur passe (use case réel décrit par l'utilisateur). Si paiement partiel : champ `montantAccompte` initial sur la facture (calculé, pas saisi — somme des `PaiementAchat` créés). `montantFacture` calculé à partir des lignes.
+- **Génération auto de référence commande** — pas saisie par l'utilisateur. Pattern `CMD-yyyyMMdd-HHmmssSSS` lisible humainement et unique en pratique. À étendre via `ReferenceHelper` aux autres modules.
+- **`<X>Create` records pour params >3** — quand une méthode privée orchestre la création d'une entité composée, regrouper les params dans un record `<X>Create` (immutable). Ex : `FactureAchatCreate(numero, date, dateEcheance)`, `LigneCommandeCreate(productFournisseur, quantite, prixUnitaire)`. Convention : records suffixés `Create` pour params de méthodes domain (vs `Request` pour DTOs HTTP).
+- **`CategoryDepense` scopée par entreprise** (pas par magasin) — une catégorie de dépense (Loyer, Salaires, Fournitures) est un référentiel partagé entre tous les magasins du tenant. Migration V10 ajoute FK Entreprise NOT NULL + unicité (entreprise_id, nom).
+- **`Depense` scopée par magasin** — une dépense est concrète, rattachée à un magasin précis (le manager du magasin enregistre les dépenses opérationnelles). FK Magasin sur `Depense`.
+- **`dateEcheance` retiré de `Depense`** — décision métier de l'utilisateur en fin de session. Une dépense est ponctuelle (payée à date `dateDepense`), elle n'a pas de date d'échéance comme une facture fournisseur. Migration V10 : `DROP COLUMN IF EXISTS date_echeance`. Tous les artefacts associés supprimés (`DepenseEcheanceFilter`, `findEcheances`, endpoint `/echeances`).
+- **`DROP CONSTRAINT` Hibernate auto-named** — pour supprimer l'unicité globale `nom` sur `category_depense` créée auto par Hibernate (nom non déterministe), utilisé bloc PostgreSQL `DO $$ DECLARE cname TEXT; BEGIN SELECT conname INTO cname FROM pg_constraint ... ; EXECUTE 'ALTER TABLE ... DROP CONSTRAINT ' || cname; END $$;`. Patron à réutiliser pour migrations futures qui touchent des contraintes auto-générées.
+- **Inventaire physique reporté** — déjà décidé en session précédente : on bouclera après le module Vente (un inventaire opérationnel s'appuie sur les ventes/sorties enregistrées). Module Stock à **11/12** fonctionnalités, à finaliser plus tard.
+
+**Où on s'est arrêté :**
+
+- **Tests : 384 → 392** (+15 dépense ; +28 cumulés sur la journée incluant achat).
+- **3 commits poussés sur `origin/dev`** dans cette session :
+  - `16184b5` — Module Achat complet (F12-F14)
+  - (commit consolidé) — Module Dépense complet
+  - `45fe501` — Module Dépense complet — CRUD CategoryDepense + Depense avec scoping entreprise/magasin
+- **Migration Flyway V10** : `add_entreprise_to_category_depense_and_mode_paiement.sql` — FK entreprise sur category_depense + unicité (entreprise_id, nom) + mode_paiement NOT NULL sur depense + drop date_echeance.
+- **`ReferenceHelper`** ajouté dans `common/tools/`. Pattern `<X>Create` records officialisé.
+
+**Prochaine étape recommandée :**
+
+1. **Module Vente** — cycle complet : panier → `CommandeVente` → `LigneCommandeVente` → consomme `ISortieStockService.create(...)` (FIFO interne déjà livré) → `Paiement` → `Facture`. Prérequis vendeur terrain. Symétrie naturelle avec l'achat qui vient d'être livré.
+2. **Recherche produit pour le vendeur** (`GET /products/search?q=...` par nom/référence/code-barres) — utile pour préparer la vente, simple et rapide.
+3. **Inventaire physique** (fonct. 12 stock, reportée) — à reprendre une fois Vente livré.
+4. **Reporting cross-module** — synthèse dépenses + ventes + marges, dashboard manager.
+
+---
+
+### Session du 2026-05-14 (matin — Module Stock)
 **Sujet :** Module Stock complété de la fonctionnalité 3 à 11 (9 livraisons) — entrée stock manuelle, consultation stock, consultation mouvements, sortie FIFO (service interne), ajustement manuel (positif/négatif avec motifs), seuils d'approvisionnement, valorisation, reporting marges, listing lots expirants. Adoption du pattern **record `<X>Filter` validé par `ValidatorService`** comme convention (règle 30), création des helpers transverses `common/tools/` (`DateHelper`, `EnumHelper`, `UuidHelper`), séparation des conventions de codage en `CONVENTION_CODAGE_BACKEND.md` + `CONVENTION_CODAGE_FRONTEND.md`. 7 nouveaux records Filter (StockFilter, MouvementStockFilter, MouvementJournalize, ExpiringLotsFilter, MarginReportFilter, etc.), 4 DTOs Response date passés en `String` formatés via `DateHelper.format()` pour cohérence frontend.
 
 **Ce qui a été fait :**
