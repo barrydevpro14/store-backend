@@ -1,7 +1,7 @@
 package org.store.stock.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 
 import java.util.UUID;
@@ -14,8 +14,8 @@ public interface IStockService {
     StockResponse findResponseById(UUID id);
 
     /**
-     * Liste paginée des stocks de l'entreprise du caller, filtrable par magasin et/ou produit.
-     * Si le caller est un employé sans filtre magasin explicite, le filtre est forcé sur son magasin.
+     * Liste paginée des stocks de l'entreprise du caller à partir d'un filter validé.
+     * Le filter porte les critères (magasin, produit) + la pagination (page, size).
      */
-    Page<StockResponse> findAllByCurrentEntreprise(UUID magasinId, UUID productId, Pageable pageable);
+    Page<StockResponse> findAllByCurrentEntreprise(StockFilter filter);
 }

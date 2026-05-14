@@ -9,6 +9,7 @@ import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
@@ -50,20 +51,23 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
                 productFournisseurService.findById(entreeStockRequest.productFournisseurId()));
         Product produit = productFournisseur.getProduct();
+
         int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
                 .map(Stock::getQuantiteDisponible)
                 .orElse(0);
+
         EntreeStock entreeStock = entreeStockDomainService.create(entreeStockRequest, magasin, produit, productFournisseur);
-        Stock stock = stockDomainService.upsertOnEntry(magasin, produit, entreeStockRequest.quantite(), entreeStockRequest.prixAchat());
-        mouvementStockDomainService.journalize(
-                stock,
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, entreeStockRequest.quantite(), entreeStockRequest.prixAchat());
+
+        mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,
                 entreeStockRequest.quantite(),
                 stockAvant,
                 stock.getQuantiteDisponible(),
                 entreeStockRequest.numeroLot(),
                 entreeStockRequest.commentaire()
-        );
+        ));
+
         return new EntreeStockResponse(entreeStock);
     }
 }

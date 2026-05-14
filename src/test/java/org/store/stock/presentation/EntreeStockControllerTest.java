@@ -69,8 +69,8 @@ class EntreeStockControllerTest {
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 100, 100,
                 new BigDecimal("10.00"), "LOT-001",
-                LocalDate.now().plusYears(1),
-                LocalDateTime.now()
+                "2027-05-14",
+                "2026-05-14 10:00:00"
         );
     }
 

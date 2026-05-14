@@ -9,17 +9,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.service.ValidatorService;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
-import org.store.produit.application.dto.ProductSummaryResponse;
-import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.service.impl.StockServiceImpl;
 import org.store.stock.domain.model.Stock;
@@ -31,9 +29,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,8 +38,8 @@ class StockServiceImplTest {
 
     @Mock private StockDomainService stockDomainService;
     @Mock private IMagasinService magasinService;
-    @Mock private IProductService productService;
     @Mock private ICurrentUserService currentUserService;
+    @Mock private ValidatorService validatorService;
 
     @InjectMocks
     private StockServiceImpl service;
@@ -92,10 +88,6 @@ class StockServiceImplTest {
         return new UserPrincipal(UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("STOCK_READ"));
     }
 
-    private UserPrincipal employe(UUID employeMagasinId) {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, employeMagasinId, "vendor", "VENDEUR", List.of("STOCK_READ"));
-    }
-
     @Test
     void findResponseById_should_return_when_accessible() {
         when(stockDomainService.findById(stockId)).thenReturn(stock);
@@ -121,82 +113,17 @@ class StockServiceImplTest {
     }
 
     @Test
-    void list_for_proprietaire_without_filter_returns_all_entreprise() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<StockResponse> page = new PageImpl<>(List.of(sampleResponse()), pageable, 1);
+    void list_should_validate_filter_and_delegate_with_currentUser_entrepriseId() {
+        StockFilter filter = new StockFilter(magasinId, productId, 0, 10);
+        Page<StockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(stockDomainService.findResponsesByFilters(eq(entrepriseId), isNull(), isNull(), eq(pageable))).thenReturn(page);
+        when(stockDomainService.findResponsesByFilter(eq(filter), eq(entrepriseId))).thenReturn(page);
 
-        Page<StockResponse> result = service.findAllByCurrentEntreprise(null, null, pageable);
+        Page<StockResponse> result = service.findAllByCurrentEntreprise(filter);
 
-        assertThat(result.getContent()).hasSize(1);
-    }
-
-    @Test
-    void list_for_employe_without_filter_forces_own_magasin() {
-        Pageable pageable = PageRequest.of(0, 10);
-        UUID employeMagasinId = UUID.randomUUID();
-        Page<StockResponse> page = new PageImpl<>(List.of(), pageable, 0);
-
-        when(currentUserService.getCurrent()).thenReturn(employe(employeMagasinId));
-        when(stockDomainService.findResponsesByFilters(eq(entrepriseId), eq(employeMagasinId), isNull(), eq(pageable))).thenReturn(page);
-
-        service.findAllByCurrentEntreprise(null, null, pageable);
-
-        verify(stockDomainService).findResponsesByFilters(eq(entrepriseId), eq(employeMagasinId), isNull(), eq(pageable));
-    }
-
-    @Test
-    void list_with_magasin_filter_checks_access() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<StockResponse> page = new PageImpl<>(List.of(), pageable, 0);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(stockDomainService.findResponsesByFilters(eq(entrepriseId), eq(magasinId), isNull(), eq(pageable))).thenReturn(page);
-
-        service.findAllByCurrentEntreprise(magasinId, null, pageable);
-
-        verify(magasinService).ensureAccessibleByCurrentUser(magasin);
-    }
-
-    @Test
-    void list_with_magasin_filter_propagates_forbidden_when_not_accessible() {
-        Pageable pageable = PageRequest.of(0, 10);
-
-        when(currentUserService.getCurrent()).thenReturn(employe(UUID.randomUUID()));
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin))
-                .thenThrow(new ForbiddenException("magasin.notOwned"));
-
-        assertThatThrownBy(() -> service.findAllByCurrentEntreprise(magasinId, null, pageable))
-                .isInstanceOf(ForbiddenException.class);
-    }
-
-    @Test
-    void list_with_product_filter_checks_ownership() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<StockResponse> page = new PageImpl<>(List.of(), pageable, 0);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(productService.findById(productId)).thenReturn(produit);
-        when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findResponsesByFilters(eq(entrepriseId), isNull(), eq(productId), eq(pageable))).thenReturn(page);
-
-        service.findAllByCurrentEntreprise(null, productId, pageable);
-
-        verify(productService).ensureBelongsToCurrentEntreprise(produit);
-    }
-
-    private StockResponse sampleResponse() {
-        return new StockResponse(
-                stockId,
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10"),
-                150, 20, new BigDecimal("13.33"),
-                null, null
-        );
+        verify(validatorService).validate(filter);
+        verify(stockDomainService).findResponsesByFilter(eq(filter), eq(entrepriseId));
+        assertThat(result.getContent()).isEmpty();
     }
 }

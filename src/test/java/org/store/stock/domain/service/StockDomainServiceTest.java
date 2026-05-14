@@ -40,11 +40,11 @@ class StockDomainServiceTest {
     }
 
     @Test
-    void upsertOnEntry_should_initialize_stock_when_absent() {
+    void createOrUpdateEntry_should_initialize_stock_when_absent() {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.empty());
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.upsertOnEntry(magasin, produit, 100, new BigDecimal("10.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 100, new BigDecimal("10.00"));
 
         assertThat(stock.getMagasin()).isSameAs(magasin);
         assertThat(stock.getProduit()).isSameAs(produit);
@@ -53,7 +53,7 @@ class StockDomainServiceTest {
     }
 
     @Test
-    void upsertOnEntry_should_recompute_weighted_average_when_stock_exists() {
+    void createOrUpdateEntry_should_recompute_weighted_average_when_stock_exists() {
         Stock existing = new Stock();
         existing.setId(UUID.randomUUID());
         existing.setMagasin(magasin);
@@ -64,14 +64,14 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.upsertOnEntry(magasin, produit, 50, new BigDecimal("20.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 50, new BigDecimal("20.00"));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(150);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("13.33"));
     }
 
     @Test
-    void upsertOnEntry_should_handle_three_lots_at_different_prices() {
+    void createOrUpdateEntry_should_handle_three_lots_at_different_prices() {
         Stock existing = new Stock();
         existing.setMagasin(magasin);
         existing.setProduit(produit);
@@ -81,14 +81,14 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.upsertOnEntry(magasin, produit, 100, new BigDecimal("25.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 100, new BigDecimal("25.00"));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(300);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("16.67"));
     }
 
     @Test
-    void upsertOnEntry_should_treat_null_prixMoyen_as_zero() {
+    void createOrUpdateEntry_should_treat_null_prixMoyen_as_zero() {
         Stock existing = new Stock();
         existing.setMagasin(magasin);
         existing.setProduit(produit);
@@ -98,7 +98,7 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.upsertOnEntry(magasin, produit, 10, new BigDecimal("15.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 10, new BigDecimal("15.00"));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(10);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("15.00"));

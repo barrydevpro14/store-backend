@@ -1,11 +1,11 @@
 package org.store.stock.application.dto;
 
+import org.store.common.tools.DateHelper;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
 import org.store.stock.domain.model.Stock;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record StockResponse(
@@ -15,8 +15,8 @@ public record StockResponse(
         int quantiteDisponible,
         int seuilApprovisionnement,
         BigDecimal prixAchatMoyen,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        String createdAt,
+        String updatedAt
 ) {
     public StockResponse(Stock stock) {
         this(
@@ -26,8 +26,8 @@ public record StockResponse(
                 stock.getQuantiteDisponible(),
                 stock.getSeuilApprovisionnement(),
                 stock.getPrixAchatMoyen(),
-                stock.getCreatedAt(),
-                stock.getUpdatedAt()
+                DateHelper.format(stock.getCreatedAt()),
+                DateHelper.format(stock.getUpdatedAt())
         );
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.domain.model.Stock;
 
@@ -19,11 +20,10 @@ public interface StockRepository extends BaseRepository<Stock> {
             SELECT new org.store.stock.application.dto.StockResponse(s)
             FROM Stock s
             WHERE s.magasin.entreprise.id = :entrepriseId
-              AND (:magasinId IS NULL OR s.magasin.id = :magasinId)
-              AND (:productId IS NULL OR s.produit.id = :productId)
+              AND s.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.productId} IS NULL OR s.produit.id = :#{#filter.productId})
             """)
-    Page<StockResponse> findResponsesByFilters(@Param("entrepriseId") UUID entrepriseId,
-                                               @Param("magasinId") UUID magasinId,
-                                               @Param("productId") UUID productId,
-                                               Pageable pageable);
+    Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,
+                                              @Param("entrepriseId") UUID entrepriseId,
+                                              Pageable pageable);
 }

@@ -1,13 +1,12 @@
 package org.store.stock.application.dto;
 
 import org.store.achat.application.dto.FournisseurSummaryResponse;
+import org.store.common.tools.DateHelper;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
 import org.store.stock.domain.model.EntreeStock;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record EntreeStockResponse(
@@ -19,8 +18,8 @@ public record EntreeStockResponse(
         int quantiteRestante,
         BigDecimal prixAchat,
         String numeroLot,
-        LocalDate dateExpiration,
-        LocalDateTime createdAt
+        String dateExpiration,
+        String createdAt
 ) {
     public EntreeStockResponse(EntreeStock entreeStock) {
         this(
@@ -34,8 +33,8 @@ public record EntreeStockResponse(
                 entreeStock.getQuantiteRestante(),
                 entreeStock.getPrixAchat(),
                 entreeStock.getNumeroLot(),
-                entreeStock.getDateExpiration(),
-                entreeStock.getCreatedAt()
+                DateHelper.format(entreeStock.getDateExpiration()),
+                DateHelper.format(entreeStock.getCreatedAt())
         );
     }
 }

@@ -250,9 +250,9 @@ class ProductControllerTest {
     void should_return_gallery_metadata_list() throws Exception {
         UUID id1 = UUID.randomUUID();
         UUID id2 = UUID.randomUUID();
-        ImageMetadataResponse m1 = new ImageMetadataResponse(id1, java.time.LocalDate.of(2026, 5, 13), "image/png",
+        ImageMetadataResponse m1 = new ImageMetadataResponse(id1, "2026-05-13", "image/png",
                 "/api/v1/products/" + productId + "/images/" + id1);
-        ImageMetadataResponse m2 = new ImageMetadataResponse(id2, java.time.LocalDate.of(2026, 5, 14), "image/jpeg",
+        ImageMetadataResponse m2 = new ImageMetadataResponse(id2, "2026-05-14", "image/jpeg",
                 "/api/v1/products/" + productId + "/images/" + id2);
         when(productService.listImages(eq(productId))).thenReturn(List.of(m1, m2));
 

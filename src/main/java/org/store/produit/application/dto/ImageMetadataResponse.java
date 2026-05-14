@@ -1,20 +1,20 @@
 package org.store.produit.application.dto;
 
 import org.store.common.model.PieceJointe;
+import org.store.common.tools.DateHelper;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 public record ImageMetadataResponse(
         UUID id,
-        LocalDate date,
+        String date,
         String contentType,
         String url
 ) {
     public ImageMetadataResponse(PieceJointe pieceJointe, UUID productId) {
         this(
                 pieceJointe.getId(),
-                pieceJointe.getDate(),
+                DateHelper.format(pieceJointe.getDate()),
                 pieceJointe.getContentType(),
                 "/api/v1/products/" + productId + "/images/" + pieceJointe.getId()
         );

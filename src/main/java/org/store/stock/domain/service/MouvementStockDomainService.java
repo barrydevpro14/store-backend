@@ -1,11 +1,16 @@
 package org.store.stock.domain.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
-import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.MouvementStockFilter;
+import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.domain.model.MouvementStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.repository.MouvementStockRepository;
+
+import java.util.UUID;
 
 @Service
 public class MouvementStockDomainService extends GlobalService<MouvementStock, MouvementStockRepository> {
@@ -13,15 +18,19 @@ public class MouvementStockDomainService extends GlobalService<MouvementStock, M
         super(repository);
     }
 
-    public MouvementStock journalize(Stock stock, MouvementStockType type, int quantite, int stockAvant, int stockApres, String referenceDocument, String commentaire) {
+    public MouvementStock journalize(Stock stock, MouvementJournalize command) {
         MouvementStock mouvement = new MouvementStock();
         mouvement.setStock(stock);
-        mouvement.setType(type);
-        mouvement.setQuantite(quantite);
-        mouvement.setStockAvant(stockAvant);
-        mouvement.setStockApres(stockApres);
-        mouvement.setReferenceDocument(referenceDocument);
-        mouvement.setCommentaire(commentaire);
+        mouvement.setType(command.type());
+        mouvement.setQuantite(command.quantite());
+        mouvement.setStockAvant(command.stockAvant());
+        mouvement.setStockApres(command.stockApres());
+        mouvement.setReferenceDocument(command.referenceDocument());
+        mouvement.setCommentaire(command.commentaire());
         return save(mouvement);
+    }
+
+    public Page<MouvementStockResponse> findResponsesByFilter(MouvementStockFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 }

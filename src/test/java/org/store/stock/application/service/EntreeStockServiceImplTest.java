@@ -17,6 +17,7 @@ import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.service.impl.EntreeStockServiceImpl;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
@@ -129,7 +130,7 @@ class EntreeStockServiceImplTest {
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(eq(request), eq(magasin), eq(produit), eq(productFournisseur))).thenReturn(savedLot);
-        when(stockDomainService.upsertOnEntry(magasin, produit, 100, new BigDecimal("10.00"))).thenReturn(upsertedStock);
+        when(stockDomainService.createOrUpdateEntry(magasin, produit, 100, new BigDecimal("10.00"))).thenReturn(upsertedStock);
 
         EntreeStockResponse response = service.create(request);
 
@@ -144,12 +145,7 @@ class EntreeStockServiceImplTest {
 
         verify(mouvementStockDomainService).journalize(
                 eq(upsertedStock),
-                eq(MouvementStockType.ENTREE_ACHAT),
-                eq(100),
-                eq(0),
-                eq(100),
-                eq("LOT-001"),
-                eq("achat manuel")
+                eq(new MouvementJournalize(MouvementStockType.ENTREE_ACHAT, 100, 0, 100, "LOT-001", "achat manuel"))
         );
     }
 
@@ -176,23 +172,17 @@ class EntreeStockServiceImplTest {
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(existingStock));
         when(entreeStockDomainService.create(eq(request), eq(magasin), eq(produit), eq(productFournisseur))).thenReturn(savedLot);
-        when(stockDomainService.upsertOnEntry(magasin, produit, 50, new BigDecimal("20.00"))).thenReturn(upsertedStock);
+        when(stockDomainService.createOrUpdateEntry(magasin, produit, 50, new BigDecimal("20.00"))).thenReturn(upsertedStock);
 
         service.create(request);
 
-        ArgumentCaptor<Integer> avantCaptor = ArgumentCaptor.forClass(Integer.class);
-        ArgumentCaptor<Integer> apresCaptor = ArgumentCaptor.forClass(Integer.class);
-        verify(mouvementStockDomainService).journalize(
-                eq(upsertedStock),
-                eq(MouvementStockType.ENTREE_ACHAT),
-                eq(50),
-                avantCaptor.capture(),
-                apresCaptor.capture(),
-                eq("LOT-001"),
-                eq("achat manuel")
-        );
-        assertThat(avantCaptor.getValue()).isEqualTo(100);
-        assertThat(apresCaptor.getValue()).isEqualTo(150);
+        ArgumentCaptor<MouvementJournalize> captor = ArgumentCaptor.forClass(MouvementJournalize.class);
+        verify(mouvementStockDomainService).journalize(eq(upsertedStock), captor.capture());
+        MouvementJournalize captured = captor.getValue();
+        assertThat(captured.type()).isEqualTo(MouvementStockType.ENTREE_ACHAT);
+        assertThat(captured.quantite()).isEqualTo(50);
+        assertThat(captured.stockAvant()).isEqualTo(100);
+        assertThat(captured.stockApres()).isEqualTo(150);
     }
 
     @Test
@@ -206,8 +196,8 @@ class EntreeStockServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(entreeStockDomainService, never()).create(any(), any(), any(), any());
-        verify(stockDomainService, never()).upsertOnEntry(any(), any(), anyInt(), any());
-        verify(mouvementStockDomainService, never()).journalize(any(), any(), anyInt(), anyInt(), anyInt(), any(), any());
+        verify(stockDomainService, never()).createOrUpdateEntry(any(), any(), anyInt(), any());
+        verify(mouvementStockDomainService, never()).journalize(any(), any());
     }
 
     @Test
@@ -224,6 +214,6 @@ class EntreeStockServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(entreeStockDomainService, never()).create(any(), any(), any(), any());
-        verify(stockDomainService, never()).upsertOnEntry(any(), any(), anyInt(), any());
+        verify(stockDomainService, never()).createOrUpdateEntry(any(), any(), anyInt(), any());
     }
 }
