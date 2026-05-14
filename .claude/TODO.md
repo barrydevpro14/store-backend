@@ -57,6 +57,7 @@
 - [ ] Use case stock FIFO : `EntreeStock` consommée par `SortieStock` lors d'une vente
 - [ ] Génération automatique des références (`commande_vente.reference`, `facture_*.numero`)
 - [ ] Notifications : worker qui parcourt `Echeance` et envoie via canal `EMAIL` / `SMS`
+- [ ] **Compléter la config Actuator** — élargir endpoints exposés (`health, info, metrics`), `/actuator/health` permitAll dans `SecurityConfig` pour health checks Docker/K8s, `show-details: when-authorized`, `management.info.*`. Optionnel : `micrometer-registry-prometheus` si scraping Grafana.
 
 ### Frontend
 - [ ] Pages CRUD de base (produits, catégories, qualité) : table + form modal
