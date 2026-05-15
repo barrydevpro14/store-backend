@@ -9,6 +9,7 @@ import org.store.achat.application.dto.FactureAchatResponse;
 import org.store.achat.application.service.IFactureAchatService;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.achat.domain.service.FactureAchatDomainService;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.security.application.dto.UserPrincipal;
@@ -58,5 +59,12 @@ public class FactureAchatServiceImpl implements IFactureAchatService {
     public Page<FactureAchatResponse> findEcheances(FactureAchatEcheanceFilter factureAchatEcheanceFilter) {
         validatorService.validate(factureAchatEcheanceFilter);
         return factureAchatDomainService.findEcheances(factureAchatEcheanceFilter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    /** Retourne l'entité facture liée à une commande (cardinalité 1-1) ou lève `EntityException`. */
+    @Override
+    public FactureAchat findByCommandeId(UUID commandeId) {
+        return factureAchatDomainService.findByCommandeId(commandeId)
+                .orElseThrow(() -> new EntityException("factureAchat.notFoundForCommande", commandeId));
     }
 }

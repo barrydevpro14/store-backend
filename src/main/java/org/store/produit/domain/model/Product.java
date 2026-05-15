@@ -29,9 +29,6 @@ public class Product extends AuditableEntity {
     private CategoryProduct categoryProduct;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Quality quality;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     private Entreprise entreprise;
 
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)

@@ -1,5 +1,6 @@
 package org.store.produit.application.service;
 
+import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.store.produit.application.dto.ProductFournisseurRequest;
@@ -11,7 +12,7 @@ import java.util.UUID;
 public interface IProductFournisseurService {
 
     /**
-     * Création du lien produit ↔ fournisseur avec prix d'achat pour l'entreprise du caller.
+     * Création du lien produit ↔ fournisseur ↔ qualité avec prix d'achat et prix de vente pour l'entreprise du caller.
      */
     ProductFournisseurResponse create(ProductFournisseurRequest productFournisseurRequest);
 
@@ -36,9 +37,14 @@ public interface IProductFournisseurService {
     Page<ProductFournisseurResponse> findAllByProductId(UUID productId, Pageable pageable);
 
     /**
-     * Modification du prix d'achat, référence fournisseur et origine d'un lien existant. Les FK product/fournisseur sont immuables.
+     * Modification du prix d'achat, prix de vente, référence fournisseur et origine d'un lien existant. Les FK product/fournisseur/quality sont immuables.
      */
     ProductFournisseurResponse update(UUID id, ProductFournisseurRequest productFournisseurRequest);
+
+    /**
+     * Met à jour uniquement le prix de vente. Utilisé après chaque achat (snapshot ligne) et via PUT manager pour ajustement libre.
+     */
+    ProductFournisseurResponse updatePrixVente(UUID id, BigDecimal prixVente);
 
     /**
      * Suppression d'un lien produit-fournisseur de l'entreprise du caller.
@@ -51,7 +57,17 @@ public interface IProductFournisseurService {
     ProductFournisseur ensureBelongsToCurrentEntreprise(ProductFournisseur productFournisseur);
 
     /**
-     * Vérifie qu'aucun lien (product, fournisseur) n'existe déjà. Throw `UniqueResourceException("productFournisseur.alreadyExists")` sinon.
+     * Vérifie qu'aucun lien (product, fournisseur, quality) n'existe déjà. Throw `UniqueResourceException("productFournisseur.alreadyExists")` sinon.
      */
-    void ensurePairAvailable(UUID productId, UUID fournisseurId);
+    void ensureTripletAvailable(UUID productId, UUID fournisseurId, UUID qualityId);
+
+    /**
+     * Met à jour le prix de vente courant du PF avec celui de l'entité fournie (réutilisé par AchatServiceImpl après chaque ligne d'achat).
+     */
+    ProductFournisseur applyPrixVenteFromPurchase(ProductFournisseur productFournisseur, BigDecimal newPrixVente);
+
+    /**
+     * Vérifie la règle métier prixVente > prixAchat (marge strictement positive). Throw `BadArgumentException("productFournisseur.prixVente.belowOrEqualAchat")` sinon.
+     */
+    void ensurePrixVenteGreaterThanPrixAchat(BigDecimal prixVente, BigDecimal prixAchat);
 }

@@ -1,19 +1,23 @@
 package org.store.produit.application.service.impl;
 
+import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.model.Fournisseur;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.application.service.IProductService;
+import org.store.produit.application.service.IQualityService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.ProductFournisseurDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -21,7 +25,7 @@ import org.store.security.application.service.ICurrentUserService;
 import java.util.UUID;
 
 /**
- * Gère le CRUD des liens produit ↔ fournisseur (prix d'achat, référence fournisseur, origine), scopé par entreprise.
+ * Gère le CRUD des liens produit ↔ fournisseur ↔ qualité (prix d'achat, prix de vente courant, traçabilité), scopé par entreprise.
  */
 @Service
 @Transactional(readOnly = true)
@@ -30,26 +34,33 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
     private final ProductFournisseurDomainService productFournisseurDomainService;
     private final IProductService productService;
     private final IFournisseurService fournisseurService;
+    private final IQualityService qualityService;
     private final ICurrentUserService currentUserService;
 
     public ProductFournisseurServiceImpl(ProductFournisseurDomainService productFournisseurDomainService,
                                          IProductService productService,
                                          IFournisseurService fournisseurService,
+                                         IQualityService qualityService,
                                          ICurrentUserService currentUserService) {
         this.productFournisseurDomainService = productFournisseurDomainService;
         this.productService = productService;
         this.fournisseurService = fournisseurService;
+        this.qualityService = qualityService;
         this.currentUserService = currentUserService;
     }
 
-    /** Crée le lien après vérification que product et fournisseur appartiennent à l'entreprise du caller et qu'aucun lien n'existe déjà. */
+    /** Crée le lien après vérification des appartenances (product/fournisseur/quality) à l'entreprise et de l'unicité du triplet ; valide prixVente > prixAchat. */
     @Override
     @Transactional
     public ProductFournisseurResponse create(ProductFournisseurRequest productFournisseurRequest) {
         Product product = productService.ensureBelongsToCurrentEntreprise(productService.findById(productFournisseurRequest.productId()));
         Fournisseur fournisseur = fournisseurService.ensureBelongsToCurrentEntreprise(fournisseurService.findById(productFournisseurRequest.fournisseurId()));
-        ensurePairAvailable(product.getId(), fournisseur.getId());
-        return new ProductFournisseurResponse(productFournisseurDomainService.create(productFournisseurRequest, product, fournisseur));
+        Quality quality = qualityService.ensureBelongsToCurrentEntreprise(qualityService.findById(productFournisseurRequest.qualityId()));
+
+        ensurePrixVenteGreaterThanPrixAchat(productFournisseurRequest.prixVente(), productFournisseurRequest.prixAchat());
+        ensureTripletAvailable(product.getId(), fournisseur.getId(), quality.getId());
+
+        return new ProductFournisseurResponse(productFournisseurDomainService.create(productFournisseurRequest, product, fournisseur, quality));
     }
 
     /** Retourne le lien ou lève `EntityException`. */
@@ -79,15 +90,34 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
         return productFournisseurDomainService.findResponsesByProductId(productId, pageable);
     }
 
-    /** Met à jour prix d'achat, référence fournisseur et origine ; product et fournisseur restent immuables. */
+    /** Met à jour prix d'achat, prix de vente, référence fournisseur et origine ; product/fournisseur/quality restent immuables ; valide prixVente > prixAchat. */
     @Override
     @Transactional
     public ProductFournisseurResponse update(UUID id, ProductFournisseurRequest productFournisseurRequest) {
         ProductFournisseur productFournisseur = ensureBelongsToCurrentEntreprise(productFournisseurDomainService.findById(id));
+        ensurePrixVenteGreaterThanPrixAchat(productFournisseurRequest.prixVente(), productFournisseurRequest.prixAchat());
+
         productFournisseur.setPrixAchat(productFournisseurRequest.prixAchat());
+        productFournisseur.setPrixVente(productFournisseurRequest.prixVente());
         productFournisseur.setReferenceFournisseur(productFournisseurRequest.referenceFournisseur());
         productFournisseur.setOrigine(productFournisseurRequest.origine());
         return new ProductFournisseurResponse(productFournisseurDomainService.save(productFournisseur));
+    }
+
+    /** Met à jour uniquement le prix de vente courant du PF (manager) sans contrainte sur l'ancien prix, mais avec contrainte prixVente > prixAchat actuel. */
+    @Override
+    @Transactional
+    public ProductFournisseurResponse updatePrixVente(UUID id, BigDecimal prixVente) {
+        ProductFournisseur productFournisseur = ensureBelongsToCurrentEntreprise(productFournisseurDomainService.findById(id));
+        ensurePrixVenteGreaterThanPrixAchat(prixVente, productFournisseur.getPrixAchat());
+        return new ProductFournisseurResponse(productFournisseurDomainService.updatePrixVente(productFournisseur, prixVente));
+    }
+
+    /** Met à jour le prix de vente sans revérifier l'appartenance entreprise (appelé depuis le flux d'achat déjà scopé). */
+    @Override
+    @Transactional
+    public ProductFournisseur applyPrixVenteFromPurchase(ProductFournisseur productFournisseur, BigDecimal newPrixVente) {
+        return productFournisseurDomainService.updatePrixVente(productFournisseur, newPrixVente);
     }
 
     /** Supprime le lien après contrôle d'appartenance à l'entreprise du caller. */
@@ -108,11 +138,19 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
         return productFournisseur;
     }
 
-    /** Lève `UniqueResourceException` si un lien (product, fournisseur) existe déjà. */
+    /** Lève `UniqueResourceException` si un lien (product, fournisseur, quality) existe déjà. */
     @Override
-    public void ensurePairAvailable(UUID productId, UUID fournisseurId) {
-        if (productFournisseurDomainService.existsByProductIdAndFournisseurId(productId, fournisseurId)) {
+    public void ensureTripletAvailable(UUID productId, UUID fournisseurId, UUID qualityId) {
+        if (productFournisseurDomainService.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId)) {
             throw new UniqueResourceException("productFournisseur.alreadyExists");
+        }
+    }
+
+    /** Vérifie que prixVente > prixAchat (marge strictement positive). */
+    @Override
+    public void ensurePrixVenteGreaterThanPrixAchat(BigDecimal prixVente, BigDecimal prixAchat) {
+        if (prixVente.compareTo(prixAchat) <= 0) {
+            throw new BadArgumentException("productFournisseur.prixVente.belowOrEqualAchat");
         }
     }
 }

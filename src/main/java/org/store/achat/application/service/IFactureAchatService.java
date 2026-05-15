@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.store.achat.application.dto.FactureAchatEcheanceFilter;
 import org.store.achat.application.dto.FactureAchatFilter;
 import org.store.achat.application.dto.FactureAchatResponse;
+import org.store.achat.domain.model.FactureAchat;
 
 import java.util.UUID;
 
@@ -17,4 +18,7 @@ public interface IFactureAchatService {
 
     /** Liste paginée des factures dont l'échéance tombe dans la fenêtre et qui ne sont pas entièrement payées. */
     Page<FactureAchatResponse> findEcheances(FactureAchatEcheanceFilter factureAchatEcheanceFilter);
+
+    /** Lecture interne de la facture liée à une commande achat (la cardinalité est 1-1, créée atomiquement). Throw `EntityException("factureAchat.notFoundForCommande")` si absente. */
+    FactureAchat findByCommandeId(UUID commandeId);
 }

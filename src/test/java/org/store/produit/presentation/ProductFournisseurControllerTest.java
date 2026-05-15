@@ -15,9 +15,11 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.achat.application.dto.FournisseurSummaryResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.produit.application.dto.ProductFournisseurPrixVenteRequest;
 import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.IProductFournisseurService;
 
 import java.math.BigDecimal;
@@ -45,6 +47,7 @@ class ProductFournisseurControllerTest {
     private UUID productFournisseurId;
     private UUID productId;
     private UUID fournisseurId;
+    private UUID qualityId;
 
     @BeforeEach
     void setUp() {
@@ -63,6 +66,7 @@ class ProductFournisseurControllerTest {
         productFournisseurId = UUID.randomUUID();
         productId = UUID.randomUUID();
         fournisseurId = UUID.randomUUID();
+        qualityId = UUID.randomUUID();
     }
 
     private ProductFournisseurResponse sample() {
@@ -70,12 +74,13 @@ class ProductFournisseurControllerTest {
                 productFournisseurId,
                 new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195"),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc SARL"),
-                new BigDecimal("12.50"), "REF-FRN-001", "Maroc"
+                new QualitySummaryResponse(qualityId, "Premium"),
+                new BigDecimal("12.50"), new BigDecimal("18.00"), "REF-FRN-001", "Maroc"
         );
     }
 
     private ProductFournisseurRequest validBody() {
-        return new ProductFournisseurRequest(productId, fournisseurId, new BigDecimal("12.50"), "REF-FRN-001", "Maroc");
+        return new ProductFournisseurRequest(productId, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("18.00"), "REF-FRN-001", "Maroc");
     }
 
     @Test
@@ -89,14 +94,16 @@ class ProductFournisseurControllerTest {
                 .andExpect(jsonPath("$.id").value(productFournisseurId.toString()))
                 .andExpect(jsonPath("$.product.id").value(productId.toString()))
                 .andExpect(jsonPath("$.fournisseur.id").value(fournisseurId.toString()))
+                .andExpect(jsonPath("$.quality.id").value(qualityId.toString()))
                 .andExpect(jsonPath("$.prixAchat").value(12.50))
+                .andExpect(jsonPath("$.prixVente").value(18.00))
                 .andExpect(jsonPath("$.referenceFournisseur").value("REF-FRN-001"))
                 .andExpect(jsonPath("$.origine").value("Maroc"));
     }
 
     @Test
     void should_return_400_when_product_id_null() throws Exception {
-        ProductFournisseurRequest body = new ProductFournisseurRequest(null, fournisseurId, new BigDecimal("12.50"), null, null);
+        ProductFournisseurRequest body = new ProductFournisseurRequest(null, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("18.00"), null, null);
 
         mockMvc.perform(post(ProductFournisseurController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -106,7 +113,17 @@ class ProductFournisseurControllerTest {
 
     @Test
     void should_return_400_when_prix_achat_zero_or_negative() throws Exception {
-        ProductFournisseurRequest body = new ProductFournisseurRequest(productId, fournisseurId, BigDecimal.ZERO, null, null);
+        ProductFournisseurRequest body = new ProductFournisseurRequest(productId, fournisseurId, qualityId, BigDecimal.ZERO, new BigDecimal("18.00"), null, null);
+
+        mockMvc.perform(post(ProductFournisseurController.BASE_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_400_when_prix_vente_null() throws Exception {
+        ProductFournisseurRequest body = new ProductFournisseurRequest(productId, fournisseurId, qualityId, new BigDecimal("12.50"), null, null, null);
 
         mockMvc.perform(post(ProductFournisseurController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -152,19 +169,40 @@ class ProductFournisseurControllerTest {
                 productFournisseurId,
                 new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195"),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc SARL"),
-                new BigDecimal("20.00"), "REF-NEW", "France"
+                new QualitySummaryResponse(qualityId, "Premium"),
+                new BigDecimal("20.00"), new BigDecimal("30.00"), "REF-NEW", "France"
         );
         when(productFournisseurService.update(eq(productFournisseurId), any(ProductFournisseurRequest.class))).thenReturn(updated);
 
-        ProductFournisseurRequest body = new ProductFournisseurRequest(productId, fournisseurId, new BigDecimal("20.00"), "REF-NEW", "France");
+        ProductFournisseurRequest body = new ProductFournisseurRequest(productId, fournisseurId, qualityId, new BigDecimal("20.00"), new BigDecimal("30.00"), "REF-NEW", "France");
 
         mockMvc.perform(put(ProductFournisseurController.BASE_PATH + "/" + productFournisseurId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prixAchat").value(20.00))
-                .andExpect(jsonPath("$.referenceFournisseur").value("REF-NEW"))
-                .andExpect(jsonPath("$.origine").value("France"));
+                .andExpect(jsonPath("$.prixVente").value(30.00))
+                .andExpect(jsonPath("$.referenceFournisseur").value("REF-NEW"));
+    }
+
+    @Test
+    void should_return_200_when_prix_vente_updated() throws Exception {
+        ProductFournisseurResponse updated = new ProductFournisseurResponse(
+                productFournisseurId,
+                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195"),
+                new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc SARL"),
+                new QualitySummaryResponse(qualityId, "Premium"),
+                new BigDecimal("12.50"), new BigDecimal("25.00"), "REF-FRN-001", "Maroc"
+        );
+        when(productFournisseurService.updatePrixVente(eq(productFournisseurId), eq(new BigDecimal("25.00")))).thenReturn(updated);
+
+        ProductFournisseurPrixVenteRequest body = new ProductFournisseurPrixVenteRequest(new BigDecimal("25.00"));
+
+        mockMvc.perform(put(ProductFournisseurController.BASE_PATH + "/" + productFournisseurId + "/prix-vente")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prixVente").value(25.00));
     }
 
     @Test

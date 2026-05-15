@@ -10,7 +10,6 @@ import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
-import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.repository.ProductRepository;
 
 import java.util.List;
@@ -23,13 +22,12 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         super(repository);
     }
 
-    public Product create(ProductRequest productRequest, CategoryProduct categoryProduct, Quality quality, Entreprise entreprise) {
+    public Product create(ProductRequest productRequest, CategoryProduct categoryProduct, Entreprise entreprise) {
         Product product = new Product();
         product.setNom(productRequest.nom());
         product.setReference(productRequest.reference());
         product.setDescription(productRequest.description());
         product.setCategoryProduct(categoryProduct);
-        product.setQuality(quality);
         product.setEntreprise(entreprise);
         return save(product);
     }
@@ -44,6 +42,10 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
 
     public boolean existsByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {
         return repository.existsByReferenceAndEntrepriseId(reference, entrepriseId);
+    }
+
+    public Page<Product> searchByEntrepriseWithActiveLots(String searchTerm, UUID magasinId, UUID entrepriseId, Pageable pageable) {
+        return repository.searchByEntrepriseWithActiveLots(searchTerm, magasinId, entrepriseId, pageable);
     }
 
     public Product setImagePrincipal(Product product, PieceJointe imagePrincipal) {

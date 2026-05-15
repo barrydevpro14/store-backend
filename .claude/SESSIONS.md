@@ -7,7 +7,102 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-15
+**Date :** 2026-05-15 (soirée)
+**Sujet :** **Module Vente — fonctionnalité 2 : Recherche produit vendeur + déplacement structurel de `Quality` vers `ProductFournisseur` + introduction de `prixVente` (sur PF et lignes d'achat) + validation `prixVente > prixAchat` + endpoint PUT prix-vente manager.** Refactor architectural significatif : extraction d'un service dédié `IProductSearchService` pour casser un cycle d'injection.
+
+**Ce qui a été fait :**
+
+1. **Migration Flyway V11** `move_quality_to_product_fournisseur_and_add_prix_vente.sql` :
+   - `product_fournisseur` : `ADD COLUMN quality_id UUID` (nullable temp) + FK + backfill `UPDATE pf SET quality_id = product.quality_id` + `NOT NULL` + `UNIQUE (product_id, fournisseur_id, quality_id)` + index.
+   - `product_fournisseur` : `ADD COLUMN prix_vente NUMERIC(19,2)` + backfill `= prix_achat` + `NOT NULL`.
+   - `ligne_commande_achat` : `ADD COLUMN prix_vente NUMERIC(19,2)` + backfill `= prix_achat` + `NOT NULL`.
+   - `product` : `DROP CONSTRAINT` dynamique (bloc `DO $$`) pour la FK quality + `DROP COLUMN IF EXISTS quality_id`.
+
+2. **Entités** : `Product` perd `quality`. `ProductFournisseur` gagne `quality` (`@ManyToOne LAZY optional=false`) + `prixVente` (`@Column nullable=false precision=19 scale=2`). `LigneCommandeAchat` gagne `prixVente` (idem).
+
+3. **DTOs adaptés** :
+   - `ProductRequest` : retire `qualityId`. `ProductResponse` : retire `quality`.
+   - `ProductFournisseurRequest` : ajoute `@NotNull UUID qualityId` + `@NotNull @DecimalMin(0, exclusive) BigDecimal prixVente`.
+   - `ProductFournisseurResponse` : ajoute `quality: QualitySummaryResponse` + `prixVente`.
+   - `LigneAchatRequest`, `LigneCommandeAchatCreate`, `LigneCommandeAchatResponse` : ajoutent `prixVente`.
+   - Nouveau `ProductFournisseurPrixVenteRequest(prixVente)` pour PUT dédié.
+
+4. **DTOs recherche (nouveaux)** :
+   - `ProductSearchResponse(id, nom, reference, description, category, image, quantiteEnStock, productFournisseurs[])` + constructeur secondaire `(Product, quantiteEnStock, lots)`.
+   - `ProductFournisseurStockResponse(id, quality, fournisseur, prixVente, quantiteEnStock)` + constructeur secondaire `(ProductFournisseur, quantiteEnStock)`.
+
+5. **Services adaptés** :
+   - `ProductDomainService.create()` sans quality + nouvelle `searchByEntrepriseWithActiveLots`.
+   - `ProductFournisseurDomainService.create(...)` accepte quality + prixVente, + `updatePrixVente`, unicité triplet.
+   - `LigneCommandeAchatDomainService.create()` accepte prixVente.
+   - `EntreeStockDomainService.findActiveLotsByMagasinAndProductIds(...)` (avec fetch joins PF/fournisseur/quality).
+   - `IProductFournisseurService` : nouvelles méthodes `updatePrixVente(id, price)`, `applyPrixVenteFromPurchase(pf, price)`, `ensurePrixVenteGreaterThanPrixAchat(prixVente, prixAchat)` (publique réutilisable).
+   - `IEntreeStockService.findActiveLotsByMagasinAndProductIds(...)` (façade pour `IProductSearchService`).
+   - `AchatServiceImpl` : validation `prixVente > prixAchat` à chaque ligne via `productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(...)`, et **mise à jour automatique** `pf.prixVente = ligne.prixVente` après chaque ligne d'achat.
+
+6. **Service dédié `IProductSearchService` + `ProductSearchServiceImpl`** :
+   - **Raison** : le cycle `IProductService → IEntreeStockService → IProductFournisseurService → IProductService` empêchait Spring de résoudre les beans (Spring Boot 3+ interdit les références circulaires par défaut).
+   - Extraction d'un service dédié qui orchestre la recherche (n'est injecté par personne, donc pas de cycle).
+   - Stratégie 2 queries pour éviter N+1 : (1) `Page<Product>` paginée filtrée par `searchTerm + EXISTS lot actif dans magasin` ; (2) `List<EntreeStock>` actifs (fetch joints PF/fournisseur/quality) pour les IDs paginés. Agrégation par produit puis par PF en Java.
+   - Résolution `magasinId` : EMPLOYE = implicite (`UserPrincipal.magasinId`), PROPRIETAIRE = obligatoire (sinon `BadArgumentException("product.search.magasinIdRequired")`).
+
+7. **Endpoints** :
+   - `GET /api/v1/products/search?q=&magasinId=&page=&size=` (permission `PRODUCT_READ`, dans `ProductController` injectant `IProductSearchService`).
+   - `PUT /api/v1/product-suppliers/{id}/prix-vente` (permission `SUPPLIER_UPDATE`, modification libre par manager, validation `> prixAchat`).
+
+8. **i18n** : nouvelles clés `productFournisseur.prixVente.belowOrEqualAchat` + `product.search.magasinIdRequired` (FR + EN). Reformulation `productFournisseur.alreadyExists` pour mentionner la qualité.
+
+9. **Tests adaptés + nouveaux** :
+   - `ProductServiceImplTest` : retiré `qualityService`, retiré `setQuality`, signature `create(request, category, entreprise)`, supprimé le test `quality_belongs_to_other_entreprise`.
+   - `ProductControllerTest` : retiré `QualitySummaryResponse`, mock `IProductSearchService` ajouté, nouveau test search.
+   - `ProductFournisseurServiceImplTest` : ajouté `qualityService`, sample avec quality + prixVente, signature create avec quality, nouveaux tests pour `updatePrixVente`, validation `prixVente > prixAchat`, `ensureTripletAvailable`.
+   - `ProductFournisseurControllerTest` : sample/validBody enrichis, nouveau test PUT prix-vente, nouveau test 400 prix-vente null.
+   - `AchatServiceImplTest` + `AchatControllerTest` : `LigneAchatRequest` enrichi de `prixVente`.
+   - Nouveau `ProductSearchServiceImplTest` : 4 tests (BadArgument propriétaire sans magasinId, employé implicite, agrégation par PF, page vide).
+
+**Décisions / arbitrages :**
+
+- **Modèle : quality sur PF, pas sur Product** — décision utilisateur explicite avec exemple concret "Clou 10mm : Chine 10 FCFA, Maroc 15 FCFA, France 25 FCFA". Un même produit (nom/réf) peut être livré par un même fournisseur en plusieurs qualités, d'où unicité `(product, fournisseur, quality)`.
+- **prixVente vit sur ProductFournisseur** (pas sur le lot) — itération : initialement pensé sur EntreeStock, puis corrigé après l'exemple Clou. Un PF = un prix de vente courant unique, mis à jour à chaque achat.
+- **Validation `prixVente > prixAchat`** (strict, pas `>=`) — marge zéro interdite. Backfill historique `= prix_achat` toléré (validation applicative aux nouveaux flux uniquement).
+- **Pas de règle "≥ ancien prix"** — utilisateur a refusé la rigidité ; à la place : endpoint PUT séparé géré par le manager, sans contrainte de baisse. Le marché peut baisser, le manager décide.
+- **Endpoint PUT prix-vente dédié** : `PUT /product-suppliers/{id}/prix-vente`. Permission `SUPPLIER_UPDATE` (manager, propriétaire, admin ; pas vendeur). Validation `> prixAchat actuel`.
+- **Mise à jour auto à l'achat** : `pf.prixVente = ligne.prixVente` après chaque ligne d'achat (cohérent avec "le prix de vente est renseigné lors d'un achat"). Pas de contrainte ≥ ancien à l'achat (le manager peut donc baisser indirectement via un nouvel achat — c'est le canal métier normal).
+- **Service dédié pour la recherche** : `IProductSearchService` extrait pour casser un cycle d'injection détecté à l'exécution (Spring Boot ne tolère pas les cycles par défaut). Cassage cycle propre vs `@Lazy` hack. Le controller `ProductController` injecte maintenant 2 services (cohérent avec la règle "controller minimal" qui autorise plusieurs services injectés).
+- **2 queries pour éviter N+1** : pagination JPQL sur Product, puis fetch séparé des lots actifs pour les productIds paginés. Performance acceptable pour les volumes attendus (centaines de produits, dizaines de lots actifs par produit).
+- **Backfill V11 conservateur** : `prix_vente = prix_achat` (marge zéro affichée). Les lots historiques restent vendables à exactement prix_achat. Le manager corrigera au prochain achat ou via PUT prix-vente.
+- **DROP CONSTRAINT dynamique** : sécurité pour BD baselinée où le nom de FK peut être auto-généré par Hibernate (pattern V10 réutilisé).
+
+**Bug rencontré : Flyway en état failed**
+
+Lors de la première tentative de V11, le DROP CONSTRAINT statique a échoué (FK auto-généré par Hibernate avec un nom différent de `fk_product_quality`). Flyway a marqué l'entrée comme `success=false` dans `flyway_schema_history`. PostgreSQL a rollbacké la migration (transactional DDL), mais l'entrée failed bloque les retries. La V11 a été corrigée avec un bloc `DO $$` dynamique, mais l'entrée doit être nettoyée manuellement avant que le `StoreApplicationTests.contextLoads` ne passe :
+
+```bash
+PGPASSWORD=passer psql -h localhost -U barrydevit -d db_store \
+  -c "DELETE FROM flyway_schema_history WHERE success = false;"
+```
+
+Après nettoyage, V11 se rejouera automatiquement et `StoreApplicationTests.contextLoads` passera (425e test vert).
+
+**Où on s'est arrêté :**
+
+- **Tests : 415 → 424 (passants) + 1 KO (`StoreApplicationTests` à débloquer via le DELETE flyway_schema_history ci-dessus)**. Compile vert.
+- **Migration V11** créée et corrigée (drop FK dynamique + `DROP COLUMN IF EXISTS`).
+- **Pas encore committé** sur dev (branche en avance de 1 commit sur `origin/dev` depuis F-V1).
+- **3 décisions métier importantes inscrites en doc** : (a) quality sur PF (multi-qualité même fournisseur possible), (b) prixVente sur PF mis à jour à chaque achat + endpoint manager, (c) marge stricte (`prixVente > prixAchat`).
+- **Pattern d'extraction de service pour casser un cycle** documenté (`IProductSearchService` isolé sans dépendances dans le cycle).
+
+**Prochaine étape recommandée :**
+
+1. **Cleanup BD** : exécuter le DELETE Flyway ci-dessus pour débloquer le 425e test.
+2. **F-V3 — Vente atomique** (`POST /api/v1/sales`) — symétrique au module Achat F12-F14. `CommandeVente` (référence auto `VTE-yyyyMMdd-HHmmssSSS`) + `LigneCommandeVente` + appel `ISortieStockService.create()` FIFO (déjà livré) + `FactureClient` (numéro auto) + `PaiementVente` initial. À la vente, contrainte : prix saisi par le vendeur ≥ MAX(prixVente des PF des lots consommés en FIFO).
+3. **F-V4 — Listings ventes** (commandes, factures, échéances).
+4. **F-V5 — Paiement échelonné** (multiple PaiementVente par facture).
+5. **Module dashboard / reporting** ensuite.
+
+---
+
+### Session du 2026-05-15
 **Sujet :** **Démarrage du module Vente — fonctionnalité 1 : CRUD Client** + 3 nouvelles règles de codage transverses (variables explicites, DTO Filter ≥ 2 critères, retrait de l'helper `normalize` au profit d'une gestion null directe en JPQL). Pattern décalqué sur le CRUD Fournisseur (module Achat). Scoping double (employé = magasin, propriétaire = entreprise). Décision métier sur le "client anonyme" : pas d'enregistrement BDD dédié, juste `CommandeVente.clientId` qui sera nullable à F-V3.
 
 **Ce qui a été fait :**

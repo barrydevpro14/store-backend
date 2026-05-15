@@ -4,13 +4,18 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.service.IAchatService;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping(AchatController.BASE_PATH)
@@ -28,5 +33,11 @@ public class AchatController {
     @PreAuthorize("hasAuthority('PURCHASE_CREATE')")
     public ResponseEntity<AchatResponse> create(@Valid @RequestBody AchatRequest achatRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(achatService.create(achatRequest));
+    }
+
+    @GetMapping("/{commandeId}")
+    @PreAuthorize("hasAuthority('PURCHASE_READ')")
+    public ResponseEntity<AchatDetailsResponse> findDetailsById(@PathVariable UUID commandeId) {
+        return ResponseEntity.ok(achatService.findDetailsById(commandeId));
     }
 }

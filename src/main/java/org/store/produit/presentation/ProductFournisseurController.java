@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.produit.application.dto.ProductFournisseurPrixVenteRequest;
 import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.application.service.IProductFournisseurService;
@@ -60,6 +61,13 @@ public class ProductFournisseurController {
     public ResponseEntity<ProductFournisseurResponse> update(@PathVariable UUID id,
                                                              @Valid @RequestBody ProductFournisseurRequest productFournisseurRequest) {
         return ResponseEntity.ok(productFournisseurService.update(id, productFournisseurRequest));
+    }
+
+    @PutMapping("/{id}/prix-vente")
+    @PreAuthorize("hasAuthority('SUPPLIER_UPDATE')")
+    public ResponseEntity<ProductFournisseurResponse> updatePrixVente(@PathVariable UUID id,
+                                                                       @Valid @RequestBody ProductFournisseurPrixVenteRequest prixVenteRequest) {
+        return ResponseEntity.ok(productFournisseurService.updatePrixVente(id, prixVenteRequest.prixVente()));
     }
 
     @DeleteMapping("/{id}")

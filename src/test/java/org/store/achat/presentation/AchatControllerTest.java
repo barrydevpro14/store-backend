@@ -64,7 +64,7 @@ class AchatControllerTest {
 
     private AchatRequest validBody() {
         return new AchatRequest(magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), "LOT-001", null)),
+                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", null)),
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null));
     }
 
@@ -80,7 +80,7 @@ class AchatControllerTest {
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("1000.00"),
                 LocalDate.of(2026, 5, 15), null, cmd.id()
         );
-        return new AchatResponse(cmd, fac, List.of(UUID.randomUUID()));
+        return new AchatResponse(cmd, fac);
     }
 
     @Test
@@ -93,8 +93,40 @@ class AchatControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.commande.reference").value("CMD-AUTO"))
                 .andExpect(jsonPath("$.facture.numero").value("FAC-001"))
-                .andExpect(jsonPath("$.facture.statut").value("NON_PAYEE"))
-                .andExpect(jsonPath("$.entreesStockIds.length()").value(1));
+                .andExpect(jsonPath("$.facture.statut").value("NON_PAYEE"));
+    }
+
+    @Test
+    void should_return_200_when_get_purchase_details() throws Exception {
+        UUID commandeId = UUID.randomUUID();
+        CommandeAchatResponse cmd = new CommandeAchatResponse(
+                commandeId, "CMD-AUTO", CommandeAchatStatut.RECEPTIONNEE,
+                new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
+                new MagasinSummaryResponse(magasinId, "Magasin Central"),
+                LocalDate.of(2026, 5, 15), List.of(), "2026-05-15 10:00:00"
+        );
+        FactureAchatResponse fac = new FactureAchatResponse(
+                UUID.randomUUID(), "FAC-001", StatutFacture.NON_PAYEE,
+                new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("1000.00"),
+                LocalDate.of(2026, 5, 15), null, commandeId
+        );
+        org.store.achat.application.dto.LigneCommandeAchatResponse ligne = new org.store.achat.application.dto.LigneCommandeAchatResponse(
+                UUID.randomUUID(),
+                new org.store.produit.application.dto.ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
+                new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
+                10, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00")
+        );
+        org.store.achat.application.dto.AchatDetailsResponse details = new org.store.achat.application.dto.AchatDetailsResponse(cmd, fac, List.of(ligne));
+        when(achatService.findDetailsById(commandeId)).thenReturn(details);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(AchatController.BASE_PATH + "/" + commandeId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.commande.reference").value("CMD-AUTO"))
+                .andExpect(jsonPath("$.facture.numero").value("FAC-001"))
+                .andExpect(jsonPath("$.lignes.length()").value(1))
+                .andExpect(jsonPath("$.lignes[0].quantite").value(10))
+                .andExpect(jsonPath("$.lignes[0].prixAchat").value(10.00))
+                .andExpect(jsonPath("$.lignes[0].prixVente").value(15.00));
     }
 
     @Test
@@ -112,7 +144,7 @@ class AchatControllerTest {
     @Test
     void should_return_400_when_facture_numero_blank() throws Exception {
         AchatRequest body = new AchatRequest(magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), null, null)),
+                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), null, null)),
                 new FactureAchatCreateRequest("", LocalDate.of(2026, 5, 15), null));
 
         mockMvc.perform(post(AchatController.BASE_PATH)

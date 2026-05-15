@@ -2,6 +2,8 @@ package org.store.achat.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.achat.application.dto.AchatContext;
+import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.CommandeAchatCreate;
@@ -10,12 +12,16 @@ import org.store.achat.application.dto.FactureAchatCreate;
 import org.store.achat.application.dto.FactureAchatResponse;
 import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
+import org.store.achat.application.dto.LigneCommandeAchatResponse;
 import org.store.achat.application.service.IAchatService;
+import org.store.achat.application.service.ICommandeAchatService;
+import org.store.achat.application.service.IFactureAchatService;
 import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.achat.domain.model.Fournisseur;
+import org.store.achat.domain.model.LigneCommandeAchat;
 import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.achat.domain.service.LigneCommandeAchatDomainService;
@@ -29,7 +35,6 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.domain.enums.MouvementStockType;
-import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
 import org.store.stock.domain.service.MouvementStockDomainService;
@@ -37,6 +42,7 @@ import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,6 +62,8 @@ public class AchatServiceImpl implements IAchatService {
     private final IMagasinService magasinService;
     private final IFournisseurService fournisseurService;
     private final IProductFournisseurService productFournisseurService;
+    private final ICommandeAchatService commandeAchatService;
+    private final IFactureAchatService factureAchatService;
     private final ValidatorService validatorService;
 
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
@@ -67,6 +75,8 @@ public class AchatServiceImpl implements IAchatService {
                             IMagasinService magasinService,
                             IFournisseurService fournisseurService,
                             IProductFournisseurService productFournisseurService,
+                            ICommandeAchatService commandeAchatService,
+                            IFactureAchatService factureAchatService,
                             ValidatorService validatorService) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
@@ -77,6 +87,8 @@ public class AchatServiceImpl implements IAchatService {
         this.magasinService = magasinService;
         this.fournisseurService = fournisseurService;
         this.productFournisseurService = productFournisseurService;
+        this.commandeAchatService = commandeAchatService;
+        this.factureAchatService = factureAchatService;
         this.validatorService = validatorService;
     }
 
@@ -105,21 +117,40 @@ public class AchatServiceImpl implements IAchatService {
                 montantTotal
         ));
 
-        List<UUID> entreesStockIds = createEntriesAndUpdateStock(achatRequest, magasin, commande, facture, productFournisseurs);
+        createEntriesAndUpdateStock(new AchatContext(achatRequest, magasin, commande, facture, productFournisseurs));
 
         return new AchatResponse(
                 new CommandeAchatResponse(commande),
-                new FactureAchatResponse(facture),
-                entreesStockIds
+                new FactureAchatResponse(facture)
         );
     }
 
-    /** Résout chaque productFournisseur et vérifie qu'il appartient à l'entreprise et au fournisseur ciblé. */
+    /** Retourne le détail d'un achat : commande + facture + lignes (produit, quantité, prixAchat, prixVente). Scoping entreprise via la commande. */
+    @Override
+    public AchatDetailsResponse findDetailsById(UUID commandeId) {
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        FactureAchat facture = factureAchatService.findByCommandeId(commande.getId());
+
+        List<LigneCommandeAchatResponse> lignes = commande.getLignes().stream()
+                .map(LigneCommandeAchatResponse::new)
+                .toList();
+
+        return new AchatDetailsResponse(
+                new CommandeAchatResponse(commande),
+                new FactureAchatResponse(facture),
+                lignes
+        );
+    }
+
+    /** Résout chaque productFournisseur, vérifie son appartenance entreprise/fournisseur et valide prixVente > prixAchat pour chaque ligne. */
     public List<ProductFournisseur> resolveAndValidateProductFournisseurs(AchatRequest request, Fournisseur fournisseur) {
         List<ProductFournisseur> result = new ArrayList<>();
         for (LigneAchatRequest ligne : request.lignes()) {
+            productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligne.prixVente(), ligne.prixAchat());
+
             ProductFournisseur pf = productFournisseurService.ensureBelongsToCurrentEntreprise(
                     productFournisseurService.findById(ligne.productFournisseurId()));
+
             if (!pf.getFournisseur().getId().equals(fournisseur.getId())) {
                 throw new BadArgumentException("achat.fournisseur.productMismatch");
             }
@@ -128,38 +159,45 @@ public class AchatServiceImpl implements IAchatService {
         return result;
     }
 
-    /** Crée chaque ligne de commande et retourne le montant total cumulé. */
+    /** Crée chaque ligne de commande (snapshot prixAchat + prixVente), met à jour le prixVente courant du PF, et retourne le montant total cumulé. */
     public BigDecimal createLignesAndComputeTotal(AchatRequest request, CommandeAchat commande, List<ProductFournisseur> productFournisseurs) {
-        BigDecimal total = BigDecimal.ZERO;
-        for (int i = 0; i < request.lignes().size(); i++) {
-            LigneAchatRequest ligne = request.lignes().get(i);
-            ProductFournisseur pf = productFournisseurs.get(i);
+        List<LigneAchatRequest> lignes = request.lignes();
+        Iterator<ProductFournisseur> productFournisseurIterator = productFournisseurs.iterator();
+
+        lignes.forEach(ligne -> {
+            ProductFournisseur productFournisseur = productFournisseurIterator.next();
             ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
-                    commande, pf, ligne.quantite(), ligne.prixAchat()
+                    commande, productFournisseur, ligne.quantite(), ligne.prixAchat(), ligne.prixVente()
             ));
-            total = total.add(ligne.prixAchat().multiply(BigDecimal.valueOf(ligne.quantite())));
-        }
-        return total;
+            productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.prixVente());
+        });
+
+        return lignes.stream()
+                .map(ligne -> ligne.prixAchat().multiply(BigDecimal.valueOf(ligne.quantite())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /** Crée les EntreeStock liées à la commande, upsert le Stock agrégé et journalise un mouvement par ligne. */
-    public List<UUID> createEntriesAndUpdateStock(AchatRequest request, Magasin magasin, CommandeAchat commande, FactureAchat facture, List<ProductFournisseur> productFournisseurs) {
-        List<UUID> entreesIds = new ArrayList<>();
-        for (int i = 0; i < request.lignes().size(); i++) {
-            LigneAchatRequest ligne = request.lignes().get(i);
-            ProductFournisseur pf = productFournisseurs.get(i);
-            Product produit = pf.getProduct();
+    public void createEntriesAndUpdateStock(AchatContext context) {
+        Magasin magasin = context.magasin();
+        CommandeAchat commande = context.commande();
+        FactureAchat facture = context.facture();
+        List<LigneAchatRequest> lignes = context.request().lignes();
+        Iterator<ProductFournisseur> productFournisseurIterator = context.productFournisseurs().iterator();
+
+        lignes.forEach(ligne -> {
+            ProductFournisseur productFournisseur = productFournisseurIterator.next();
+            Product produit = productFournisseur.getProduct();
 
             int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
                     .map(Stock::getQuantiteDisponible).orElse(0);
 
-            EntreeStock entree = entreeStockDomainService.create(new EntreeStockCreate(
-                    magasin, produit, pf,
+            entreeStockDomainService.create(new EntreeStockCreate(
+                    magasin, produit, productFournisseur,
                     ligne.quantite(), ligne.prixAchat(),
                     ligne.numeroLot(), ligne.dateExpiration(),
                     commande
             ));
-            entreesIds.add(entree.getId());
 
             Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, ligne.quantite(), ligne.prixAchat());
 
@@ -169,7 +207,6 @@ public class AchatServiceImpl implements IAchatService {
                     facture.getNumero(),
                     null
             ));
-        }
-        return entreesIds;
+        });
     }
 }

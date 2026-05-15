@@ -23,8 +23,15 @@ public class ProductFournisseur extends AuditableEntity {
     @JoinColumn(name = "fournisseur_id", nullable = false)
     private Fournisseur fournisseur;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "quality_id", nullable = false)
+    private Quality quality;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal prixAchat;
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal prixVente;
 
     @Column(name = "reference_fournisseur", length = 100)
     private String referenceFournisseur;

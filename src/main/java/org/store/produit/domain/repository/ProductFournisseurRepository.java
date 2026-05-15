@@ -8,7 +8,6 @@ import org.store.common.repository.BaseRepository;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.domain.model.ProductFournisseur;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductFournisseurRepository extends BaseRepository<ProductFournisseur> {
@@ -27,7 +26,5 @@ public interface ProductFournisseurRepository extends BaseRepository<ProductFour
             """)
     Page<ProductFournisseurResponse> findResponsesByProductId(@Param("productId") UUID productId, Pageable pageable);
 
-    Optional<ProductFournisseur> findByProductIdAndFournisseurId(UUID productId, UUID fournisseurId);
-
-    boolean existsByProductIdAndFournisseurId(UUID productId, UUID fournisseurId);
+    boolean existsByProductIdAndFournisseurIdAndQualityId(UUID productId, UUID fournisseurId, UUID qualityId);
 }

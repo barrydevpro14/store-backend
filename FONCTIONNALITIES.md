@@ -473,7 +473,9 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ## 28. Module Achat — Création atomique commande + facture + paiements — `AchatServiceImpl`
 
-**Endpoint** : `POST /api/v1/purchases` (auth requise, `@PreAuthorize("hasAuthority('PURCHASE_CREATE')")`)
+**Endpoint** : `POST /api/v1/achats` (auth requise, `@PreAuthorize("hasAuthority('PURCHASE_CREATE')")`)
+
+**Endpoint détails** : `GET /api/v1/achats/{commandeId}` (permission `PURCHASE_READ`) → retourne `AchatDetailsResponse(commande, facture, lignes[])` où chaque `LigneCommandeAchatResponse` expose `produit (ProductSummaryResponse), fournisseur, quantite, prixAchat, prixVente, montantLigne`. Scoping entreprise via la commande.
 
 **Cas d'usage métier** : le manager appelle/visite le fournisseur, commande la marchandise, le livreur arrive avec la marchandise + la facture. Le manager renseigne tout en une seule fois (pas de réception partielle, pas de workflow multi-étapes).
 
@@ -497,7 +499,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 6. Pour chaque ligne : créer `LigneCommandeAchat` + appeler `IEntreeStockService.create(...)` (entrée stock immédiate avec lot FIFO + upsert Stock + journalisation `MouvementStock(ENTREE_ACHAT)`).
 7. Si `premierPaiement` présent : créer `PaiementAchat` (vérifier `montant <= montantFacture`).
 
-**Sortie** : `AchatResponse{ commande, facture, lignes, paiements }` — HTTP 201.
+**Sortie** : `AchatResponse{ commande, facture }` — HTTP 201. Les détails complets (lignes + montants) sont disponibles via `GET /api/v1/achats/{commandeId}` après création.
 
 **Sous-services exposés** :
 - `ICommandeAchatService` : `findResponsesByFilter` (listing paginé), `findResponseById`.
@@ -626,6 +628,46 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 **Décision projet liée** : le "client anonyme" n'est PAS un enregistrement Client — quand on attaquera F-V3 (vente atomique), `CommandeVente.client` sera simplement nullable si le vendeur ne saisit pas de client.
 
 **Tests** : 15 service + 9 controller. Suite à **415 / 415 verts**.
+
+---
+
+## 31. Recherche produit vendeur (vente, fonctionnalité 2) — `ProductSearchServiceImpl` + adaptations modèle
+
+**Changements de modèle structurants (migration V11)** :
+- **`Quality` déplacée de `Product` vers `ProductFournisseur`** : un même produit peut être livré par un fournisseur en plusieurs qualités distinctes (ex. *Clou 10mm* × *Chine* en *original* ET en *contrefaçon* = 2 PF différents).
+- **Unicité PF** : `UNIQUE (product_id, fournisseur_id, quality_id)`.
+- **`ProductFournisseur.prixVente`** : prix de vente courant pour la combinaison (produit, fournisseur, qualité). Mis à jour à chaque achat ou via endpoint PUT dédié.
+- **`LigneCommandeAchat.prixVente`** : snapshot du prix de vente au moment de l'achat (traçabilité facture).
+
+**Validation métier** : `prixVente > prixAchat` (marge strictement positive) à toute saisie (création PF, achat, PUT prix-vente). Clé i18n `productFournisseur.prixVente.belowOrEqualAchat`.
+
+**Endpoints `ProductController`** :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `GET` | `/api/v1/products/search?q=&magasinId=&page=&size=` | `PRODUCT_READ` | Recherche produits avec lots actifs dans un magasin (200) |
+
+**Endpoints `ProductFournisseurController`** (en plus du CRUD) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `PUT` | `/api/v1/product-suppliers/{id}/prix-vente` | `SUPPLIER_UPDATE` | Met à jour librement le prix de vente courant du PF (manager). Validation `> prixAchat` (200) |
+
+**`ProductSearchResponse`** : `id, nom, reference, description, category, image, quantiteEnStock, productFournisseurs[]`.
+
+**`ProductFournisseurStockResponse`** (sous-DTO) : `id, quality, fournisseur, prixVente, quantiteEnStock` (= SUM des lots actifs du PF dans le magasin).
+
+**Résolution `magasinId`** :
+- EMPLOYE : si paramètre absent, dérivé automatiquement de `UserPrincipal.magasinId`.
+- PROPRIETAIRE : paramètre obligatoire (sinon `BadArgumentException("product.search.magasinIdRequired")`).
+
+**Architecture** :
+- Service dédié `IProductSearchService` (isolé pour casser le cycle `IProductService` ↔ `IEntreeStockService` ↔ `IProductFournisseurService`).
+- 2 queries pour éviter N+1 : (1) `Page<Product>` paginée par recherche + EXISTS lot actif ; (2) liste des `EntreeStock` actifs pour les IDs paginés, fetch joints PF/fournisseur/quality. Agrégation par produit puis par PF en Java.
+
+**Mise à jour automatique du `prixVente` du PF à chaque achat** : `AchatServiceImpl.createLignesAndComputeTotal()` appelle `IProductFournisseurService.applyPrixVenteFromPurchase(pf, ligne.prixVente())` après création de la ligne.
+
+**Tests** : 5 service search + 1 controller search + tests `updatePrixVente` + adaptations existantes. Total cible : **425 verts** (l'unique test KO est `StoreApplicationTests.contextLoads` à cause d'un état Flyway *failed* à nettoyer manuellement après une première tentative de V11).
 
 ---
 

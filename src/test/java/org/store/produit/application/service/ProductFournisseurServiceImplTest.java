@@ -13,15 +13,18 @@ import org.springframework.data.domain.Pageable;
 import org.store.achat.application.dto.FournisseurSummaryResponse;
 import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.model.Fournisseur;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.impl.ProductFournisseurServiceImpl;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.ProductFournisseurDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -43,6 +46,7 @@ class ProductFournisseurServiceImplTest {
     @Mock private ProductFournisseurDomainService productFournisseurDomainService;
     @Mock private IProductService productService;
     @Mock private IFournisseurService fournisseurService;
+    @Mock private IQualityService qualityService;
     @Mock private ICurrentUserService currentUserService;
 
     @InjectMocks
@@ -52,9 +56,11 @@ class ProductFournisseurServiceImplTest {
     private UUID productFournisseurId;
     private UUID productId;
     private UUID fournisseurId;
+    private UUID qualityId;
     private Entreprise entreprise;
     private Product product;
     private Fournisseur fournisseur;
+    private Quality quality;
 
     @BeforeEach
     void setUp() {
@@ -62,6 +68,7 @@ class ProductFournisseurServiceImplTest {
         productFournisseurId = UUID.randomUUID();
         productId = UUID.randomUUID();
         fournisseurId = UUID.randomUUID();
+        qualityId = UUID.randomUUID();
 
         entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
@@ -76,6 +83,11 @@ class ProductFournisseurServiceImplTest {
         fournisseur.setId(fournisseurId);
         fournisseur.setNom("Pneus Maroc SARL");
         fournisseur.setEntreprise(entreprise);
+
+        quality = new Quality();
+        quality.setId(qualityId);
+        quality.setLibelle("Premium");
+        quality.setEntreprise(entreprise);
     }
 
     private UserPrincipal proprietaire() {
@@ -88,7 +100,9 @@ class ProductFournisseurServiceImplTest {
         pf.setId(productFournisseurId);
         pf.setProduct(product);
         pf.setFournisseur(fournisseur);
+        pf.setQuality(quality);
         pf.setPrixAchat(new BigDecimal("12.50"));
+        pf.setPrixVente(new BigDecimal("18.00"));
         pf.setReferenceFournisseur("REF-FRN-001");
         pf.setOrigine("Maroc");
         return pf;
@@ -97,7 +111,7 @@ class ProductFournisseurServiceImplTest {
     @Test
     void create_should_persist_when_inputs_valid() {
         ProductFournisseurRequest request = new ProductFournisseurRequest(
-                productId, fournisseurId, new BigDecimal("12.50"), "REF-FRN-001", "Maroc"
+                productId, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("18.00"), "REF-FRN-001", "Maroc"
         );
         ProductFournisseur saved = sample();
 
@@ -105,41 +119,66 @@ class ProductFournisseurServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(product)).thenReturn(product);
         when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
         when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
-        when(productFournisseurDomainService.existsByProductIdAndFournisseurId(productId, fournisseurId)).thenReturn(false);
-        when(productFournisseurDomainService.create(request, product, fournisseur)).thenReturn(saved);
+        when(qualityService.findById(qualityId)).thenReturn(quality);
+        when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
+        when(productFournisseurDomainService.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId)).thenReturn(false);
+        when(productFournisseurDomainService.create(request, product, fournisseur, quality)).thenReturn(saved);
 
         ProductFournisseurResponse response = service.create(request);
 
         assertThat(response.id()).isEqualTo(productFournisseurId);
         assertThat(response.product().id()).isEqualTo(productId);
         assertThat(response.fournisseur().id()).isEqualTo(fournisseurId);
+        assertThat(response.quality().id()).isEqualTo(qualityId);
         assertThat(response.prixAchat()).isEqualByComparingTo(new BigDecimal("12.50"));
+        assertThat(response.prixVente()).isEqualByComparingTo(new BigDecimal("18.00"));
         assertThat(response.referenceFournisseur()).isEqualTo("REF-FRN-001");
         assertThat(response.origine()).isEqualTo("Maroc");
     }
 
     @Test
-    void create_should_throw_when_pair_already_exists() {
+    void create_should_throw_when_prix_vente_below_or_equal_prix_achat() {
         ProductFournisseurRequest request = new ProductFournisseurRequest(
-                productId, fournisseurId, new BigDecimal("12.50"), null, null
+                productId, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("12.50"), null, null
         );
 
         when(productService.findById(productId)).thenReturn(product);
         when(productService.ensureBelongsToCurrentEntreprise(product)).thenReturn(product);
         when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
         when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
-        when(productFournisseurDomainService.existsByProductIdAndFournisseurId(productId, fournisseurId)).thenReturn(true);
+        when(qualityService.findById(qualityId)).thenReturn(quality);
+        when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
+    }
+
+    @Test
+    void create_should_throw_when_triplet_already_exists() {
+        ProductFournisseurRequest request = new ProductFournisseurRequest(
+                productId, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("18.00"), null, null
+        );
+
+        when(productService.findById(productId)).thenReturn(product);
+        when(productService.ensureBelongsToCurrentEntreprise(product)).thenReturn(product);
+        when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
+        when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
+        when(qualityService.findById(qualityId)).thenReturn(quality);
+        when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
+        when(productFournisseurDomainService.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UniqueResourceException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
     }
 
     @Test
     void create_should_throw_when_product_belongs_to_other_entreprise() {
         ProductFournisseurRequest request = new ProductFournisseurRequest(
-                productId, fournisseurId, new BigDecimal("12.50"), null, null
+                productId, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("18.00"), null, null
         );
 
         when(productService.findById(productId)).thenReturn(product);
@@ -149,13 +188,13 @@ class ProductFournisseurServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
     }
 
     @Test
     void create_should_throw_when_fournisseur_belongs_to_other_entreprise() {
         ProductFournisseurRequest request = new ProductFournisseurRequest(
-                productId, fournisseurId, new BigDecimal("12.50"), null, null
+                productId, fournisseurId, qualityId, new BigDecimal("12.50"), new BigDecimal("18.00"), null, null
         );
 
         when(productService.findById(productId)).thenReturn(product);
@@ -167,7 +206,7 @@ class ProductFournisseurServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
     }
 
     @Test
@@ -180,6 +219,8 @@ class ProductFournisseurServiceImplTest {
         ProductFournisseurResponse response = service.findResponseById(productFournisseurId);
 
         assertThat(response.id()).isEqualTo(productFournisseurId);
+        assertThat(response.quality().libelle()).isEqualTo("Premium");
+        assertThat(response.prixVente()).isEqualByComparingTo(new BigDecimal("18.00"));
     }
 
     @Test
@@ -206,7 +247,8 @@ class ProductFournisseurServiceImplTest {
                 productFournisseurId,
                 new ProductSummaryResponse(productId, "Pneu", "PN-195"),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc"),
-                new BigDecimal("12.50"), "REF-FRN-001", "Maroc"
+                new QualitySummaryResponse(qualityId, "Premium"),
+                new BigDecimal("12.50"), new BigDecimal("18.00"), "REF-FRN-001", "Maroc"
         );
         Page<ProductFournisseurResponse> page = new PageImpl<>(List.of(item), pageable, 1);
 
@@ -236,7 +278,7 @@ class ProductFournisseurServiceImplTest {
     void update_should_change_price_and_traceability_fields() {
         ProductFournisseur pf = sample();
         ProductFournisseurRequest request = new ProductFournisseurRequest(
-                productId, fournisseurId, new BigDecimal("20.00"), "REF-NEW", "France"
+                productId, fournisseurId, qualityId, new BigDecimal("20.00"), new BigDecimal("30.00"), "REF-NEW", "France"
         );
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -246,10 +288,9 @@ class ProductFournisseurServiceImplTest {
         ProductFournisseurResponse response = service.update(productFournisseurId, request);
 
         assertThat(response.prixAchat()).isEqualByComparingTo(new BigDecimal("20.00"));
+        assertThat(response.prixVente()).isEqualByComparingTo(new BigDecimal("30.00"));
         assertThat(response.referenceFournisseur()).isEqualTo("REF-NEW");
         assertThat(response.origine()).isEqualTo("France");
-        assertThat(response.product().id()).isEqualTo(productId);
-        assertThat(response.fournisseur().id()).isEqualTo(fournisseurId);
     }
 
     @Test
@@ -266,10 +307,36 @@ class ProductFournisseurServiceImplTest {
         when(productFournisseurDomainService.findById(productFournisseurId)).thenReturn(foreign);
 
         assertThatThrownBy(() -> service.update(productFournisseurId,
-                new ProductFournisseurRequest(productId, fournisseurId, new BigDecimal("1"), null, null)))
+                new ProductFournisseurRequest(productId, fournisseurId, qualityId, new BigDecimal("1"), new BigDecimal("2"), null, null)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(productFournisseurDomainService, never()).save(any());
+    }
+
+    @Test
+    void updatePrixVente_should_persist_when_owned_and_above_prix_achat() {
+        ProductFournisseur pf = sample();
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productFournisseurDomainService.findById(productFournisseurId)).thenReturn(pf);
+        when(productFournisseurDomainService.updatePrixVente(pf, new BigDecimal("25.00"))).thenReturn(pf);
+
+        service.updatePrixVente(productFournisseurId, new BigDecimal("25.00"));
+
+        verify(productFournisseurDomainService).updatePrixVente(pf, new BigDecimal("25.00"));
+    }
+
+    @Test
+    void updatePrixVente_should_throw_when_below_or_equal_prix_achat() {
+        ProductFournisseur pf = sample();
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(productFournisseurDomainService.findById(productFournisseurId)).thenReturn(pf);
+
+        assertThatThrownBy(() -> service.updatePrixVente(productFournisseurId, new BigDecimal("12.50")))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(productFournisseurDomainService, never()).updatePrixVente(any(), any());
     }
 
     @Test
@@ -304,10 +371,19 @@ class ProductFournisseurServiceImplTest {
     }
 
     @Test
-    void ensurePairAvailable_should_throw_when_exists() {
-        when(productFournisseurDomainService.existsByProductIdAndFournisseurId(productId, fournisseurId)).thenReturn(true);
+    void ensureTripletAvailable_should_throw_when_exists() {
+        when(productFournisseurDomainService.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.ensurePairAvailable(productId, fournisseurId))
+        assertThatThrownBy(() -> service.ensureTripletAvailable(productId, fournisseurId, qualityId))
                 .isInstanceOf(UniqueResourceException.class);
+    }
+
+    @Test
+    void ensurePrixVenteGreaterThanPrixAchat_should_throw_when_below_or_equal() {
+        assertThatThrownBy(() -> service.ensurePrixVenteGreaterThanPrixAchat(new BigDecimal("10"), new BigDecimal("10")))
+                .isInstanceOf(BadArgumentException.class);
+
+        assertThatThrownBy(() -> service.ensurePrixVenteGreaterThanPrixAchat(new BigDecimal("9"), new BigDecimal("10")))
+                .isInstanceOf(BadArgumentException.class);
     }
 }

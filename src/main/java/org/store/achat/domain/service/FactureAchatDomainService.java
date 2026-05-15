@@ -12,6 +12,7 @@ import org.store.achat.domain.repository.FactureAchatRepository;
 import org.store.common.service.GlobalService;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -39,6 +40,10 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
 
     public Page<FactureAchatResponse> findEcheances(FactureAchatEcheanceFilter filter, UUID entrepriseId) {
         return repository.findEcheances(filter, entrepriseId, filter.toPageable());
+    }
+
+    public Optional<FactureAchat> findByCommandeId(UUID commandeId) {
+        return repository.findByCommandeId(commandeId);
     }
 
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */

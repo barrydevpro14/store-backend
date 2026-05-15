@@ -43,6 +43,12 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         this.productFournisseurService = productFournisseurService;
     }
 
+    /** Retourne les lots actifs des produits donnés dans un magasin (utilisé par la recherche produit vendeur). */
+    @Override
+    public java.util.List<EntreeStock> findActiveLotsByMagasinAndProductIds(java.util.UUID magasinId, java.util.List<java.util.UUID> productIds) {
+        return entreeStockDomainService.findActiveLotsByMagasinAndProductIds(magasinId, productIds);
+    }
+
     /** Crée le lot, upsert le stock agrégé (recalcule la moyenne pondérée) et journalise le mouvement ENTREE_ACHAT. */
     @Override
     @Transactional

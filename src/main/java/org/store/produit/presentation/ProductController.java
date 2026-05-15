@@ -17,10 +17,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
+import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.service.IProductSearchService;
 import org.store.produit.application.service.IProductService;
 
 import java.util.List;
@@ -33,9 +36,11 @@ public class ProductController {
     public static final String BASE_PATH = "/api/v1/products";
 
     private final IProductService productService;
+    private final IProductSearchService productSearchService;
 
-    public ProductController(IProductService productService) {
+    public ProductController(IProductService productService, IProductSearchService productSearchService) {
         this.productService = productService;
+        this.productSearchService = productSearchService;
     }
 
     @PostMapping
@@ -48,6 +53,14 @@ public class ProductController {
     @PreAuthorize("hasAuthority('PRODUCT_READ')")
     public ResponseEntity<Page<ProductResponse>> list(Pageable pageable) {
         return ResponseEntity.ok(productService.findAllByCurrentEntreprise(pageable));
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('PRODUCT_READ')")
+    public ResponseEntity<Page<ProductSearchResponse>> search(@RequestParam(value = "q", required = false) String searchTerm,
+                                                              @RequestParam(required = false) UUID magasinId,
+                                                              Pageable pageable) {
+        return ResponseEntity.ok(productSearchService.search(searchTerm, magasinId, pageable));
     }
 
     @GetMapping("/{id}")

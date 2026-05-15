@@ -16,19 +16,17 @@ import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
-import org.store.produit.application.dto.ImageMetadataResponse;
+import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.CategoryProductSummaryResponse;
+import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
-import org.store.common.model.PieceJointe;
-import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.impl.ProductServiceImpl;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
-import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.ProductDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -49,7 +47,6 @@ class ProductServiceImplTest {
 
     @Mock private ProductDomainService productDomainService;
     @Mock private ICategoryProductService categoryProductService;
-    @Mock private IQualityService qualityService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private IUploadFileService uploadFileService;
@@ -60,17 +57,14 @@ class ProductServiceImplTest {
     private UUID entrepriseId;
     private UUID productId;
     private UUID categoryId;
-    private UUID qualityId;
     private Entreprise entreprise;
     private CategoryProduct category;
-    private Quality quality;
 
     @BeforeEach
     void setUp() {
         entrepriseId = UUID.randomUUID();
         productId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
-        qualityId = UUID.randomUUID();
 
         entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
@@ -79,15 +73,10 @@ class ProductServiceImplTest {
         category.setId(categoryId);
         category.setLibelle("Pneus");
         category.setEntreprise(entreprise);
-
-        quality = new Quality();
-        quality.setId(qualityId);
-        quality.setLibelle("Premium");
-        quality.setEntreprise(entreprise);
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE",
                 List.of("PRODUCT_CREATE", "PRODUCT_READ"));
     }
 
@@ -98,24 +87,21 @@ class ProductServiceImplTest {
         p.setReference("PN-195-65-R15");
         p.setDescription("Pneu été");
         p.setCategoryProduct(category);
-        p.setQuality(quality);
         p.setEntreprise(ent);
         return p;
     }
 
     @Test
     void create_should_persist_when_inputs_valid() {
-        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Pneu été", categoryId, qualityId);
+        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Pneu été", categoryId);
         Product saved = sampleProduct(entreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.existsByReferenceAndEntrepriseId("PN-195-65-R15", entrepriseId)).thenReturn(false);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
-        when(qualityService.findById(qualityId)).thenReturn(quality);
-        when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(productDomainService.create(request, category, quality, entreprise)).thenReturn(saved);
+        when(productDomainService.create(request, category, entreprise)).thenReturn(saved);
 
         ProductResponse response = service.create(request);
 
@@ -124,25 +110,23 @@ class ProductServiceImplTest {
         assertThat(response.entrepriseId()).isEqualTo(entrepriseId);
         assertThat(response.category().id()).isEqualTo(categoryId);
         assertThat(response.category().libelle()).isEqualTo("Pneus");
-        assertThat(response.quality().id()).isEqualTo(qualityId);
-        assertThat(response.quality().libelle()).isEqualTo("Premium");
     }
 
     @Test
     void create_should_throw_when_reference_already_exists() {
-        ProductRequest request = new ProductRequest("x", "PN-DUP", null, categoryId, qualityId);
+        ProductRequest request = new ProductRequest("x", "PN-DUP", null, categoryId);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.existsByReferenceAndEntrepriseId("PN-DUP", entrepriseId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UniqueResourceException.class);
 
-        verify(productDomainService, never()).create(any(), any(), any(), any());
+        verify(productDomainService, never()).create(any(), any(), any());
     }
 
     @Test
     void create_should_throw_when_category_belongs_to_other_entreprise() {
-        ProductRequest request = new ProductRequest("x", "PN-OK", null, categoryId, qualityId);
+        ProductRequest request = new ProductRequest("x", "PN-OK", null, categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.existsByReferenceAndEntrepriseId("PN-OK", entrepriseId)).thenReturn(false);
@@ -153,25 +137,7 @@ class ProductServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(productDomainService, never()).create(any(), any(), any(), any());
-    }
-
-    @Test
-    void create_should_throw_when_quality_belongs_to_other_entreprise() {
-        ProductRequest request = new ProductRequest("x", "PN-OK", null, categoryId, qualityId);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(productDomainService.existsByReferenceAndEntrepriseId("PN-OK", entrepriseId)).thenReturn(false);
-        when(categoryProductService.findById(categoryId)).thenReturn(category);
-        when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
-        when(qualityService.findById(qualityId)).thenReturn(quality);
-        when(qualityService.ensureBelongsToCurrentEntreprise(quality))
-                .thenThrow(new ForbiddenException("quality.notOwned"));
-
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(ForbiddenException.class);
-
-        verify(productDomainService, never()).create(any(), any(), any(), any());
+        verify(productDomainService, never()).create(any(), any(), any());
     }
 
     @Test
@@ -204,7 +170,6 @@ class ProductServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         ProductResponse sample = new ProductResponse(productId, "Pneu", "PN-1", "desc",
                 new CategoryProductSummaryResponse(categoryId, "Pneus"),
-                new QualitySummaryResponse(qualityId, "Premium"),
                 entrepriseId, null);
         Page<ProductResponse> page = new PageImpl<>(List.of(sample), pageable, 1);
 
@@ -219,14 +184,12 @@ class ProductServiceImplTest {
     @Test
     void update_should_change_fields() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("Nouveau nom", "PN-195-65-R15", "Nouvelle desc", categoryId, qualityId);
+        ProductRequest request = new ProductRequest("Nouveau nom", "PN-195-65-R15", "Nouvelle desc", categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
-        when(qualityService.findById(qualityId)).thenReturn(quality);
-        when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
         when(productDomainService.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ProductResponse response = service.update(productId, request);
@@ -238,14 +201,12 @@ class ProductServiceImplTest {
     @Test
     void update_should_skip_unicity_check_when_reference_unchanged() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("x", "PN-195-65-R15", null, categoryId, qualityId);
+        ProductRequest request = new ProductRequest("x", "PN-195-65-R15", null, categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
-        when(qualityService.findById(qualityId)).thenReturn(quality);
-        when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
         when(productDomainService.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.update(productId, request);
@@ -256,7 +217,7 @@ class ProductServiceImplTest {
     @Test
     void update_should_throw_when_new_reference_taken() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("x", "PN-NEW", null, categoryId, qualityId);
+        ProductRequest request = new ProductRequest("x", "PN-NEW", null, categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
@@ -277,7 +238,7 @@ class ProductServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(productId, new ProductRequest("x", "y", null, categoryId, qualityId)))
+        assertThatThrownBy(() -> service.update(productId, new ProductRequest("x", "y", null, categoryId)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(productDomainService, never()).save(any());
@@ -637,4 +598,5 @@ class ProductServiceImplTest {
         assertThatThrownBy(() -> service.listImages(productId))
                 .isInstanceOf(ForbiddenException.class);
     }
+
 }

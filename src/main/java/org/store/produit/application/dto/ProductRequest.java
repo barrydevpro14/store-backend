@@ -10,7 +10,6 @@ public record ProductRequest(
         @NotBlank @Size(max = 255) String nom,
         @NotBlank @Size(max = 255) String reference,
         @Size(max = 1000) String description,
-        @NotNull UUID categoryProductId,
-        @NotNull UUID qualityId
+        @NotNull UUID categoryProductId
 ) {
 }

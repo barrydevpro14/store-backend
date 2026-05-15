@@ -267,6 +267,39 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
     - **Gestion des valeurs nulles** : préférer une condition JPQL `(:nom IS NULL OR LOWER(c.nom) LIKE LOWER(CONCAT('%', :nom, '%')))` plutôt qu'un helper `normalize()` côté service.
     - **Référence** : `DepenseFilter` + `DepenseController` + `DepenseServiceImpl.findAllByCurrentEntreprise` ; `ClientFilter` + `ClientController` + `ClientServiceImpl.findAllForCurrentUser`.
 
+### Streams par défaut + extraire les appels répétés
+
+34. **Toujours utiliser les streams (`forEach`, `map`, `filter`, `reduce`, etc.) par défaut pour itérer une collection**. La boucle indexée `for (int i = 0; i < n; i++)` n'est autorisée **que si la performance l'exige** (très grandes collections, hot path mesuré, accès aléatoire indispensable, etc.). Si tu utilises `for(int i)`, justifie-le en commentaire.
+    - **Itération simple (side-effects)** : `forEach`.
+      ```java
+      lignes.forEach(ligne -> {
+          ...
+      });
+      ```
+    - **Transformation / agrégation** : `stream().map(...).reduce(...)` ou `collect(...)`.
+      ```java
+      BigDecimal total = lignes.stream()
+              .map(ligne -> ligne.prixAchat().multiply(BigDecimal.valueOf(ligne.quantite())))
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
+      ```
+    - **Deux collections parallèles** : `forEach` (ou `stream`) sur l'une + `Iterator` synchronisé sur l'autre. Le couplage est garanti par construction.
+      ```java
+      Iterator<ProductFournisseur> productFournisseurIterator = productFournisseurs.iterator();
+      lignes.forEach(ligne -> {
+          ProductFournisseur productFournisseur = productFournisseurIterator.next();
+          ...
+      });
+      ```
+    - **Bénéfices** : intention claire (transformation vs side-effects), absence d'index parasite, plus court, parallélisable si besoin futur.
+
+35. **Tout appel de méthode ou chaînage de getters répété au sein d'une même méthode (et dont la valeur ne change pas entre les appels) doit être extrait dans une variable locale au nom explicite**.
+    - **`request.lignes()`** appelé plusieurs fois ? Capter en début de méthode : `List<LigneAchatRequest> lignes = request.lignes();`.
+    - **Chaînage de getters** (`commande.getMagasin().getEntreprise().getId()`) répété : extraire dans une variable au premier usage.
+    - **Bénéfices** : lisibilité (le nom de variable dit ce qu'on manipule), un seul appel, debug plus facile.
+    - **Nom de variable** : suit la règle 32 (explicite, métier — `lignes`, `entrepriseId`, pas `l`/`id`).
+    - **Exception** : un appel utilisé une seule fois reste inline.
+    - **Référence** : `AchatServiceImpl.createLignesAndComputeTotal` + `createEntriesAndUpdateStock`.
+
 ---
 
 ## Conventions de commits

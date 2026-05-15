@@ -9,6 +9,7 @@ public record LigneCommandeAchatCreate(
         CommandeAchat commande,
         ProductFournisseur productFournisseur,
         int quantite,
-        BigDecimal prixAchat
+        BigDecimal prixAchat,
+        BigDecimal prixVente
 ) {
 }

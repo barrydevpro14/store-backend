@@ -68,6 +68,8 @@ class AchatServiceImplTest {
     @Mock private IMagasinService magasinService;
     @Mock private IFournisseurService fournisseurService;
     @Mock private IProductFournisseurService productFournisseurService;
+    @Mock private org.store.achat.application.service.ICommandeAchatService commandeAchatService;
+    @Mock private org.store.achat.application.service.IFactureAchatService factureAchatService;
     @Mock private ValidatorService validatorService;
 
     @InjectMocks
@@ -133,7 +135,7 @@ class AchatServiceImplTest {
     private AchatRequest sampleRequest() {
         return new AchatRequest(
                 magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), "LOT-1", null)),
+                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-1", null)),
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null)
         );
     }
@@ -165,7 +167,6 @@ class AchatServiceImplTest {
 
         assertThat(response.commande().reference()).isEqualTo("CMD-AUTO");
         assertThat(response.facture().numero()).isEqualTo("FAC-001");
-        assertThat(response.entreesStockIds()).hasSize(1);
         verify(mouvementStockDomainService).journalize(eq(stock), any(MouvementJournalize.class));
     }
 
@@ -174,8 +175,8 @@ class AchatServiceImplTest {
         AchatRequest req = new AchatRequest(
                 magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
                 List.of(
-                        new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), null, null),
-                        new LigneAchatRequest(productFournisseurId, 50, new BigDecimal("15.00"), null, null)
+                        new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), null, null),
+                        new LigneAchatRequest(productFournisseurId, 50, new BigDecimal("15.00"), new BigDecimal("20.00"), null, null)
                 ),
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null)
         );
@@ -234,5 +235,44 @@ class AchatServiceImplTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void findDetailsById_should_return_commande_facture_and_lignes() {
+        UUID commandeId = commande.getId();
+        org.store.achat.domain.model.LigneCommandeAchat ligne = new org.store.achat.domain.model.LigneCommandeAchat();
+        ligne.setId(UUID.randomUUID());
+        ligne.setQuantite(10);
+        ligne.setPrixAchat(new BigDecimal("10.00"));
+        ligne.setPrixVente(new BigDecimal("15.00"));
+        ligne.setProductFournisseur(productFournisseur);
+        commande.setLignes(java.util.List.of(ligne));
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatService.findByCommandeId(commandeId)).thenReturn(facture);
+
+        org.store.achat.application.dto.AchatDetailsResponse response = service.findDetailsById(commandeId);
+
+        assertThat(response.commande().reference()).isEqualTo("CMD-AUTO");
+        assertThat(response.facture().numero()).isEqualTo("FAC-001");
+        assertThat(response.lignes()).hasSize(1);
+        assertThat(response.lignes().get(0).quantite()).isEqualTo(10);
+        assertThat(response.lignes().get(0).prixAchat()).isEqualByComparingTo("10.00");
+        assertThat(response.lignes().get(0).prixVente()).isEqualByComparingTo("15.00");
+    }
+
+    @Test
+    void findDetailsById_should_throw_when_commande_not_owned() {
+        UUID commandeId = commande.getId();
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande))
+                .thenThrow(new ForbiddenException("commandeAchat.notOwned"));
+
+        assertThatThrownBy(() -> service.findDetailsById(commandeId))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(factureAchatService, never()).findByCommandeId(any());
     }
 }

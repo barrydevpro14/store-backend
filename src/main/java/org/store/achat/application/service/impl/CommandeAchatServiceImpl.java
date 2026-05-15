@@ -34,14 +34,16 @@ public class CommandeAchatServiceImpl implements ICommandeAchatService {
         this.validatorService = validatorService;
     }
 
+    /** Retourne l'entité commande ou lève `EntityException` (sans scoping, usage interne par d'autres services). */
+    @Override
+    public CommandeAchat findById(UUID id) {
+        return commandeAchatDomainService.findById(id);
+    }
+
     /** Retourne la commande après vérification d'appartenance à l'entreprise du caller. */
     @Override
     public CommandeAchatResponse findResponseById(UUID id) {
-        CommandeAchat commande = commandeAchatDomainService.findById(id);
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!commande.getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("commandeAchat.notOwned");
-        }
+        CommandeAchat commande = ensureBelongsToCurrentEntreprise(commandeAchatDomainService.findById(id));
         return new CommandeAchatResponse(commande);
     }
 
@@ -50,5 +52,15 @@ public class CommandeAchatServiceImpl implements ICommandeAchatService {
     public Page<CommandeAchatResponse> findAllByCurrentEntreprise(CommandeAchatFilter commandeAchatFilter) {
         validatorService.validate(commandeAchatFilter);
         return commandeAchatDomainService.findResponsesByFilter(commandeAchatFilter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    /** Lève `ForbiddenException` si la commande n'appartient pas à l'entreprise du caller. */
+    @Override
+    public CommandeAchat ensureBelongsToCurrentEntreprise(CommandeAchat commande) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        if (!commande.getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
+            throw new ForbiddenException("commandeAchat.notOwned");
+        }
+        return commande;
     }
 }

@@ -10,9 +10,12 @@ import org.store.achat.application.dto.FactureAchatResponse;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.common.repository.BaseRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
+
+    Optional<FactureAchat> findByCommandeId(UUID commandeId);
 
     @Query("""
             SELECT new org.store.achat.application.dto.FactureAchatResponse(f)

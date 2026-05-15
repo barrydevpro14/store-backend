@@ -37,4 +37,17 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
     Page<ExpiringLotResponse> findExpiringLots(@Param("filter") ExpiringLotsFilter filter,
                                                @Param("entrepriseId") UUID entrepriseId,
                                                Pageable pageable);
+
+    @Query("""
+            SELECT e FROM EntreeStock e
+            JOIN FETCH e.productFournisseur pf
+            JOIN FETCH pf.fournisseur
+            JOIN FETCH pf.quality
+            WHERE e.magasin.id = :magasinId
+              AND e.quantiteRestante > 0
+              AND e.produit.id IN :productIds
+            ORDER BY e.createdAt ASC
+            """)
+    List<EntreeStock> findActiveLotsByMagasinAndProductIds(@Param("magasinId") UUID magasinId,
+                                                           @Param("productIds") List<UUID> productIds);
 }

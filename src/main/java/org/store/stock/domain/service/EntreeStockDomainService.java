@@ -30,6 +30,10 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return repository.findExpiringLots(filter, entrepriseId, filter.toPageable());
     }
 
+    public List<EntreeStock> findActiveLotsByMagasinAndProductIds(UUID magasinId, List<UUID> productIds) {
+        return repository.findActiveLotsByMagasinAndProductIds(magasinId, productIds);
+    }
+
     /** Création d'une entrée stock manuelle (sans commande achat). */
     public EntreeStock create(EntreeStockRequest entreeStockRequest, Magasin magasin, Product produit, ProductFournisseur productFournisseur) {
         return create(new EntreeStockCreate(

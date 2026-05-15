@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.produit.application.dto.ImageMetadataResponse;
@@ -18,10 +19,8 @@ import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.service.ICategoryProductService;
 import org.store.produit.application.service.IProductService;
-import org.store.produit.application.service.IQualityService;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
-import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.ProductDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -38,26 +37,23 @@ public class ProductServiceImpl implements IProductService {
 
     private final ProductDomainService productDomainService;
     private final ICategoryProductService categoryProductService;
-    private final IQualityService qualityService;
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
     private final IUploadFileService uploadFileService;
 
     public ProductServiceImpl(ProductDomainService productDomainService,
                               ICategoryProductService categoryProductService,
-                              IQualityService qualityService,
                               IEntrepriseService entrepriseService,
                               ICurrentUserService currentUserService,
                               IUploadFileService uploadFileService) {
         this.productDomainService = productDomainService;
         this.categoryProductService = categoryProductService;
-        this.qualityService = qualityService;
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
         this.uploadFileService = uploadFileService;
     }
 
-    /** Crée un produit après vérification de l'unicité de la référence et de l'appartenance des catégorie / qualité à l'entreprise du caller. */
+    /** Crée un produit après vérification de l'unicité de la référence et de l'appartenance de la catégorie à l'entreprise du caller. */
     @Override
     @Transactional
     public ProductResponse create(ProductRequest productRequest) {
@@ -65,10 +61,8 @@ public class ProductServiceImpl implements IProductService {
         ensureReferenceAvailable(productRequest.reference(), entrepriseId);
         CategoryProduct categoryProduct = categoryProductService.ensureBelongsToCurrentEntreprise(
                 categoryProductService.findById(productRequest.categoryProductId()));
-        Quality quality = qualityService.ensureBelongsToCurrentEntreprise(
-                qualityService.findById(productRequest.qualityId()));
         Entreprise entreprise = entrepriseService.findById(entrepriseId);
-        Product saved = productDomainService.create(productRequest, categoryProduct, quality, entreprise);
+        Product saved = productDomainService.create(productRequest, categoryProduct, entreprise);
         return new ProductResponse(saved);
     }
 
@@ -92,7 +86,7 @@ public class ProductServiceImpl implements IProductService {
         return productDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
     }
 
-    /** Met à jour les champs du produit après contrôle d'appartenance, d'unicité (si reference changée) et de cohérence catégorie / qualité. */
+    /** Met à jour les champs du produit après contrôle d'appartenance, d'unicité (si reference changée) et de cohérence catégorie. */
     @Override
     @Transactional
     public ProductResponse update(UUID id, ProductRequest productRequest) {
@@ -102,13 +96,10 @@ public class ProductServiceImpl implements IProductService {
         }
         CategoryProduct categoryProduct = categoryProductService.ensureBelongsToCurrentEntreprise(
                 categoryProductService.findById(productRequest.categoryProductId()));
-        Quality quality = qualityService.ensureBelongsToCurrentEntreprise(
-                qualityService.findById(productRequest.qualityId()));
         product.setNom(productRequest.nom());
         product.setReference(productRequest.reference());
         product.setDescription(productRequest.description());
         product.setCategoryProduct(categoryProduct);
-        product.setQuality(quality);
         return new ProductResponse(productDomainService.save(product));
     }
 

@@ -12,6 +12,7 @@ public record LigneCommandeAchatResponse(
         FournisseurSummaryResponse fournisseur,
         int quantite,
         BigDecimal prixAchat,
+        BigDecimal prixVente,
         BigDecimal montantLigne
 ) {
     public LigneCommandeAchatResponse(LigneCommandeAchat ligne) {
@@ -21,6 +22,7 @@ public record LigneCommandeAchatResponse(
                 new FournisseurSummaryResponse(ligne.getProductFournisseur().getFournisseur()),
                 ligne.getQuantite(),
                 ligne.getPrixAchat(),
+                ligne.getPrixVente(),
                 ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()))
         );
     }

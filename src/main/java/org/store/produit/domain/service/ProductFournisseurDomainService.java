@@ -1,5 +1,6 @@
 package org.store.produit.domain.service;
 
+import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -9,9 +10,9 @@ import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.repository.ProductFournisseurRepository;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -20,13 +21,20 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
         super(repository);
     }
 
-    public ProductFournisseur create(ProductFournisseurRequest productFournisseurRequest, Product product, Fournisseur fournisseur) {
+    public ProductFournisseur create(ProductFournisseurRequest productFournisseurRequest, Product product, Fournisseur fournisseur, Quality quality) {
         ProductFournisseur productFournisseur = new ProductFournisseur();
         productFournisseur.setProduct(product);
         productFournisseur.setFournisseur(fournisseur);
+        productFournisseur.setQuality(quality);
         productFournisseur.setPrixAchat(productFournisseurRequest.prixAchat());
+        productFournisseur.setPrixVente(productFournisseurRequest.prixVente());
         productFournisseur.setReferenceFournisseur(productFournisseurRequest.referenceFournisseur());
         productFournisseur.setOrigine(productFournisseurRequest.origine());
+        return save(productFournisseur);
+    }
+
+    public ProductFournisseur updatePrixVente(ProductFournisseur productFournisseur, BigDecimal prixVente) {
+        productFournisseur.setPrixVente(prixVente);
         return save(productFournisseur);
     }
 
@@ -38,11 +46,7 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
         return repository.findResponsesByProductId(productId, pageable);
     }
 
-    public Optional<ProductFournisseur> findByProductIdAndFournisseurId(UUID productId, UUID fournisseurId) {
-        return repository.findByProductIdAndFournisseurId(productId, fournisseurId);
-    }
-
-    public boolean existsByProductIdAndFournisseurId(UUID productId, UUID fournisseurId) {
-        return repository.existsByProductIdAndFournisseurId(productId, fournisseurId);
+    public boolean existsByProductIdAndFournisseurIdAndQualityId(UUID productId, UUID fournisseurId, UUID qualityId) {
+        return repository.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId);
     }
 }
