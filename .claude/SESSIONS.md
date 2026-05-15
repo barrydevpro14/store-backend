@@ -7,7 +7,54 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-14 (soirée)
+**Date :** 2026-05-15
+**Sujet :** **Démarrage du module Vente — fonctionnalité 1 : CRUD Client** + 3 nouvelles règles de codage transverses (variables explicites, DTO Filter ≥ 2 critères, retrait de l'helper `normalize` au profit d'une gestion null directe en JPQL). Pattern décalqué sur le CRUD Fournisseur (module Achat). Scoping double (employé = magasin, propriétaire = entreprise). Décision métier sur le "client anonyme" : pas d'enregistrement BDD dédié, juste `CommandeVente.clientId` qui sera nullable à F-V3.
+
+**Ce qui a été fait :**
+
+1. **Feuille de route Module Vente** validée (5 fonctionnalités) : F-V1 CRUD Client, F-V2 Recherche produit, F-V3 Vente atomique (cycle complet panier → FIFO → facture → paiement), F-V4 Listings, F-V5 Paiement échelonné. Arbitrages métier verrouillés en début de session (client optionnel, scoping Client.magasin, numéro de facture auto-généré via `ReferenceHelper`).
+
+2. **F-V1 — CRUD Client complet** (`/api/v1/clients`) — `Client extends Person` rattaché à `Magasin` (l'entité, le port `ClientRepository` et le `ClientDomainService` existaient déjà vides depuis le squelette initial). Endpoints POST/GET paginé/GET id/PUT/DELETE avec `@PreAuthorize('CLIENT_*')`. Scoping double via `IMagasinService.ensureAccessibleByCurrentUser` (employé = magasin, propriétaire = entreprise). DTOs : `ClientRequest`, `ClientResponse(Client)`, `ClientSummaryResponse(id, nomComplet)`, `ClientFilter(nom, prenom, page, size)`. Permissions `CLIENT_{CRUD}` ajoutées (ADMIN/PROPRIETAIRE/MANAGER en CRUD, VENDEUR en CREATE+READ). i18n FR/EN `client.{notFound,notOwned}`. 15 tests service + 9 controller, **415 verts** (+23 vs 392). Pas de migration Flyway (la table `client` était déjà dans `V1__init_schema.sql`).
+
+3. **3 refactors itératifs sur F-V1 suite à feedback utilisateur** :
+   - **Retrait `magasinId` + `entrepriseId` de `ClientResponse`** : le scoping reste interne, le front n'a pas besoin de connaître le magasin du client. Tests adaptés (ArgumentCaptor<Client> pour vérifier le changement de magasin en update).
+   - **Variables explicites** (nouvelle règle de codage projet) : `String q` → `String searchTerm`, `Client c` → `Client client`, `Magasin m` → `Magasin attachedMagasin`, `Client foreign` → `Client foreignClient`. Règle inscrite en mémoire : bannir les noms courts (`q, c, m, ent, f`), garder le nom externe court côté HTTP (`@RequestParam value = "q"`) mais nommer explicitement la variable Java.
+   - **Scission `searchTerm` → `nom` + `prenom`** + adoption du pattern `ClientFilter` (record + `toPageable()` + validation via `ValidatorService`). Nouvelle règle de codage projet : **toujours créer un DTO `<X>Filter` dès qu'un endpoint a ≥2 critères de recherche** (plus stricte que la règle 30 "max 3 paramètres"). `normalize(searchTerm)` retiré du `ClientDomainService` (gestion null directement en JPQL via `(:nom IS NULL OR ...)`). Repo Spring Data conserve l'exemption (params individuels `@Param` autorisés au-delà de 3).
+
+4. **3 nouvelles règles mémoire enregistrées** :
+   - `feedback_variables_explicites` — bannir noms courts, variables locales et params = noms métier explicites.
+   - `feedback_dto_filter` — `<X>Filter` record dès ≥2 critères. Service prend filter unique, `validatorService.validate(filter)`.
+   - `project_client_anonyme` — pas d'enregistrement dédié, `CommandeVente.clientId` nullable plus tard.
+
+**Décisions / arbitrages :**
+
+- **Client anonyme = nullable, pas d'entité** — décision explicite de l'utilisateur. Évite migration + flag + enregistrements artificiels. À F-V3, `CommandeVente.client` sera nullable, front affichera "Client anonyme" si vide.
+- **`ClientResponse` ne porte pas le magasin** — le scoping est invisible côté API. Si plus tard le PROPRIETAIRE multi-magasins en a besoin pour afficher "à quel magasin appartient ce client", on ajoutera un sous-DTO `magasin: MagasinSummaryResponse` (règle 23).
+- **VENDEUR peut créer des clients** — saisie au comptoir lors d'une vente. Modifier/supprimer reste réservé MANAGER/PROPRIETAIRE.
+- **Aucune unicité téléphone** — homonymes/téléphones partagés fréquents en boutique de pièces détachées.
+- **Recherche `nom` + `prenom` séparés** (pas un `searchTerm` qui matche les deux + téléphone) — décision utilisateur en cours de session. Téléphone retiré du périmètre de recherche pour cette F-V1.
+- **Plan mode utilisé** une fois en début de F-V1 (avant écriture du plan validé) — bénéfice marginal sur un livrable qui décalque exactement le pattern Fournisseur. À réserver à des features sans précédent dans le projet.
+
+**Où on s'est arrêté :**
+
+- **Tests : 392 → 415** (+23 : 15 service + 9 controller -1 retiré après refactor Filter).
+- **1 commit poussé** sur `dev` (pas de push, branche en avance de 1 sur `origin/dev`) :
+  - `8d70ba1` — CRUD Client (module vente - fonctionnalité 1)
+- **Pas de migration Flyway** créée (la table existait).
+- **Enum `PermissionCode`** : +4 valeurs (`CLIENT_{CRUD}`). YAML aligné sur les 4 rôles.
+- **Pattern `<X>Filter` officialisé** : `ClientFilter` est le 7e du projet (après Stock, MouvementStock, ExpiringLots, MarginReport, Depense, FactureAchatEcheance, CommandeAchat).
+- **3 nouvelles règles de codage** inscrites en mémoire user (`feedback_variables_explicites`, `feedback_dto_filter`, `project_client_anonyme`).
+
+**Prochaine étape recommandée :**
+
+1. **F-V2 — Recherche produit vendeur** (`GET /api/v1/products/search?q=...` par nom/référence). Simple et rapide, utile au vendeur pour préparer la vente. Le pattern projet va probablement imposer un `ProductSearchFilter` (≥2 critères : nom + reference, peut-être code-barres futur).
+2. **F-V3 — Vente atomique** (`POST /api/v1/sales`) : symétrie directe avec Achat F12-F14. `CommandeVente` (référence auto `VTE-yyyyMMdd-HHmmssSSS`) + lignes + appel `ISortieStockService.create()` FIFO interne + `FactureClient` (numéro auto `FAC-...`) + `PaiementVente` initial. Sous-services à créer (`ICommandeVenteService`, `IFactureClientService`, `IPaiementVenteService`). Migration Flyway V11 pour ajouter l'entité `PaiementVente` (sera la première de cette session).
+3. **F-V4 / F-V5** dans la foulée (listings + paiement échelonné) — petits par rapport à F-V3.
+4. **Module dashboard / reporting** une fois le cycle Vente livré : recap CA, marges, dépenses, clients top, etc.
+
+---
+
+### Session du 2026-05-14 (soirée)
 **Sujet :** **Module Achat complet (F12-F14)** + **Module Dépense complet** — orchestration achat atomique (commande + facture + paiements + entrée stock), CRUD CategoryDepense scopé entreprise + CRUD Depense scopé magasin. `ReferenceHelper` ajouté pour la génération auto de références (`CMD-yyyyMMdd-HHmmssSSS`). Décision métier sur `Depense` : suppression de `dateEcheance` (pas pertinent — une dépense n'a pas d'échéance, c'est une dette ponctuelle).
 
 **Ce qui a été fait :**
