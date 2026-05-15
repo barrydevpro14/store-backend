@@ -595,6 +595,40 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
+## 30. Client (vente, fonctionnalité 1) — `ClientServiceImpl`
+
+**Endpoints** (`/api/v1/clients`) :
+
+| Méthode | Endpoint | Permission | Action |
+|---|---|---|---|
+| `POST` | `/api/v1/clients` | `CLIENT_CREATE` | Crée un client rattaché à un magasin accessible par le caller (201) |
+| `GET` | `/api/v1/clients?nom=&prenom=&page=&size=` | `CLIENT_READ` | Liste paginée scopée (employé = magasin, propriétaire = entreprise) avec filtres nom/prénom optionnels (200) |
+| `GET` | `/api/v1/clients/{id}` | `CLIENT_READ` | Détail (200) |
+| `PUT` | `/api/v1/clients/{id}` | `CLIENT_UPDATE` | Mise à jour (changement de magasin autorisé si nouveau magasin accessible) (200) |
+| `DELETE` | `/api/v1/clients/{id}` | `CLIENT_DELETE` | Suppression (204) |
+
+**`ClientRequest`** : `@NotBlank @Size(max=255) nom`, `@Size(max=255) prenom`, `@Email @Size(max=255) email`, `@Phone @Size(max=30) telephone`, `@Size(max=255) adresse`, `@NotNull UUID magasinId`.
+
+**`ClientResponse`** : `id, nom, prenom, email, telephone, adresse`. Pas d'exposition du magasin ni de l'entreprise (scoping invisible côté client). Constructeur secondaire `(Client)`.
+
+**`ClientSummaryResponse(id, nomComplet)`** — sous-DTO réutilisable. `nomComplet = "nom prenom"` ou juste `nom` si prénom blank. Sera utilisé dans la future `SaleResponse`.
+
+**`ClientFilter`** (record validé par `ValidatorService`, règle 30 + règle "DTO Filter ≥ 2 critères") : `String nom`, `String prenom`, `@Min(0) int page`, `@Min(1) int size`. Méthode utilitaire : `toPageable()`. Gestion null directement en JPQL via `(:nom IS NULL OR LOWER(c.nom) LIKE ...)`.
+
+**Modèle** : `Client extends Person` (nom/prénom/email/téléphone/adresse hérités) + `@ManyToOne Magasin magasin`. Pas de migration (table `client` existait déjà depuis `V1__init_schema.sql`).
+
+**Règles** :
+- Scoping double via `ensureAccessibleByCurrentUser(Client)` : employé = `client.magasin.id == currentUser.magasinId`, propriétaire = `client.magasin.entreprise.id == currentUser.entrepriseId`. Sinon `ForbiddenException("client.notOwned")`.
+- Magasin cible vérifié à la création / update via `IMagasinService.ensureAccessibleByCurrentUser` (cross-service, `ForbiddenException("magasin.notOwned")` si le caller n'y a pas accès).
+- Aucune unicité sur `telephone` (homonymes acceptables en boutique de pièces détachées).
+- Listing : la sélection magasin (employé) vs entreprise (propriétaire) est interne au service ; aucune option exposée côté API.
+
+**Décision projet liée** : le "client anonyme" n'est PAS un enregistrement Client — quand on attaquera F-V3 (vente atomique), `CommandeVente.client` sera simplement nullable si le vendeur ne saisit pas de client.
+
+**Tests** : 15 service + 9 controller. Suite à **415 / 415 verts**.
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

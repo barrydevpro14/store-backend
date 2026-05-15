@@ -65,6 +65,12 @@ permissions:
   - SUPPLIER_UPDATE
   - SUPPLIER_DELETE
 
+  # CLIENT
+  - CLIENT_CREATE
+  - CLIENT_READ
+  - CLIENT_UPDATE
+  - CLIENT_DELETE
+
   # STOCK
   - STOCK_READ
   - STOCK_ENTRY
@@ -177,6 +183,10 @@ roles:
       - SUPPLIER_READ
       - SUPPLIER_UPDATE
       - SUPPLIER_DELETE
+      - CLIENT_CREATE
+      - CLIENT_READ
+      - CLIENT_UPDATE
+      - CLIENT_DELETE
       - STOCK_READ
       - STOCK_ENTRY
       - STOCK_EXIT
@@ -265,6 +275,10 @@ roles:
       - SUPPLIER_READ
       - SUPPLIER_UPDATE
       - SUPPLIER_DELETE
+      - CLIENT_CREATE
+      - CLIENT_READ
+      - CLIENT_UPDATE
+      - CLIENT_DELETE
       - STOCK_READ
       - STOCK_ENTRY
       - STOCK_EXIT
@@ -345,6 +359,10 @@ roles:
       - SUPPLIER_READ
       - SUPPLIER_UPDATE
       - SUPPLIER_DELETE
+      - CLIENT_CREATE
+      - CLIENT_READ
+      - CLIENT_UPDATE
+      - CLIENT_DELETE
       - STOCK_READ
       - STOCK_ENTRY
       - STOCK_EXIT
@@ -394,6 +412,8 @@ roles:
       - QUALITY_READ
       - PRODUCT_READ
       - SUPPLIER_READ
+      - CLIENT_CREATE
+      - CLIENT_READ
       - STOCK_READ
       - SALE_CREATE
       - SALE_UPDATE

@@ -26,6 +26,11 @@ public enum PermissionCode {
     SUPPLIER_UPDATE,
     SUPPLIER_DELETE,
 
+    CLIENT_CREATE,
+    CLIENT_READ,
+    CLIENT_UPDATE,
+    CLIENT_DELETE,
+
     STOCK_READ,
     STOCK_ENTRY,
     STOCK_EXIT,
