@@ -246,6 +246,27 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
     - Une méthode triviale (1-3 lignes, 1 seul process) n'a besoin ni d'indentation, ni de javadoc obligatoire.
     - **Référence** : voir `StockDomainService.createOrUpdateEntry` et `EntreeStockServiceImpl.create`.
 
+### Variables explicites
+
+32. **Toute variable, paramètre ou champ doit porter un nom métier explicite**. Pas de noms d'une seule lettre ni d'abréviations cryptiques (`q`, `c`, `m`, `ent`, `f`, `dto`, `obj`).
+    - **Paramètres de méthode** : nom complet qui décrit le rôle (`String searchTerm`, pas `String q` ; `Magasin attachedMagasin`, pas `Magasin m` ; `Entreprise entreprise`, pas `Entreprise ent`).
+    - **Variables locales** : même règle (`Client client`, `Fournisseur fournisseur`, `Client foreignClient` pour un client qui n'appartient pas au caller).
+    - **`@RequestParam` HTTP** : la **valeur externe** (`value = "q"`) peut rester courte (convention REST), mais la **variable Java interne** doit être explicite (`String searchTerm`).
+    - **`@Param` JPQL/SQL** : doit matcher le nom de la variable Java côté repo (`@Param("searchTerm") String searchTerm`). Les alias JPQL courts (`FROM Client c`) restent autorisés — c'est la convention SQL standard.
+    - **Tests** : factory `sample(...)` accepte un paramètre explicite (`Magasin attachedMagasin`) et instancie une variable nommée (`Client client = new Client()`, pas `Client c = new Client()`).
+    - **Exceptions tolérées** : lambdas Stream triviaux (`stream.map(item -> item.getX())`), index de boucle `i`, et noms standardisés d'API tierces (`e` pour `Exception` dans un catch).
+
+### DTO Filter dès 2 critères
+
+33. **Dès qu'un endpoint de listing/recherche a au moins 2 critères de filtrage**, créer un record `<X>Filter` dédié (renforce la règle 30 qui n'impose le record qu'au-delà de 3 paramètres).
+    - **2+ critères** = créer `<X>Filter` (record dans `<module>/application/dto/`). 1 critère seul = paramètre individuel autorisé.
+    - **Structure** : critères validés (`@Min`, `@DatePattern`, `@EnumValue`, `@Uuid`, `@NotNull`) + `@Min(0) int page` + `@Min(1) int size` + `toPageable()` + accesseurs si transformation nécessaire (`xxxAsEnum()`, `fromDate()`, etc.).
+    - **Service applicatif** : signature `findX(<X>Filter filter)` ou `findX(UUID ownerId, <X>Filter filter)`. `validatorService.validate(filter)` en première ligne de la méthode.
+    - **Controller** : `@RequestParam` individuels avec `required = false` et `defaultValue` pour page/size, construction du Filter localement avant l'appel au service.
+    - **Repo Spring Data** : exemption — params individuels via `@Param` ou SpEL `:#{#filter.X}` autorisés au-delà de 3 paramètres.
+    - **Gestion des valeurs nulles** : préférer une condition JPQL `(:nom IS NULL OR LOWER(c.nom) LIKE LOWER(CONCAT('%', :nom, '%')))` plutôt qu'un helper `normalize()` côté service.
+    - **Référence** : `DepenseFilter` + `DepenseController` + `DepenseServiceImpl.findAllByCurrentEntreprise` ; `ClientFilter` + `ClientController` + `ClientServiceImpl.findAllForCurrentUser`.
+
 ---
 
 ## Conventions de commits
