@@ -7,6 +7,9 @@ permissions:
   - PROPRIETAIRE_ACCESS
   - EMPLOYE_ACCESS
   - EMPLOYE_CREATE
+  - EMPLOYE_READ
+  - EMPLOYE_UPDATE
+  - EMPLOYE_DELETE
   - ADMIN_ACCESS
 
   # AUTH
@@ -142,6 +145,9 @@ roles:
       - PROPRIETAIRE_ACCESS
       - EMPLOYE_ACCESS
       - EMPLOYE_CREATE
+      - EMPLOYE_READ
+      - EMPLOYE_UPDATE
+      - EMPLOYE_DELETE
       - ADMIN_ACCESS
       - AUTH_LOGIN
       - AUTH_LOGOUT
@@ -237,6 +243,9 @@ roles:
     permissions:
       - PROPRIETAIRE_ACCESS
       - EMPLOYE_CREATE
+      - EMPLOYE_READ
+      - EMPLOYE_UPDATE
+      - EMPLOYE_DELETE
       - AUTH_LOGIN
       - AUTH_LOGOUT
       - AUTH_REFRESH_TOKEN
@@ -329,6 +338,9 @@ roles:
     permissions:
       - EMPLOYE_ACCESS
       - EMPLOYE_CREATE
+      - EMPLOYE_READ
+      - EMPLOYE_UPDATE
+      - EMPLOYE_DELETE
       - AUTH_LOGIN
       - AUTH_LOGOUT
       - AUTH_REFRESH_TOKEN

@@ -3,6 +3,9 @@ package org.store.users.presentation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -10,17 +13,26 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.security.application.dto.AccountRequest;
+import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
+import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.application.service.IEmployeService;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,7 +72,7 @@ class EmployeControllerTest {
         UUID magasinId = UUID.randomUUID();
         UUID createdId = UUID.randomUUID();
         EmployeResponse response = new EmployeResponse(createdId, "Doe", "John",
-                "john@example.com", "770000000", "Dakar", "john.emp", "MANAGER", magasinId);
+                "john@example.com", "770000000", "Dakar", "john.emp", "MANAGER", magasinId, true);
 
         when(employeService.create(any(EmployeRequest.class))).thenReturn(response);
 
@@ -88,6 +100,91 @@ class EmployeControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidBody))
                 .andExpect(status().isBadRequest());
+    }
+
+    private EmployeResponse sampleResponse(UUID id, UUID magasinId) {
+        return new EmployeResponse(id, "Doe", "John", "john@example.com", "770000000", "Dakar",
+                "john.emp", "VENDEUR", magasinId, true);
+    }
+
+    @Test
+    void should_return_200_when_list_employees() throws Exception {
+        UUID magasinId = UUID.randomUUID();
+        Page<EmployeResponse> page = new PageImpl<>(List.of(sampleResponse(UUID.randomUUID(), magasinId)),
+                PageRequest.of(0, 10), 1);
+        when(employeService.findAllByCurrentEntreprise(any(EmployeFilter.class))).thenReturn(page);
+
+        mockMvc.perform(get(EmployeController.BASE_PATH))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].role").value("VENDEUR"))
+                .andExpect(jsonPath("$.content[0].actif").value(true))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void should_return_200_when_get_by_id() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(employeService.findResponseById(id)).thenReturn(sampleResponse(id, UUID.randomUUID()));
+
+        mockMvc.perform(get(EmployeController.BASE_PATH + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id.toString()));
+    }
+
+    @Test
+    void should_return_200_when_update_employee() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID magasinId = UUID.randomUUID();
+        EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
+                "770000001", "Dakar", "VENDEUR", magasinId);
+        when(employeService.update(eq(id), any(EmployeUpdateRequest.class)))
+                .thenReturn(sampleResponse(id, magasinId));
+
+        mockMvc.perform(put(EmployeController.BASE_PATH + "/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void should_return_400_when_update_email_invalid() throws Exception {
+        UUID id = UUID.randomUUID();
+        String invalidBody = """
+                {
+                  "nom": "Doe",
+                  "prenom": "Jane",
+                  "email": "not-an-email",
+                  "telephone": "770000001",
+                  "adresse": "Dakar",
+                  "role": "VENDEUR",
+                  "magasinId": "%s"
+                }
+                """.formatted(UUID.randomUUID());
+
+        mockMvc.perform(put(EmployeController.BASE_PATH + "/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_204_when_deactivate() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(delete(EmployeController.BASE_PATH + "/" + id))
+                .andExpect(status().isNoContent());
+
+        verify(employeService).deactivate(id);
+    }
+
+    @Test
+    void should_return_204_when_activate() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(patch(EmployeController.BASE_PATH + "/" + id + "/activate"))
+                .andExpect(status().isNoContent());
+
+        verify(employeService).activate(id);
     }
 
     @Test

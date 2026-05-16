@@ -13,7 +13,8 @@ public record EmployeResponse(
         String adresse,
         String username,
         String role,
-        UUID magasinId
+        UUID magasinId,
+        boolean actif
 ) {
     public EmployeResponse(Employe employe) {
         this(
@@ -25,7 +26,8 @@ public record EmployeResponse(
                 employe.getAdresse(),
                 employe.getAccount().getUsername(),
                 employe.getAccount().getRole().getLibelle(),
-                employe.getMagasin().getId()
+                employe.getMagasin().getId(),
+                employe.getAccount().isEnabled()
         );
     }
 }

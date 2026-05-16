@@ -8,7 +8,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.service.ValidatorService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
@@ -20,12 +24,16 @@ import org.store.security.application.service.IPermissionsService;
 import org.store.security.application.service.IRoleService;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
+import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
+import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.application.dto.UtilisateurRequest;
+import org.store.users.domain.model.Employe;
 import org.store.users.domain.service.EmployeDomainService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +53,7 @@ class EmployeServiceImplTest {
     @Mock private IPermissionsService permissionsService;
     @Mock private IMagasinService magasinService;
     @Mock private ICurrentUserService currentUserService;
+    @Mock private ValidatorService validatorService;
 
     @InjectMocks
     private EmployeServiceImpl service;
@@ -86,7 +95,7 @@ class EmployeServiceImplTest {
 
     private EmployeResponse sampleResponse(String role) {
         return new EmployeResponse(UUID.randomUUID(), "Doe", "John",
-                "john@example.com", "770000000", "Dakar", "john.emp", role, magasinId);
+                "john@example.com", "770000000", "Dakar", "john.emp", role, magasinId, true);
     }
 
     private Role roleWithId() {
@@ -231,6 +240,128 @@ class EmployeServiceImplTest {
 
         verify(accountService, never()).create(any(), any());
         verify(employeDomainService, never()).create(any(), any(), any());
+    }
+
+    @Test
+    void findAll_should_force_magasinId_to_manager_own_store() {
+        EmployeFilter requested = new EmployeFilter(null, null, null, UUID.randomUUID(), null, 0, 10);
+
+        when(currentUserService.getCurrent()).thenReturn(manager());
+        when(employeDomainService.findResponsesByFilter(any(EmployeFilter.class), eq(entrepriseId)))
+                .thenAnswer(invocation -> {
+                    EmployeFilter scoped = invocation.getArgument(0);
+                    assertThat(scoped.magasinId()).isEqualTo(magasinId);
+                    return new PageImpl<>(List.of(sampleResponse("VENDEUR")), PageRequest.of(0, 10), 1);
+                });
+
+        assertThat(service.findAllByCurrentEntreprise(requested).getContent()).hasSize(1);
+    }
+
+    @Test
+    void findAll_should_keep_filter_as_is_for_proprietaire() {
+        UUID requestedMagasin = UUID.randomUUID();
+        EmployeFilter requested = new EmployeFilter(null, null, null, requestedMagasin, null, 0, 10);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(employeDomainService.findResponsesByFilter(eq(requested), eq(entrepriseId)))
+                .thenReturn(new PageImpl<>(List.of(sampleResponse("VENDEUR")), PageRequest.of(0, 10), 1));
+
+        assertThat(service.findAllByCurrentEntreprise(requested).getContent()).hasSize(1);
+    }
+
+    @Test
+    void findResponseById_should_throw_when_not_found() {
+        UUID employeId = UUID.randomUUID();
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findResponseById(employeId))
+                .isInstanceOf(EntityException.class);
+    }
+
+    @Test
+    void findResponseById_should_throw_for_manager_targeting_other_magasin() {
+        UUID employeId = UUID.randomUUID();
+        Magasin otherMagasin = new Magasin();
+        otherMagasin.setId(UUID.randomUUID());
+        otherMagasin.setEntreprise(magasin.getEntreprise());
+        Employe other = new Employe();
+        other.setId(employeId);
+        other.setMagasin(otherMagasin);
+        Account otherAccount = new Account();
+        otherAccount.setEnabled(true);
+        other.setAccount(otherAccount);
+
+        when(currentUserService.getCurrent()).thenReturn(manager());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> service.findResponseById(employeId))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void deactivate_should_call_account_setEnabled_false() {
+        UUID employeId = UUID.randomUUID();
+        Employe employe = new Employe();
+        employe.setId(employeId);
+        employe.setMagasin(magasin);
+        Account account = new Account();
+        account.setEnabled(true);
+        employe.setAccount(account);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));
+
+        service.deactivate(employeId);
+
+        verify(accountService).setEnabled(account, false);
+    }
+
+    @Test
+    void activate_should_call_account_setEnabled_true() {
+        UUID employeId = UUID.randomUUID();
+        Employe employe = new Employe();
+        employe.setId(employeId);
+        employe.setMagasin(magasin);
+        Account account = new Account();
+        account.setEnabled(false);
+        employe.setAccount(account);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));
+
+        service.activate(employeId);
+
+        verify(accountService).setEnabled(account, true);
+    }
+
+    @Test
+    void update_should_apply_changes_via_domain_service() {
+        UUID employeId = UUID.randomUUID();
+        Employe employe = new Employe();
+        employe.setId(employeId);
+        employe.setMagasin(magasin);
+        Account account = new Account();
+        account.setEnabled(true);
+        Role currentRole = roleWithId();
+        account.setRole(currentRole);
+        employe.setAccount(account);
+        Role newRole = roleWithId();
+        EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
+                "770000001", "Dakar", "VENDEUR", magasinId);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));
+        when(roleService.findByLibelle("VENDEUR")).thenReturn(newRole);
+        when(permissionsService.findAllByRoleId(newRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+
+        service.update(employeId, body);
+
+        verify(employeDomainService).update(eq(employe), any());
+        verify(employeDomainService).changeRole(employe, newRole);
+        verify(employeDomainService).changeMagasin(employe, magasin);
     }
 
     @Test

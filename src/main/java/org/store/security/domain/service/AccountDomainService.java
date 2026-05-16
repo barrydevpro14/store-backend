@@ -32,4 +32,10 @@ public class AccountDomainService extends GlobalService<Account, AccountReposito
     public Optional<Account> findOptionalById(UUID id) {
         return repository.findById(id);
     }
+
+    /** Active ou desactive un Account (bloque/autorise le login). */
+    public Account setEnabled(Account account, boolean enabled) {
+        account.setEnabled(enabled);
+        return save(account);
+    }
 }

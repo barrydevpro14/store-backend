@@ -59,4 +59,9 @@ public class AccountServiceImpl implements IAccountService {
                 .filter(Objects::nonNull)
                 .map(user -> new UserSummaryResponse(user.getId(), NameHelper.formatNomComplet(user.getNom(), user.getPrenom())));
     }
+
+    @Override
+    public Account setEnabled(Account account, boolean enabled) {
+        return accountDomainService.setEnabled(account, enabled);
+    }
 }

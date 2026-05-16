@@ -19,4 +19,7 @@ public interface IAccountService {
 
     /** Résout un createdBy (= accountId stringifié) en `UserSummaryResponse(id, nomComplet)`. Retourne empty si accountId null/invalide ou Account/user introuvable. */
     Optional<UserSummaryResponse> findUserSummaryByAccountId(String accountIdString);
+
+    /** Active ou désactive un Account (bloque/autorise le login JWT). */
+    Account setEnabled(Account account, boolean enabled);
 }
