@@ -18,14 +18,16 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
     /** Crée et persiste une ligne de commande vente avec montantTotal = quantite * prixUnitaire. */
     public LigneCommandeVente create(LigneCommandeVenteCreate ligneCommandeVenteCreate) {
         ProductFournisseur productFournisseur = ligneCommandeVenteCreate.productFournisseur();
+        int quantite = ligneCommandeVenteCreate.quantite();
+        BigDecimal prixUnitaire = ligneCommandeVenteCreate.prixUnitaire();
 
         LigneCommandeVente ligne = new LigneCommandeVente();
         ligne.setCommande(ligneCommandeVenteCreate.commande());
         ligne.setProductFournisseur(productFournisseur);
         ligne.setProduct(productFournisseur.getProduct());
-        ligne.setQuantite(ligneCommandeVenteCreate.quantite());
-        ligne.setPrixUnitaire(ligneCommandeVenteCreate.prixUnitaire());
-        ligne.setMontantTotal(ligneCommandeVenteCreate.prixUnitaire().multiply(BigDecimal.valueOf(ligneCommandeVenteCreate.quantite())));
+        ligne.setQuantite(quantite);
+        ligne.setPrixUnitaire(prixUnitaire);
+        ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
         return save(ligne);
     }
 }
