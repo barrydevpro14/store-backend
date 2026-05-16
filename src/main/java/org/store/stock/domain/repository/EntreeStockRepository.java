@@ -24,6 +24,16 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
     List<EntreeStock> findAvailableLotsForFifo(@Param("magasinId") UUID magasinId, @Param("productId") UUID productId);
 
     @Query("""
+            SELECT e FROM EntreeStock e
+            WHERE e.magasin.id = :magasinId
+              AND e.productFournisseur.id = :productFournisseurId
+              AND e.quantiteRestante > 0
+            ORDER BY e.createdAt ASC
+            """)
+    List<EntreeStock> findAvailableLotsForFifoByProductFournisseur(@Param("magasinId") UUID magasinId,
+                                                                   @Param("productFournisseurId") UUID productFournisseurId);
+
+    @Query("""
             SELECT new org.store.stock.application.dto.ExpiringLotResponse(e)
             FROM EntreeStock e
             WHERE e.magasin.entreprise.id = :entrepriseId

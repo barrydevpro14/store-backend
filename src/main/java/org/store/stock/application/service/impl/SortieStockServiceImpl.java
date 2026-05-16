@@ -8,8 +8,11 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.LotConsumption;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.SortieStockCreate;
+import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.dto.SortieStockRequest;
 import org.store.stock.application.dto.SortieStockResponse;
 import org.store.stock.application.service.ISortieStockService;
@@ -108,5 +111,58 @@ public class SortieStockServiceImpl implements ISortieStockService {
 
         SortieStock sortie = sortieStockDomainService.create(lot, aConsommer, prixVente);
         return new LotConsumption(new SortieStockResponse(sortie), restant - aConsommer);
+    }
+
+    /** Consomme les lots FIFO du ProductFournisseur ciblé pour une ligne de vente : vérifie stock, journalise et lie les sorties à la ligne. */
+    @Override
+    @Transactional
+    public List<SortieStockResponse> consumeForVente(SortieStockForVente sortieStockForVente) {
+        Magasin magasin = sortieStockForVente.magasin();
+        ProductFournisseur productFournisseur = sortieStockForVente.productFournisseur();
+        Product produit = productFournisseur.getProduct();
+
+        Stock stock = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+                .orElseThrow(() -> new EntityException("stock.notFound"));
+        int stockAvant = stock.getQuantiteDisponible();
+
+        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasin.getId(), productFournisseur.getId());
+        int totalDisponible = lots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
+        if (totalDisponible < sortieStockForVente.quantite()) {
+            throw new BadArgumentException("stock.exit.insufficientQuantity", totalDisponible, sortieStockForVente.quantite());
+        }
+
+        List<SortieStockResponse> sorties = consumeLotsFifoForVente(lots, sortieStockForVente);
+
+        Stock updated = stockDomainService.decrement(stock, sortieStockForVente.quantite());
+
+        mouvementStockDomainService.journalize(updated, new MouvementJournalize(
+                MouvementStockType.SORTIE_VENTE,
+                sortieStockForVente.quantite(),
+                stockAvant,
+                updated.getQuantiteDisponible(),
+                null,
+                null
+        ));
+
+        return sorties;
+    }
+
+    /** Consomme les lots FIFO et lie chaque SortieStock créée à la ligne de vente du contexte. */
+    public List<SortieStockResponse> consumeLotsFifoForVente(List<EntreeStock> lots, SortieStockForVente sortieStockForVente) {
+        List<SortieStockResponse> sorties = new ArrayList<>();
+        int restant = sortieStockForVente.quantite();
+
+        for (EntreeStock lot : lots) {
+            if (restant == 0) break;
+            int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
+            lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
+            entreeStockDomainService.save(lot);
+            SortieStock sortie = sortieStockDomainService.create(new SortieStockCreate(
+                    lot, aConsommer, sortieStockForVente.prixVente(), sortieStockForVente.ligneVente()
+            ));
+            sorties.add(new SortieStockResponse(sortie));
+            restant -= aConsommer;
+        }
+        return sorties;
     }
 }

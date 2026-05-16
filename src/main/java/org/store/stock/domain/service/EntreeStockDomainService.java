@@ -26,6 +26,10 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return repository.findAvailableLotsForFifo(magasinId, productId);
     }
 
+    public List<EntreeStock> findAvailableLotsForFifoByProductFournisseur(UUID magasinId, UUID productFournisseurId) {
+        return repository.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId);
+    }
+
     public Page<ExpiringLotResponse> findExpiringLots(ExpiringLotsFilter filter, UUID entrepriseId) {
         return repository.findExpiringLots(filter, entrepriseId, filter.toPageable());
     }
