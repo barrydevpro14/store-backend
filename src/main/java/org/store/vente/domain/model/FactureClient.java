@@ -32,5 +32,7 @@ public class FactureClient extends AuditableEntity {
     private BigDecimal montantPaye;
 
     private LocalDate date;
-    private LocalDate dateEcheache;
+
+    @Column(nullable = false)
+    private LocalDate dateEcheance;
 }

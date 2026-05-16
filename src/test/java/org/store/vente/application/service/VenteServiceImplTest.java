@@ -3,6 +3,7 @@ package org.store.vente.application.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +27,7 @@ import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.service.ISortieStockService;
 import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
+import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
@@ -150,6 +152,7 @@ class VenteServiceImplTest {
         return new VenteRequest(
                 null,
                 LocalDate.of(2026, 5, 16),
+                LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
                 null
         );
@@ -178,6 +181,32 @@ class VenteServiceImplTest {
     }
 
     @Test
+    void create_should_default_dateVente_to_today_when_null() {
+        VenteRequest req = new VenteRequest(
+                null,
+                null,
+                LocalDate.now(),
+                List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
+                null
+        );
+
+        when(employeService.findCurrentUser()).thenReturn(vendeur);
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
+        when(commandeVenteDomainService.create(any())).thenReturn(commande);
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(new LigneCommandeVente());
+        when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
+        when(factureClientDomainService.create(any())).thenReturn(facture);
+
+        ArgumentCaptor<CommandeVenteCreate> commandeCaptor = ArgumentCaptor.forClass(CommandeVenteCreate.class);
+        service.create(req);
+
+        verify(commandeVenteDomainService).create(commandeCaptor.capture());
+        assertThat(commandeCaptor.getValue().dateVente()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
     void create_should_throw_when_user_not_employe() {
         when(employeService.findCurrentUser()).thenThrow(new ForbiddenException("vente.user.required"));
 
@@ -191,6 +220,7 @@ class VenteServiceImplTest {
     void create_should_throw_when_prix_below_floor() {
         VenteRequest req = new VenteRequest(
                 null,
+                LocalDate.of(2026, 5, 16),
                 LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("5.00"))),
                 null
@@ -210,6 +240,7 @@ class VenteServiceImplTest {
     void create_should_apply_premier_paiement_when_present() {
         VenteRequest req = new VenteRequest(
                 null,
+                LocalDate.of(2026, 5, 16),
                 LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
                 new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name())

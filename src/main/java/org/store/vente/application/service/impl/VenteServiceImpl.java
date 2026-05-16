@@ -45,6 +45,7 @@ import org.store.vente.domain.service.LigneCommandeVenteDomainService;
 import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -102,11 +103,12 @@ public class VenteServiceImpl implements IVenteService {
         Employe user = employeService.findCurrentUser();
         Magasin magasin = user.getMagasin();
         Client client = resolveClient(venteRequest.clientId());
+        LocalDate dateVente = venteRequest.dateVente() != null ? venteRequest.dateVente() : LocalDate.now();
 
         List<ProductFournisseur> productFournisseurs = resolveAndValidateLignes(venteRequest);
 
         CommandeVente commande = commandeVenteDomainService.create(new CommandeVenteCreate(
-                client, magasin, venteRequest.dateVente(),
+                client, magasin, dateVente,
                 commandeVenteDomainService.generateReference(),
                 CommandeVenteStatut.DELIVERED
         ));
@@ -117,7 +119,7 @@ public class VenteServiceImpl implements IVenteService {
 
         FactureClient facture = factureClientDomainService.create(new FactureClientCreate(
                 commande, factureClientDomainService.generateNumero(),
-                venteRequest.dateVente(), null, montantTotal
+                dateVente, venteRequest.dateEcheance(), montantTotal
         ));
 
         FactureClient finalFacture = applyPremierPaiementIfPresent(venteRequest.premierPaiement(), facture, commande);

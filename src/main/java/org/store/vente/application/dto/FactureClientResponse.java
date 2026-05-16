@@ -32,7 +32,7 @@ public record FactureClientResponse(
                 montantPaye,
                 facture.getMontantTotal().subtract(montantPaye),
                 facture.getDate(),
-                facture.getDateEcheache(),
+                facture.getDateEcheance(),
                 facture.getCommande() != null ? facture.getCommande().getId() : null
         );
     }

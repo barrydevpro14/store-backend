@@ -24,7 +24,7 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
         facture.setCommande(factureClientCreate.commande());
         facture.setNumero(factureClientCreate.numero());
         facture.setDate(factureClientCreate.date());
-        facture.setDateEcheache(factureClientCreate.dateEcheance());
+        facture.setDateEcheance(factureClientCreate.dateEcheance());
         facture.setMontantTotal(factureClientCreate.montantTotal());
         facture.setMontantPaye(BigDecimal.ZERO);
         facture.setStatut(StatutFacture.NON_PAYEE);

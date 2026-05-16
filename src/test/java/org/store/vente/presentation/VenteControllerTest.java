@@ -66,6 +66,7 @@ class VenteControllerTest {
         return new VenteRequest(
                 null,
                 LocalDate.of(2026, 5, 16),
+                LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 10, new BigDecimal("15.00"))),
                 null
         );
@@ -106,7 +107,7 @@ class VenteControllerTest {
 
     @Test
     void should_return_400_when_lignes_empty() throws Exception {
-        VenteRequest body = new VenteRequest(null, LocalDate.of(2026, 5, 16), List.of(), null);
+        VenteRequest body = new VenteRequest(null, LocalDate.of(2026, 5, 16), LocalDate.of(2026, 5, 16), List.of(), null);
 
         mockMvc.perform(post(VenteController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
