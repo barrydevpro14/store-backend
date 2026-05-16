@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +19,7 @@ import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.vente.application.dto.FactureClientFilter;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
@@ -29,9 +31,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -81,6 +85,43 @@ class FactureClientControllerTest {
         mockMvc.perform(get(FactureClientController.BASE_PATH).param("magasinId", magasinId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].numero").value("FAC-VTE-001"));
+    }
+
+    @Test
+    void list_should_forward_all_filter_params_to_service() throws Exception {
+        UUID clientId = UUID.randomUUID();
+        UUID vendeurId = UUID.randomUUID();
+        Page<FactureClientResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 25), 0);
+        when(factureClientService.findAllByCurrentEntreprise(any())).thenReturn(page);
+
+        mockMvc.perform(get(FactureClientController.BASE_PATH)
+                        .param("magasinId", magasinId.toString())
+                        .param("clientId", clientId.toString())
+                        .param("vendeurId", vendeurId.toString())
+                        .param("statut", "NON_PAYEE")
+                        .param("numero", "FAC-VTE-2026")
+                        .param("montantMin", "100.00")
+                        .param("montantMax", "5000.00")
+                        .param("startDate", "2026-05-01")
+                        .param("endDate", "2026-05-31")
+                        .param("page", "1")
+                        .param("size", "25"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<FactureClientFilter> captor = ArgumentCaptor.forClass(FactureClientFilter.class);
+        verify(factureClientService).findAllByCurrentEntreprise(captor.capture());
+        FactureClientFilter captured = captor.getValue();
+        assertThat(captured.magasinId()).isEqualTo(magasinId);
+        assertThat(captured.clientId()).isEqualTo(clientId);
+        assertThat(captured.vendeurId()).isEqualTo(vendeurId);
+        assertThat(captured.statut()).isEqualTo("NON_PAYEE");
+        assertThat(captured.numero()).isEqualTo("FAC-VTE-2026");
+        assertThat(captured.montantMin()).isEqualByComparingTo(new BigDecimal("100.00"));
+        assertThat(captured.montantMax()).isEqualByComparingTo(new BigDecimal("5000.00"));
+        assertThat(captured.startDate()).isEqualTo("2026-05-01");
+        assertThat(captured.endDate()).isEqualTo("2026-05-31");
+        assertThat(captured.page()).isEqualTo(1);
+        assertThat(captured.size()).isEqualTo(25);
     }
 
     @Test

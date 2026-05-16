@@ -19,10 +19,15 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
     @Query("""
             SELECT new org.store.vente.application.dto.FactureClientResponse(f)
             FROM FactureClient f
+            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = f.createdBy
             WHERE f.commande.magasin.entreprise.id = :entrepriseId
               AND f.commande.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.clientId} IS NULL OR f.commande.client.id = :#{#filter.clientId})
+              AND (:#{#filter.vendeurId} IS NULL OR a.user.id = :#{#filter.vendeurId})
               AND (:#{#filter.statutAsEnum()} IS NULL OR f.statut = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.numero} IS NULL OR LOWER(f.numero) LIKE LOWER(CONCAT('%', :#{#filter.numero}, '%')))
+              AND (:#{#filter.montantMin} IS NULL OR f.montantTotal >= :#{#filter.montantMin})
+              AND (:#{#filter.montantMax} IS NULL OR f.montantTotal <= :#{#filter.montantMax})
               AND (:#{#filter.fromDateTime()} IS NULL OR f.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR f.createdAt <= :#{#filter.toDateTime()})
             """)

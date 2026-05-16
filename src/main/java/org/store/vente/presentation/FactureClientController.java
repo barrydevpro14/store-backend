@@ -20,6 +20,7 @@ import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.service.IFactureClientService;
 import org.store.vente.application.service.IPaiementVenteService;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -41,13 +42,18 @@ public class FactureClientController {
     @PreAuthorize("hasAuthority('SALE_READ')")
     public ResponseEntity<Page<FactureClientResponse>> list(@RequestParam UUID magasinId,
                                                             @RequestParam(required = false) UUID clientId,
+                                                            @RequestParam(required = false) UUID vendeurId,
                                                             @RequestParam(required = false) String statut,
+                                                            @RequestParam(required = false) String numero,
+                                                            @RequestParam(required = false) BigDecimal montantMin,
+                                                            @RequestParam(required = false) BigDecimal montantMax,
                                                             @RequestParam(required = false) String startDate,
                                                             @RequestParam(required = false) String endDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(factureClientService.findAllByCurrentEntreprise(
-                new FactureClientFilter(magasinId, clientId, statut, startDate, endDate, page, size)
+                new FactureClientFilter(magasinId, clientId, vendeurId, statut, numero,
+                        montantMin, montantMax, startDate, endDate, page, size)
         ));
     }
 
