@@ -1,5 +1,7 @@
 package org.store.vente.presentation;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -7,14 +9,17 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.vente.application.dto.FactureClientResponse;
+import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.service.IFactureClientService;
 import org.store.vente.application.service.IPaiementVenteService;
@@ -29,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,6 +43,7 @@ class FactureClientControllerTest {
     private MockMvc mockMvc;
     private IFactureClientService factureClientService;
     private IPaiementVenteService paiementVenteService;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID magasinId;
 
@@ -46,9 +53,13 @@ class FactureClientControllerTest {
         paiementVenteService = mock(IPaiementVenteService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
         mockMvc = MockMvcBuilders.standaloneSetup(new FactureClientController(factureClientService, paiementVenteService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                .setValidator(validator)
                 .build();
 
         magasinId = UUID.randomUUID();
@@ -105,5 +116,34 @@ class FactureClientControllerTest {
         mockMvc.perform(get(FactureClientController.BASE_PATH + "/" + factureId + "/paiements"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].moyen").value("CASH"));
+    }
+
+    @Test
+    void createPaiement_should_return_201_when_paiement_added() throws Exception {
+        UUID factureId = UUID.randomUUID();
+        PaiementVenteRequest body = new PaiementVenteRequest(new BigDecimal("400.00"), MoyenPaiement.CASH.name(), null);
+        PaiementVenteResponse response = new PaiementVenteResponse(
+                UUID.randomUUID(), new BigDecimal("400.00"), LocalDate.of(2026, 5, 16),
+                MoyenPaiement.CASH, factureId
+        );
+        when(paiementVenteService.create(eq(factureId), any(PaiementVenteRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(FactureClientController.BASE_PATH + "/" + factureId + "/paiements")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.montant").value(400.00))
+                .andExpect(jsonPath("$.moyen").value("CASH"));
+    }
+
+    @Test
+    void createPaiement_should_return_400_when_montant_missing() throws Exception {
+        UUID factureId = UUID.randomUUID();
+        PaiementVenteRequest body = new PaiementVenteRequest(null, MoyenPaiement.CASH.name(), null);
+
+        mockMvc.perform(post(FactureClientController.BASE_PATH + "/" + factureId + "/paiements")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
     }
 }
