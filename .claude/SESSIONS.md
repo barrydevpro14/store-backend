@@ -7,7 +7,60 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-16 (soirée — F-V4 listings vente)
+**Date :** 2026-05-16 (nuit — F-V4-bis recherche enrichie + retrait saisie dateVente)
+**Sujet :** **Itération sur F-V4** suite au retour utilisateur "il manque la recherche par date/montant/client/vendeur sur les ventes". Enrichissement de `CommandeVenteFilter` (passe de 6 à 11 champs) + simplification du contrat API en retirant la saisie de `dateVente` du `VenteRequest` (fixée systématiquement à `LocalDate.now()` côté service). **466 / 466 tests verts** (+1 vs 465). 2 commits atomiques, pushés.
+
+**Ce qui a été fait :**
+
+1. **Audit du besoin** : l'utilisateur signale qu'il n'y a pas d'API de recherche des ventes par critères (date, montant, client, vendeur). F-V4 livré couvrait magasinId/clientId/dates seulement. Décision de réponse : enrichir `CommandeVenteFilter` plutôt que créer un nouvel endpoint dédié.
+
+2. **Enrichissement `CommandeVenteFilter`** (`commit 82a4b99`) — 5 nouveaux critères :
+   - `vendeurId` (UUID Employe) — résolution JPQL via `LEFT JOIN Account a ON CAST(a.id AS string) = c.createdBy LEFT JOIN a.user u WHERE a.user.id = :vendeurId`. Le CAST UUID→String était déjà utilisé pour la résolution du nom dans `findResponseById` (F-V4 partie 1), on réutilise le pattern.
+   - `statut` (`@EnumValue(CommandeVenteStatut)`) — `EnumHelper.parse` pour la conversion safe.
+   - `reference` (String) — `LOWER(c.reference) LIKE LOWER('%' + ref + '%')` (insensitive).
+   - `montantMin` / `montantMax` (BigDecimal `@DecimalMin(0)`) — `c.montantTotal BETWEEN min AND max` avec chaque borne optionnelle.
+   - Test `list_should_forward_all_filter_params_to_service` ajouté : passe les 9 query params + verify via `ArgumentCaptor` que `CommandeVenteFilter` est bien construit.
+
+3. **Retrait de `dateVente` du `VenteRequest`** (`commit c5fab9f`) — décision utilisateur après échange sur la sémantique des dates :
+   - Itération 1 : `dateVente` optionnelle + `@PastOrPresent`, défaut today (livré en F-V3).
+   - Itération 2 (discussion) : on parle d'éventuellement filtrer sur `c.date` (métier) au lieu de `c.createdAt` (audit). Aller-retour sur `LocalDate` vs `LocalDateTime`.
+   - **Décision finale** : retirer carrément la saisie. Le filtre date reste sur `c.createdAt` (audit), et `VenteRequest` n'expose plus `dateVente`. Le service force `LocalDate.now()` en dur. Plus de backdate possible côté API.
+   - `VenteRequest` : passe de 5 à 4 champs.
+   - `VenteServiceImpl.create` : `LocalDate dateVente = LocalDate.now();` en dur.
+   - Test `create_should_default_dateVente_to_today_when_null` renommé en `create_should_set_dateVente_to_today` (cas trivial mais conservé pour traçabilité).
+
+4. **Aller-retour techniques annulés** (non commités) :
+   - Ajout de `DateHelper.parseDate(String) → LocalDate` (puis annulation).
+   - Migration `CommandeVenteFilter.fromDateTime() → fromDate()` retournant LocalDate (puis annulation).
+   - Migration query JPQL de `c.createdAt` vers `c.date` (puis annulation).
+   - Discussion `LocalDateTime` vs `LocalDate` pour `dateVente` (option `LocalDateTime` proposée puis rétractée par l'utilisateur).
+
+**Décisions / arbitrages :**
+
+- **Recherche par vendeur via JOIN sur Account** plutôt qu'ajout d'une FK `commande.vendeur_id` (option retirée en V13). Cohérent avec "Option Minimaliste" : l'audit `createdBy` reste la seule source de vérité.
+- **Filtre date sur `c.createdAt` (audit)**, pas sur `c.date` (métier) — décision utilisateur après réflexion. La date métier deviendra pertinente uniquement si on permet à nouveau la backdate ; pour l'instant `c.date = c.createdAt.toLocalDate()` à la création donc filtrer sur l'un ou l'autre est équivalent.
+- **Retrait `dateVente` du request** plutôt que la garder optionnelle — simplifie le contrat API (1 champ en moins, pas de fallback conditionnel dans le service, plus de risque de backdate non voulu).
+- **2 commits atomiques séparés** (enrichissement filter + retrait dateVente) pour faciliter relecture / revert ciblé. Le retrait dateVente est une régression du contrat F-V3 ; isolé dans son propre commit pour pouvoir le réverter sans toucher à l'enrichissement filter.
+
+**Où on s'est arrêté :**
+
+- **466 / 466 tests verts**. Compile vert.
+- **0 commits en attente** (push effectué en fin de session, `dev` alignée avec `origin/dev`).
+- **2 commits livrés** : `82a4b99` (enrichissement filter), `c5fab9f` (retrait dateVente).
+- **`GET /api/v1/commandes-vente`** accepte maintenant : `magasinId` (obligatoire), `clientId`, `vendeurId`, `statut`, `reference`, `montantMin`, `montantMax`, `startDate`, `endDate`, `page`, `size`. Tous les besoins de recherche évoqués sont couverts.
+- **Pas de migration BDD** dans cette itération.
+
+**Prochaine étape recommandée :**
+
+1. **F-V5 — Paiement échelonné** (`POST /api/v1/factures-client/{id}/paiements`) — pattern existant (`factureClientDomainService.applyPaiement` + `paiementVenteDomainService.create(PaiementVenteCreate)`) déjà utilisé dans F-V3.
+2. **Étendre `FactureClientFilter` aussi** (cohérence) avec `vendeurId`, `montantMin/Max`, `numero` LIKE — l'utilisateur n'avait pas tranché lors de la question initiale.
+3. **Module dashboard / reporting**.
+
+---
+
+### Session du 2026-05-16 (soirée — F-V4 listings vente)
+
+**Date initiale :** 2026-05-16 (soirée — F-V4 listings vente)
 **Sujet :** **Module Vente — fonctionnalité 4 : Listings paginés filtrés** (commandes vente, factures client, paiements par facture). Symétrie directe avec le module Achat F12-F14 (`CommandeAchatController`, `FactureAchatController`). 5 endpoints en projection JPQL pure (règle 24), scoping entreprise dans la WHERE de chaque query (sécurité multi-tenant sans risque de fuite cross-entreprise). **465 / 465 tests verts** (+17 vs 448).
 
 **Ce qui a été fait :**

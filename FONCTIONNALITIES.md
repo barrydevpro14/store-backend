@@ -684,11 +684,10 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - **V14** `enforce_pf_not_null_on_ligne_vente.sql` : durcit `ligne_commande_vente.product_fournisseur_id` en `NOT NULL` (le flux applicatif set toujours la valeur, contrainte BDD pour les insertions hors flux).
 - **V15** `rename_date_echeache_to_date_echeance_on_facture_client.sql` : correction typo historique `facture_client.date_echeache → date_echeance` + backfill garde-fou (échéance null → date facture) + `SET NOT NULL`. Le champ entité passe de `dateEcheache` à `dateEcheance` (rejoint l'orthographe des autres tables `echeance`/`facture_achat`/`depense`).
 
-**Entrée** : `VenteRequest` (5 champs)
+**Entrée** : `VenteRequest` (4 champs)
 ```json
 {
   "clientId": "uuid-or-null",
-  "dateVente": "2026-05-16",       // optionnel, defaut today() si absent, @PastOrPresent
   "dateEcheance": "2026-05-30",    // OBLIGATOIRE, saisi par le vendeur, @FutureOrPresent
   "lignes": [
     { "productFournisseurId": "uuid-chine", "quantite": 100, "prixUnitaire": 10 },
@@ -701,6 +700,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
   }
 }
 ```
+**`dateVente` n'est PAS dans le request** — fixée systématiquement à `LocalDate.now()` par `VenteServiceImpl.create` (cohérent vente-au-comptoir : la date métier = date d'enregistrement). Plus de backdate possible côté API.
 
 **Flux atomique (transaction unique)** :
 1. Vendeur récupéré via `IEmployeService.findCurrentUser()` → throw `ForbiddenException("vente.user.required")` si l'utilisateur connecté n'est pas un Employe (PROPRIETAIRE refusé).
@@ -757,8 +757,8 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - Numéro de référence commande + numéro de facture auto-générés (le vendeur ne saisit rien). Frontend lecteur uniquement.
 - Vendeur (`commande.user`) affiché via `UserSummaryResponse(id, nomComplet)` résolu côté lecture depuis `commande.createdBy` (= accountId stringifié) → `IAccountService.findUserSummaryByAccountId`.
 - **Dates** :
-  - `dateVente` optionnelle, défaut `today()` si absente (`@PastOrPresent`). Une vente future est rejetée.
-  - `dateEcheance` **obligatoire** (`@NotNull @FutureOrPresent`), saisie par le vendeur. Vente comptant → frontend passe `dateEcheance = dateVente`.
+  - `dateVente` **n'est plus dans le request** : fixée à `LocalDate.now()` à chaque création. Stockée sur `CommandeVente.date` et `FactureClient.date`.
+  - `dateEcheance` **obligatoire dans le request** (`@NotNull @FutureOrPresent`), saisie par le vendeur. Vente comptant → frontend passe `dateEcheance = today`.
   - `premierPaiement.datePaiement` optionnel (`@PastOrPresent`), défaut `LocalDate.now()` côté service applicatif (le domain ne fait plus `LocalDate.now()` implicite, la résolution vit dans `VenteServiceImpl`).
 
 **Tests** : 8 tests service `VenteServiceImplTest` (orchestration POST happy, default dateVente=today si null, throw user non-Employe, throw prix below floor, apply premier paiement, datePaiement du request respectée, GET détails, GET 404 facture, GET forbidden non-owned) + 3 controller (POST 201, POST 400 lignes vides, GET 200). Tests dédiés `FactureClientDomainServiceTest` (5 transitions `applyPaiement`) et `SortieStockServiceImplTest.consumeForVente_*` (3 cas). **448 / 448 verts**.
@@ -768,7 +768,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 ## 33. Listings vente (vente, fonctionnalité 4) — `CommandeVenteServiceImpl`, `FactureClientServiceImpl`, `PaiementVenteServiceImpl`
 
 **5 endpoints** (tous en permission `SALE_READ`) :
-- `GET /api/v1/commandes-vente?magasinId=&clientId?&startDate?&endDate?&page&size` — listing paginé filtré commandes vente.
+- `GET /api/v1/commandes-vente?magasinId=&clientId?&vendeurId?&statut?&reference?&montantMin?&montantMax?&startDate?&endDate?&page&size` — listing paginé filtré commandes vente avec recherche multi-critères.
 - `GET /api/v1/commandes-vente/{id}` — détail commande **avec `user` (vendeur) résolu** via projection JPQL.
 - `GET /api/v1/factures-client?magasinId=&clientId?&statut?&startDate?&endDate?&page&size` — listing paginé filtré factures client.
 - `GET /api/v1/factures-client/{id}` — détail facture.
@@ -785,7 +785,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - `(CommandeVente commande, UUID userId, String nomComplet)` — détail GET by id, instancie `UserSummaryResponse` seulement si `userId != null`.
 
 **Filters** (records dans `vente/application/dto/`) :
-- `CommandeVenteFilter(magasinId, clientId?, startDate?, endDate?, page, size)` + `toPageable()` trie DESC `createdAt`.
+- `CommandeVenteFilter(magasinId, clientId?, vendeurId?, statut?, reference?, montantMin?, montantMax?, startDate?, endDate?, page, size)` — 11 champs. Recherche multi-critères : vendeur, statut (`@EnumValue(CommandeVenteStatut)`), référence (LIKE insensitive), fourchette de montant total, plage de dates audit. `statutAsEnum()` via `EnumHelper.parse`. `toPageable()` trie DESC `createdAt`. Le filtre `vendeurId` est résolu via `LEFT JOIN Account a ON CAST(a.id AS string) = c.createdBy + a.user.id = :vendeurId` (l'audit `createdBy` est l'`accountId` stringifié, on remonte à l'Employe via `Account.user`).
 - `FactureClientFilter(magasinId, clientId?, statut?, startDate?, endDate?, page, size)` + `statutAsEnum()` via `EnumHelper.parse`.
 
 **Multi-tenant** : chaque query JPQL filtre obligatoirement par `entrepriseId` issu de `currentUserService.getCurrent()`. Le scoping est appliqué **dans la WHERE de la query** (pas en post-load), donc une commande / facture / paiement d'une autre entreprise est invisible (page vide ou `EntityException("notFound")` plutôt qu'un `notOwned` qui divulguerait l'existence de la ressource). En complément, le controller passe par `IMagasinService.ensureAccessibleByCurrentUser` pour vérifier l'accès magasin du caller sur les listings.
@@ -794,7 +794,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 **i18n** : 2 nouvelles clés FR/EN — `commandeVente.notFound`, `factureClient.notFound`.
 
-**Tests** : 6 service `CommandeVenteServiceImplTest` (validate filter, magasin not accessible forbidden, getById happy with user, getById notFound) + 6 service `FactureClientServiceImplTest` + 2 service `PaiementVenteServiceImplTest` + 3 controller `CommandeVenteControllerTest` (list 200 sans user, getById 200 avec user, getById 406 notFound) + 4 controller `FactureClientControllerTest` (list 200, getById 200, getById 406, listPaiements 200). **465 / 465 verts** (+17 vs 448 pré-F-V4).
+**Tests** : 6 service `CommandeVenteServiceImplTest` (validate filter, magasin not accessible forbidden, getById happy with user, getById notFound) + 6 service `FactureClientServiceImplTest` + 2 service `PaiementVenteServiceImplTest` + 4 controller `CommandeVenteControllerTest` (list 200 sans user, list_forward_all_filter_params via ArgumentCaptor sur les 9 query params, getById 200 avec user, getById 406 notFound) + 4 controller `FactureClientControllerTest` (list 200, getById 200, getById 406, listPaiements 200). **466 / 466 verts** (+18 vs 448 pré-F-V4).
 
 ---
 
