@@ -15,8 +15,11 @@ import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CaisseResumeResponse;
+import org.store.vente.application.dto.TopProduitResponse;
+import org.store.vente.application.dto.TopProduitsFilter;
 import org.store.vente.application.service.impl.CaisseServiceImpl;
 import org.store.vente.domain.service.CommandeVenteDomainService;
+import org.store.vente.domain.service.LigneCommandeVenteDomainService;
 import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.math.BigDecimal;
@@ -33,6 +36,7 @@ import static org.mockito.Mockito.when;
 class CaisseServiceImplTest {
 
     @Mock private CommandeVenteDomainService commandeVenteDomainService;
+    @Mock private LigneCommandeVenteDomainService ligneCommandeVenteDomainService;
     @Mock private PaiementVenteDomainService paiementVenteDomainService;
     @Mock private IMagasinService magasinService;
     @Mock private ICurrentUserService currentUserService;
@@ -97,6 +101,42 @@ class CaisseServiceImplTest {
 
         assertThatThrownBy(() -> service.getResume(filter))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void findTopProduits_should_delegate_and_return_list() {
+        TopProduitsFilter filter = new TopProduitsFilter(magasinId, "2026-05-16", 3);
+        List<TopProduitResponse> top = List.of(
+                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", 250L, new BigDecimal("12500.00")),
+                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", 180L, new BigDecimal("9000.00")),
+                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", 95L, new BigDecimal("4750.00"))
+        );
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(top);
+
+        List<TopProduitResponse> result = service.findTopProduits(filter);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).quantiteVendue()).isEqualTo(250L);
+        assertThat(result.get(0).nom()).isEqualTo("Clou 10mm");
+        verify(validatorService).validate(filter);
+    }
+
+    @Test
+    void findTopProduits_should_use_today_when_date_null() {
+        TopProduitsFilter filter = new TopProduitsFilter(magasinId, null, 3);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(List.of());
+
+        service.findTopProduits(filter);
+
+        assertThat(filter.effectiveDate()).isEqualTo(LocalDate.now());
     }
 
     @Test

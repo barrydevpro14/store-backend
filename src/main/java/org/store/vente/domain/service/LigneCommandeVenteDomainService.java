@@ -4,10 +4,14 @@ import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.vente.application.dto.LigneCommandeVenteCreate;
+import org.store.vente.application.dto.TopProduitResponse;
+import org.store.vente.application.dto.TopProduitsFilter;
 import org.store.vente.domain.model.LigneCommandeVente;
 import org.store.vente.domain.repository.LigneCommandeVenteRepository;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class LigneCommandeVenteDomainService extends GlobalService<LigneCommandeVente, LigneCommandeVenteRepository> {
@@ -29,5 +33,11 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         ligne.setPrixUnitaire(prixUnitaire);
         ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
         return save(ligne);
+    }
+
+    /** Top N produits les plus vendus (par quantité) dans le magasin sur la journée du filter. */
+    public List<TopProduitResponse> findTopProduitsForCaisse(TopProduitsFilter filter, UUID entrepriseId) {
+        return repository.findTopProduitsByMagasinAndDay(filter.magasinId(), entrepriseId,
+                filter.startOfDay(), filter.endOfDay(), filter.toPageable());
     }
 }

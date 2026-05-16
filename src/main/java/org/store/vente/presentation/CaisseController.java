@@ -8,8 +8,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CaisseResumeResponse;
+import org.store.vente.application.dto.TopProduitResponse;
+import org.store.vente.application.dto.TopProduitsFilter;
 import org.store.vente.application.service.ICaisseService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -29,5 +32,13 @@ public class CaisseController {
     public ResponseEntity<CaisseResumeResponse> resume(@RequestParam UUID magasinId,
                                                        @RequestParam String date) {
         return ResponseEntity.ok(caisseService.getResume(new CaisseResumeFilter(magasinId, date)));
+    }
+
+    @GetMapping("/top-produits")
+    @PreAuthorize("hasAuthority('SALE_READ')")
+    public ResponseEntity<List<TopProduitResponse>> topProduits(@RequestParam UUID magasinId,
+                                                                @RequestParam(required = false) String date,
+                                                                @RequestParam(defaultValue = "3") int nombre) {
+        return ResponseEntity.ok(caisseService.findTopProduits(new TopProduitsFilter(magasinId, date, nombre)));
     }
 }
