@@ -27,6 +27,7 @@ public class UserPrincipalFactoryImpl implements IUserPrincipalFactory {
     @Override
     public UserPrincipal build(Account account) {
         Utilisateur user = account.getUser();
+
         UserPrincipalContext context = strategies.stream()
                 .filter(s -> s.targetType().isInstance(user))
                 .reduce((a, b) -> a.targetType().isAssignableFrom(b.targetType()) ? b : a)

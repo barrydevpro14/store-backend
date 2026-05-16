@@ -29,11 +29,13 @@ public class GlobalException {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> methodArgumentNotValidException(MethodArgumentNotValidException ex) {
         Set<Error> errors = new TreeSet<>();
+
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String errorMessage = error.getDefaultMessage();
             String field = ((FieldError)error).getField();
             errors.add(new Error(field, errorMessage));
         });
+
         String message = messageSourceService.getMessage("validation.error");
         logger.warn("HTTP 400 - {} ({})", message, errors);
         return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message, errors), HttpStatus.BAD_REQUEST);

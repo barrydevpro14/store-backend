@@ -57,6 +57,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (role == null) {
             return Collections.emptyList();
         }
+
         return permissionsService.findAllByRoleId(role.getId()).stream()
                 .map(SimpleGrantedAuthority::new)
                 .toList();

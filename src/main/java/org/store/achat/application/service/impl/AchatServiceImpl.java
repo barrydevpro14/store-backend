@@ -41,7 +41,6 @@ import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -144,19 +143,22 @@ public class AchatServiceImpl implements IAchatService {
 
     /** Résout chaque productFournisseur, vérifie son appartenance entreprise/fournisseur et valide prixVente > prixAchat pour chaque ligne. */
     public List<ProductFournisseur> resolveAndValidateProductFournisseurs(AchatRequest request, Fournisseur fournisseur) {
-        List<ProductFournisseur> result = new ArrayList<>();
-        for (LigneAchatRequest ligne : request.lignes()) {
-            productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligne.prixVente(), ligne.prixAchat());
+        return request.lignes().stream()
+                .map(ligne -> resolveAndValidateLine(ligne, fournisseur))
+                .toList();
+    }
 
-            ProductFournisseur pf = productFournisseurService.ensureBelongsToCurrentEntreprise(
-                    productFournisseurService.findById(ligne.productFournisseurId()));
+    /** Valide prixVente > prixAchat, résout le PF, vérifie son scoping entreprise et sa cohérence avec le fournisseur cible. */
+    public ProductFournisseur resolveAndValidateLine(LigneAchatRequest ligne, Fournisseur fournisseur) {
+        productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligne.prixVente(), ligne.prixAchat());
 
-            if (!pf.getFournisseur().getId().equals(fournisseur.getId())) {
-                throw new BadArgumentException("achat.fournisseur.productMismatch");
-            }
-            result.add(pf);
+        ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
+                productFournisseurService.findById(ligne.productFournisseurId()));
+
+        if (!productFournisseur.getFournisseur().getId().equals(fournisseur.getId())) {
+            throw new BadArgumentException("achat.fournisseur.productMismatch");
         }
-        return result;
+        return productFournisseur;
     }
 
     /** Crée chaque ligne de commande (snapshot prixAchat + prixVente), met à jour le prixVente courant du PF, et retourne le montant total cumulé. */
@@ -164,49 +166,51 @@ public class AchatServiceImpl implements IAchatService {
         List<LigneAchatRequest> lignes = request.lignes();
         Iterator<ProductFournisseur> productFournisseurIterator = productFournisseurs.iterator();
 
-        lignes.forEach(ligne -> {
-            ProductFournisseur productFournisseur = productFournisseurIterator.next();
-            ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
-                    commande, productFournisseur, ligne.quantite(), ligne.prixAchat(), ligne.prixVente()
-            ));
-            productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.prixVente());
-        });
+        lignes.forEach(ligne -> persistLigneAndApplyPrixVente(commande, ligne, productFournisseurIterator.next()));
 
         return lignes.stream()
                 .map(ligne -> ligne.prixAchat().multiply(BigDecimal.valueOf(ligne.quantite())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /** Crée les EntreeStock liées à la commande, upsert le Stock agrégé et journalise un mouvement par ligne. */
+    /** Persiste une LigneCommandeAchat (snapshot prixAchat + prixVente) et met à jour le prixVente courant du PF. */
+    public void persistLigneAndApplyPrixVente(CommandeAchat commande, LigneAchatRequest ligne, ProductFournisseur productFournisseur) {
+        ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
+                commande, productFournisseur, ligne.quantite(), ligne.prixAchat(), ligne.prixVente()
+        ));
+        productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.prixVente());
+    }
+
+    /** Itère sur les lignes de l'achat et délègue le traitement stock + journal à `processPurchaseLineEntry`. */
     public void createEntriesAndUpdateStock(AchatContext context) {
-        Magasin magasin = context.magasin();
-        CommandeAchat commande = context.commande();
-        FactureAchat facture = context.facture();
-        List<LigneAchatRequest> lignes = context.request().lignes();
         Iterator<ProductFournisseur> productFournisseurIterator = context.productFournisseurs().iterator();
 
-        lignes.forEach(ligne -> {
-            ProductFournisseur productFournisseur = productFournisseurIterator.next();
-            Product produit = productFournisseur.getProduct();
+        context.request().lignes().forEach(ligne ->
+                processPurchaseLineEntry(context, ligne, productFournisseurIterator.next()));
+    }
 
-            int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
-                    .map(Stock::getQuantiteDisponible).orElse(0);
+    /** Enregistre le lot, upsert le Stock agrégé du couple (magasin, produit) et journalise le mouvement ENTREE_ACHAT pour une ligne d'achat. */
+    public void processPurchaseLineEntry(AchatContext context, LigneAchatRequest ligne, ProductFournisseur productFournisseur) {
+        Magasin magasin = context.magasin();
+        Product produit = productFournisseur.getProduct();
 
-            entreeStockDomainService.create(new EntreeStockCreate(
-                    magasin, produit, productFournisseur,
-                    ligne.quantite(), ligne.prixAchat(),
-                    ligne.numeroLot(), ligne.dateExpiration(),
-                    commande
-            ));
+        int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+                .map(Stock::getQuantiteDisponible).orElse(0);
 
-            Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, ligne.quantite(), ligne.prixAchat());
+        entreeStockDomainService.create(new EntreeStockCreate(
+                magasin, produit, productFournisseur,
+                ligne.quantite(), ligne.prixAchat(),
+                ligne.numeroLot(), ligne.dateExpiration(),
+                context.commande()
+        ));
 
-            mouvementStockDomainService.journalize(stock, new MouvementJournalize(
-                    MouvementStockType.ENTREE_ACHAT,
-                    ligne.quantite(), stockAvant, stock.getQuantiteDisponible(),
-                    facture.getNumero(),
-                    null
-            ));
-        });
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, ligne.quantite(), ligne.prixAchat());
+
+        mouvementStockDomainService.journalize(stock, new MouvementJournalize(
+                MouvementStockType.ENTREE_ACHAT,
+                ligne.quantite(), stockAvant, stock.getQuantiteDisponible(),
+                context.facture().getNumero(),
+                null
+        ));
     }
 }

@@ -8,6 +8,7 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
+import org.store.stock.application.dto.LotConsumption;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.SortieStockRequest;
 import org.store.stock.application.dto.SortieStockResponse;
@@ -91,16 +92,21 @@ public class SortieStockServiceImpl implements ISortieStockService {
 
         for (EntreeStock lot : lots) {
             if (restant == 0) break;
-            int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
-
-            lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
-            entreeStockDomainService.save(lot);
-
-            SortieStock sortie = sortieStockDomainService.create(lot, aConsommer, prixVente);
-            sorties.add(new SortieStockResponse(sortie));
-
-            restant -= aConsommer;
+            LotConsumption consumption = consumeLot(lot, restant, prixVente);
+            sorties.add(consumption.sortie());
+            restant = consumption.restantApres();
         }
         return sorties;
+    }
+
+    /** Décrémente le lot du minimum entre sa quantité restante et le restant à consommer, persiste, crée la SortieStock et retourne le nouveau restant. */
+    public LotConsumption consumeLot(EntreeStock lot, int restant, java.math.BigDecimal prixVente) {
+        int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
+
+        lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
+        entreeStockDomainService.save(lot);
+
+        SortieStock sortie = sortieStockDomainService.create(lot, aConsommer, prixVente);
+        return new LotConsumption(new SortieStockResponse(sortie), restant - aConsommer);
     }
 }

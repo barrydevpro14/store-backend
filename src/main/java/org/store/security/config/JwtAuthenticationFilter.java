@@ -63,6 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (permissions == null || permissions.isEmpty()) {
             return Collections.emptyList();
         }
+
         return permissions.stream()
                 .filter(p -> p != null && !p.isBlank())
                 .map(SimpleGrantedAuthority::new)

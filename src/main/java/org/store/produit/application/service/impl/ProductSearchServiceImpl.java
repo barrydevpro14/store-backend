@@ -61,6 +61,7 @@ public class ProductSearchServiceImpl implements IProductSearchService {
 
         List<UUID> productIds = productsPage.stream().map(Product::getId).toList();
         List<EntreeStock> activeLots = entreeStockService.findActiveLotsByMagasinAndProductIds(effectiveMagasinId, productIds);
+
         Map<UUID, List<EntreeStock>> lotsByProductId = activeLots.stream()
                 .collect(Collectors.groupingBy(lot -> lot.getProduit().getId()));
 

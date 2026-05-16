@@ -190,6 +190,7 @@ public class ProductServiceImpl implements IProductService {
     @Override
     public List<ImageMetadataResponse> listImages(UUID productId) {
         Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(productId));
+
         return product.getImages().stream()
                 .map(image -> new ImageMetadataResponse(image, productId))
                 .toList();

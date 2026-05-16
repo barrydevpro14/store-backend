@@ -133,11 +133,16 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
         int restant = quantiteDemandee;
         for (EntreeStock lot : lots) {
             if (restant == 0) break;
-            int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
-            lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
-            entreeStockDomainService.save(lot);
-            restant -= aConsommer;
+            restant = decrementLot(lot, restant);
         }
+    }
+
+    /** Décrémente la quantité restante du lot du minimum entre sa quantité et le restant à consommer, persiste, et retourne le nouveau restant. */
+    public int decrementLot(EntreeStock lot, int restant) {
+        int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
+        lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
+        entreeStockDomainService.save(lot);
+        return restant - aConsommer;
     }
 
     /** Lève BadArgumentException si le motif n'est pas compatible avec le type d'ajustement. */

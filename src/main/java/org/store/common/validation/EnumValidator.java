@@ -21,6 +21,7 @@ public class EnumValidator implements ConstraintValidator<EnumValue, String> {
         if (value == null || value.isEmpty()) {
             return true;
         }
+
         return Arrays.stream(enumClass.getEnumConstants())
                 .map(Enum::name)
                 .anyMatch(name -> ignoreCase ? name.equalsIgnoreCase(value) : name.equals(value));
