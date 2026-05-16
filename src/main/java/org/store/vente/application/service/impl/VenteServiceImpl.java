@@ -7,6 +7,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.NameHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -46,7 +47,6 @@ import org.store.vente.domain.service.PaiementVenteDomainService;
 import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -122,8 +122,9 @@ public class VenteServiceImpl implements IVenteService {
 
         FactureClient finalFacture = applyPremierPaiementIfPresent(venteRequest.premierPaiement(), facture, commande);
 
+        UserSummaryResponse userSummary = new UserSummaryResponse(user.getId(), NameHelper.formatNomComplet(user.getNom(), user.getPrenom()));
         return new VenteResponse(
-                new CommandeVenteResponse(commande, toUserSummary(user)),
+                new CommandeVenteResponse(commande, userSummary),
                 new FactureClientResponse(finalFacture)
         );
     }
@@ -228,19 +229,4 @@ public class VenteServiceImpl implements IVenteService {
         return updated;
     }
 
-    /** Construit le sous-DTO UserSummary à partir de l'Employe (helper trivial sur DTO). */
-    private UserSummaryResponse toUserSummary(Employe employe) {
-        String nom = Objects.requireNonNullElse(employe.getNom(), "").trim();
-        String prenom = Objects.requireNonNullElse(employe.getPrenom(), "").trim();
-
-        String nomComplet;
-        if (prenom.isEmpty()) {
-            nomComplet = nom;
-        } else if (nom.isEmpty()) {
-            nomComplet = prenom;
-        } else {
-            nomComplet = nom + " " + prenom;
-        }
-        return new UserSummaryResponse(employe.getId(), nomComplet);
-    }
 }
