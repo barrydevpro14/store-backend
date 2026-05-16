@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.model.Person;
+import org.store.common.model.PieceJointe;
 import org.store.security.domain.model.Account;
 
 @Getter
@@ -17,4 +18,8 @@ public class Utilisateur extends Person {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
+
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "photo_id")
+    private PieceJointe photo;
 }

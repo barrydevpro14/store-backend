@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.common.model.PieceJointe;
+import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.domain.model.Magasin;
@@ -35,6 +37,7 @@ class UserProfileServiceImplTest {
 
     @Mock private UtilisateurDomainService utilisateurDomainService;
     @Mock private IAccountService accountService;
+    @Mock private IUploadFileService uploadFileService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
 
@@ -118,6 +121,71 @@ class UserProfileServiceImplTest {
         service.changePassword(request);
 
         verify(accountService).changePassword(account, "oldPwd123", "newPwd1234");
+    }
+
+    @Test
+    void uploadPhoto_should_build_pieceJointe_and_set_on_user() {
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "avatar.png", "image/png", new byte[]{1, 2, 3});
+        PieceJointe piece = new PieceJointe();
+        piece.setDocument(new byte[]{1, 2, 3});
+        piece.setContentType("image/png");
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(utilisateurDomainService.findById(userId)).thenReturn(employe);
+        when(uploadFileService.buildImage(file)).thenReturn(piece);
+        when(utilisateurDomainService.setPhoto(employe, piece)).thenReturn(employe);
+
+        service.uploadPhoto(file);
+
+        verify(uploadFileService).buildImage(file);
+        verify(utilisateurDomainService).setPhoto(employe, piece);
+    }
+
+    @Test
+    void getPhoto_should_throw_when_user_has_no_photo() {
+        employe.setPhoto(null);
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(utilisateurDomainService.findById(userId)).thenReturn(employe);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.getPhoto())
+                .isInstanceOf(org.store.common.exceptions.EntityException.class);
+    }
+
+    @Test
+    void getPhoto_should_return_blob_and_content_type() {
+        PieceJointe piece = new PieceJointe();
+        piece.setDocument(new byte[]{9, 8, 7});
+        piece.setContentType("image/jpeg");
+        employe.setPhoto(piece);
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(utilisateurDomainService.findById(userId)).thenReturn(employe);
+
+        var download = service.getPhoto();
+        assertThat(download.content()).containsExactly(9, 8, 7);
+        assertThat(download.contentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void deletePhoto_should_clear_photo_when_present() {
+        employe.setPhoto(new PieceJointe());
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(utilisateurDomainService.findById(userId)).thenReturn(employe);
+
+        service.deletePhoto();
+
+        verify(utilisateurDomainService).clearPhoto(employe);
+    }
+
+    @Test
+    void deletePhoto_should_be_noop_when_no_photo() {
+        employe.setPhoto(null);
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(utilisateurDomainService.findById(userId)).thenReturn(employe);
+
+        service.deletePhoto();
+
+        verify(utilisateurDomainService, org.mockito.Mockito.never()).clearPhoto(any());
     }
 
     @Test

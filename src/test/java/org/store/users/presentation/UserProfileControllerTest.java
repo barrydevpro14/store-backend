@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -20,9 +22,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,7 +58,7 @@ class UserProfileControllerTest {
 
     private UserProfileResponse sample() {
         return new UserProfileResponse(userId, "Doe", "John", "john@example.com",
-                "770000000", "Dakar", "john.emp", "VENDEUR", "EMPLOYE", magasinId);
+                "770000000", "Dakar", "john.emp", "VENDEUR", "EMPLOYE", magasinId, null);
     }
 
     @Test
@@ -112,6 +117,38 @@ class UserProfileControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_200_when_upload_photo() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[]{1, 2, 3});
+        when(userProfileService.uploadPhoto(any())).thenReturn(sample());
+
+        mockMvc.perform(multipart(UserProfileController.BASE_PATH + "/photo")
+                        .file(file)
+                        .with(req -> { req.setMethod("PUT"); return req; }))
+                .andExpect(status().isOk());
+
+        verify(userProfileService).uploadPhoto(any());
+    }
+
+    @Test
+    void should_return_200_with_bytes_when_get_photo() throws Exception {
+        when(userProfileService.getPhoto())
+                .thenReturn(new ImageDownloadResponse(new byte[]{1, 2, 3}, "image/png"));
+
+        mockMvc.perform(get(UserProfileController.BASE_PATH + "/photo"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"))
+                .andExpect(content().bytes(new byte[]{1, 2, 3}));
+    }
+
+    @Test
+    void should_return_204_when_delete_photo() throws Exception {
+        mockMvc.perform(delete(UserProfileController.BASE_PATH + "/photo"))
+                .andExpect(status().isNoContent());
+
+        verify(userProfileService).deletePhoto();
     }
 
     @Test
