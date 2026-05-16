@@ -16,6 +16,7 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.SortieStockCreate;
 import org.store.stock.application.dto.SortieStockRequest;
 import org.store.stock.application.dto.SortieStockResponse;
 import org.store.stock.application.service.impl.SortieStockServiceImpl;
@@ -122,7 +123,7 @@ class SortieStockServiceImplTest {
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
         when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(sortieStockDomainService.create(eq(l1), eq(50), eq(new BigDecimal("30.00"))))
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 50, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l1, 50, new BigDecimal("30.00")));
         when(stockDomainService.decrement(stock, 50)).thenAnswer(inv -> {
             stock.setQuantiteDisponible(250);
@@ -150,9 +151,9 @@ class SortieStockServiceImplTest {
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
         when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1, l2, l3));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(sortieStockDomainService.create(eq(l1), eq(100), eq(new BigDecimal("30.00"))))
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 100, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l1, 100, new BigDecimal("30.00")));
-        when(sortieStockDomainService.create(eq(l2), eq(50), eq(new BigDecimal("30.00"))))
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l2, 50, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l2, 50, new BigDecimal("30.00")));
         when(stockDomainService.decrement(stock, 150)).thenAnswer(inv -> {
             stock.setQuantiteDisponible(150);
@@ -217,7 +218,7 @@ class SortieStockServiceImplTest {
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
         when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(sortieStockDomainService.create(eq(l1), eq(50), eq(new BigDecimal("30.00"))))
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 50, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l1, 50, new BigDecimal("30.00")));
         when(stockDomainService.decrement(stock, 50)).thenAnswer(inv -> {
             stock.setQuantiteDisponible(250);

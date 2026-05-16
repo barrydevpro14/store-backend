@@ -10,6 +10,7 @@ import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.LotConsumption;
+import org.store.stock.application.dto.LotConsumptionContext;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.SortieStockCreate;
 import org.store.stock.application.dto.SortieStockForVente;
@@ -72,7 +73,8 @@ public class SortieStockServiceImpl implements ISortieStockService {
         }
 
         List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifo(magasin.getId(), produit.getId());
-        List<SortieStockResponse> sorties = consumeLotsFifo(lots, sortieStockRequest.quantite(), sortieStockRequest.prixVente());
+        List<SortieStockResponse> sorties = consumeFifo(lots,
+                new LotConsumptionContext(sortieStockRequest.quantite(), sortieStockRequest.prixVente(), null));
 
         Stock updated = stockDomainService.decrement(stock, sortieStockRequest.quantite());
 
@@ -86,31 +88,6 @@ public class SortieStockServiceImpl implements ISortieStockService {
         ));
 
         return sorties;
-    }
-
-    /** Consomme les lots FIFO dans l'ordre jusqu'à atteindre la quantité demandée et retourne les sorties créées. */
-    public List<SortieStockResponse> consumeLotsFifo(List<EntreeStock> lots, int quantiteDemandee, java.math.BigDecimal prixVente) {
-        List<SortieStockResponse> sorties = new ArrayList<>();
-        int restant = quantiteDemandee;
-
-        for (EntreeStock lot : lots) {
-            if (restant == 0) break;
-            LotConsumption consumption = consumeLot(lot, restant, prixVente);
-            sorties.add(consumption.sortie());
-            restant = consumption.restantApres();
-        }
-        return sorties;
-    }
-
-    /** Décrémente le lot du minimum entre sa quantité restante et le restant à consommer, persiste, crée la SortieStock et retourne le nouveau restant. */
-    public LotConsumption consumeLot(EntreeStock lot, int restant, java.math.BigDecimal prixVente) {
-        int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
-
-        lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
-        entreeStockDomainService.save(lot);
-
-        SortieStock sortie = sortieStockDomainService.create(lot, aConsommer, prixVente);
-        return new LotConsumption(new SortieStockResponse(sortie), restant - aConsommer);
     }
 
     /** Consomme les lots FIFO du ProductFournisseur ciblé pour une ligne de vente : vérifie stock, journalise et lie les sorties à la ligne. */
@@ -131,7 +108,9 @@ public class SortieStockServiceImpl implements ISortieStockService {
             throw new BadArgumentException("stock.exit.insufficientQuantity", totalDisponible, sortieStockForVente.quantite());
         }
 
-        List<SortieStockResponse> sorties = consumeLotsFifoForVente(lots, sortieStockForVente);
+        List<SortieStockResponse> sorties = consumeFifo(lots, new LotConsumptionContext(
+                sortieStockForVente.quantite(), sortieStockForVente.prixVente(), sortieStockForVente.ligneVente()
+        ));
 
         Stock updated = stockDomainService.decrement(stock, sortieStockForVente.quantite());
 
@@ -147,22 +126,30 @@ public class SortieStockServiceImpl implements ISortieStockService {
         return sorties;
     }
 
-    /** Consomme les lots FIFO et lie chaque SortieStock créée à la ligne de vente du contexte. */
-    public List<SortieStockResponse> consumeLotsFifoForVente(List<EntreeStock> lots, SortieStockForVente sortieStockForVente) {
+    /** Consomme les lots FIFO selon le contexte (qty cible, prix, ligneVente optionnelle) et retourne les sorties créées. */
+    public List<SortieStockResponse> consumeFifo(List<EntreeStock> lots, LotConsumptionContext context) {
         List<SortieStockResponse> sorties = new ArrayList<>();
-        int restant = sortieStockForVente.quantite();
+        int restant = context.totalAConsommer();
 
         for (EntreeStock lot : lots) {
             if (restant == 0) break;
-            int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
-            lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
-            entreeStockDomainService.save(lot);
-            SortieStock sortie = sortieStockDomainService.create(new SortieStockCreate(
-                    lot, aConsommer, sortieStockForVente.prixVente(), sortieStockForVente.ligneVente()
-            ));
-            sorties.add(new SortieStockResponse(sortie));
-            restant -= aConsommer;
+            LotConsumption consumption = consumeOneLot(lot, restant, context);
+            sorties.add(consumption.sortie());
+            restant = consumption.restantApres();
         }
         return sorties;
+    }
+
+    /** Décrémente le lot, persiste, crée la SortieStock (avec ligneVente eventuelle) et retourne le nouveau restant. */
+    public LotConsumption consumeOneLot(EntreeStock lot, int restant, LotConsumptionContext context) {
+        int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
+
+        lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
+        entreeStockDomainService.save(lot);
+
+        SortieStock sortie = sortieStockDomainService.create(new SortieStockCreate(
+                lot, aConsommer, context.prixVente(), context.ligneVente()
+        ));
+        return new LotConsumption(new SortieStockResponse(sortie), restant - aConsommer);
     }
 }
