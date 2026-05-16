@@ -1,13 +1,18 @@
 package org.store.vente.domain.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
 import org.store.vente.application.dto.CommandeVenteCreate;
+import org.store.vente.application.dto.CommandeVenteFilter;
+import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.repository.CommandeVenteRepository;
 
 import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class CommandeVenteDomainService extends GlobalService<CommandeVente, CommandeVenteRepository> {
@@ -43,5 +48,15 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
     /** Génère une référence unique au format VTE-yyyyMMdd-HHmmssSSS. */
     public String generateReference() {
         return ReferenceHelper.generate("VTE");
+    }
+
+    /** Listing paginé filtré scopé entreprise (projection JPQL, user toujours null). */
+    public Page<CommandeVenteResponse> findResponsesByFilter(CommandeVenteFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+    }
+
+    /** Détails projetés JPQL avec user résolu (Account.createdBy -> Utilisateur via CAST + JOIN), scopé entreprise. */
+    public Optional<CommandeVenteResponse> findResponseById(UUID id, UUID entrepriseId) {
+        return repository.findResponseById(id, entrepriseId);
     }
 }

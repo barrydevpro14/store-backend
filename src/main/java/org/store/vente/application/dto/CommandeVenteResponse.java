@@ -27,6 +27,16 @@ public record CommandeVenteResponse(
                 commande.getMontantPaye() != null ? commande.getMontantPaye() : BigDecimal.ZERO);
     }
 
+    /** Projection JPQL listing (user toujours null — résolu seulement sur GET by id pour économiser les jointures). */
+    public CommandeVenteResponse(CommandeVente commande) {
+        this(commande, null);
+    }
+
+    /** Projection JPQL GET by id : reçoit l'id + nomComplet du vendeur via TRIM/CONCAT en query. */
+    public CommandeVenteResponse(CommandeVente commande, UUID userId, String nomComplet) {
+        this(commande, userId != null ? new UserSummaryResponse(userId, nomComplet) : null);
+    }
+
     private CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user, BigDecimal montantPaye) {
         this(
                 commande.getId(),
