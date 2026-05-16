@@ -24,4 +24,16 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
     Page<PaiementVenteResponse> findResponsesByFactureId(@Param("factureId") UUID factureId,
                                                         @Param("entrepriseId") UUID entrepriseId,
                                                         Pageable pageable);
+
+    @Query("""
+            SELECT COALESCE(SUM(p.montant), 0) FROM PaiementVente p
+            WHERE p.facture.commande.magasin.entreprise.id = :entrepriseId
+              AND p.facture.commande.magasin.id = :magasinId
+              AND p.createdAt >= :startOfDay
+              AND p.createdAt <= :endOfDay
+            """)
+    java.math.BigDecimal sumMontantByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                                                  @Param("entrepriseId") UUID entrepriseId,
+                                                  @Param("startOfDay") java.time.LocalDateTime startOfDay,
+                                                  @Param("endOfDay") java.time.LocalDateTime endOfDay);
 }

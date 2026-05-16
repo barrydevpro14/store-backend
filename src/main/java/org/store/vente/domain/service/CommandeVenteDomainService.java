@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
+import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
@@ -58,5 +59,20 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
     /** Détails projetés JPQL avec user résolu (Account.createdBy -> Utilisateur via CAST + JOIN), scopé entreprise. */
     public Optional<CommandeVenteResponse> findResponseById(UUID id, UUID entrepriseId) {
         return repository.findResponseById(id, entrepriseId);
+    }
+
+    /** Nombre de commandes créées dans le magasin entre les bornes [startOfDay, endOfDay] du filter. */
+    public long countCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.countByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    }
+
+    /** Somme des montants totaux des commandes créées dans le magasin sur la journée du filter. */
+    public BigDecimal sumMontantCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.sumMontantTotalByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    }
+
+    /** Somme des quantités vendues (toutes lignes) dans le magasin sur la journée du filter. */
+    public long sumQuantiteProduitsForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.sumQuantiteLignesByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
     }
 }

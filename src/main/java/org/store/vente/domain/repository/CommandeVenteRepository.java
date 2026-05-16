@@ -45,4 +45,40 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             """)
     Optional<CommandeVenteResponse> findResponseById(@Param("id") UUID id,
                                                     @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("""
+            SELECT COUNT(c) FROM CommandeVente c
+            WHERE c.magasin.entreprise.id = :entrepriseId
+              AND c.magasin.id = :magasinId
+              AND c.createdAt >= :startOfDay
+              AND c.createdAt <= :endOfDay
+            """)
+    long countByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                              @Param("entrepriseId") UUID entrepriseId,
+                              @Param("startOfDay") java.time.LocalDateTime startOfDay,
+                              @Param("endOfDay") java.time.LocalDateTime endOfDay);
+
+    @Query("""
+            SELECT COALESCE(SUM(c.montantTotal), 0) FROM CommandeVente c
+            WHERE c.magasin.entreprise.id = :entrepriseId
+              AND c.magasin.id = :magasinId
+              AND c.createdAt >= :startOfDay
+              AND c.createdAt <= :endOfDay
+            """)
+    java.math.BigDecimal sumMontantTotalByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                                                       @Param("entrepriseId") UUID entrepriseId,
+                                                       @Param("startOfDay") java.time.LocalDateTime startOfDay,
+                                                       @Param("endOfDay") java.time.LocalDateTime endOfDay);
+
+    @Query("""
+            SELECT COALESCE(SUM(l.quantite), 0) FROM LigneCommandeVente l
+            WHERE l.commande.magasin.entreprise.id = :entrepriseId
+              AND l.commande.magasin.id = :magasinId
+              AND l.commande.createdAt >= :startOfDay
+              AND l.commande.createdAt <= :endOfDay
+            """)
+    long sumQuantiteLignesByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                                          @Param("entrepriseId") UUID entrepriseId,
+                                          @Param("startOfDay") java.time.LocalDateTime startOfDay,
+                                          @Param("endOfDay") java.time.LocalDateTime endOfDay);
 }
