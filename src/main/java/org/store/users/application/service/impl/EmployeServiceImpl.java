@@ -17,9 +17,11 @@ import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
+import org.store.users.domain.model.Employe;
 import org.store.users.domain.service.EmployeDomainService;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class EmployeServiceImpl implements IEmployeService {
@@ -73,5 +75,15 @@ public class EmployeServiceImpl implements IEmployeService {
         Account account = accountService.create(employeRequest.account(), role);
 
         return employeDomainService.create(employeRequest.utilisateur(), account, magasin);
+    }
+
+    /** Retourne l'Employe correspondant au user courant. Throw ForbiddenException si l'utilisateur connecté n'est pas un Employe (ex : un PROPRIETAIRE). */
+    @Override
+    public Employe findCurrentUser() {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+
+        return Optional.ofNullable(currentUser.userId())
+                .flatMap(employeDomainService::findOptionalById)
+                .orElseThrow(() -> new ForbiddenException("vente.user.required"));
     }
 }

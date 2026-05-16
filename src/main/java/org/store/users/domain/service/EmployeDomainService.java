@@ -9,6 +9,7 @@ import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.repository.EmployeRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -19,6 +20,10 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
 
     public boolean existsByMagasinIdAndRolePermissionCode(UUID magasinId, String permissionCode) {
         return repository.existsByMagasinIdAndRolePermissionCode(magasinId, permissionCode);
+    }
+
+    public Optional<Employe> findOptionalById(UUID id) {
+        return repository.findById(id);
     }
 
     public EmployeResponse create(UtilisateurRequest utilisateurRequest, Account account, Magasin magasin) {

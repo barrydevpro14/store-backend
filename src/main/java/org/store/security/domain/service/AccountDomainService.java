@@ -7,6 +7,7 @@ import org.store.security.domain.model.Role;
 import org.store.security.domain.repository.AccountRepository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AccountDomainService extends GlobalService<Account, AccountRepository> {
@@ -26,5 +27,9 @@ public class AccountDomainService extends GlobalService<Account, AccountReposito
 
     public Optional<Account> findByUsername(String username) {
         return repository.findByUsername(username);
+    }
+
+    public Optional<Account> findOptionalById(UUID id) {
+        return repository.findById(id);
     }
 }
