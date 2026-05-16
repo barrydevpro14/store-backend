@@ -681,17 +681,24 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 **Migrations associées** :
 - **V12** `add_paiement_vente_and_pf_on_ligne_vente.sql` : crée la table `paiement_vente` (montant, datePaiement, moyen, facture FK, audit) + ajoute `ligne_commande_vente.product_fournisseur_id` (FK vers `product_fournisseur`) — pour la vente par variante.
 - **V13** `remove_vendeur_from_commande_vente.sql` : drop `commande_vente.vendeur_id` (redondant avec `createdBy` de `AuditableEntity` qui porte déjà l'`accountId` du créateur). Le vendeur est résolu en lecture via `IAccountService.findUserSummaryByAccountId(createdBy)`.
+- **V14** `enforce_pf_not_null_on_ligne_vente.sql` : durcit `ligne_commande_vente.product_fournisseur_id` en `NOT NULL` (le flux applicatif set toujours la valeur, contrainte BDD pour les insertions hors flux).
+- **V15** `rename_date_echeache_to_date_echeance_on_facture_client.sql` : correction typo historique `facture_client.date_echeache → date_echeance` + backfill garde-fou (échéance null → date facture) + `SET NOT NULL`. Le champ entité passe de `dateEcheache` à `dateEcheance` (rejoint l'orthographe des autres tables `echeance`/`facture_achat`/`depense`).
 
-**Entrée** : `VenteRequest`
+**Entrée** : `VenteRequest` (5 champs)
 ```json
 {
   "clientId": "uuid-or-null",
-  "dateVente": "2026-05-16",
+  "dateVente": "2026-05-16",       // optionnel, defaut today() si absent, @PastOrPresent
+  "dateEcheance": "2026-05-30",    // OBLIGATOIRE, saisi par le vendeur, @FutureOrPresent
   "lignes": [
     { "productFournisseurId": "uuid-chine", "quantite": 100, "prixUnitaire": 10 },
     { "productFournisseurId": "uuid-maroc", "quantite": 20,  "prixUnitaire": 15 }
   ],
-  "premierPaiement": { "montant": 1300, "modePaiement": "CASH" }  // optionnel
+  "premierPaiement": {              // optionnel
+    "montant": 1300,
+    "modePaiement": "CASH",
+    "datePaiement": "2026-05-16"    // optionnel dans le request, defaut now() cote service, @PastOrPresent
+  }
 }
 ```
 
@@ -709,8 +716,8 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
      - Consomme FIFO, crée 1 `SortieStock` par lot consommé (avec marge = `(prixVente − prixAchatLot) × qty`), lié à la `LigneCommandeVente` via FK `sortie_stock.ligne_vente_id`.
      - Décrémente `Stock.quantiteDisponible` et journalise `MouvementStock(SORTIE_VENTE)`.
 7. Calcul `montantTotal = SUM(lignes.montantTotal)`, `applyMontantTotal` sur la commande.
-8. Création `FactureClient` (numéro auto `FAC-VTE-yyyyMMdd-HHmmssSSS`, statut `NON_PAYEE`).
-9. Si `premierPaiement` : `PaiementVente` créé + `factureClientDomainService.applyPaiement` (recalcule `montantPaye` + statut `NON_PAYEE`/`PARTIELLEMENT_PAYEE`/`PAYEE`) + `commande.montantPaye` mis à jour.
+8. Création `FactureClient` (numéro auto `FAC-VTE-yyyyMMdd-HHmmssSSS`, statut `NON_PAYEE`, `date = dateVente effective`, `dateEcheance = venteRequest.dateEcheance()` — le vendeur l'a saisie, obligatoire).
+9. Si `premierPaiement` : `PaiementVente` créé via `PaiementVenteCreate(facture, montant, moyen, datePaiement)` où `datePaiement = request.datePaiement()` si fourni sinon `LocalDate.now()` + `factureClientDomainService.applyPaiement` (recalcule `montantPaye` + statut `NON_PAYEE`/`PARTIELLEMENT_PAYEE`/`PAYEE`) + `commandeVenteDomainService.applyMontantPaye(commande, montant)` (incrémente depuis l'existant).
 
 **Sortie** : `VenteResponse{ commande, facture }` — HTTP 201. Le détail complet (lignes + paiements) est dispo via `GET /api/v1/ventes/{commandeId}`.
 
@@ -720,9 +727,15 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - `CommandeVenteCreate(client, magasin, dateVente, reference, statut)`
 - `LigneCommandeVenteCreate(commande, productFournisseur, quantite, prixUnitaire)`
 - `FactureClientCreate(commande, numero, date, dateEcheance, montantTotal)`
-- `SortieStockCreate(lot, quantite, prixVente, ligneVente)` — nouveau, supporte aussi les ajustements (ligneVente=null)
-- `SortieStockForVente(magasin, productFournisseur, quantite, prixVente, ligneVente)` — paramètre orchestrant le flux sortie vente complet
-- `VenteContext(request, commande, magasin, user, productFournisseurs)` — paramètre des méthodes internes de VenteServiceImpl
+- `PaiementVenteCreate(facture, montant, moyen, datePaiement)` — groupe les 4 valeurs pour respecter la règle 30 (max 3 paramètres).
+- `SortieStockCreate(lot, quantite, prixVente, ligneVente)` — supporte aussi les ajustements (ligneVente=null).
+- `SortieStockForVente(magasin, productFournisseur, quantite, prixVente, ligneVente)` — paramètre orchestrant le flux sortie vente complet.
+- `LotConsumptionContext(totalAConsommer, prixVente, ligneVente)` — paramètres communs aux deux chemins FIFO du stock (`create` simple et `consumeForVente`) ; permet une seule boucle `consumeFifo` partagée.
+- `VenteContext(request, commande, magasin, user, productFournisseurs)` — paramètre des méthodes internes de VenteServiceImpl.
+
+**Helpers transverses introduits / consommés** :
+- `common/tools/NameHelper.formatNomComplet(String nom, String prenom)` : factorise la construction du libellé "nom + prenom" précédemment dupliquée dans `AccountServiceImpl`, `VenteServiceImpl`, `ClientSummaryResponse` (et corrige au passage un bug latent qui pouvait produire `"null prenom"`).
+- `common/tools/UuidHelper.parseOptional(String) → Optional<UUID>` : variante safe de `parse()` (empty si null/blank/format invalide), utilisée pour résoudre `commande.createdBy` dans `IAccountService.findUserSummaryByAccountId`.
 
 **Refactor `UserPrincipal`** (impact transverse) :
 - Ajout `userId` (= `Utilisateur.id` métier, = `Employe.id` pour un employé).
@@ -743,8 +756,12 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - Stock contrôlé par PF (pas par Product), via `EntreeStockRepository.findAvailableLotsForFifoByProductFournisseur`.
 - Numéro de référence commande + numéro de facture auto-générés (le vendeur ne saisit rien). Frontend lecteur uniquement.
 - Vendeur (`commande.user`) affiché via `UserSummaryResponse(id, nomComplet)` résolu côté lecture depuis `commande.createdBy` (= accountId stringifié) → `IAccountService.findUserSummaryByAccountId`.
+- **Dates** :
+  - `dateVente` optionnelle, défaut `today()` si absente (`@PastOrPresent`). Une vente future est rejetée.
+  - `dateEcheance` **obligatoire** (`@NotNull @FutureOrPresent`), saisie par le vendeur. Vente comptant → frontend passe `dateEcheance = dateVente`.
+  - `premierPaiement.datePaiement` optionnel (`@PastOrPresent`), défaut `LocalDate.now()` côté service applicatif (le domain ne fait plus `LocalDate.now()` implicite, la résolution vit dans `VenteServiceImpl`).
 
-**Tests** : 6 service + 3 controller (POST 201, POST 400 lignes vides, GET 200). Suite à **441 / 441 verts** (décompte agrégé Surefire).
+**Tests** : 8 tests service `VenteServiceImplTest` (orchestration POST happy, default dateVente=today si null, throw user non-Employe, throw prix below floor, apply premier paiement, datePaiement du request respectée, GET détails, GET 404 facture, GET forbidden non-owned) + 3 controller (POST 201, POST 400 lignes vides, GET 200). Tests dédiés `FactureClientDomainServiceTest` (5 transitions `applyPaiement`) et `SortieStockServiceImplTest.consumeForVente_*` (3 cas). **448 / 448 verts**.
 
 ---
 

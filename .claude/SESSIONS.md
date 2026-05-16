@@ -7,7 +7,78 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-16
+**Date :** 2026-05-16 (après-midi — revue + durcissement F-V3)
+**Sujet :** **Revue ligne à ligne du livrable F-V3 livré le matin** + correction de 20 défauts identifiés (D1–D20). 8 commits atomiques par axe de criticité. Le code F-V3 passe d'« opérationnel mais avec dette » à « aligné conventions + durci au niveau schéma + DRY restauré ». Décisions métier sollicitées sur les dates (D18–D20). **448 / 448 tests verts** (vs 441 en début de revue, +7 tests ajoutés).
+
+**Ce qui a été fait :**
+
+1. **Audit complet F-V3** — 20 défauts catalogués (D1–D20) :
+   - 🟥 Risque schéma : D1 (`product_fournisseur_id` nullable en BDD malgré set systématique côté code).
+   - 🟧 DRY : D2/D3/D4 (3 implémentations indépendantes de `nom + " " + prenom` dans `AccountServiceImpl`, `VenteServiceImpl`, `ClientSummaryResponse` — la 3e avait un bug latent produisant `"null prenom"`).
+   - 🟨 Règle 35 : D5/D6/D7 (appels répétés à `getMontantPaye()` × 2-4 sur la même expression).
+   - 🟨 Règle 27 : D8/D9/D10 (méthodes privées dans services applicatifs, exception "helper trivial" abusée).
+   - 🟨 Règle 26 : D11 (`commande.setMontantPaye() + save()` directement dans l'app service, pas dans le domain).
+   - 🟨 Style : D12 (FQN `java.math.BigDecimal.ZERO`), D13 (répétition `ligneCommandeVenteCreate.*`).
+   - 🟨 Duplication : D14 (`consumeLotsFifo` + `consumeLot` vs `consumeLotsFifoForVente` — deux boucles quasi-identiques différant juste sur le passage de `ligneVente`).
+   - 🟦 Tests manquants : D15 (`applyPaiement` transitions de statut), D16 (`consumeForVente` direct), D17 (cas dégénéré facture introuvable).
+   - 🟦 Design métier : D18 (`dateVente` non bornée), D19 (`datePaiement` hardcoded `LocalDate.now()` côté domain), D20 (typo `dateEcheache` conservée + champ nullable).
+
+2. **9 commits atomiques** sur `dev` (sur consigne de découpage par axe) :
+   - `71969f5` — `fix(vente): durcir product_fournisseur_id NOT NULL (V14)` — D1.
+   - `30ab96e` — `refactor: factoriser buildNomComplet via NameHelper + UuidHelper.parseOptional` — D2/D3/D4 + D8/D9/D10.
+   - `7bce675` — `refactor(vente): extraire montantPaye répété (règle 35)` — D5/D6/D7.
+   - `17fedde` — `refactor(vente): déplacer applyMontantPaye dans CommandeVenteDomainService (règle 26)` — D11.
+   - `ee09337` — `refactor(stock): unifier consumeLotsFifo + consumeLotsFifoForVente` — D14 (création `LotConsumptionContext` + unification en `consumeFifo`/`consumeOneLot`).
+   - `2a8483d` — `refactor(vente): extraire quantite et prixUnitaire répétés (règle 35)` — D13.
+   - `91fbdbd` — `test(vente,stock): combler les tests manquants F-V3 (D15-D17)` — +9 tests.
+   - `18d1dce` — `feat(vente): refonte dates VenteRequest + correction typo dateEcheache (D18+D20, V15)` — voir détails ci-dessous.
+   - `59a9292` — `feat(vente): datePaiement optionnel dans PaiementVenteRequest (D19)` — voir détails ci-dessous.
+
+3. **Décisions métier prises sur les dates** :
+   - **`dateVente`** (D18) : optionnelle dans la request, `@PastOrPresent`. Si absente → service force `LocalDate.now()`. Une vente future est rejetée.
+   - **`dateEcheance`** (D20) : **obligatoire** dans la request, `@NotNull @FutureOrPresent`. Saisie par le vendeur (échéance comptant → frontend passe `dateEcheance = dateVente`). Stockée NOT NULL en BDD.
+   - **Typo dateEcheache** (D20) : corrigée maintenant (`V15` `ALTER TABLE facture_client RENAME COLUMN date_echeache TO date_echeance` + backfill garde-fou + SET NOT NULL). Rename entité Java + tous les sites (`setDateEcheache → setDateEcheance`, `getDateEcheache → getDateEcheance`).
+   - **`datePaiement`** (D19) : optionnel dans `PaiementVenteRequest` (`@PastOrPresent`). Si absent → service applicatif force `LocalDate.now()`. Le domain ne fait plus `LocalDate.now()` implicite ; la résolution est remontée dans `VenteServiceImpl.applyPremierPaiementIfPresent`.
+
+4. **Nouveaux helpers transverses** :
+   - `common/tools/NameHelper.formatNomComplet(String nom, String prenom)` — guard null/blank + trim, jamais "null" littéral. Remplace 3 implémentations dupliquées.
+   - `common/tools/UuidHelper.parseOptional(String) → Optional<UUID>` — variante safe (empty si null/blank/format invalide), remplace une méthode privée `parseUuid` dans `AccountServiceImpl`.
+
+5. **Nouveaux records** :
+   - `PaiementVenteCreate(facture, montant, moyen, datePaiement)` — règle 30 (4 valeurs groupées plutôt que 4 paramètres).
+   - `LotConsumptionContext(totalAConsommer, prixVente, ligneVente)` — paramètre partagé entre `consumeFifo` simple et `consumeForVente`.
+
+6. **Migrations** : V14 (NOT NULL `product_fournisseur_id`), V15 (rename + NOT NULL `dateEcheance`).
+
+7. **Doc** : `FONCTIONNALITIES.md` section 32 alignée sur l'état réellement livré (exemple JSON `VenteRequest`, étapes du flux, records, helpers, décompte tests).
+
+**Décisions / arbitrages (revue) :**
+
+- **Découpage en commits atomiques par axe** (D1 / D2-D10 / D5-D7 / D11 / D14 / D13 / D15-D17 / D18+D20 / D19) — l'utilisateur a poussé pour faciliter relecture / revert ciblé. Coût : ~9 commits au lieu d'1 "fix F-V3 cleanup".
+- **Règle "demander avant chaque commit" formalisée** en mémoire `feedback_commit_style` après que j'avais enchaîné les 5 premiers commits (D1, D2-D10, D5-D7, D11, D14) sans demander entre chaque. Désormais : modifications libres, mais chaque `git commit` exige un OK explicite.
+- **`dateEcheance` obligatoire et saisie par le vendeur** plutôt que défaut implicite — décision utilisateur explicite. Permet de gérer comptant (front passe `dateEcheance = dateVente`) ET crédit (front passe une date future) avec la même API.
+- **D18 + D20 fusionnés en 1 commit** (au lieu de 2 séparés) car les modifications touchent les mêmes fichiers (`VenteRequest`, tests). Le commit est annoté `[D18]` / `[D20]` dans son corps pour traçabilité.
+- **`NameHelper` séparé de `UserSummaryResponse`** (helper dans `common/tools/`) plutôt que méthode statique sur le record — plus cohérent avec la convention helpers transverses, et utilisable au-delà du contexte vente (`ClientSummaryResponse` aussi).
+- **D12 incidemment résolu par D11** — l'ajout de l'import `java.math.BigDecimal` dans D11 a fait disparaître le FQN signalé par D12.
+
+**Où on s'est arrêté :**
+
+- **448 / 448 tests verts** (+7 vs 441 en début de revue : 5 tests `FactureClientDomainServiceTest` + 3 tests `consumeForVente_*` + 1 test `findDetailsById_facture_missing` + 1 test `default_dateVente_to_today` + 1 test `datePaiement_from_request` − 3 tests retirés/fusionnés).
+- **14 commits d'avance sur `origin/dev`** (5 commits F-V3 initiaux + 9 commits revue + 1 doc clôture, non pushés).
+- **Migrations à appliquer sur la BD locale** au démarrage : V14 + V15 (en plus de V12 + V13 déjà mentionnées dans la session du matin).
+- **Mémoire `feedback_commit_style`** mise à jour : `JAMAIS de commit sans demande explicite` ajouté au pré-requis.
+
+**Prochaine étape recommandée :**
+
+1. **Push** `dev` → `origin/dev` (14 commits en attente).
+2. **F-V4 — Listings ventes** (`GET /api/v1/ventes?magasinId=&from=&to=&statut=&page=&size=`) + listing factures + paiements paginés filtrés (symétrie achat F12-F14).
+3. **F-V5 — Paiement échelonné** (`POST /api/v1/ventes/factures/{id}/paiements`) — ajouter des paiements après la création de la vente.
+4. **Module dashboard / reporting**.
+
+---
+
+### Session du 2026-05-16 (matin — création F-V3)
+
 **Sujet :** **Module Vente — fonctionnalité 3 : Vente atomique** (`POST /api/v1/ventes` + `GET /api/v1/ventes/{id}`) avec ligne = ProductFournisseur (vente par variante, pas par Product), FIFO scopé par PF, vendeur = Employe obligatoire, validation `prixUnitaire ≥ pf.prixVente`. **Refactor `UserPrincipal` transverse** (rename `userId` → `accountId` + ajout `userId` métier = Utilisateur.id, claim JWT `USER`). 4 règles backend ajoutées en session précédente déjà inscrites (34-37) ; cette session focus 100% sur F-V3 + le refactor JWT.
 
 **Ce qui a été fait :**
