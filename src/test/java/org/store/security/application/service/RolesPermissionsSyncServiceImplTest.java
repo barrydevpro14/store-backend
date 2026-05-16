@@ -67,18 +67,20 @@ class RolesPermissionsSyncServiceImplTest {
     @Test
     void should_create_missing_permissions_and_role() {
         when(permissionsDomainService.findByCode(any())).thenReturn(Optional.empty());
-        when(permissionsDomainService.save(any())).thenAnswer(inv -> {
-            Permissions p = inv.getArgument(0);
+        when(permissionsDomainService.create(any())).thenAnswer(inv -> {
+            Permissions p = new Permissions();
             p.setId(UUID.randomUUID());
+            p.setCode(inv.getArgument(0));
             return p;
         });
         when(permissionsDomainService.findAll()).thenReturn(List.of());
         when(roleDomainService.findByLibelle("VENDEUR")).thenReturn(Optional.empty());
-        when(roleDomainService.save(any())).thenAnswer(inv -> {
-            Role r = inv.getArgument(0);
-            if (r.getId() == null) {
-                r.setId(UUID.randomUUID());
-            }
+        when(roleDomainService.create(any(), any())).thenAnswer(inv -> {
+            Role r = new Role();
+            r.setId(UUID.randomUUID());
+            r.setLibelle(inv.getArgument(0));
+            r.setDescription(inv.getArgument(1));
+            r.setPermissions(new LinkedHashSet<>());
             return r;
         });
         when(roleDomainService.findAll()).thenReturn(List.of());
@@ -92,7 +94,8 @@ class RolesPermissionsSyncServiceImplTest {
         assertThat(report.orphanPermissions()).isEmpty();
         assertThat(report.orphanRoles()).isEmpty();
 
-        verify(permissionsDomainService, times(3)).save(any());
+        verify(permissionsDomainService, times(3)).create(any());
+        verify(roleDomainService, times(1)).create(any(), any());
     }
 
     @Test

@@ -22,4 +22,11 @@ public class PermissionsDomainService extends GlobalService<Permissions, Permiss
     public Optional<Permissions> findByCode(String code) {
         return repository.findByCode(code);
     }
+
+    /** Crée et persiste une nouvelle Permission identifiée par son code. */
+    public Permissions create(String code) {
+        Permissions permission = new Permissions();
+        permission.setCode(code);
+        return save(permission);
+    }
 }
