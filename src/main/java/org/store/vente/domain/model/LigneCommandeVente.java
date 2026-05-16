@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.BaseEntity;
 import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.ProductFournisseur;
 
 import java.math.BigDecimal;
 
@@ -20,6 +21,10 @@ public class LigneCommandeVente extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Product product;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_fournisseur_id")
+    private ProductFournisseur productFournisseur;
 
     private int quantite;
 

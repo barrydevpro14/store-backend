@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
-import org.store.users.domain.model.Employe;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 
 import java.math.BigDecimal;
@@ -30,9 +29,6 @@ public class CommandeVente extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Magasin magasin;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Employe vendeur;
 
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
     private List<LigneCommandeVente> lignes;
