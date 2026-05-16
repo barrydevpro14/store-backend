@@ -671,6 +671,83 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
+## 32. Vente atomique (vente, fonctionnalité 3) — `VenteServiceImpl`
+
+**Endpoint principal** : `POST /api/v1/ventes` (permission `SALE_CREATE`).
+**Endpoint détails** : `GET /api/v1/ventes/{commandeId}` (permission `SALE_READ`).
+
+**Cas d'usage métier** : un vendeur (Employe connecté) sert un client au comptoir. Le client choisit une ou plusieurs **variantes** (`ProductFournisseur` = produit × fournisseur × qualité), avec un prix unitaire ≥ prix plancher du PF. Le système consomme le stock FIFO du PF, crée la commande + lignes + facture + paiement initial éventuel, le tout dans une seule transaction.
+
+**Migrations associées** :
+- **V12** `add_paiement_vente_and_pf_on_ligne_vente.sql` : crée la table `paiement_vente` (montant, datePaiement, moyen, facture FK, audit) + ajoute `ligne_commande_vente.product_fournisseur_id` (FK vers `product_fournisseur`) — pour la vente par variante.
+- **V13** `remove_vendeur_from_commande_vente.sql` : drop `commande_vente.vendeur_id` (redondant avec `createdBy` de `AuditableEntity` qui porte déjà l'`accountId` du créateur). Le vendeur est résolu en lecture via `IAccountService.findUserSummaryByAccountId(createdBy)`.
+
+**Entrée** : `VenteRequest`
+```json
+{
+  "clientId": "uuid-or-null",
+  "dateVente": "2026-05-16",
+  "lignes": [
+    { "productFournisseurId": "uuid-chine", "quantite": 100, "prixUnitaire": 10 },
+    { "productFournisseurId": "uuid-maroc", "quantite": 20,  "prixUnitaire": 15 }
+  ],
+  "premierPaiement": { "montant": 1300, "modePaiement": "CASH" }  // optionnel
+}
+```
+
+**Flux atomique (transaction unique)** :
+1. Vendeur récupéré via `IEmployeService.findCurrentUser()` → throw `ForbiddenException("vente.user.required")` si l'utilisateur connecté n'est pas un Employe (PROPRIETAIRE refusé).
+2. Magasin dérivé de `vendeur.magasin`.
+3. Client résolu via `IClientService.findById` + scoping double si `clientId` non null ; sinon vente anonyme.
+4. Pour chaque ligne : `productFournisseurService.ensureBelongsToCurrentEntreprise` + validation `prixUnitaire ≥ pf.prixVente` (sinon `BadArgumentException("vente.prixUnitaire.belowFloor", floor)`).
+5. Création `CommandeVente` (référence auto `VTE-yyyyMMdd-HHmmssSSS` via `ReferenceHelper.generate("VTE")`, statut `DELIVERED`). **Pas de champ `vendeur`** sur l'entité : l'identité du créateur est portée par l'audit `createdBy` (= `accountId` stringifié).
+6. Pour chaque ligne :
+   - Création `LigneCommandeVente` avec `productFournisseur` + `product` + `quantite` + `prixUnitaire` + `montantTotal = qty × prix`.
+   - Appel `ISortieStockService.consumeForVente(SortieStockForVente(magasin, pf, qty, prix, ligneVente))` :
+     - Récupère lots FIFO du PF dans le magasin (`EntreeStockRepository.findAvailableLotsForFifoByProductFournisseur`).
+     - Vérifie `SUM(qtyRestante) ≥ qty` (sinon `BadArgumentException("stock.exit.insufficientQuantity", dispo, demande)`).
+     - Consomme FIFO, crée 1 `SortieStock` par lot consommé (avec marge = `(prixVente − prixAchatLot) × qty`), lié à la `LigneCommandeVente` via FK `sortie_stock.ligne_vente_id`.
+     - Décrémente `Stock.quantiteDisponible` et journalise `MouvementStock(SORTIE_VENTE)`.
+7. Calcul `montantTotal = SUM(lignes.montantTotal)`, `applyMontantTotal` sur la commande.
+8. Création `FactureClient` (numéro auto `FAC-VTE-yyyyMMdd-HHmmssSSS`, statut `NON_PAYEE`).
+9. Si `premierPaiement` : `PaiementVente` créé + `factureClientDomainService.applyPaiement` (recalcule `montantPaye` + statut `NON_PAYEE`/`PARTIELLEMENT_PAYEE`/`PAYEE`) + `commande.montantPaye` mis à jour.
+
+**Sortie** : `VenteResponse{ commande, facture }` — HTTP 201. Le détail complet (lignes + paiements) est dispo via `GET /api/v1/ventes/{commandeId}`.
+
+**`VenteDetailsResponse`** (`GET /api/v1/ventes/{commandeId}`) : `{ commande, facture, lignes[], paiements[] }`. `commande.user` = `UserSummaryResponse(id, nomComplet)` résolu via `IAccountService.findUserSummaryByAccountId(commande.createdBy)` — pattern Option Minimaliste : pas de FK `user_id` redondante sur les tables, on s'appuie sur l'audit `createdBy` (= accountId stringifié).
+
+**Records `<X>Create`** :
+- `CommandeVenteCreate(client, magasin, dateVente, reference, statut)`
+- `LigneCommandeVenteCreate(commande, productFournisseur, quantite, prixUnitaire)`
+- `FactureClientCreate(commande, numero, date, dateEcheance, montantTotal)`
+- `SortieStockCreate(lot, quantite, prixVente, ligneVente)` — nouveau, supporte aussi les ajustements (ligneVente=null)
+- `SortieStockForVente(magasin, productFournisseur, quantite, prixVente, ligneVente)` — paramètre orchestrant le flux sortie vente complet
+- `VenteContext(request, commande, magasin, user, productFournisseurs)` — paramètre des méthodes internes de VenteServiceImpl
+
+**Refactor `UserPrincipal`** (impact transverse) :
+- Ajout `userId` (= `Utilisateur.id` métier, = `Employe.id` pour un employé).
+- Rename `userId` existant → `accountId` (= `Account.id` auth).
+- Nouveau claim JWT `Claim.USER("userId")`.
+- `AuditorAwareImpl` migré vers `principal.accountId()` (la valeur stockée dans `createdBy/updatedBy` reste l'`accountId`).
+- 24 tests adaptés (`new UserPrincipal(accountId, userId, ...)`) répartis sur achat / depense / entreprise / magasin / produit / security / stock / users / vente.
+
+**Permissions** :
+- `SALE_CREATE` : ADMIN, PROPRIETAIRE, MANAGER, VENDEUR (déjà en YAML).
+- `SALE_READ` : idem.
+
+**Règles métier** :
+- Vendeur = Employe obligatoire (`UserPrincipal.userId` doit pointer vers un Employe en BD ; sinon Forbidden).
+- Client nullable (vente anonyme — décision projet `project_client_anonyme`).
+- 1 ligne = 1 PF unique. Mix de variantes du même produit → N lignes dans la même `VenteRequest`.
+- Prix unitaire ≥ `pf.prixVente` (plancher PF). Pas de MAX FIFO car le prix de vente vit sur le PF (un seul prix par variante).
+- Stock contrôlé par PF (pas par Product), via `EntreeStockRepository.findAvailableLotsForFifoByProductFournisseur`.
+- Numéro de référence commande + numéro de facture auto-générés (le vendeur ne saisit rien). Frontend lecteur uniquement.
+- Vendeur (`commande.user`) affiché via `UserSummaryResponse(id, nomComplet)` résolu côté lecture depuis `commande.createdBy` (= accountId stringifié) → `IAccountService.findUserSummaryByAccountId`.
+
+**Tests** : 6 service + 3 controller (POST 201, POST 400 lignes vides, GET 200). Suite à **436 / 436 verts**.
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

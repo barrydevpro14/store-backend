@@ -7,7 +7,103 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-15 (soirée)
+**Date :** 2026-05-16
+**Sujet :** **Module Vente — fonctionnalité 3 : Vente atomique** (`POST /api/v1/ventes` + `GET /api/v1/ventes/{id}`) avec ligne = ProductFournisseur (vente par variante, pas par Product), FIFO scopé par PF, vendeur = Employe obligatoire, validation `prixUnitaire ≥ pf.prixVente`. **Refactor `UserPrincipal` transverse** (rename `userId` → `accountId` + ajout `userId` métier = Utilisateur.id, claim JWT `USER`). 4 règles backend ajoutées en session précédente déjà inscrites (34-37) ; cette session focus 100% sur F-V3 + le refactor JWT.
+
+**Ce qui a été fait :**
+
+1. **Migration Flyway V12** `add_paiement_vente_and_pf_on_ligne_vente.sql` :
+   - Table `paiement_vente` (montant, datePaiement, moyen, facture FK, audit).
+   - `ligne_commande_vente.product_fournisseur_id` (FK vers `product_fournisseur`) — pour la vente par variante.
+
+2. **Entités** :
+   - `PaiementVente` (montant, datePaiement, moyen MoyenPaiement, facture FK).
+   - `LigneCommandeVente` : ajout `productFournisseur` (en plus du `product` historique).
+   - `SortieStock.ligneVente` déjà présent en V1 — utilisé pour la 1ère fois.
+
+3. **Refactor `UserPrincipal` (impact transverse)** :
+   - Structure : `(accountId, userId, entrepriseId, magasinId, username, role, permissions)` — 7 champs au lieu de 6.
+   - `accountId` (anciennement `userId`) = `Account.id` (auth).
+   - `userId` (nouveau) = `Utilisateur.id` métier (= `Employe.id` pour un employé).
+   - `Claim.USER("userId")` ajouté au JWT.
+   - `AuditorAwareImpl` migré vers `principal.accountId()`.
+   - `UserPrincipalFactoryImpl` passe `account.user.id`.
+   - 18 tests adaptés via sed : `new UserPrincipal(X, UUID.randomUUID(), Y, ...)`.
+
+4. **Domain services Vente** :
+   - `CommandeVenteDomainService` : `create(CommandeVenteCreate)`, `applyMontantTotal(commande, montant)`, `generateReference()` (VTE-).
+   - `LigneCommandeVenteDomainService.create(LigneCommandeVenteCreate)` : `montantTotal = qty × prixUnitaire`, set `product` + `productFournisseur`.
+   - `FactureClientDomainService` : `create(FactureClientCreate)`, `generateNumero()` (FAC-VTE-), `applyPaiement(facture, montant)`, `findByCommandeId(...)`.
+   - `PaiementVenteDomainService.create(facture, montant, moyen)` + `findAllByFactureId`.
+
+5. **Extension Stock** :
+   - `EntreeStockRepository.findAvailableLotsForFifoByProductFournisseur(magasinId, pfId)` (FIFO scopé par PF, pas par Product).
+   - Record `SortieStockCreate(lot, quantite, prixVente, ligneVente)` — supporte aussi ajustements (ligneVente=null).
+   - `SortieStockDomainService.create(SortieStockCreate)` (avec lien ligneVente) + surcharge existante.
+   - Record `SortieStockForVente(magasin, productFournisseur, quantite, prixVente, ligneVente)`.
+   - `ISortieStockService.consumeForVente(SortieStockForVente)` : vérifie stock, consomme FIFO par PF, lie chaque sortie à la ligne vente, décrémente Stock, journalise mouvement.
+
+6. **Services applicatifs** :
+   - `IEmployeService.findCurrentUser()` : throw `ForbiddenException("vente.user.required")` si l'utilisateur connecté n'est pas un Employe.
+   - `IAccountService.findUserSummaryByAccountId(String)` : résout `createdBy` (audit) → `UserSummaryResponse(id, nomComplet)` via Account → Utilisateur (parent Person avec nom/prenom). Optional empty si introuvable ou format invalide.
+   - `IAccountService.findOptionalById(UUID)` : lecture safe d'Account (sans throw).
+   - `AccountDomainService.findOptionalById(UUID)` + `EmployeDomainService.findOptionalById(UUID)`.
+
+7. **`IVenteService` (création atomique + détails)** :
+   - `create(VenteRequest)` : valide, récupère vendeur Employe + magasin, résout client (nullable), valide lignes (`prixUnitaire ≥ pf.prixVente`), crée commande + lignes + déclenche `sortieStockService.consumeForVente()` par ligne, applique montantTotal, crée facture, applique premier paiement éventuel.
+   - `findDetailsById(commandeId)` : récupère commande + facture + lignes + paiements, scoping entreprise, user résolu via `accountService.findUserSummaryByAccountId(commande.getCreatedBy())`.
+   - `ensureBelongsToCurrentEntreprise(commande)` public dans VenteServiceImpl.
+
+8. **DTOs (11 nouveaux)** :
+   - Request : `VenteRequest(clientId?, dateVente, lignes[], premierPaiement?)`, `LigneVenteRequest(productFournisseurId, quantite, prixUnitaire)`, `PaiementVenteRequest(montant, modePaiement)`.
+   - Response : `VenteResponse(commande, facture)`, `VenteDetailsResponse(commande, facture, lignes[], paiements[])`, `CommandeVenteResponse(...)` avec sous-DTO `UserSummaryResponse(id, nomComplet)`, `LigneCommandeVenteResponse`, `FactureClientResponse`, `PaiementVenteResponse`.
+   - Records internes : `CommandeVenteCreate`, `LigneCommandeVenteCreate`, `FactureClientCreate`, `VenteContext`.
+   - `UserSummaryResponse(id, nomComplet)` déplacé dans `common/dto/` (réutilisable).
+
+9. **Controller** `VenteController` :
+   - `POST /api/v1/ventes` (`SALE_CREATE`) → 201.
+   - `GET /api/v1/ventes/{commandeId}` (`SALE_READ`) → 200.
+
+10. **i18n** : 4 nouvelles clés FR/EN (`vente.user.required`, `vente.prixUnitaire.belowFloor`, `commandeVente.notOwned`, `factureClient.notFoundForCommande`).
+
+11. **Tests** : 6 service + 3 controller (POST happy + 400 lignes vides, GET 200, find* + validations métier). 436/436 verts (+9 vs précédemment).
+
+**Décisions / arbitrages :**
+
+- **Vente par ProductFournisseur, pas par Product** — le client choisit la variante (Clou Chine vs Maroc vs France), pas le lot. Chaque ligne cible 1 PF unique. Mix de variantes = N lignes. FIFO scopé par PF.
+- **Plancher prix = `pf.prixVente`** simple (pas de MAX FIFO) car le prixVente vit sur le PF (1 valeur par variante). Validation `ligne.prixUnitaire ≥ pf.prixVente`.
+- **Vendeur EMPLOYE obligatoire** — PROPRIETAIRE refusé avec Forbidden. Récupération via `IEmployeService.findCurrentUser()` qui lit `UserPrincipal.userId` (métier) et query `Employe.findById`.
+- **Option Minimaliste sur `commande.user`** — pas de FK `user_id` ajoutée sur les tables métier (commande/paiement vente, commande/paiement achat). On s'appuie sur l'audit `createdBy` existant (= `Account.id` stringifié, set par `AuditorAware`). Pour le listing : résolution via `IAccountService.findUserSummaryByAccountId(createdBy)` → 1 query supplémentaire mais modèle minimaliste sans redondance. Refactor `UserPrincipal` quand même fait (utile pour audit, futurs use cases).
+- **Refactor `UserPrincipal`** — décision validée par l'utilisateur (option A) pour avoir l'`utilisateurId` métier disponible dans le service vente sans query supplémentaire. Renommage `userId` → `accountId` + ajout `userId` métier = solution propre vs alternatives (`@Lazy`, query par vente).
+- **Référence + numéro auto-générés** (`VTE-...`, `FAC-VTE-...`) via `ReferenceHelper.generate(base)` — pas de saisie manuelle (vendeur au comptoir, frontend ne pré-prépare pas).
+- **Numéro de facture du module Achat reste saisi** (fournisseur le donne) ; numéro vente est auto (on émet la facture nous-mêmes).
+- **`SortieStock.ligneVente`** : FK existait depuis V1, set pour la 1ère fois via `SortieStockCreate.ligneVente` passé jusqu'au domain service.
+- **2 méthodes `SortieStockDomainService.create()`** : nouvelle signature `create(SortieStockCreate)` (avec ligneVente) + surcharge existante `create(lot, qty, prix)` qui wrappe avec ligneVente=null (rétro-compat pour ajustements stock).
+- **Méthodes publiques (règle 27)** : `processVenteLine`, `applyPremierPaiementIfPresent`, `ensureBelongsToCurrentEntreprise` etc. publiques dans VenteServiceImpl (pas sur l'interface) — cohérent avec le pattern AchatServiceImpl.
+- **Lambda `lignes.forEach(...)` + `Iterator` synchronisé** pour parcourir lignes + productFournisseurs en parallèle (règle 34, pattern récent).
+
+**Où on s'est arrêté :**
+
+- **436 tests verts** (+9 vs précédent). Compile vert.
+- **4 commits atomiques sur `dev`** (non pushés) — découpage par axe pour faciliter relecture / revert :
+  - `492ddec` — `refactor(security): split UserPrincipal accountId/userId métier (claim USER)` (29 fichiers : 5 main security/config + 24 tests adaptés)
+  - `b42a590` — `feat(security): résolution audit createdBy + lookup employé courant` (7 fichiers : `UserSummaryResponse` commun + `IAccountService.findUserSummaryByAccountId` + `IEmployeService.findCurrentUser`)
+  - `ec5fb4a` — `feat(stock): consumeForVente FIFO scopé par ProductFournisseur` (7 fichiers : records `SortieStockCreate`/`SortieStockForVente` + repo FIFO par PF + surcharge `consumeForVente`)
+  - `32126e8` — `feat(vente): F-V3 vente atomique + facture + premier paiement` (32 fichiers : entités + domain + DTOs + service + controller + V12/V13 + i18n + tests)
+- **Migrations V12 (`paiement_vente` + `pf` sur ligne) et V13 (drop `commande_vente.vendeur_id` — Option Minimaliste)** : à appliquer sur la BD locale au démarrage de l'app.
+- **Permissions SALE_*** : déjà en YAML, pas de modif.
+- **`FactureClient.dateEcheache`** : typo V1 conservée (correction reportée).
+
+**Prochaine étape recommandée :**
+
+1. **F-V4 — Listings ventes** (`GET /api/v1/ventes?magasinId=&from=&to=&statut=&page=&size=`) + listing factures + paiements paginés filtrés (symétrie achat F12-F14).
+2. **F-V5 — Paiement échelonné** (`POST /api/v1/ventes/factures/{id}/paiements`) — ajouter des paiements après la création de la vente.
+3. **Module dashboard / reporting** — CA, marges, top clients, KPIs.
+4. **Inventaire physique** (fonct. 12 stock reportée) — comparer stock théorique vs physique.
+
+---
+
+### Session du 2026-05-15 (soirée)
 **Sujet :** **Module Vente — fonctionnalité 2 : Recherche produit vendeur + déplacement structurel de `Quality` vers `ProductFournisseur` + introduction de `prixVente` (sur PF et lignes d'achat) + validation `prixVente > prixAchat` + endpoint PUT prix-vente manager.** Refactor architectural significatif : extraction d'un service dédié `IProductSearchService` pour casser un cycle d'injection.
 
 **Ce qui a été fait :**
