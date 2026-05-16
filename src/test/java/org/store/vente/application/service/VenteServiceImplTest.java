@@ -261,6 +261,21 @@ class VenteServiceImplTest {
     }
 
     @Test
+    void findDetailsById_should_throw_when_facture_missing() {
+        UUID commandeId = commande.getId();
+        commande.setCreatedBy(UUID.randomUUID().toString());
+
+        when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(factureClientDomainService.findByCommandeId(commandeId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findDetailsById(commandeId))
+                .isInstanceOf(org.store.common.exceptions.EntityException.class);
+
+        verify(paiementVenteDomainService, never()).findAllByFactureId(any());
+    }
+
+    @Test
     void findDetailsById_should_throw_when_not_owned() {
         UUID otherEntrepriseId = UUID.randomUUID();
         Entreprise other = new Entreprise();

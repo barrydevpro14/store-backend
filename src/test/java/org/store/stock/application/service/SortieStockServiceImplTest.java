@@ -15,10 +15,13 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.SortieStockCreate;
+import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.dto.SortieStockRequest;
 import org.store.stock.application.dto.SortieStockResponse;
+import org.store.vente.domain.model.LigneCommandeVente;
 import org.store.stock.application.service.impl.SortieStockServiceImpl;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
@@ -247,6 +250,87 @@ class SortieStockServiceImplTest {
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void consumeForVente_should_consume_single_lot_and_link_ligneVente() {
+        ProductFournisseur pf = pf();
+        LigneCommandeVente ligne = ligneVente();
+        EntreeStock l1 = lot(100, new BigDecimal("10.00"));
+        SortieStockForVente sortieForVente = new SortieStockForVente(magasin, pf, 30, new BigDecimal("25.00"), ligne);
+
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pf.getId())).thenReturn(List.of(l1));
+        when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 30, new BigDecimal("25.00"), ligne))))
+                .thenReturn(buildSortie(l1, 30, new BigDecimal("25.00")));
+        when(stockDomainService.decrement(stock, 30)).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(270);
+            return stock;
+        });
+
+        List<SortieStockResponse> result = service.consumeForVente(sortieForVente);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().quantiteSortie()).isEqualTo(30);
+        assertThat(l1.getQuantiteRestante()).isEqualTo(70);
+    }
+
+    @Test
+    void consumeForVente_should_consume_multiple_lots_fifo_scoped_by_pf() {
+        ProductFournisseur pf = pf();
+        LigneCommandeVente ligne = ligneVente();
+        EntreeStock l1 = lot(50, new BigDecimal("10.00"));
+        EntreeStock l2 = lot(50, new BigDecimal("12.00"));
+        SortieStockForVente sortieForVente = new SortieStockForVente(magasin, pf, 80, new BigDecimal("25.00"), ligne);
+
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pf.getId())).thenReturn(List.of(l1, l2));
+        when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 50, new BigDecimal("25.00"), ligne))))
+                .thenReturn(buildSortie(l1, 50, new BigDecimal("25.00")));
+        when(sortieStockDomainService.create(eq(new SortieStockCreate(l2, 30, new BigDecimal("25.00"), ligne))))
+                .thenReturn(buildSortie(l2, 30, new BigDecimal("25.00")));
+        when(stockDomainService.decrement(stock, 80)).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(220);
+            return stock;
+        });
+
+        List<SortieStockResponse> result = service.consumeForVente(sortieForVente);
+
+        assertThat(result).hasSize(2);
+        assertThat(l1.getQuantiteRestante()).isEqualTo(0);
+        assertThat(l2.getQuantiteRestante()).isEqualTo(20);
+    }
+
+    @Test
+    void consumeForVente_should_throw_when_pf_lots_insufficient() {
+        ProductFournisseur pf = pf();
+        LigneCommandeVente ligne = ligneVente();
+        EntreeStock l1 = lot(20, new BigDecimal("10.00"));
+        SortieStockForVente sortieForVente = new SortieStockForVente(magasin, pf, 50, new BigDecimal("25.00"), ligne);
+
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pf.getId())).thenReturn(List.of(l1));
+
+        assertThatThrownBy(() -> service.consumeForVente(sortieForVente))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(sortieStockDomainService, never()).create(any(SortieStockCreate.class));
+        verify(mouvementStockDomainService, never()).journalize(any(), any());
+    }
+
+    private ProductFournisseur pf() {
+        ProductFournisseur pf = new ProductFournisseur();
+        pf.setId(UUID.randomUUID());
+        pf.setProduct(produit);
+        return pf;
+    }
+
+    private LigneCommandeVente ligneVente() {
+        LigneCommandeVente ligne = new LigneCommandeVente();
+        ligne.setId(UUID.randomUUID());
+        return ligne;
     }
 
     private static int anyInt() {
