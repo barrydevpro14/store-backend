@@ -300,6 +300,47 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
     - **Exception** : un appel utilisé une seule fois reste inline.
     - **Référence** : `AchatServiceImpl.createLignesAndComputeTotal` + `createEntriesAndUpdateStock`.
 
+### Corps de boucle long → méthode dédiée
+
+36. **Tout corps de boucle (`forEach`, `for`, `while`, `stream`) qui dépasse quelques lignes ou enchaîne plusieurs étapes logiques doit être extrait dans une méthode dédiée**. La boucle ne contient alors qu'un appel de délégation.
+    - **Seuil pragmatique** : si le corps fait plus de ~3 lignes ou exécute plusieurs étapes métier distinctes (création + lecture + update + journal, etc.), extraire.
+    - **Boucle propre** :
+      ```java
+      lignes.forEach(ligne -> processPurchaseLineEntry(context, ligne, productFournisseurIterator.next()));
+      ```
+    - **Méthode extraite** : nom métier explicite (règle 32), ≤ 3 paramètres (règle 30 — regrouper dans un record si besoin), javadoc concise (règle 29), blocs indentés (règle 31). Publique dans la classe (mais pas forcément sur l'interface) — cohérent avec règle 27.
+    - **Bénéfices** : la boucle se lit comme un index, chaque étape métier est isolée et testable, le debug saute directement dans la logique unitaire.
+    - **Référence** : `AchatServiceImpl.processPurchaseLineEntry` (corps factorisé depuis `createEntriesAndUpdateStock`).
+
+### Lignes vides avant et après un bloc stream
+
+37. **Toute expression stream multi-ligne (chaîne `.stream().map()...`, `forEach(...)`, `findByX().orElseGet(...)`, etc.) doit être encadrée d'une ligne vide avant ET une ligne vide après**, pour visuellement isoler le bloc de transformation/itération.
+    - **Avant** :
+      ```java
+      Set<Permissions> current = role.getPermissions();
+      long ajouts = roleDef.permissions().stream()
+              .map(code -> resolvePermissionFromCatalog(roleDef, code, context))
+              .filter(required -> attachPermissionIfAbsent(current, required))
+              .count();
+      return ajouts > 0;
+      ```
+    - **Après** :
+      ```java
+      Set<Permissions> current = role.getPermissions();
+
+      long ajouts = roleDef.permissions().stream()
+              .map(code -> resolvePermissionFromCatalog(roleDef, code, context))
+              .filter(required -> attachPermissionIfAbsent(current, required))
+              .count();
+
+      return ajouts > 0;
+      ```
+    - **Exceptions** :
+      - Première instruction de la méthode après `{` : pas de ligne vide avant (juste après le `{`).
+      - Dernière instruction avant `}` : pas de ligne vide après (juste avant le `}`).
+      - Stream inline d'une seule ligne (`list.forEach(System.out::println);`) : pas de séparation forcée.
+    - **Cohérent avec règle 31** (indentation par blocs avec lignes vides entre étapes logiques).
+
 ---
 
 ## Conventions de commits
