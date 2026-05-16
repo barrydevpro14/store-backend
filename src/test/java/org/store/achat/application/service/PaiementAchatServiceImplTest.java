@@ -76,7 +76,7 @@ class PaiementAchatServiceImplTest {
     }
 
     private UserPrincipal user() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("PURCHASE_PAY"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("PURCHASE_PAY"));
     }
 
     @Test

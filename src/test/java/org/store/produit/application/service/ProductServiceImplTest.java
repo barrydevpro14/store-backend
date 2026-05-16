@@ -76,7 +76,7 @@ class ProductServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE",
                 List.of("PRODUCT_CREATE", "PRODUCT_READ"));
     }
 

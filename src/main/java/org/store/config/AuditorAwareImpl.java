@@ -18,6 +18,6 @@ public class AuditorAwareImpl implements AuditorAware<String> {
             return Optional.empty();
         }
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        return Optional.of(principal.userId().toString());
+        return Optional.of(principal.accountId().toString());
     }
 }

@@ -77,7 +77,7 @@ class RegisterPropertyServiceImplTest {
         Proprietaire proprietaire = new Proprietaire();
         Entreprise entreprise = entrepriseWithId();
         Magasin magasin = magasinWithId();
-        UserPrincipal principal = new UserPrincipal(account.getId(), entreprise.getId(), magasin.getId(), "john.doe", "PROPRIETAIRE", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entreprise.getId(), magasin.getId(), "john.doe", "PROPRIETAIRE", List.of());
 
         when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(role);
         when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);

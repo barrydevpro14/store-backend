@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record UserPrincipal(
+        UUID accountId,
         UUID userId,
         UUID entrepriseId,
         UUID magasinId,

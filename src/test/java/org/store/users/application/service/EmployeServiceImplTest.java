@@ -71,12 +71,12 @@ class EmployeServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, magasinId, "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "PROPRIETAIRE",
                 List.of("PROPRIETAIRE_ACCESS", "EMPLOYE_CREATE"));
     }
 
     private UserPrincipal manager() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, magasinId, "manager", "MANAGER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "manager", "MANAGER",
                 List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
     }
 

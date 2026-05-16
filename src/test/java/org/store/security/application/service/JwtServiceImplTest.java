@@ -71,6 +71,7 @@ class JwtServiceImplTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 "john.doe",
                 "PROPRIETAIRE",
                 List.of("PROPRIETAIRE_ACCESS")

@@ -57,7 +57,7 @@ class MagasinServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, magasinId, "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "PROPRIETAIRE",
                 List.of("PROPRIETAIRE_ACCESS"));
     }
 
@@ -227,7 +227,7 @@ class MagasinServiceImplTest {
     @Test
     void ensureAccessibleByCurrentUser_should_pass_when_non_proprietaire_targets_his_magasin() {
         Magasin magasin = magasinIn(entreprise);
-        UserPrincipal manager = new UserPrincipal(UUID.randomUUID(), entrepriseId, magasinId,
+        UserPrincipal manager = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
                 "manager", "MANAGER", List.of("EMPLOYE_ACCESS"));
         when(currentUserService.getCurrent()).thenReturn(manager);
 
@@ -238,7 +238,7 @@ class MagasinServiceImplTest {
     void ensureAccessibleByCurrentUser_should_throw_when_non_proprietaire_targets_other_magasin() {
         Magasin other = magasinIn(entreprise);
         other.setId(UUID.randomUUID());
-        UserPrincipal manager = new UserPrincipal(UUID.randomUUID(), entrepriseId, magasinId,
+        UserPrincipal manager = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
                 "manager", "MANAGER", List.of("EMPLOYE_ACCESS"));
         when(currentUserService.getCurrent()).thenReturn(manager);
 

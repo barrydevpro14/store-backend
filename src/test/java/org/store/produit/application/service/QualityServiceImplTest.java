@@ -56,7 +56,7 @@ class QualityServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "PROPRIETAIRE",
                 List.of("QUALITY_CREATE", "QUALITY_READ"));
     }
 

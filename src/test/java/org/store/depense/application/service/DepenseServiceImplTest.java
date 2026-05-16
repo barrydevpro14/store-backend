@@ -88,7 +88,7 @@ class DepenseServiceImplTest {
     }
 
     private UserPrincipal user() {
-        return new UserPrincipal(UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("EXPENSE_CREATE"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("EXPENSE_CREATE"));
     }
 
     @Test

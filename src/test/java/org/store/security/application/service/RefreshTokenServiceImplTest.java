@@ -172,6 +172,6 @@ class RefreshTokenServiceImplTest {
     }
 
     private UserPrincipal samplePrincipal() {
-        return new UserPrincipal(UUID.randomUUID(), null, null, "user", "PROPRIETAIRE", List.of());
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), null, null, "user", "PROPRIETAIRE", List.of());
     }
 }

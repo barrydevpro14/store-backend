@@ -37,6 +37,7 @@ public class UserPrincipalFactoryImpl implements IUserPrincipalFactory {
         Role role = account.getRole();
         return new UserPrincipal(
                 account.getId(),
+                user != null ? user.getId() : null,
                 context.entrepriseId(),
                 context.magasinId(),
                 account.getUsername(),

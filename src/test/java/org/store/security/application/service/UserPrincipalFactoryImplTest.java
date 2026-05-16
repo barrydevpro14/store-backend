@@ -65,7 +65,7 @@ class UserPrincipalFactoryImplTest {
 
         UserPrincipal principal = factory.build(account);
 
-        assertThat(principal.userId()).isEqualTo(account.getId());
+        assertThat(principal.accountId()).isEqualTo(account.getId());
         assertThat(principal.entrepriseId()).isEqualTo(entrepriseId);
         assertThat(principal.magasinId()).isEqualTo(magasinId);
         assertThat(principal.username()).isEqualTo("john.doe");

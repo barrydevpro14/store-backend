@@ -38,7 +38,8 @@ public class JwtServiceImpl implements IJwtService {
         Date expiration = new Date(now.getTime() + properties.expiration().accessToken().toMillis());
 
         return Jwts.builder()
-                .setSubject(principal.userId().toString())
+                .setSubject(principal.accountId().toString())
+                .claim(Claim.USER.getKey(), principal.userId() != null ? principal.userId().toString() : null)
                 .claim(Claim.ENTREPRISE.getKey(), principal.entrepriseId() != null ? principal.entrepriseId().toString() : null)
                 .claim(Claim.MAGASIN.getKey(), principal.magasinId() != null ? principal.magasinId().toString() : null)
                 .claim(Claim.USERNAME.getKey(), principal.username())
@@ -65,7 +66,8 @@ public class JwtServiceImpl implements IJwtService {
     public UserPrincipal extractUserPrincipal(String token) {
         Claims claims = parseClaims(token);
 
-        UUID userId = UUID.fromString(claims.getSubject());
+        UUID accountId = UUID.fromString(claims.getSubject());
+        UUID userId = parseUuid(claims.get(Claim.USER.getKey(), String.class));
         UUID entrepriseId = parseUuid(claims.get(Claim.ENTREPRISE.getKey(), String.class));
         UUID magasinId = parseUuid(claims.get(Claim.MAGASIN.getKey(), String.class));
         String username = claims.get(Claim.USERNAME.getKey(), String.class);
@@ -73,7 +75,7 @@ public class JwtServiceImpl implements IJwtService {
         @SuppressWarnings("unchecked")
         List<String> permissions = claims.get(Claim.PERMISSIONS.getKey(), List.class);
 
-        return new UserPrincipal(userId, entrepriseId, magasinId, username, role, permissions);
+        return new UserPrincipal(accountId, userId, entrepriseId, magasinId, username, role, permissions);
     }
 
     private Claims parseClaims(String token) {
