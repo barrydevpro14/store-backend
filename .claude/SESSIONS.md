@@ -66,7 +66,7 @@
 
 10. **i18n** : 4 nouvelles clés FR/EN (`vente.user.required`, `vente.prixUnitaire.belowFloor`, `commandeVente.notOwned`, `factureClient.notFoundForCommande`).
 
-11. **Tests** : 6 service + 3 controller (POST happy + 400 lignes vides, GET 200, find* + validations métier). 436/436 verts (+9 vs précédemment).
+11. **Tests** : 6 service + 3 controller (POST happy + 400 lignes vides, GET 200, find* + validations métier). **441 / 441 verts** (décompte agrégé Surefire — 5 tests système comptés en plus du décompte manuel `+9` de la session).
 
 **Décisions / arbitrages :**
 
@@ -84,12 +84,13 @@
 
 **Où on s'est arrêté :**
 
-- **436 tests verts** (+9 vs précédent). Compile vert.
-- **4 commits atomiques sur `dev`** (non pushés) — découpage par axe pour faciliter relecture / revert :
+- **441 / 441 tests verts** (`mvn test` exécuté en fin de session, validation post-découpage en commits atomiques). Compile vert.
+- **5 commits atomiques sur `dev`** (non pushés) — découpage par axe pour faciliter relecture / revert :
   - `492ddec` — `refactor(security): split UserPrincipal accountId/userId métier (claim USER)` (29 fichiers : 5 main security/config + 24 tests adaptés)
   - `b42a590` — `feat(security): résolution audit createdBy + lookup employé courant` (7 fichiers : `UserSummaryResponse` commun + `IAccountService.findUserSummaryByAccountId` + `IEmployeService.findCurrentUser`)
   - `ec5fb4a` — `feat(stock): consumeForVente FIFO scopé par ProductFournisseur` (7 fichiers : records `SortieStockCreate`/`SortieStockForVente` + repo FIFO par PF + surcharge `consumeForVente`)
   - `32126e8` — `feat(vente): F-V3 vente atomique + facture + premier paiement` (32 fichiers : entités + domain + DTOs + service + controller + V12/V13 + i18n + tests)
+  - `e6ed7d3` — `docs(vente): aligner FONCTIONNALITIES/SESSIONS/TODO sur l'état livré F-V3` (3 fichiers)
 - **Migrations V12 (`paiement_vente` + `pf` sur ligne) et V13 (drop `commande_vente.vendeur_id` — Option Minimaliste)** : à appliquer sur la BD locale au démarrage de l'app.
 - **Permissions SALE_*** : déjà en YAML, pas de modif.
 - **`FactureClient.dateEcheache`** : typo V1 conservée (correction reportée).

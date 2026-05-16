@@ -744,7 +744,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - Numéro de référence commande + numéro de facture auto-générés (le vendeur ne saisit rien). Frontend lecteur uniquement.
 - Vendeur (`commande.user`) affiché via `UserSummaryResponse(id, nomComplet)` résolu côté lecture depuis `commande.createdBy` (= accountId stringifié) → `IAccountService.findUserSummaryByAccountId`.
 
-**Tests** : 6 service + 3 controller (POST 201, POST 400 lignes vides, GET 200). Suite à **436 / 436 verts**.
+**Tests** : 6 service + 3 controller (POST 201, POST 400 lignes vides, GET 200). Suite à **441 / 441 verts** (décompte agrégé Surefire).
 
 ---
 
