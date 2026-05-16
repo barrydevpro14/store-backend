@@ -16,20 +16,20 @@ import java.util.UUID;
 public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
 
     @Query("""
-            SELECT new org.store.vente.application.dto.CommandeVenteResponse(c, f.montantTotal, f.montantPaye)
-            FROM CommandeVente c
-            LEFT JOIN org.store.vente.domain.model.FactureClient f ON f.commande = c
-            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy
-            WHERE c.magasin.entreprise.id = :entrepriseId
-              AND c.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.clientId} IS NULL OR c.client.id = :#{#filter.clientId})
-              AND (:#{#filter.vendeurId} IS NULL OR a.user.id = :#{#filter.vendeurId})
-              AND (:#{#filter.statutAsEnum()} IS NULL OR c.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.reference} IS NULL OR LOWER(c.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
-              AND (:#{#filter.montantMin} IS NULL OR f.montantTotal >= :#{#filter.montantMin})
-              AND (:#{#filter.montantMax} IS NULL OR f.montantTotal <= :#{#filter.montantMax})
-              AND (:#{#filter.fromDateTime()} IS NULL OR c.createdAt >= :#{#filter.fromDateTime()})
-              AND (:#{#filter.toDateTime()} IS NULL OR c.createdAt <= :#{#filter.toDateTime()})
+            SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.montantTotal, facture.montantPaye)
+            FROM CommandeVente commande
+            LEFT JOIN commande.facture facture
+            LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
+            WHERE commande.magasin.entreprise.id = :entrepriseId
+              AND commande.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.clientId} IS NULL OR commande.client.id = :#{#filter.clientId})
+              AND (:#{#filter.vendeurId} IS NULL OR account.user.id = :#{#filter.vendeurId})
+              AND (:#{#filter.statutAsEnum()} IS NULL OR commande.statut = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
+              AND (:#{#filter.montantMin} IS NULL OR facture.montantTotal >= :#{#filter.montantMin})
+              AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})
+              AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
+              AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})
             """)
     Page<CommandeVenteResponse> findResponsesByFilter(@Param("filter") CommandeVenteFilter filter,
                                                      @Param("entrepriseId") UUID entrepriseId,
@@ -37,25 +37,25 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
 
     @Query("""
             SELECT new org.store.vente.application.dto.CommandeVenteResponse(
-                c, u.id, TRIM(BOTH FROM CONCAT(COALESCE(u.nom, ''), ' ', COALESCE(u.prenom, ''))),
-                f.montantTotal, f.montantPaye
+                commande, user.id, TRIM(BOTH FROM CONCAT(COALESCE(user.nom, ''), ' ', COALESCE(user.prenom, ''))),
+                facture.montantTotal, facture.montantPaye
             )
-            FROM CommandeVente c
-            LEFT JOIN org.store.vente.domain.model.FactureClient f ON f.commande = c
-            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy
-            LEFT JOIN a.user u
-            WHERE c.id = :id
-              AND c.magasin.entreprise.id = :entrepriseId
+            FROM CommandeVente commande
+            LEFT JOIN commande.facture facture
+            LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
+            LEFT JOIN account.user user
+            WHERE commande.id = :id
+              AND commande.magasin.entreprise.id = :entrepriseId
             """)
     Optional<CommandeVenteResponse> findResponseById(@Param("id") UUID id,
                                                     @Param("entrepriseId") UUID entrepriseId);
 
     @Query("""
-            SELECT COUNT(c) FROM CommandeVente c
-            WHERE c.magasin.entreprise.id = :entrepriseId
-              AND c.magasin.id = :magasinId
-              AND c.createdAt >= :startOfDay
-              AND c.createdAt <= :endOfDay
+            SELECT COUNT(commande) FROM CommandeVente commande
+            WHERE commande.magasin.entreprise.id = :entrepriseId
+              AND commande.magasin.id = :magasinId
+              AND commande.createdAt >= :startOfDay
+              AND commande.createdAt <= :endOfDay
             """)
     long countByMagasinAndDay(@Param("magasinId") UUID magasinId,
                               @Param("entrepriseId") UUID entrepriseId,
@@ -63,11 +63,11 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
                               @Param("endOfDay") LocalDateTime endOfDay);
 
     @Query("""
-            SELECT COALESCE(SUM(l.quantite), 0) FROM LigneCommandeVente l
-            WHERE l.commande.magasin.entreprise.id = :entrepriseId
-              AND l.commande.magasin.id = :magasinId
-              AND l.commande.createdAt >= :startOfDay
-              AND l.commande.createdAt <= :endOfDay
+            SELECT COALESCE(SUM(ligne.quantite), 0) FROM LigneCommandeVente ligne
+            WHERE ligne.commande.magasin.entreprise.id = :entrepriseId
+              AND ligne.commande.magasin.id = :magasinId
+              AND ligne.commande.createdAt >= :startOfDay
+              AND ligne.commande.createdAt <= :endOfDay
             """)
     long sumQuantiteLignesByMagasinAndDay(@Param("magasinId") UUID magasinId,
                                           @Param("entrepriseId") UUID entrepriseId,
@@ -76,22 +76,22 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
 
     @Query("""
             SELECT new org.store.vente.application.dto.VenteParVendeurResponse(
-                u.id,
-                TRIM(BOTH FROM CONCAT(COALESCE(u.nom, ''), ' ', COALESCE(u.prenom, ''))),
-                COUNT(c),
-                COALESCE(SUM(f.montantTotal), 0)
+                user.id,
+                TRIM(BOTH FROM CONCAT(COALESCE(user.nom, ''), ' ', COALESCE(user.prenom, ''))),
+                COUNT(commande),
+                COALESCE(SUM(facture.montantTotal), 0)
             )
-            FROM CommandeVente c
-            LEFT JOIN org.store.vente.domain.model.FactureClient f ON f.commande = c
-            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy
-            LEFT JOIN a.user u
-            WHERE c.magasin.entreprise.id = :entrepriseId
-              AND c.magasin.id = :magasinId
-              AND c.createdAt >= :startOfDay
-              AND c.createdAt <= :endOfDay
-              AND u.id IS NOT NULL
-            GROUP BY u.id, u.nom, u.prenom
-            ORDER BY COUNT(c) DESC
+            FROM CommandeVente commande
+            LEFT JOIN commande.facture facture
+            LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
+            LEFT JOIN account.user user
+            WHERE commande.magasin.entreprise.id = :entrepriseId
+              AND commande.magasin.id = :magasinId
+              AND commande.createdAt >= :startOfDay
+              AND commande.createdAt <= :endOfDay
+              AND user.id IS NOT NULL
+            GROUP BY user.id, user.nom, user.prenom
+            ORDER BY COUNT(commande) DESC
             """)
     java.util.List<org.store.vente.application.dto.VenteParVendeurResponse> ventilationParVendeurByMagasinAndDay(
             @Param("magasinId") UUID magasinId,

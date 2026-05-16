@@ -10,8 +10,8 @@ import org.store.entreprise.domain.model.Entreprise;
 public interface EntrepriseRepository extends BaseRepository<Entreprise> {
 
     @Query("""
-            SELECT new org.store.entreprise.application.dto.EntrepriseResponse(e)
-            FROM Entreprise e
+            SELECT new org.store.entreprise.application.dto.EntrepriseResponse(entreprise)
+            FROM Entreprise entreprise
             """)
     Page<EntrepriseResponse> findAllProjected(Pageable pageable);
 }

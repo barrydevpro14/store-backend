@@ -18,30 +18,30 @@ public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
     Optional<FactureAchat> findByCommandeId(UUID commandeId);
 
     @Query("""
-            SELECT new org.store.achat.application.dto.FactureAchatResponse(f)
-            FROM FactureAchat f
-            WHERE f.commande.magasin.entreprise.id = :entrepriseId
-              AND f.commande.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.fournisseurId} IS NULL OR f.commande.fournisseur.id = :#{#filter.fournisseurId})
-              AND (:#{#filter.statutAsEnum()} IS NULL OR f.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.fromDateTime()} IS NULL OR f.createdAt >= :#{#filter.fromDateTime()})
-              AND (:#{#filter.toDateTime()} IS NULL OR f.createdAt <= :#{#filter.toDateTime()})
-            ORDER BY f.createdAt DESC
+            SELECT new org.store.achat.application.dto.FactureAchatResponse(facture)
+            FROM FactureAchat facture
+            WHERE facture.commande.magasin.entreprise.id = :entrepriseId
+              AND facture.commande.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.fournisseurId} IS NULL OR facture.commande.fournisseur.id = :#{#filter.fournisseurId})
+              AND (:#{#filter.statutAsEnum()} IS NULL OR facture.statut = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.fromDateTime()} IS NULL OR facture.createdAt >= :#{#filter.fromDateTime()})
+              AND (:#{#filter.toDateTime()} IS NULL OR facture.createdAt <= :#{#filter.toDateTime()})
+            ORDER BY facture.createdAt DESC
             """)
     Page<FactureAchatResponse> findResponsesByFilter(@Param("filter") FactureAchatFilter filter,
                                                     @Param("entrepriseId") UUID entrepriseId,
                                                     Pageable pageable);
 
     @Query("""
-            SELECT new org.store.achat.application.dto.FactureAchatResponse(f)
-            FROM FactureAchat f
-            WHERE f.commande.magasin.entreprise.id = :entrepriseId
-              AND f.commande.magasin.id = :#{#filter.magasinId}
-              AND f.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE, org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
-              AND f.dateEcheance IS NOT NULL
-              AND (:#{#filter.fromDate()} IS NULL OR f.dateEcheance >= :#{#filter.fromDate()})
-              AND (:#{#filter.toDate()} IS NULL OR f.dateEcheance <= :#{#filter.toDate()})
-            ORDER BY f.dateEcheance ASC
+            SELECT new org.store.achat.application.dto.FactureAchatResponse(facture)
+            FROM FactureAchat facture
+            WHERE facture.commande.magasin.entreprise.id = :entrepriseId
+              AND facture.commande.magasin.id = :#{#filter.magasinId}
+              AND facture.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE, org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
+              AND facture.dateEcheance IS NOT NULL
+              AND (:#{#filter.fromDate()} IS NULL OR facture.dateEcheance >= :#{#filter.fromDate()})
+              AND (:#{#filter.toDate()} IS NULL OR facture.dateEcheance <= :#{#filter.toDate()})
+            ORDER BY facture.dateEcheance ASC
             """)
     Page<FactureAchatResponse> findEcheances(@Param("filter") FactureAchatEcheanceFilter filter,
                                              @Param("entrepriseId") UUID entrepriseId,

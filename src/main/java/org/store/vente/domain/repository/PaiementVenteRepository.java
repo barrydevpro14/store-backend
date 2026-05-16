@@ -16,21 +16,21 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
     List<PaiementVente> findAllByFactureId(UUID factureId);
 
     @Query("""
-            SELECT new org.store.vente.application.dto.PaiementVenteResponse(p)
-            FROM PaiementVente p
-            WHERE p.facture.id = :factureId
-              AND p.facture.commande.magasin.entreprise.id = :entrepriseId
+            SELECT new org.store.vente.application.dto.PaiementVenteResponse(paiement)
+            FROM PaiementVente paiement
+            WHERE paiement.facture.id = :factureId
+              AND paiement.facture.commande.magasin.entreprise.id = :entrepriseId
             """)
     Page<PaiementVenteResponse> findResponsesByFactureId(@Param("factureId") UUID factureId,
                                                         @Param("entrepriseId") UUID entrepriseId,
                                                         Pageable pageable);
 
     @Query("""
-            SELECT COALESCE(SUM(p.montant), 0) FROM PaiementVente p
-            WHERE p.facture.commande.magasin.entreprise.id = :entrepriseId
-              AND p.facture.commande.magasin.id = :magasinId
-              AND p.createdAt >= :startOfDay
-              AND p.createdAt <= :endOfDay
+            SELECT COALESCE(SUM(paiement.montant), 0) FROM PaiementVente paiement
+            WHERE paiement.facture.commande.magasin.entreprise.id = :entrepriseId
+              AND paiement.facture.commande.magasin.id = :magasinId
+              AND paiement.createdAt >= :startOfDay
+              AND paiement.createdAt <= :endOfDay
             """)
     java.math.BigDecimal sumMontantByMagasinAndDay(@Param("magasinId") UUID magasinId,
                                                   @Param("entrepriseId") UUID entrepriseId,
@@ -39,15 +39,15 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
 
     @Query("""
             SELECT new org.store.vente.application.dto.PaiementParMoyenResponse(
-                p.moyen, COALESCE(SUM(p.montant), 0), COUNT(p)
+                paiement.moyen, COALESCE(SUM(paiement.montant), 0), COUNT(paiement)
             )
-            FROM PaiementVente p
-            WHERE p.facture.commande.magasin.entreprise.id = :entrepriseId
-              AND p.facture.commande.magasin.id = :magasinId
-              AND p.createdAt >= :startOfDay
-              AND p.createdAt <= :endOfDay
-            GROUP BY p.moyen
-            ORDER BY SUM(p.montant) DESC
+            FROM PaiementVente paiement
+            WHERE paiement.facture.commande.magasin.entreprise.id = :entrepriseId
+              AND paiement.facture.commande.magasin.id = :magasinId
+              AND paiement.createdAt >= :startOfDay
+              AND paiement.createdAt <= :endOfDay
+            GROUP BY paiement.moyen
+            ORDER BY SUM(paiement.montant) DESC
             """)
     java.util.List<org.store.vente.application.dto.PaiementParMoyenResponse> ventilationParMoyenByMagasinAndDay(
             @Param("magasinId") UUID magasinId,

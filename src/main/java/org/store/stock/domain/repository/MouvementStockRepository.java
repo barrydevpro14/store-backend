@@ -14,15 +14,15 @@ import java.util.UUID;
 public interface MouvementStockRepository extends BaseRepository<MouvementStock> {
 
     @Query("""
-            SELECT new org.store.stock.application.dto.MouvementStockResponse(m)
-            FROM MouvementStock m
-            WHERE m.stock.magasin.entreprise.id = :entrepriseId
-              AND m.stock.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR m.stock.produit.id = :#{#filter.productId})
-              AND (:#{#filter.stockId} IS NULL OR m.stock.id = :#{#filter.stockId})
-              AND (:#{#filter.typeAsEnum()} IS NULL OR m.type = :#{#filter.typeAsEnum()})
-              AND (:#{#filter.fromDateTime()} IS NULL OR m.createdAt >= :#{#filter.fromDateTime()})
-              AND (:#{#filter.toDateTime()} IS NULL OR m.createdAt <= :#{#filter.toDateTime()})
+            SELECT new org.store.stock.application.dto.MouvementStockResponse(mouvement)
+            FROM MouvementStock mouvement
+            WHERE mouvement.stock.magasin.entreprise.id = :entrepriseId
+              AND mouvement.stock.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.productId} IS NULL OR mouvement.stock.produit.id = :#{#filter.productId})
+              AND (:#{#filter.stockId} IS NULL OR mouvement.stock.id = :#{#filter.stockId})
+              AND (:#{#filter.typeAsEnum()} IS NULL OR mouvement.type = :#{#filter.typeAsEnum()})
+              AND (:#{#filter.fromDateTime()} IS NULL OR mouvement.createdAt >= :#{#filter.fromDateTime()})
+              AND (:#{#filter.toDateTime()} IS NULL OR mouvement.createdAt <= :#{#filter.toDateTime()})
             """)
     Page<MouvementStockResponse> findResponsesByFilter(@Param("filter") MouvementStockFilter filter,
                                                        @Param("entrepriseId") UUID entrepriseId,

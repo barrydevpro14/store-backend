@@ -18,10 +18,10 @@ public interface CategoryDepenseRepository extends BaseRepository<CategoryDepens
     boolean existsByNomAndEntrepriseId(String nom, UUID entrepriseId);
 
     @Query("""
-            SELECT new org.store.depense.application.dto.CategoryDepenseResponse(c)
-            FROM CategoryDepense c
-            WHERE c.entreprise.id = :entrepriseId
-            ORDER BY c.nom ASC
+            SELECT new org.store.depense.application.dto.CategoryDepenseResponse(category)
+            FROM CategoryDepense category
+            WHERE category.entreprise.id = :entrepriseId
+            ORDER BY category.nom ASC
             """)
     Page<CategoryDepenseResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 }

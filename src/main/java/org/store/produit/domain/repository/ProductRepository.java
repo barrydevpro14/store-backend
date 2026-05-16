@@ -14,9 +14,9 @@ import java.util.UUID;
 public interface ProductRepository extends BaseRepository<Product> {
 
     @Query("""
-            SELECT new org.store.produit.application.dto.ProductResponse(p)
-            FROM Product p
-            WHERE p.entreprise.id = :entrepriseId
+            SELECT new org.store.produit.application.dto.ProductResponse(produit)
+            FROM Product produit
+            WHERE produit.entreprise.id = :entrepriseId
             """)
     Page<ProductResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 
@@ -25,16 +25,16 @@ public interface ProductRepository extends BaseRepository<Product> {
     boolean existsByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 
     @Query("""
-            SELECT DISTINCT p FROM Product p
-            WHERE p.entreprise.id = :entrepriseId
+            SELECT DISTINCT produit FROM Product produit
+            WHERE produit.entreprise.id = :entrepriseId
               AND (:searchTerm IS NULL
-                   OR LOWER(p.nom) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
-                   OR LOWER(p.reference) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+                   OR LOWER(produit.nom) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(produit.reference) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
               AND EXISTS (
-                  SELECT 1 FROM EntreeStock e
-                  WHERE e.produit = p
-                    AND e.magasin.id = :magasinId
-                    AND e.quantiteRestante > 0
+                  SELECT 1 FROM EntreeStock entree
+                  WHERE entree.produit = produit
+                    AND entree.magasin.id = :magasinId
+                    AND entree.quantiteRestante > 0
               )
             """)
     Page<Product> searchByEntrepriseWithActiveLots(@Param("searchTerm") String searchTerm,

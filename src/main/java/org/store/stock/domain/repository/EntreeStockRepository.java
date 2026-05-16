@@ -15,48 +15,48 @@ import java.util.UUID;
 public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
 
     @Query("""
-            SELECT e FROM EntreeStock e
-            WHERE e.magasin.id = :magasinId
-              AND e.produit.id = :productId
-              AND e.quantiteRestante > 0
-            ORDER BY e.createdAt ASC
+            SELECT entree FROM EntreeStock entree
+            WHERE entree.magasin.id = :magasinId
+              AND entree.produit.id = :productId
+              AND entree.quantiteRestante > 0
+            ORDER BY entree.createdAt ASC
             """)
     List<EntreeStock> findAvailableLotsForFifo(@Param("magasinId") UUID magasinId, @Param("productId") UUID productId);
 
     @Query("""
-            SELECT e FROM EntreeStock e
-            WHERE e.magasin.id = :magasinId
-              AND e.productFournisseur.id = :productFournisseurId
-              AND e.quantiteRestante > 0
-            ORDER BY e.createdAt ASC
+            SELECT entree FROM EntreeStock entree
+            WHERE entree.magasin.id = :magasinId
+              AND entree.productFournisseur.id = :productFournisseurId
+              AND entree.quantiteRestante > 0
+            ORDER BY entree.createdAt ASC
             """)
     List<EntreeStock> findAvailableLotsForFifoByProductFournisseur(@Param("magasinId") UUID magasinId,
                                                                    @Param("productFournisseurId") UUID productFournisseurId);
 
     @Query("""
-            SELECT new org.store.stock.application.dto.ExpiringLotResponse(e)
-            FROM EntreeStock e
-            WHERE e.magasin.entreprise.id = :entrepriseId
-              AND e.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR e.produit.id = :#{#filter.productId})
-              AND e.dateExpiration IS NOT NULL
-              AND e.dateExpiration <= :#{#filter.untilDate()}
-              AND e.quantiteRestante > 0
-            ORDER BY e.dateExpiration ASC
+            SELECT new org.store.stock.application.dto.ExpiringLotResponse(entree)
+            FROM EntreeStock entree
+            WHERE entree.magasin.entreprise.id = :entrepriseId
+              AND entree.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.productId} IS NULL OR entree.produit.id = :#{#filter.productId})
+              AND entree.dateExpiration IS NOT NULL
+              AND entree.dateExpiration <= :#{#filter.untilDate()}
+              AND entree.quantiteRestante > 0
+            ORDER BY entree.dateExpiration ASC
             """)
     Page<ExpiringLotResponse> findExpiringLots(@Param("filter") ExpiringLotsFilter filter,
                                                @Param("entrepriseId") UUID entrepriseId,
                                                Pageable pageable);
 
     @Query("""
-            SELECT e FROM EntreeStock e
-            JOIN FETCH e.productFournisseur pf
-            JOIN FETCH pf.fournisseur
-            JOIN FETCH pf.quality
-            WHERE e.magasin.id = :magasinId
-              AND e.quantiteRestante > 0
-              AND e.produit.id IN :productIds
-            ORDER BY e.createdAt ASC
+            SELECT entree FROM EntreeStock entree
+            JOIN FETCH entree.productFournisseur productFournisseur
+            JOIN FETCH productFournisseur.fournisseur
+            JOIN FETCH productFournisseur.quality
+            WHERE entree.magasin.id = :magasinId
+              AND entree.quantiteRestante > 0
+              AND entree.produit.id IN :productIds
+            ORDER BY entree.createdAt ASC
             """)
     List<EntreeStock> findActiveLotsByMagasinAndProductIds(@Param("magasinId") UUID magasinId,
                                                            @Param("productIds") List<UUID> productIds);

@@ -15,15 +15,15 @@ import java.util.UUID;
 public interface DepenseRepository extends BaseRepository<Depense> {
 
     @Query("""
-            SELECT new org.store.depense.application.dto.DepenseResponse(d)
-            FROM Depense d
-            WHERE d.magasin.entreprise.id = :entrepriseId
-              AND d.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.categoryId} IS NULL OR d.category.id = :#{#filter.categoryId})
-              AND (:#{#filter.modePaiementAsEnum()} IS NULL OR d.modePaiement = :#{#filter.modePaiementAsEnum()})
-              AND (:#{#filter.fromDate()} IS NULL OR d.dateDepense >= :#{#filter.fromDate()})
-              AND (:#{#filter.toDate()} IS NULL OR d.dateDepense <= :#{#filter.toDate()})
-            ORDER BY d.dateDepense DESC
+            SELECT new org.store.depense.application.dto.DepenseResponse(depense)
+            FROM Depense depense
+            WHERE depense.magasin.entreprise.id = :entrepriseId
+              AND depense.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
+              AND (:#{#filter.modePaiementAsEnum()} IS NULL OR depense.modePaiement = :#{#filter.modePaiementAsEnum()})
+              AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
+              AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
+            ORDER BY depense.dateDepense DESC
             """)
     Page<DepenseResponse> findResponsesByFilter(@Param("filter") DepenseFilter filter,
                                                 @Param("entrepriseId") UUID entrepriseId,
@@ -32,16 +32,16 @@ public interface DepenseRepository extends BaseRepository<Depense> {
     @Query("""
             SELECT new org.store.depense.application.dto.DepenseTotalResponse(
                 :#{#filter.magasinId},
-                COALESCE(SUM(d.montant), 0),
-                COUNT(d)
+                COALESCE(SUM(depense.montant), 0),
+                COUNT(depense)
             )
-            FROM Depense d
-            WHERE d.magasin.entreprise.id = :entrepriseId
-              AND d.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.categoryId} IS NULL OR d.category.id = :#{#filter.categoryId})
-              AND (:#{#filter.modePaiementAsEnum()} IS NULL OR d.modePaiement = :#{#filter.modePaiementAsEnum()})
-              AND (:#{#filter.fromDate()} IS NULL OR d.dateDepense >= :#{#filter.fromDate()})
-              AND (:#{#filter.toDate()} IS NULL OR d.dateDepense <= :#{#filter.toDate()})
+            FROM Depense depense
+            WHERE depense.magasin.entreprise.id = :entrepriseId
+              AND depense.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
+              AND (:#{#filter.modePaiementAsEnum()} IS NULL OR depense.modePaiement = :#{#filter.modePaiementAsEnum()})
+              AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
+              AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
             """)
     DepenseTotalResponse computeTotal(@Param("filter") DepenseFilter filter,
                                       @Param("entrepriseId") UUID entrepriseId);

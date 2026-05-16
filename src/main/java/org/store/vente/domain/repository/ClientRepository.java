@@ -13,11 +13,11 @@ import java.util.UUID;
 public interface ClientRepository extends BaseRepository<Client> {
 
     @Query("""
-            SELECT new org.store.vente.application.dto.ClientResponse(c)
-            FROM Client c
-            WHERE c.magasin.id = :magasinId
-              AND (:nom IS NULL OR LOWER(c.nom) LIKE LOWER(CONCAT('%', :nom, '%')))
-              AND (:prenom IS NULL OR LOWER(c.prenom) LIKE LOWER(CONCAT('%', :prenom, '%')))
+            SELECT new org.store.vente.application.dto.ClientResponse(client)
+            FROM Client client
+            WHERE client.magasin.id = :magasinId
+              AND (:nom IS NULL OR LOWER(client.nom) LIKE LOWER(CONCAT('%', :nom, '%')))
+              AND (:prenom IS NULL OR LOWER(client.prenom) LIKE LOWER(CONCAT('%', :prenom, '%')))
             """)
     Page<ClientResponse> findResponsesByMagasinId(@Param("magasinId") UUID magasinId,
                                                   @Param("nom") String nom,
@@ -25,11 +25,11 @@ public interface ClientRepository extends BaseRepository<Client> {
                                                   Pageable pageable);
 
     @Query("""
-            SELECT new org.store.vente.application.dto.ClientResponse(c)
-            FROM Client c
-            WHERE c.magasin.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR LOWER(c.nom) LIKE LOWER(CONCAT('%', :nom, '%')))
-              AND (:prenom IS NULL OR LOWER(c.prenom) LIKE LOWER(CONCAT('%', :prenom, '%')))
+            SELECT new org.store.vente.application.dto.ClientResponse(client)
+            FROM Client client
+            WHERE client.magasin.entreprise.id = :entrepriseId
+              AND (:nom IS NULL OR LOWER(client.nom) LIKE LOWER(CONCAT('%', :nom, '%')))
+              AND (:prenom IS NULL OR LOWER(client.prenom) LIKE LOWER(CONCAT('%', :prenom, '%')))
             """)
     Page<ClientResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId,
                                                      @Param("nom") String nom,

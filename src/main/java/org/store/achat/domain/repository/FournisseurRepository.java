@@ -14,9 +14,9 @@ import java.util.UUID;
 public interface FournisseurRepository extends BaseRepository<Fournisseur> {
 
     @Query("""
-            SELECT new org.store.achat.application.dto.FournisseurResponse(f)
-            FROM Fournisseur f
-            WHERE f.entreprise.id = :entrepriseId
+            SELECT new org.store.achat.application.dto.FournisseurResponse(fournisseur)
+            FROM Fournisseur fournisseur
+            WHERE fournisseur.entreprise.id = :entrepriseId
             """)
     Page<FournisseurResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 

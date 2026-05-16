@@ -14,9 +14,9 @@ public interface PermissionsRepository extends BaseRepository<Permissions> {
     Optional<Permissions> findByCode(String code);
 
     @Query("""
-            SELECT p.code FROM Role r
-            JOIN r.permissions p
-            WHERE r.id = :roleId
+            SELECT permission.code FROM Role role
+            JOIN role.permissions permission
+            WHERE role.id = :roleId
             """)
     List<String> findAllByRoleId(@Param("roleId") UUID roleId);
 }

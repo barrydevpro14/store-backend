@@ -14,9 +14,9 @@ import java.util.UUID;
 public interface QualityRepository extends BaseRepository<Quality> {
 
     @Query("""
-            SELECT new org.store.produit.application.dto.QualityResponse(q)
-            FROM Quality q
-            WHERE q.entreprise.id = :entrepriseId
+            SELECT new org.store.produit.application.dto.QualityResponse(quality)
+            FROM Quality quality
+            WHERE quality.entreprise.id = :entrepriseId
             """)
     Page<QualityResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 

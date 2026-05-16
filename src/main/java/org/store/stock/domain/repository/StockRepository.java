@@ -18,23 +18,23 @@ public interface StockRepository extends BaseRepository<Stock> {
     Optional<Stock> findByMagasinIdAndProduitId(UUID magasinId, UUID produitId);
 
     @Query("""
-            SELECT new org.store.stock.application.dto.StockResponse(s)
-            FROM Stock s
-            WHERE s.magasin.entreprise.id = :entrepriseId
-              AND s.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR s.produit.id = :#{#filter.productId})
+            SELECT new org.store.stock.application.dto.StockResponse(stock)
+            FROM Stock stock
+            WHERE stock.magasin.entreprise.id = :entrepriseId
+              AND stock.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.productId} IS NULL OR stock.produit.id = :#{#filter.productId})
             """)
     Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,
                                               @Param("entrepriseId") UUID entrepriseId,
                                               Pageable pageable);
 
     @Query("""
-            SELECT new org.store.stock.application.dto.StockResponse(s)
-            FROM Stock s
-            WHERE s.magasin.entreprise.id = :entrepriseId
-              AND s.magasin.id = :#{#filter.magasinId}
-              AND s.seuilApprovisionnement > 0
-              AND s.quantiteDisponible <= s.seuilApprovisionnement
+            SELECT new org.store.stock.application.dto.StockResponse(stock)
+            FROM Stock stock
+            WHERE stock.magasin.entreprise.id = :entrepriseId
+              AND stock.magasin.id = :#{#filter.magasinId}
+              AND stock.seuilApprovisionnement > 0
+              AND stock.quantiteDisponible <= stock.seuilApprovisionnement
             """)
     Page<StockResponse> findResponsesBelowThreshold(@Param("filter") StockFilter filter,
                                                     @Param("entrepriseId") UUID entrepriseId,
@@ -43,12 +43,12 @@ public interface StockRepository extends BaseRepository<Stock> {
     @Query("""
             SELECT new org.store.stock.application.dto.StockValuationResponse(
                 :magasinId,
-                SUM(s.quantiteDisponible * COALESCE(s.prixAchatMoyen, 0)),
-                COUNT(s)
+                SUM(stock.quantiteDisponible * COALESCE(stock.prixAchatMoyen, 0)),
+                COUNT(stock)
             )
-            FROM Stock s
-            WHERE s.magasin.entreprise.id = :entrepriseId
-              AND s.magasin.id = :magasinId
+            FROM Stock stock
+            WHERE stock.magasin.entreprise.id = :entrepriseId
+              AND stock.magasin.id = :magasinId
             """)
     StockValuationResponse computeValuation(@Param("entrepriseId") UUID entrepriseId,
                                             @Param("magasinId") UUID magasinId);

@@ -17,39 +17,39 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
     Optional<FactureClient> findByCommandeId(UUID commandeId);
 
     @Query("""
-            SELECT new org.store.vente.application.dto.FactureClientResponse(f)
-            FROM FactureClient f
-            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = f.createdBy
-            WHERE f.commande.magasin.entreprise.id = :entrepriseId
-              AND f.commande.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.clientId} IS NULL OR f.commande.client.id = :#{#filter.clientId})
-              AND (:#{#filter.vendeurId} IS NULL OR a.user.id = :#{#filter.vendeurId})
-              AND (:#{#filter.statutAsEnum()} IS NULL OR f.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.numero} IS NULL OR LOWER(f.numero) LIKE LOWER(CONCAT('%', :#{#filter.numero}, '%')))
-              AND (:#{#filter.montantMin} IS NULL OR f.montantTotal >= :#{#filter.montantMin})
-              AND (:#{#filter.montantMax} IS NULL OR f.montantTotal <= :#{#filter.montantMax})
-              AND (:#{#filter.fromDateTime()} IS NULL OR f.createdAt >= :#{#filter.fromDateTime()})
-              AND (:#{#filter.toDateTime()} IS NULL OR f.createdAt <= :#{#filter.toDateTime()})
+            SELECT new org.store.vente.application.dto.FactureClientResponse(facture)
+            FROM FactureClient facture
+            LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = facture.createdBy
+            WHERE facture.commande.magasin.entreprise.id = :entrepriseId
+              AND facture.commande.magasin.id = :#{#filter.magasinId}
+              AND (:#{#filter.clientId} IS NULL OR facture.commande.client.id = :#{#filter.clientId})
+              AND (:#{#filter.vendeurId} IS NULL OR account.user.id = :#{#filter.vendeurId})
+              AND (:#{#filter.statutAsEnum()} IS NULL OR facture.statut = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.numero} IS NULL OR LOWER(facture.numero) LIKE LOWER(CONCAT('%', :#{#filter.numero}, '%')))
+              AND (:#{#filter.montantMin} IS NULL OR facture.montantTotal >= :#{#filter.montantMin})
+              AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})
+              AND (:#{#filter.fromDateTime()} IS NULL OR facture.createdAt >= :#{#filter.fromDateTime()})
+              AND (:#{#filter.toDateTime()} IS NULL OR facture.createdAt <= :#{#filter.toDateTime()})
             """)
     Page<FactureClientResponse> findResponsesByFilter(@Param("filter") FactureClientFilter filter,
                                                      @Param("entrepriseId") UUID entrepriseId,
                                                      Pageable pageable);
 
     @Query("""
-            SELECT new org.store.vente.application.dto.FactureClientResponse(f)
-            FROM FactureClient f
-            WHERE f.id = :id
-              AND f.commande.magasin.entreprise.id = :entrepriseId
+            SELECT new org.store.vente.application.dto.FactureClientResponse(facture)
+            FROM FactureClient facture
+            WHERE facture.id = :id
+              AND facture.commande.magasin.entreprise.id = :entrepriseId
             """)
     Optional<FactureClientResponse> findResponseById(@Param("id") UUID id,
                                                     @Param("entrepriseId") UUID entrepriseId);
 
     @Query("""
-            SELECT COALESCE(SUM(f.montantTotal), 0) FROM FactureClient f
-            WHERE f.commande.magasin.entreprise.id = :entrepriseId
-              AND f.commande.magasin.id = :magasinId
-              AND f.commande.createdAt >= :startOfDay
-              AND f.commande.createdAt <= :endOfDay
+            SELECT COALESCE(SUM(facture.montantTotal), 0) FROM FactureClient facture
+            WHERE facture.commande.magasin.entreprise.id = :entrepriseId
+              AND facture.commande.magasin.id = :magasinId
+              AND facture.commande.createdAt >= :startOfDay
+              AND facture.commande.createdAt <= :endOfDay
             """)
     java.math.BigDecimal sumMontantTotalByMagasinAndDay(@Param("magasinId") UUID magasinId,
                                                        @Param("entrepriseId") UUID entrepriseId,

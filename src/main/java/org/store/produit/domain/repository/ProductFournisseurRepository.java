@@ -13,16 +13,16 @@ import java.util.UUID;
 public interface ProductFournisseurRepository extends BaseRepository<ProductFournisseur> {
 
     @Query("""
-            SELECT new org.store.produit.application.dto.ProductFournisseurResponse(pf)
-            FROM ProductFournisseur pf
-            WHERE pf.product.entreprise.id = :entrepriseId
+            SELECT new org.store.produit.application.dto.ProductFournisseurResponse(productFournisseur)
+            FROM ProductFournisseur productFournisseur
+            WHERE productFournisseur.product.entreprise.id = :entrepriseId
             """)
     Page<ProductFournisseurResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 
     @Query("""
-            SELECT new org.store.produit.application.dto.ProductFournisseurResponse(pf)
-            FROM ProductFournisseur pf
-            WHERE pf.product.id = :productId
+            SELECT new org.store.produit.application.dto.ProductFournisseurResponse(productFournisseur)
+            FROM ProductFournisseur productFournisseur
+            WHERE productFournisseur.product.id = :productId
             """)
     Page<ProductFournisseurResponse> findResponsesByProductId(@Param("productId") UUID productId, Pageable pageable);
 

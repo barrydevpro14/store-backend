@@ -32,5 +32,8 @@ public class CommandeVente extends AuditableEntity {
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
     private List<LigneCommandeVente> lignes;
 
+    @OneToOne(mappedBy = "commande", fetch = FetchType.LAZY)
+    private FactureClient facture;
+
     private LocalDate date;
 }

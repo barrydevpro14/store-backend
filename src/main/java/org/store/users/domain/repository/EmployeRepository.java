@@ -10,9 +10,9 @@ import java.util.UUID;
 public interface EmployeRepository extends BaseRepository<Employe> {
 
     @Query("""
-            SELECT COUNT(e) > 0 FROM Employe e
-            JOIN e.account a JOIN a.role r JOIN r.permissions p
-            WHERE e.magasin.id = :magasinId AND p.code = :permissionCode
+            SELECT COUNT(employe) > 0 FROM Employe employe
+            JOIN employe.account account JOIN account.role role JOIN role.permissions permission
+            WHERE employe.magasin.id = :magasinId AND permission.code = :permissionCode
             """)
     boolean existsByMagasinIdAndRolePermissionCode(@Param("magasinId") UUID magasinId,
                                                    @Param("permissionCode") String permissionCode);

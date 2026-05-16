@@ -13,10 +13,10 @@ import java.util.UUID;
 public interface PaiementAchatRepository extends BaseRepository<PaiementAchat> {
 
     @Query("""
-            SELECT new org.store.achat.application.dto.PaiementAchatResponse(p)
-            FROM PaiementAchat p
-            WHERE p.facture.id = :factureId
-            ORDER BY p.datePaiement DESC
+            SELECT new org.store.achat.application.dto.PaiementAchatResponse(paiement)
+            FROM PaiementAchat paiement
+            WHERE paiement.facture.id = :factureId
+            ORDER BY paiement.datePaiement DESC
             """)
     Page<PaiementAchatResponse> findResponsesByFactureId(@Param("factureId") UUID factureId, Pageable pageable);
 }

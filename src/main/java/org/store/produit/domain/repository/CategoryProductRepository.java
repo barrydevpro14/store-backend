@@ -14,9 +14,9 @@ import java.util.UUID;
 public interface CategoryProductRepository extends BaseRepository<CategoryProduct> {
 
     @Query("""
-            SELECT new org.store.produit.application.dto.CategoryProductResponse(c)
-            FROM CategoryProduct c
-            WHERE c.entreprise.id = :entrepriseId
+            SELECT new org.store.produit.application.dto.CategoryProductResponse(category)
+            FROM CategoryProduct category
+            WHERE category.entreprise.id = :entrepriseId
             """)
     Page<CategoryProductResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 

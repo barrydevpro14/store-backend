@@ -13,9 +13,9 @@ import java.util.UUID;
 public interface MagasinRepository extends BaseRepository<Magasin> {
 
     @Query("""
-            SELECT new org.store.magasin.application.dto.MagasinResponse(m)
-            FROM Magasin m
-            WHERE m.entreprise.id = :entrepriseId
+            SELECT new org.store.magasin.application.dto.MagasinResponse(magasin)
+            FROM Magasin magasin
+            WHERE magasin.entreprise.id = :entrepriseId
             """)
     Page<MagasinResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 }
