@@ -683,6 +683,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - **V13** `remove_vendeur_from_commande_vente.sql` : drop `commande_vente.vendeur_id` (redondant avec `createdBy` de `AuditableEntity` qui porte déjà l'`accountId` du créateur). Le vendeur est résolu en lecture via `IAccountService.findUserSummaryByAccountId(createdBy)`.
 - **V14** `enforce_pf_not_null_on_ligne_vente.sql` : durcit `ligne_commande_vente.product_fournisseur_id` en `NOT NULL` (le flux applicatif set toujours la valeur, contrainte BDD pour les insertions hors flux).
 - **V15** `rename_date_echeache_to_date_echeance_on_facture_client.sql` : correction typo historique `facture_client.date_echeache → date_echeance` + backfill garde-fou (échéance null → date facture) + `SET NOT NULL`. Le champ entité passe de `dateEcheache` à `dateEcheance` (rejoint l'orthographe des autres tables `echeance`/`facture_achat`/`depense`).
+- **V16** `drop_redundant_montants_on_commande_vente.sql` : supprime `commande_vente.montant_total` et `commande_vente.montant_paye`. Les montants vivent désormais uniquement sur `FactureClient` (relation 1:1 commande↔facture garantie depuis F-V3). Évite la désynchronisation. Le `CommandeVenteResponse` reçoit `montantTotal/montantPaye` en arguments explicites (depuis la facture associée), récupérés via `LEFT JOIN FactureClient` dans les queries de listing et détail.
 
 **Entrée** : `VenteRequest` (4 champs)
 ```json
@@ -822,6 +823,61 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 **Permissions** : `SALE_READ` (déjà en YAML — ADMIN, PROPRIETAIRE, MANAGER, VENDEUR). Pas de nouvelle permission.
 
 **Tests** : 3 service `CaisseServiceImplTest` (happy path d'agrégation des 4 valeurs, magasin not accessible forbidden propagé depuis IMagasinService, valeurs à zéro quand pas d'activité du jour — `COALESCE(SUM, 0)` côté JPQL évite les retours null) + 1 controller `CaisseControllerTest` (GET 200 sur `/resume?magasinId=&date=` avec assertions sur les 4 champs). **470 / 470 verts** (+4 vs 466).
+
+### 34.bis Top N produits les plus vendus
+
+**Endpoint** : `GET /api/v1/ventes/caisse/top-produits?magasinId=&date?&nombre?` (permission `SALE_READ`).
+- `magasinId` obligatoire, `date` optionnel (défaut today via `TopProduitsFilter.effectiveDate()`), `nombre` optionnel (défaut 3, `@Min(1)`).
+
+**Cas d'usage** : afficher en clôture caisse "les 3 produits qui ont le plus tourné aujourd'hui". Tri par **quantité totale vendue** (décision utilisateur, pas par CA).
+
+**Réponse** : `List<TopProduitResponse(productId, nom, reference, quantiteVendue, chiffreAffaires)>`.
+
+**Filter** : `TopProduitsFilter(magasinId, date?, nombre)` avec accesseurs `effectiveDate()` (today si null/blank), `startOfDay()` / `endOfDay()`, `toPageable()` = `PageRequest.of(0, nombre)`.
+
+**Query JPQL** (sur `LigneCommandeVenteRepository`) :
+```sql
+SELECT new TopProduitResponse(p.id, p.nom, p.reference, SUM(l.quantite), COALESCE(SUM(l.montantTotal), 0))
+FROM LigneCommandeVente l
+JOIN l.product p
+JOIN l.commande c
+WHERE c.magasin.entreprise.id = :entrepriseId
+  AND c.magasin.id = :magasinId
+  AND c.createdAt BETWEEN :startOfDay AND :endOfDay
+GROUP BY p.id, p.nom, p.reference
+ORDER BY SUM(l.quantite) DESC
+```
+Limit via `Pageable` (= `PageRequest.of(0, nombre)`). Le repo retourne `List<TopProduitResponse>`.
+
+**Tests** : +2 service (`findTopProduits_should_delegate_and_return_list`, `findTopProduits_should_use_today_when_date_null`) + 2 controller (200 avec défaut `nombre=3`, 200 avec `nombre` custom + sans `date`). **474 / 474 verts**.
+
+---
+
+## 35. Paiement échelonné (vente, fonctionnalité 5) — `PaiementVenteServiceImpl`
+
+**Endpoint** : `POST /api/v1/factures-client/{id}/paiements` (permission `SALE_PAY`). Body : `PaiementVenteRequest`. Status 201.
+
+**Cas d'usage métier** : crédit client. Une vente partiellement payée (statut `PARTIELLEMENT_PAYEE`) peut recevoir des paiements supplémentaires jusqu'à atteindre `PAYEE`. Symétrie directe avec `POST /api/v1/factures-achat/{id}/paiements` (côté achat).
+
+**Logique** :
+1. `validatorService.validate(request)`.
+2. Charge `FactureClient` via `findById` + `ensureBelongsToCurrentEntreprise(facture, currentUser.entrepriseId)` (compare `facture.commande.magasin.entreprise.id`).
+3. `ensureNotAlreadyPaid(facture)` : rejette si statut = `PAYEE` (`factureClient.alreadyPaid`).
+4. `ensureAmountDoesNotExceedRemaining(facture, montant)` : `montant + montantPaye ≤ montantTotal` (`paiementVente.exceedsRemainingAmount`).
+5. Résout `datePaiement = request.datePaiement() ?? LocalDate.now()`.
+6. Crée le paiement via `PaiementVenteDomainService.create(PaiementVenteCreate)`.
+7. Met à jour la facture via `FactureClientDomainService.applyPaiement(facture, montant)` (recalcule statut auto : `PARTIELLEMENT_PAYEE → PAYEE` quand le total est atteint).
+8. Retourne `PaiementVenteResponse`.
+
+**Plus de propagation sur `commande.montantPaye`** : depuis V16 (refactor de suppression de redondance, voir section 32), les montants vivent uniquement sur `FactureClient`. Le code F-V5 est ainsi simplifié — 1 seule étape de mise à jour (sur facture).
+
+**Validations publiques** (règle 27) dans `PaiementVenteServiceImpl` : `ensureBelongsToCurrentEntreprise`, `ensureNotAlreadyPaid`, `ensureAmountDoesNotExceedRemaining`. Utilisables individuellement, testables isolément.
+
+**i18n** : 2 nouvelles clés FR/EN — `factureClient.alreadyPaid`, `paiementVente.exceedsRemainingAmount`.
+
+**Permissions** : `SALE_PAY` (déjà en YAML — ADMIN, PROPRIETAIRE, MANAGER, VENDEUR). Permission distincte de `SALE_READ` (un compte avec lecture seule ne peut pas créer de paiement).
+
+**Tests** : 5 service `PaiementVenteServiceImplTest` (create happy + datePaiement custom + forbidden si autre entreprise + alreadyPaid bloque + exceedsRemaining bloque) + 2 controller `FactureClientControllerTest` (POST 201 happy, POST 400 si montant manquant). **481 / 481 verts** (+7 vs 474).
 
 ---
 

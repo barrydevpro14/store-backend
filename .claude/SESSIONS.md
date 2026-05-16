@@ -7,7 +7,69 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-16 (fin de soirée — API résumé caisse journalier)
+**Date :** 2026-05-16 (soirée tardive — Top produits + refactor V16 + F-V5)
+**Sujet :** Suite d'évolutions sur le module Vente : (1) endpoint top N produits les plus vendus, (2) **refactor structurel V16 supprimant la redondance `montantTotal`/`montantPaye` sur `CommandeVente`**, (3) **F-V5 paiement échelonné** (`POST /api/v1/factures-client/{id}/paiements`). **481 / 481 tests verts** (+11 vs 470).
+
+**Ce qui a été fait :**
+
+1. **API Top N produits** (`commit 9a84937`) :
+   - `GET /api/v1/ventes/caisse/top-produits?magasinId=&date?&nombre?` (permission `SALE_READ`).
+   - `nombre` défaut 3 (`@RequestParam(defaultValue="3")`), `date` défaut today (résolu côté `TopProduitsFilter.effectiveDate()`).
+   - Tri par **quantité totale vendue** (décision utilisateur, pas par CA).
+   - 1 query JPQL agrégée avec `GROUP BY p.id, p.nom, p.reference` + `ORDER BY SUM(l.quantite) DESC` + limit via `Pageable`.
+   - Réponse `List<TopProduitResponse(productId, nom, reference, quantiteVendue, chiffreAffaires)>`.
+   - Discussion sur `magasinId` : initialement proposé en `@RequestParam`, l'utilisateur a brièvement demandé "le magasinId vient du user connecté" puis "garde le comme parametre" → `@RequestParam` final.
+   - +2 tests service + 2 controller (avec et sans date saisie).
+
+2. **Refactor V16 — supprimer la redondance montants sur CommandeVente** (`commit 2faae7a`) :
+   - **Constat** soulevé par l'utilisateur en pleine planification F-V5 : `CommandeVente.montantTotal` + `montantPaye` dupliquent `FactureClient.montantTotal` + `montantPaye`. F-V3 synchronisait manuellement via `applyMontantTotal` + `applyMontantPaye`. Risque de désynchronisation à chaque oubli.
+   - **Décision** : supprimer la redondance avant F-V5 (option A : refactor d'abord, F-V5 ensuite — recommandation acceptée).
+   - **Migration V16** : `DROP COLUMN montant_total + DROP COLUMN montant_paye` sur `commande_vente`.
+   - Entité `CommandeVente` : retrait des 2 champs.
+   - `CommandeVenteResponse` : 4 constructeurs explicites (montants en args) au lieu de récupérer via getter sur entité.
+   - Queries JPQL repository : `LEFT JOIN FactureClient f ON f.commande = c` pour projeter `f.montantTotal/f.montantPaye`. Le filtre `montantMin/Max` passe de `c.montantTotal` à `f.montantTotal`.
+   - `FactureClientRepository.sumMontantTotalByMagasinAndDay` ajoutée (remplacement de celle qui était sur `CommandeVenteRepository`).
+   - `CommandeVenteDomainService` : retrait de `applyMontantTotal`, `applyMontantPaye`, `sumMontantCommandesForCaisse`. Le `setMontantPaye(0)` initial dans `create()` disparaît.
+   - `FactureClientDomainService` : nouvelle façade `sumMontantCommandesForCaisse`.
+   - `CaisseServiceImpl` : injecte maintenant `FactureClientDomainService` et délègue `totalCommandes` via la facture.
+   - `VenteServiceImpl` : retire les appels `applyMontantTotal/applyMontantPaye`. La signature `applyPremierPaiementIfPresent` se simplifie (paramètre `commande` retiré). Le `CommandeVenteResponse` reçoit la facture en argument pour résoudre les montants.
+   - 10 fichiers modifiés. Aucun test cassé au final (les tests applicatifs mockaient les domain services, transparent).
+
+3. **F-V5 — Paiement échelonné** (`commit ab475c1`) :
+   - `POST /api/v1/factures-client/{id}/paiements` (permission `SALE_PAY` déjà en YAML).
+   - Body : `PaiementVenteRequest` (existant depuis F-V3, créé en D19 lors de la revue F-V3 PM).
+   - Validations publiques (règle 27) : `ensureBelongsToCurrentEntreprise`, `ensureNotAlreadyPaid`, `ensureAmountDoesNotExceedRemaining`.
+   - Bénéficie directement du refactor V16 : 1 seule étape de mise à jour côté facture (`applyPaiement` recalcule le statut auto), plus de propagation sur commande.
+   - i18n : `factureClient.alreadyPaid`, `paiementVente.exceedsRemainingAmount`.
+   - 5 tests service + 2 controller.
+
+**Décisions / arbitrages :**
+
+- **Refactor avant F-V5** (option A) — l'utilisateur a explicitement choisi de payer la dette d'abord. Bénéfice immédiat : F-V5 est plus simple, et le risque de désynchronisation montants-commande/facture disparaît définitivement.
+- **Top produits triés par quantité, pas par CA** — décision utilisateur. Un produit cher peut faire du CA avec 1 vente ; la quantité reflète "le plus tourné" en volume, signal métier plus actionnable.
+- **`magasinId` reste un `@RequestParam` sur top-produits** — aller-retour utilisateur : "il vient du user connecté" puis "garde comme parametre". On reste cohérent avec `GET /caisse/resume` qui prend déjà `magasinId` en param.
+- **`CommandeVenteResponse` garde `montantTotal/montantPaye`** dans son contrat (utile au listing) — récupérés via JOIN dans la query JPQL ou via argument explicite côté service applicatif. Pas de cassure du contrat API externe malgré la suppression côté entité.
+
+**Où on s'est arrêté :**
+
+- **481 / 481 tests verts**. Compile vert.
+- **0 commit en attente** (push effectué après chaque commit, `dev` alignée avec `origin/dev`).
+- **3 commits livrés cette session** : `9a84937` (top-produits), `2faae7a` (refactor V16), `ab475c1` (F-V5).
+- **Migration V16** à appliquer sur la BD locale (Flyway le fait au démarrage).
+
+**Prochaine étape recommandée :**
+
+1. **Étendre `FactureClientFilter`** (cohérence avec `CommandeVenteFilter` enrichi en F-V4-bis) — `vendeurId`, `montantMin/Max`, `numero` LIKE.
+2. **Ventilation résumé caisse** par moyen de paiement (CASH/MOBILE_MONEY/...) et par vendeur.
+3. **Caisse multi-jours** (`GET /caisse/resume-periode?from=&to=`) pour bilans hebdo/mensuel.
+4. **Module dashboard / reporting** (chantier plus large).
+5. **Inventaire physique** (fonct. 12 stock reportée).
+6. **Frontend** (TODO TanStack Query / pages auth / layout dashboard).
+
+---
+
+### Session du 2026-05-16 (fin de soirée — API résumé caisse journalier)
+
 **Sujet :** **Nouveau endpoint `GET /api/v1/ventes/caisse/resume?magasinId=&date=`** — clôture caisse journalière. Retourne `(nombreCommandes, nombreProduits, totalCommandes, totalPaiements)` agrégés sur une date donnée pour un magasin. 4 queries JPQL scalaires + 1 service applicatif + 1 controller. **470 / 470 tests verts** (+4 vs 466). 1 commit code + 1 commit doc.
 
 **Ce qui a été fait :**
