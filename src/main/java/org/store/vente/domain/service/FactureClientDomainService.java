@@ -1,10 +1,13 @@
 package org.store.vente.domain.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
 import org.store.vente.application.dto.FactureClientCreate;
+import org.store.vente.application.dto.FactureClientFilter;
+import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.repository.FactureClientRepository;
 
@@ -38,6 +41,16 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
 
     public Optional<FactureClient> findByCommandeId(UUID commandeId) {
         return repository.findByCommandeId(commandeId);
+    }
+
+    /** Listing paginé filtré scopé entreprise (projection JPQL). */
+    public Page<FactureClientResponse> findResponsesByFilter(FactureClientFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+    }
+
+    /** Projection JPQL d'une facture par id, scopée entreprise (Optional empty si introuvable ou autre entreprise). */
+    public Optional<FactureClientResponse> findResponseById(UUID id, UUID entrepriseId) {
+        return repository.findResponseById(id, entrepriseId);
     }
 
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */
