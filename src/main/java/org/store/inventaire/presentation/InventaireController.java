@@ -1,0 +1,100 @@
+package org.store.inventaire.presentation;
+
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.store.inventaire.application.dto.BilanInventaireRequest;
+import org.store.inventaire.application.dto.InventaireFilter;
+import org.store.inventaire.application.dto.InventaireResponse;
+import org.store.inventaire.application.dto.LigneInventaireRequest;
+import org.store.inventaire.application.dto.LigneInventaireResponse;
+import org.store.inventaire.application.dto.RapportInventaireResponse;
+import org.store.inventaire.application.service.IInventaireService;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping(InventaireController.BASE_PATH)
+public class InventaireController {
+
+    public static final String BASE_PATH = "/api/v1/inventaires";
+
+    private final IInventaireService inventaireService;
+
+    public InventaireController(IInventaireService inventaireService) {
+        this.inventaireService = inventaireService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<InventaireResponse> create(@RequestParam UUID magasinId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(inventaireService.create(magasinId));
+    }
+
+    @PostMapping("/{id}/lignes")
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<LigneInventaireResponse> addLigne(@PathVariable UUID id,
+                                                            @Valid @RequestBody LigneInventaireRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(inventaireService.addLigne(id, request));
+    }
+
+    @GetMapping("/{id}/lignes")
+    @PreAuthorize("hasAuthority('STOCK_READ')")
+    public ResponseEntity<Page<LigneInventaireResponse>> listLignes(@PathVariable UUID id, Pageable pageable) {
+        return ResponseEntity.ok(inventaireService.findLignes(id, pageable));
+    }
+
+    @PostMapping("/{id}/bilan")
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<InventaireResponse> passerEnBilan(@PathVariable UUID id,
+                                                            @Valid @RequestBody BilanInventaireRequest request) {
+        return ResponseEntity.ok(inventaireService.passerEnBilan(id, request));
+    }
+
+    @PostMapping("/{id}/cloturer")
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<InventaireResponse> cloturer(@PathVariable UUID id) {
+        return ResponseEntity.ok(inventaireService.cloturer(id));
+    }
+
+    @GetMapping("/{id}/rapport")
+    @PreAuthorize("hasAuthority('STOCK_READ')")
+    public ResponseEntity<RapportInventaireResponse> getRapport(@PathVariable UUID id) {
+        return ResponseEntity.ok(inventaireService.findRapportByInventaireId(id));
+    }
+
+    @PostMapping("/{id}/annuler")
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<InventaireResponse> annuler(@PathVariable UUID id) {
+        return ResponseEntity.ok(inventaireService.annuler(id));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('STOCK_READ')")
+    public ResponseEntity<Page<InventaireResponse>> list(@RequestParam UUID magasinId,
+                                                         @RequestParam(required = false) String statut,
+                                                         @RequestParam(required = false) String startDate,
+                                                         @RequestParam(required = false) String endDate,
+                                                         @RequestParam(defaultValue = "0") int page,
+                                                         @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(inventaireService.findAllByCurrentEntreprise(
+                new InventaireFilter(magasinId, statut, startDate, endDate, page, size)
+        ));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('STOCK_READ')")
+    public ResponseEntity<InventaireResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(inventaireService.findResponseById(id));
+    }
+}

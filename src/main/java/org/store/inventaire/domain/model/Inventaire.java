@@ -8,6 +8,7 @@ import org.store.inventaire.domain.enums.InventaireStatut;
 import org.store.magasin.domain.model.Magasin;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -17,14 +18,23 @@ import java.util.List;
 public class Inventaire extends AuditableEntity {
     public static final String TABLE_NAME = "inventaire";
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "magasin_id", nullable = false)
     private Magasin magasin;
 
-    private LocalDate dateInventaire;
-
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private InventaireStatut statut;
 
-    @OneToMany(mappedBy = "inventaire")
+    @Column(nullable = false)
+    private LocalDate date;
+
+    @Column(name = "date_validation")
+    private LocalDateTime dateValidation;
+
+    @OneToMany(mappedBy = "inventaire", cascade = CascadeType.ALL)
     private List<LigneInventaire> lignes;
+
+    @OneToOne(mappedBy = "inventaire", fetch = FetchType.LAZY)
+    private RapportInventaire rapport;
 }

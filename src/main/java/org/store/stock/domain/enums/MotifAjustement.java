@@ -6,5 +6,6 @@ public enum MotifAjustement {
     CASSE,
     VOL,
     ERREUR_INVENTAIRE,
+    INVENTAIRE_PHYSIQUE,
     AUTRE
 }
