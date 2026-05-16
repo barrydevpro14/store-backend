@@ -25,4 +25,7 @@ public interface IAccountService {
 
     /** Change le mot de passe : vérifie l'ancien avec PasswordEncoder.matches puis hash et persiste le nouveau. Throw `BadArgumentException("account.currentPassword.invalid")` si l'ancien ne correspond pas. */
     Account changePassword(Account account, String currentPassword, String newPassword);
+
+    /** Reset administratif : hash et persiste le nouveau mot de passe sans vérification de l'ancien. Reservé aux callers ayant l'autorité (admin/proprietaire/manager). */
+    Account resetPassword(Account account, String newPassword);
 }

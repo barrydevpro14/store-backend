@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
@@ -80,6 +81,14 @@ public class EmployeController {
     @PreAuthorize("hasAuthority('EMPLOYE_DELETE')")
     public ResponseEntity<Void> activate(@PathVariable UUID id) {
         employeService.activate(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasAuthority('EMPLOYE_RESET_PASSWORD')")
+    public ResponseEntity<Void> resetPassword(@PathVariable UUID id,
+                                              @Valid @RequestBody ResetPasswordRequest request) {
+        employeService.resetPassword(id, request);
         return ResponseEntity.noContent().build();
     }
 }

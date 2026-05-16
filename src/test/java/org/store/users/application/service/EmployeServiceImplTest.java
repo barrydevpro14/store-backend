@@ -17,6 +17,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.AccountRequest;
+import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.IAccountService;
 import org.store.security.application.service.ICurrentUserService;
@@ -333,6 +334,44 @@ class EmployeServiceImplTest {
         service.activate(employeId);
 
         verify(accountService).setEnabled(account, true);
+    }
+
+    @Test
+    void resetPassword_should_delegate_to_account_service() {
+        UUID employeId = UUID.randomUUID();
+        Employe employe = new Employe();
+        employe.setId(employeId);
+        employe.setMagasin(magasin);
+        Account account = new Account();
+        employe.setAccount(account);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));
+
+        service.resetPassword(employeId, new ResetPasswordRequest("brandnewP@ss"));
+
+        verify(accountService).resetPassword(account, "brandnewP@ss");
+    }
+
+    @Test
+    void resetPassword_should_throw_when_manager_targets_other_magasin() {
+        UUID employeId = UUID.randomUUID();
+        Magasin otherMagasin = new Magasin();
+        otherMagasin.setId(UUID.randomUUID());
+        otherMagasin.setEntreprise(magasin.getEntreprise());
+        Employe other = new Employe();
+        other.setId(employeId);
+        other.setMagasin(otherMagasin);
+        Account account = new Account();
+        other.setAccount(account);
+
+        when(currentUserService.getCurrent()).thenReturn(manager());
+        when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> service.resetPassword(employeId, new ResetPasswordRequest("brandnewP@ss")))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(accountService, never()).resetPassword(any(), any());
     }
 
     @Test

@@ -13,6 +13,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.security.application.dto.AccountRequest;
+import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
@@ -175,6 +176,30 @@ class EmployeControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(employeService).deactivate(id);
+    }
+
+    @Test
+    void should_return_204_when_reset_password() throws Exception {
+        UUID id = UUID.randomUUID();
+        ResetPasswordRequest body = new ResetPasswordRequest("brandnewP@ss");
+
+        mockMvc.perform(post(EmployeController.BASE_PATH + "/" + id + "/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNoContent());
+
+        verify(employeService).resetPassword(eq(id), any(ResetPasswordRequest.class));
+    }
+
+    @Test
+    void should_return_400_when_reset_password_too_short() throws Exception {
+        UUID id = UUID.randomUUID();
+        ResetPasswordRequest body = new ResetPasswordRequest("short");
+
+        mockMvc.perform(post(EmployeController.BASE_PATH + "/" + id + "/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

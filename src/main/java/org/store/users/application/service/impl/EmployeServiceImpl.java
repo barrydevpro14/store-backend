@@ -8,6 +8,7 @@ import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
+import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
 import org.store.security.application.service.IAccountService;
@@ -160,6 +161,16 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
         accountService.setEnabled(employe.getAccount(), true);
+    }
+
+    /** Force le mot de passe d'un employe (reset admin, sans verification de l'ancien). */
+    @Override
+    @Transactional
+    public void resetPassword(UUID id, ResetPasswordRequest request) {
+        validatorService.validate(request);
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        Employe employe = findAccessibleEmploye(id, currentUser);
+        accountService.resetPassword(employe.getAccount(), request.newPassword());
     }
 
     /** Retourne l'employe si scope entreprise OK + magasin accessible (MANAGER force sur son magasin). */

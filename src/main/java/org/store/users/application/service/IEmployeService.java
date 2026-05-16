@@ -1,6 +1,7 @@
 package org.store.users.application.service;
 
 import org.springframework.data.domain.Page;
+import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
@@ -25,4 +26,7 @@ public interface IEmployeService {
     void deactivate(UUID id);
 
     void activate(UUID id);
+
+    /** Reset administratif du mot de passe d'un employe (sans verification de l'ancien). */
+    void resetPassword(UUID id, ResetPasswordRequest request);
 }

@@ -74,4 +74,10 @@ public class AccountServiceImpl implements IAccountService {
         }
         return accountDomainService.changePassword(account, passwordEncoder.encode(newPassword));
     }
+
+    /** Force le nouveau mot de passe sans verification (reset admin). Le caller est responsable de l'autorisation. */
+    @Override
+    public Account resetPassword(Account account, String newPassword) {
+        return accountDomainService.changePassword(account, passwordEncoder.encode(newPassword));
+    }
 }
