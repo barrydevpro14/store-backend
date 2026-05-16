@@ -798,6 +798,33 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
+## 34. Résumé caisse journalier — `CaisseServiceImpl`
+
+**Endpoint** : `GET /api/v1/ventes/caisse/resume?magasinId=&date=YYYY-MM-DD` (permission `SALE_READ`).
+
+**Cas d'usage métier** : le vendeur ou le manager clôture sa journée de caisse — combien de commandes enregistrées, combien d'articles vendus (somme des quantités, pas nombre de lignes), total monétaire des commandes, et total des paiements réellement encaissés ce jour-là (sémantique "tiroir-caisse" : argent qui est entré dans la caisse aujourd'hui, peu importe la date de la vente d'origine).
+
+**Entrée** : `CaisseResumeFilter(magasinId @NotNull UUID, date @NotBlank @DatePattern String)` + accesseurs `startOfDay()` / `endOfDay()` (`LocalDateTime`, via `DateHelper.parseStartOfDay/parseEndOfDay`) + `dateAsLocalDate()`.
+
+**Sortie** : `CaisseResumeResponse(magasinId, date, nombreCommandes, nombreProduits, totalCommandes, totalPaiements)`.
+
+**4 queries JPQL agrégées scalaires** (filtre `createdAt BETWEEN startOfDay AND endOfDay`, cohérent avec F-V4-bis) :
+
+1. `SELECT COUNT(c) FROM CommandeVente c WHERE c.magasin.entreprise.id = :entrepriseId AND c.magasin.id = :magasinId AND c.createdAt BETWEEN ...` → `nombreCommandes`
+2. `SELECT COALESCE(SUM(c.montantTotal), 0) FROM CommandeVente c WHERE ...` (même WHERE) → `totalCommandes`
+3. `SELECT COALESCE(SUM(l.quantite), 0) FROM LigneCommandeVente l WHERE l.commande.magasin.entreprise.id = :entrepriseId AND l.commande.magasin.id = :magasinId AND l.commande.createdAt BETWEEN ...` → `nombreProduits` (= somme des quantités, pas le nombre de lignes)
+4. `SELECT COALESCE(SUM(p.montant), 0) FROM PaiementVente p WHERE p.facture.commande.magasin.entreprise.id = :entrepriseId AND p.facture.commande.magasin.id = :magasinId AND p.createdAt BETWEEN ...` → `totalPaiements` (tous paiements créés ce jour-là, même les paiements échelonnés sur des ventes antérieures comptent dans le tiroir-caisse du jour)
+
+**Multi-tenant** : scoping `entreprise.id` dans chacune des 4 queries + vérification préalable de l'accès magasin du caller via `IMagasinService.ensureAccessibleByCurrentUser` (un vendeur ne peut consulter que le résumé d'un magasin auquel il est rattaché).
+
+**Service applicatif** (`CaisseServiceImpl`) : agrège les 4 valeurs scalaires en une seule réponse. Pas de query "tout-en-un" volontairement — chaque agrégation est isolée (lisible, testable, réutilisable individuellement par d'autres services si besoin futur de dashboard).
+
+**Permissions** : `SALE_READ` (déjà en YAML — ADMIN, PROPRIETAIRE, MANAGER, VENDEUR). Pas de nouvelle permission.
+
+**Tests** : 3 service `CaisseServiceImplTest` (happy path d'agrégation des 4 valeurs, magasin not accessible forbidden propagé depuis IMagasinService, valeurs à zéro quand pas d'activité du jour — `COALESCE(SUM, 0)` côté JPQL évite les retours null) + 1 controller `CaisseControllerTest` (GET 200 sur `/resume?magasinId=&date=` avec assertions sur les 4 champs). **470 / 470 verts** (+4 vs 466).
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).
