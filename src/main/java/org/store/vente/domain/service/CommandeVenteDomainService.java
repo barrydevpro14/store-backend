@@ -11,7 +11,6 @@ import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.repository.CommandeVenteRepository;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,7 +20,7 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         super(repository);
     }
 
-    /** Crée et persiste une commande de vente à partir d'un record groupé (montantPaye initial = 0). Le vendeur est tracé via AuditableEntity.createdBy. */
+    /** Crée et persiste une commande de vente. Les montants vivent uniquement sur FactureClient (depuis F-V3-bis). */
     public CommandeVente create(CommandeVenteCreate commandeVenteCreate) {
         CommandeVente commande = new CommandeVente();
         commande.setClient(commandeVenteCreate.client());
@@ -29,20 +28,6 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         commande.setDate(commandeVenteCreate.dateVente());
         commande.setReference(commandeVenteCreate.reference());
         commande.setStatut(commandeVenteCreate.statut());
-        commande.setMontantPaye(BigDecimal.ZERO);
-        return save(commande);
-    }
-
-    /** Met à jour le montant total cumulé de la commande après calcul des lignes. */
-    public CommandeVente applyMontantTotal(CommandeVente commande, BigDecimal montantTotal) {
-        commande.setMontantTotal(montantTotal);
-        return save(commande);
-    }
-
-    /** Incrémente le montant payé cumulé de la commande (depuis montantPaye actuel, jamais ecrasement direct). */
-    public CommandeVente applyMontantPaye(CommandeVente commande, BigDecimal montant) {
-        BigDecimal montantPayeActuel = commande.getMontantPaye() != null ? commande.getMontantPaye() : BigDecimal.ZERO;
-        commande.setMontantPaye(montantPayeActuel.add(montant));
         return save(commande);
     }
 
@@ -64,11 +49,6 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
     /** Nombre de commandes créées dans le magasin entre les bornes [startOfDay, endOfDay] du filter. */
     public long countCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
         return repository.countByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
-    }
-
-    /** Somme des montants totaux des commandes créées dans le magasin sur la journée du filter. */
-    public BigDecimal sumMontantCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.sumMontantTotalByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
     }
 
     /** Somme des quantités vendues (toutes lignes) dans le magasin sur la journée du filter. */

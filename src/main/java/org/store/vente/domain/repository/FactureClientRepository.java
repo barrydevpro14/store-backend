@@ -38,4 +38,16 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
             """)
     Optional<FactureClientResponse> findResponseById(@Param("id") UUID id,
                                                     @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("""
+            SELECT COALESCE(SUM(f.montantTotal), 0) FROM FactureClient f
+            WHERE f.commande.magasin.entreprise.id = :entrepriseId
+              AND f.commande.magasin.id = :magasinId
+              AND f.commande.createdAt >= :startOfDay
+              AND f.commande.createdAt <= :endOfDay
+            """)
+    java.math.BigDecimal sumMontantTotalByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                                                       @Param("entrepriseId") UUID entrepriseId,
+                                                       @Param("startOfDay") java.time.LocalDateTime startOfDay,
+                                                       @Param("endOfDay") java.time.LocalDateTime endOfDay);
 }

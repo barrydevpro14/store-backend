@@ -19,6 +19,7 @@ import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
 import org.store.vente.application.service.impl.CaisseServiceImpl;
 import org.store.vente.domain.service.CommandeVenteDomainService;
+import org.store.vente.domain.service.FactureClientDomainService;
 import org.store.vente.domain.service.LigneCommandeVenteDomainService;
 import org.store.vente.domain.service.PaiementVenteDomainService;
 
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.when;
 class CaisseServiceImplTest {
 
     @Mock private CommandeVenteDomainService commandeVenteDomainService;
+    @Mock private FactureClientDomainService factureClientDomainService;
     @Mock private LigneCommandeVenteDomainService ligneCommandeVenteDomainService;
     @Mock private PaiementVenteDomainService paiementVenteDomainService;
     @Mock private IMagasinService magasinService;
@@ -76,7 +78,7 @@ class CaisseServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(commandeVenteDomainService.countCommandesForCaisse(filter, entrepriseId)).thenReturn(27L);
         when(commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId)).thenReturn(312L);
-        when(commandeVenteDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("145000.00"));
+        when(factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("145000.00"));
         when(paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("98500.00"));
 
         CaisseResumeResponse result = service.getResume(filter);
@@ -148,7 +150,7 @@ class CaisseServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(commandeVenteDomainService.countCommandesForCaisse(filter, entrepriseId)).thenReturn(0L);
         when(commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId)).thenReturn(0L);
-        when(commandeVenteDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(BigDecimal.ZERO);
+        when(factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(BigDecimal.ZERO);
         when(paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId)).thenReturn(BigDecimal.ZERO);
 
         CaisseResumeResponse result = service.getResume(filter);

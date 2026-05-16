@@ -116,18 +116,17 @@ public class VenteServiceImpl implements IVenteService {
 
         VenteContext context = new VenteContext(venteRequest, commande, magasin, user, productFournisseurs);
         BigDecimal montantTotal = createLignesAndProcessStock(context);
-        commandeVenteDomainService.applyMontantTotal(commande, montantTotal);
 
         FactureClient facture = factureClientDomainService.create(new FactureClientCreate(
                 commande, factureClientDomainService.generateNumero(),
                 dateVente, venteRequest.dateEcheance(), montantTotal
         ));
 
-        FactureClient finalFacture = applyPremierPaiementIfPresent(venteRequest.premierPaiement(), facture, commande);
+        FactureClient finalFacture = applyPremierPaiementIfPresent(venteRequest.premierPaiement(), facture);
 
         UserSummaryResponse userSummary = new UserSummaryResponse(user.getId(), NameHelper.formatNomComplet(user.getNom(), user.getPrenom()));
         return new VenteResponse(
-                new CommandeVenteResponse(commande, userSummary),
+                new CommandeVenteResponse(commande, userSummary, finalFacture),
                 new FactureClientResponse(finalFacture)
         );
     }
@@ -152,7 +151,7 @@ public class VenteServiceImpl implements IVenteService {
                 .toList();
 
         return new VenteDetailsResponse(
-                new CommandeVenteResponse(commande, user),
+                new CommandeVenteResponse(commande, user, facture),
                 new FactureClientResponse(facture),
                 lignes,
                 paiementsResponse
@@ -219,8 +218,8 @@ public class VenteServiceImpl implements IVenteService {
         ));
     }
 
-    /** Applique un éventuel premier paiement à la facture (création + mise à jour montantPaye/statut) et propage sur la commande. */
-    public FactureClient applyPremierPaiementIfPresent(PaiementVenteRequest premierPaiement, FactureClient facture, CommandeVente commande) {
+    /** Applique un éventuel premier paiement à la facture (création + mise à jour montantPaye/statut). Plus de propagation sur la commande : les montants vivent uniquement sur facture (F-V3-bis). */
+    public FactureClient applyPremierPaiementIfPresent(PaiementVenteRequest premierPaiement, FactureClient facture) {
         if (premierPaiement == null) {
             return facture;
         }
@@ -229,9 +228,7 @@ public class VenteServiceImpl implements IVenteService {
         paiementVenteDomainService.create(new PaiementVenteCreate(
                 facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum(), datePaiement
         ));
-        FactureClient updated = factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
-        commandeVenteDomainService.applyMontantPaye(commande, premierPaiement.montant());
-        return updated;
+        return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
     }
 
 }

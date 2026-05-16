@@ -7,7 +7,6 @@ import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -32,12 +31,6 @@ public class CommandeVente extends AuditableEntity {
 
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
     private List<LigneCommandeVente> lignes;
-
-    @Column(precision = 19, scale = 2)
-    private BigDecimal montantTotal;
-
-    @Column(precision = 19, scale = 2)
-    private BigDecimal montantPaye;
 
     private LocalDate date;
 }

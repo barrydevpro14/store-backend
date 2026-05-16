@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
+import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.FactureClientCreate;
 import org.store.vente.application.dto.FactureClientFilter;
 import org.store.vente.application.dto.FactureClientResponse;
@@ -51,6 +52,11 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
     /** Projection JPQL d'une facture par id, scopée entreprise (Optional empty si introuvable ou autre entreprise). */
     public Optional<FactureClientResponse> findResponseById(UUID id, UUID entrepriseId) {
         return repository.findResponseById(id, entrepriseId);
+    }
+
+    /** Somme des montants totaux des factures rattachées à des commandes créées dans le magasin sur la journée du filter. */
+    public BigDecimal sumMontantCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.sumMontantTotalByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
     }
 
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */

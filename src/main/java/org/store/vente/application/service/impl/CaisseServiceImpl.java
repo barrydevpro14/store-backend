@@ -12,6 +12,7 @@ import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
 import org.store.vente.application.service.ICaisseService;
 import org.store.vente.domain.service.CommandeVenteDomainService;
+import org.store.vente.domain.service.FactureClientDomainService;
 import org.store.vente.domain.service.LigneCommandeVenteDomainService;
 import org.store.vente.domain.service.PaiementVenteDomainService;
 
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class CaisseServiceImpl implements ICaisseService {
 
     private final CommandeVenteDomainService commandeVenteDomainService;
+    private final FactureClientDomainService factureClientDomainService;
     private final LigneCommandeVenteDomainService ligneCommandeVenteDomainService;
     private final PaiementVenteDomainService paiementVenteDomainService;
     private final IMagasinService magasinService;
@@ -37,12 +39,14 @@ public class CaisseServiceImpl implements ICaisseService {
     private final ValidatorService validatorService;
 
     public CaisseServiceImpl(CommandeVenteDomainService commandeVenteDomainService,
+                             FactureClientDomainService factureClientDomainService,
                              LigneCommandeVenteDomainService ligneCommandeVenteDomainService,
                              PaiementVenteDomainService paiementVenteDomainService,
                              IMagasinService magasinService,
                              ICurrentUserService currentUserService,
                              ValidatorService validatorService) {
         this.commandeVenteDomainService = commandeVenteDomainService;
+        this.factureClientDomainService = factureClientDomainService;
         this.ligneCommandeVenteDomainService = ligneCommandeVenteDomainService;
         this.paiementVenteDomainService = paiementVenteDomainService;
         this.magasinService = magasinService;
@@ -60,7 +64,7 @@ public class CaisseServiceImpl implements ICaisseService {
         UUID entrepriseId = currentUser.entrepriseId();
         long nombreCommandes = commandeVenteDomainService.countCommandesForCaisse(filter, entrepriseId);
         long nombreProduits = commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId);
-        BigDecimal totalCommandes = commandeVenteDomainService.sumMontantCommandesForCaisse(filter, entrepriseId);
+        BigDecimal totalCommandes = factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId);
         BigDecimal totalPaiements = paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId);
 
         return new CaisseResumeResponse(
