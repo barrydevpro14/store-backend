@@ -42,11 +42,20 @@ class CaisseControllerTest {
     }
 
     @Test
-    void resume_should_return_200_with_aggregated_values() throws Exception {
+    void resume_should_return_200_with_aggregated_values_and_ventilations() throws Exception {
         CaisseResumeResponse response = new CaisseResumeResponse(
                 magasinId, LocalDate.of(2026, 5, 16),
                 27L, 312L,
-                new BigDecimal("145000.00"), new BigDecimal("98500.00")
+                new BigDecimal("145000.00"), new BigDecimal("98500.00"),
+                List.of(
+                        new org.store.vente.application.dto.PaiementParMoyenResponse(
+                                org.store.achat.domain.enums.MoyenPaiement.CASH,
+                                new BigDecimal("60000.00"), 18L)
+                ),
+                List.of(
+                        new org.store.vente.application.dto.VenteParVendeurResponse(
+                                UUID.randomUUID(), "Diop Awa", 15L, new BigDecimal("85000.00"))
+                )
         );
         when(caisseService.getResume(any())).thenReturn(response);
 
@@ -57,7 +66,12 @@ class CaisseControllerTest {
                 .andExpect(jsonPath("$.nombreCommandes").value(27))
                 .andExpect(jsonPath("$.nombreProduits").value(312))
                 .andExpect(jsonPath("$.totalCommandes").value(145000.00))
-                .andExpect(jsonPath("$.totalPaiements").value(98500.00));
+                .andExpect(jsonPath("$.totalPaiements").value(98500.00))
+                .andExpect(jsonPath("$.paiementsParMoyen[0].moyen").value("CASH"))
+                .andExpect(jsonPath("$.paiementsParMoyen[0].total").value(60000.00))
+                .andExpect(jsonPath("$.paiementsParMoyen[0].nombre").value(18))
+                .andExpect(jsonPath("$.ventesParVendeur[0].nomComplet").value("Diop Awa"))
+                .andExpect(jsonPath("$.ventesParVendeur[0].nombreCommandes").value(15));
     }
 
     @Test

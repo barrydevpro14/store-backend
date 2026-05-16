@@ -73,4 +73,29 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
                                           @Param("entrepriseId") UUID entrepriseId,
                                           @Param("startOfDay") LocalDateTime startOfDay,
                                           @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("""
+            SELECT new org.store.vente.application.dto.VenteParVendeurResponse(
+                u.id,
+                TRIM(BOTH FROM CONCAT(COALESCE(u.nom, ''), ' ', COALESCE(u.prenom, ''))),
+                COUNT(c),
+                COALESCE(SUM(f.montantTotal), 0)
+            )
+            FROM CommandeVente c
+            LEFT JOIN org.store.vente.domain.model.FactureClient f ON f.commande = c
+            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy
+            LEFT JOIN a.user u
+            WHERE c.magasin.entreprise.id = :entrepriseId
+              AND c.magasin.id = :magasinId
+              AND c.createdAt >= :startOfDay
+              AND c.createdAt <= :endOfDay
+              AND u.id IS NOT NULL
+            GROUP BY u.id, u.nom, u.prenom
+            ORDER BY COUNT(c) DESC
+            """)
+    java.util.List<org.store.vente.application.dto.VenteParVendeurResponse> ventilationParVendeurByMagasinAndDay(
+            @Param("magasinId") UUID magasinId,
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay);
 }

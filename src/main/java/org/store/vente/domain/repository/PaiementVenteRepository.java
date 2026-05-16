@@ -36,4 +36,22 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
                                                   @Param("entrepriseId") UUID entrepriseId,
                                                   @Param("startOfDay") java.time.LocalDateTime startOfDay,
                                                   @Param("endOfDay") java.time.LocalDateTime endOfDay);
+
+    @Query("""
+            SELECT new org.store.vente.application.dto.PaiementParMoyenResponse(
+                p.moyen, COALESCE(SUM(p.montant), 0), COUNT(p)
+            )
+            FROM PaiementVente p
+            WHERE p.facture.commande.magasin.entreprise.id = :entrepriseId
+              AND p.facture.commande.magasin.id = :magasinId
+              AND p.createdAt >= :startOfDay
+              AND p.createdAt <= :endOfDay
+            GROUP BY p.moyen
+            ORDER BY SUM(p.montant) DESC
+            """)
+    java.util.List<org.store.vente.application.dto.PaiementParMoyenResponse> ventilationParMoyenByMagasinAndDay(
+            @Param("magasinId") UUID magasinId,
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("startOfDay") java.time.LocalDateTime startOfDay,
+            @Param("endOfDay") java.time.LocalDateTime endOfDay);
 }

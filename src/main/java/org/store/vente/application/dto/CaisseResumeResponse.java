@@ -2,6 +2,7 @@ package org.store.vente.application.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record CaisseResumeResponse(
@@ -10,6 +11,8 @@ public record CaisseResumeResponse(
         long nombreCommandes,
         long nombreProduits,
         BigDecimal totalCommandes,
-        BigDecimal totalPaiements
+        BigDecimal totalPaiements,
+        List<PaiementParMoyenResponse> paiementsParMoyen,
+        List<VenteParVendeurResponse> ventesParVendeur
 ) {
 }

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.vente.application.dto.CaisseResumeFilter;
+import org.store.vente.application.dto.PaiementParMoyenResponse;
 import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.domain.model.PaiementVente;
@@ -42,5 +43,10 @@ public class PaiementVenteDomainService extends GlobalService<PaiementVente, Pai
     /** Somme des paiements encaissés dans le magasin sur la journée du filter (tiroir-caisse du jour). */
     public BigDecimal sumPaiementsForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
         return repository.sumMontantByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    }
+
+    /** Ventilation des paiements groupés par moyen (CASH, MOBILE_MONEY, etc.) avec total et nombre par moyen. */
+    public List<PaiementParMoyenResponse> ventilationParMoyenForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.ventilationParMoyenByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
     }
 }

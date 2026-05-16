@@ -8,9 +8,11 @@ import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
+import org.store.vente.application.dto.VenteParVendeurResponse;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.repository.CommandeVenteRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,5 +56,10 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
     /** Somme des quantités vendues (toutes lignes) dans le magasin sur la journée du filter. */
     public long sumQuantiteProduitsForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
         return repository.sumQuantiteLignesByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    }
+
+    /** Ventilation des commandes par vendeur (Account.createdBy -> Utilisateur via CAST + JOIN), agrégée par UUID utilisateur. */
+    public List<VenteParVendeurResponse> ventilationParVendeurForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.ventilationParVendeurByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
     }
 }

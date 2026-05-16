@@ -13,10 +13,13 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CaisseResumeResponse;
+import org.store.vente.application.dto.PaiementParMoyenResponse;
 import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
+import org.store.vente.application.dto.VenteParVendeurResponse;
 import org.store.vente.application.service.impl.CaisseServiceImpl;
 import org.store.vente.domain.service.CommandeVenteDomainService;
 import org.store.vente.domain.service.FactureClientDomainService;
@@ -70,8 +73,16 @@ class CaisseServiceImplTest {
     }
 
     @Test
-    void getResume_should_aggregate_4_queries_and_return_response() {
+    void getResume_should_aggregate_6_queries_and_return_response_with_ventilations() {
         CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16");
+        List<PaiementParMoyenResponse> paiementsParMoyen = List.of(
+                new PaiementParMoyenResponse(MoyenPaiement.CASH, new BigDecimal("60000.00"), 18L),
+                new PaiementParMoyenResponse(MoyenPaiement.WAVE, new BigDecimal("38500.00"), 6L)
+        );
+        List<VenteParVendeurResponse> ventesParVendeur = List.of(
+                new VenteParVendeurResponse(UUID.randomUUID(), "Diop Awa", 15L, new BigDecimal("85000.00")),
+                new VenteParVendeurResponse(UUID.randomUUID(), "Ba Modou", 12L, new BigDecimal("60000.00"))
+        );
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -80,6 +91,8 @@ class CaisseServiceImplTest {
         when(commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId)).thenReturn(312L);
         when(factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("145000.00"));
         when(paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("98500.00"));
+        when(paiementVenteDomainService.ventilationParMoyenForCaisse(filter, entrepriseId)).thenReturn(paiementsParMoyen);
+        when(commandeVenteDomainService.ventilationParVendeurForCaisse(filter, entrepriseId)).thenReturn(ventesParVendeur);
 
         CaisseResumeResponse result = service.getResume(filter);
 
@@ -89,6 +102,13 @@ class CaisseServiceImplTest {
         assertThat(result.nombreProduits()).isEqualTo(312L);
         assertThat(result.totalCommandes()).isEqualByComparingTo(new BigDecimal("145000.00"));
         assertThat(result.totalPaiements()).isEqualByComparingTo(new BigDecimal("98500.00"));
+        assertThat(result.paiementsParMoyen()).hasSize(2);
+        assertThat(result.paiementsParMoyen().get(0).moyen()).isEqualTo(MoyenPaiement.CASH);
+        assertThat(result.paiementsParMoyen().get(0).total()).isEqualByComparingTo(new BigDecimal("60000.00"));
+        assertThat(result.paiementsParMoyen().get(0).nombre()).isEqualTo(18L);
+        assertThat(result.ventesParVendeur()).hasSize(2);
+        assertThat(result.ventesParVendeur().get(0).nomComplet()).isEqualTo("Diop Awa");
+        assertThat(result.ventesParVendeur().get(0).nombreCommandes()).isEqualTo(15L);
         verify(validatorService).validate(filter);
     }
 
@@ -152,6 +172,8 @@ class CaisseServiceImplTest {
         when(commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId)).thenReturn(0L);
         when(factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(BigDecimal.ZERO);
         when(paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId)).thenReturn(BigDecimal.ZERO);
+        when(paiementVenteDomainService.ventilationParMoyenForCaisse(filter, entrepriseId)).thenReturn(List.of());
+        when(commandeVenteDomainService.ventilationParVendeurForCaisse(filter, entrepriseId)).thenReturn(List.of());
 
         CaisseResumeResponse result = service.getResume(filter);
 
@@ -159,5 +181,7 @@ class CaisseServiceImplTest {
         assertThat(result.nombreProduits()).isZero();
         assertThat(result.totalCommandes()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(result.totalPaiements()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(result.paiementsParMoyen()).isEmpty();
+        assertThat(result.ventesParVendeur()).isEmpty();
     }
 }

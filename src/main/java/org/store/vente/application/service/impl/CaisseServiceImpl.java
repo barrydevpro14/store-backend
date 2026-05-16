@@ -8,8 +8,10 @@ import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CaisseResumeResponse;
+import org.store.vente.application.dto.PaiementParMoyenResponse;
 import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
+import org.store.vente.application.dto.VenteParVendeurResponse;
 import org.store.vente.application.service.ICaisseService;
 import org.store.vente.domain.service.CommandeVenteDomainService;
 import org.store.vente.domain.service.FactureClientDomainService;
@@ -66,10 +68,13 @@ public class CaisseServiceImpl implements ICaisseService {
         long nombreProduits = commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId);
         BigDecimal totalCommandes = factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId);
         BigDecimal totalPaiements = paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId);
+        List<PaiementParMoyenResponse> paiementsParMoyen = paiementVenteDomainService.ventilationParMoyenForCaisse(filter, entrepriseId);
+        List<VenteParVendeurResponse> ventesParVendeur = commandeVenteDomainService.ventilationParVendeurForCaisse(filter, entrepriseId);
 
         return new CaisseResumeResponse(
                 filter.magasinId(), filter.dateAsLocalDate(),
-                nombreCommandes, nombreProduits, totalCommandes, totalPaiements
+                nombreCommandes, nombreProduits, totalCommandes, totalPaiements,
+                paiementsParMoyen, ventesParVendeur
         );
     }
 
