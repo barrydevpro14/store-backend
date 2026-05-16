@@ -38,4 +38,10 @@ public class AccountDomainService extends GlobalService<Account, AccountReposito
         account.setEnabled(enabled);
         return save(account);
     }
+
+    /** Remplace le mot de passe hash. Le caller est responsable du hashage (PasswordEncoder). */
+    public Account changePassword(Account account, String hashedPassword) {
+        account.setPassword(hashedPassword);
+        return save(account);
+    }
 }

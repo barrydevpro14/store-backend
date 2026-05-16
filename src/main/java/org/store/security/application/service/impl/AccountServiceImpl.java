@@ -5,6 +5,7 @@ import org.store.security.application.service.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.store.common.dto.UserSummaryResponse;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.tools.NameHelper;
@@ -63,5 +64,14 @@ public class AccountServiceImpl implements IAccountService {
     @Override
     public Account setEnabled(Account account, boolean enabled) {
         return accountDomainService.setEnabled(account, enabled);
+    }
+
+    /** Verifie le mot de passe actuel via PasswordEncoder.matches, puis hash le nouveau et persiste. */
+    @Override
+    public Account changePassword(Account account, String currentPassword, String newPassword) {
+        if (!passwordEncoder.matches(currentPassword, account.getPassword())) {
+            throw new BadArgumentException("account.currentPassword.invalid");
+        }
+        return accountDomainService.changePassword(account, passwordEncoder.encode(newPassword));
     }
 }

@@ -22,4 +22,7 @@ public interface IAccountService {
 
     /** Active ou désactive un Account (bloque/autorise le login JWT). */
     Account setEnabled(Account account, boolean enabled);
+
+    /** Change le mot de passe : vérifie l'ancien avec PasswordEncoder.matches puis hash et persiste le nouveau. Throw `BadArgumentException("account.currentPassword.invalid")` si l'ancien ne correspond pas. */
+    Account changePassword(Account account, String currentPassword, String newPassword);
 }
