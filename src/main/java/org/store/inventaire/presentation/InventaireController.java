@@ -6,9 +6,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,6 +20,7 @@ import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
+import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireResponse;
 import org.store.inventaire.application.service.IInventaireService;
 
@@ -52,6 +55,21 @@ public class InventaireController {
     @PreAuthorize("hasAuthority('STOCK_READ')")
     public ResponseEntity<Page<LigneInventaireResponse>> listLignes(@PathVariable UUID id, Pageable pageable) {
         return ResponseEntity.ok(inventaireService.findLignes(id, pageable));
+    }
+
+    @PutMapping("/{id}/lignes/{ligneId}")
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<LigneInventaireResponse> updateLigne(@PathVariable UUID id,
+                                                               @PathVariable UUID ligneId,
+                                                               @Valid @RequestBody LigneInventaireUpdateRequest request) {
+        return ResponseEntity.ok(inventaireService.updateLigne(id, ligneId, request));
+    }
+
+    @DeleteMapping("/{id}/lignes/{ligneId}")
+    @PreAuthorize("hasAuthority('STOCK_INVENTORY')")
+    public ResponseEntity<Void> deleteLigne(@PathVariable UUID id, @PathVariable UUID ligneId) {
+        inventaireService.deleteLigne(id, ligneId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/bilan")

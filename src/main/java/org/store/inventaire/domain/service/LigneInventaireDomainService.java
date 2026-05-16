@@ -3,6 +3,7 @@ package org.store.inventaire.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.store.common.exceptions.EntityException;
 import org.store.common.service.GlobalService;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
 import org.store.inventaire.domain.model.Inventaire;
@@ -41,5 +42,18 @@ public class LigneInventaireDomainService extends GlobalService<LigneInventaire,
 
     public boolean existsByInventaireIdAndProductFournisseurId(UUID inventaireId, UUID productFournisseurId) {
         return repository.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId);
+    }
+
+    /** Recherche d'une ligne par son id avec message d'erreur metier dedie. */
+    public LigneInventaire findLigne(UUID ligneId) {
+        return repository.findById(ligneId)
+                .orElseThrow(() -> new EntityException("inventaire.ligne.notFound", ligneId));
+    }
+
+    /** Modifie la quantite reelle saisie et recalcule l'ecart (quantite_theorique reste fige). */
+    public LigneInventaire updateQuantiteReelle(LigneInventaire ligne, int quantiteReelle) {
+        ligne.setQuantiteReelle(quantiteReelle);
+        ligne.setEcart(quantiteReelle - ligne.getQuantiteTheorique());
+        return save(ligne);
     }
 }

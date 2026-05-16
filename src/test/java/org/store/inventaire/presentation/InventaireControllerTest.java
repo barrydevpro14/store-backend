@@ -20,6 +20,7 @@ import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
+import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireResponse;
 import org.store.inventaire.application.service.IInventaireService;
 import org.store.inventaire.domain.enums.InventaireStatut;
@@ -36,8 +37,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -202,6 +206,40 @@ class InventaireControllerTest {
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/annuler"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statut").value("ANNULE"));
+    }
+
+    @Test
+    void should_return_200_when_update_ligne() throws Exception {
+        UUID ligneId = UUID.randomUUID();
+        LigneInventaireUpdateRequest body = new LigneInventaireUpdateRequest(7);
+        when(inventaireService.updateLigne(eq(inventaireId), eq(ligneId), any(LigneInventaireUpdateRequest.class)))
+                .thenReturn(sampleLigne());
+
+        mockMvc.perform(put(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes/" + ligneId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ecart").value(-2));
+    }
+
+    @Test
+    void should_return_400_when_update_ligne_quantite_null() throws Exception {
+        LigneInventaireUpdateRequest body = new LigneInventaireUpdateRequest(null);
+
+        mockMvc.perform(put(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes/" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_204_when_delete_ligne() throws Exception {
+        UUID ligneId = UUID.randomUUID();
+
+        mockMvc.perform(delete(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes/" + ligneId))
+                .andExpect(status().isNoContent());
+
+        verify(inventaireService).deleteLigne(inventaireId, ligneId);
     }
 
     @Test

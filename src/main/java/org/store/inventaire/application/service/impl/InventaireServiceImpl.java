@@ -18,6 +18,7 @@ import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
+import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireCommand;
 import org.store.inventaire.application.dto.RapportInventaireResponse;
 import org.store.inventaire.application.service.IInventaireService;
@@ -122,6 +123,38 @@ public class InventaireServiceImpl implements IInventaireService {
                 inventaire, productFournisseur, quantiteTheorique, request.quantiteReelle()
         );
         return new LigneInventaireResponse(ligne);
+    }
+
+    /** Modifie la quantite reelle d'une ligne existante (correction de saisie). Statut EN_COURS uniquement. */
+    @Override
+    @Transactional
+    public LigneInventaireResponse updateLigne(UUID inventaireId, UUID ligneId, LigneInventaireUpdateRequest request) {
+        validatorService.validate(request);
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        Inventaire inventaire = inventaireDomainService.findById(inventaireId);
+        ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
+        ensureStatutEnCours(inventaire);
+
+        LigneInventaire ligne = ligneInventaireDomainService.findLigne(ligneId);
+        ensureLigneBelongsToInventaire(ligne, inventaireId);
+
+        LigneInventaire updated = ligneInventaireDomainService.updateQuantiteReelle(ligne, request.quantiteReelle());
+        return new LigneInventaireResponse(updated);
+    }
+
+    /** Supprime une ligne (correction de saisie). Statut EN_COURS uniquement. */
+    @Override
+    @Transactional
+    public void deleteLigne(UUID inventaireId, UUID ligneId) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        Inventaire inventaire = inventaireDomainService.findById(inventaireId);
+        ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
+        ensureStatutEnCours(inventaire);
+
+        LigneInventaire ligne = ligneInventaireDomainService.findLigne(ligneId);
+        ensureLigneBelongsToInventaire(ligne, inventaireId);
+
+        ligneInventaireDomainService.delete(ligne);
     }
 
     /** Liste paginee des lignes d'un inventaire, scopee entreprise. */
@@ -231,6 +264,13 @@ public class InventaireServiceImpl implements IInventaireService {
         InventaireStatut statut = inventaire.getStatut();
         if (statut != InventaireStatut.EN_COURS && statut != InventaireStatut.BILAN) {
             throw new BadArgumentException("inventaire.statut.notAnnulable", statut);
+        }
+    }
+
+    /** Verifie que la ligne appartient bien a l'inventaire passe en URL (protege contre URL forgee). */
+    public void ensureLigneBelongsToInventaire(LigneInventaire ligne, UUID inventaireId) {
+        if (!ligne.getInventaire().getId().equals(inventaireId)) {
+            throw new BadArgumentException("inventaire.ligne.notMatchingInventaire");
         }
     }
 

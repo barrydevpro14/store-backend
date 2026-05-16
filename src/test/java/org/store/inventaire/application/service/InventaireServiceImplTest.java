@@ -23,6 +23,7 @@ import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
+import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireCommand;
 import org.store.inventaire.application.service.impl.InventaireServiceImpl;
 import org.store.inventaire.domain.enums.InventaireStatut;
@@ -223,6 +224,87 @@ class InventaireServiceImplTest {
 
         assertThatThrownBy(() -> service.addLigne(inventaireId, request))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void updateLigne_should_update_quantite_and_recompute_ecart() {
+        UUID ligneId = UUID.randomUUID();
+        LigneInventaire existing = ligne(10, 8);
+        existing.setId(ligneId);
+        LigneInventaire updated = ligne(10, 7);
+        updated.setId(ligneId);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(existing);
+        when(ligneInventaireDomainService.updateQuantiteReelle(existing, 7)).thenReturn(updated);
+
+        LigneInventaireResponse response = service.updateLigne(inventaireId, ligneId, new LigneInventaireUpdateRequest(7));
+
+        assertThat(response.quantiteReelle()).isEqualTo(7);
+        assertThat(response.ecart()).isEqualTo(-3);
+        verify(ligneInventaireDomainService).updateQuantiteReelle(existing, 7);
+    }
+
+    @Test
+    void updateLigne_should_throw_when_inventaire_not_en_cours() {
+        inventaireEnCours.setStatut(InventaireStatut.BILAN);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+
+        assertThatThrownBy(() -> service.updateLigne(inventaireId, UUID.randomUUID(), new LigneInventaireUpdateRequest(5)))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(ligneInventaireDomainService, never()).updateQuantiteReelle(any(), eq(5));
+    }
+
+    @Test
+    void updateLigne_should_throw_when_ligne_belongs_to_other_inventaire() {
+        UUID ligneId = UUID.randomUUID();
+        Inventaire autreInventaire = new Inventaire();
+        autreInventaire.setId(UUID.randomUUID());
+        autreInventaire.setMagasin(magasin);
+        LigneInventaire ligneAutre = new LigneInventaire();
+        ligneAutre.setId(ligneId);
+        ligneAutre.setInventaire(autreInventaire);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(ligneAutre);
+
+        assertThatThrownBy(() -> service.updateLigne(inventaireId, ligneId, new LigneInventaireUpdateRequest(5)))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(ligneInventaireDomainService, never()).updateQuantiteReelle(any(), eq(5));
+    }
+
+    @Test
+    void deleteLigne_should_delete_when_en_cours_and_ligne_matches() {
+        UUID ligneId = UUID.randomUUID();
+        LigneInventaire existing = ligne(10, 8);
+        existing.setId(ligneId);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(existing);
+
+        service.deleteLigne(inventaireId, ligneId);
+
+        verify(ligneInventaireDomainService).delete(existing);
+    }
+
+    @Test
+    void deleteLigne_should_throw_when_inventaire_not_en_cours() {
+        inventaireEnCours.setStatut(InventaireStatut.BILAN);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+
+        assertThatThrownBy(() -> service.deleteLigne(inventaireId, UUID.randomUUID()))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(ligneInventaireDomainService, never()).delete(any());
     }
 
     @Test
