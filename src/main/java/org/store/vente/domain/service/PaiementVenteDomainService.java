@@ -1,14 +1,11 @@
 package org.store.vente.domain.service;
 
 import org.springframework.stereotype.Service;
-import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.common.service.GlobalService;
-import org.store.vente.domain.model.FactureClient;
+import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.domain.model.PaiementVente;
 import org.store.vente.domain.repository.PaiementVenteRepository;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,13 +15,13 @@ public class PaiementVenteDomainService extends GlobalService<PaiementVente, Pai
         super(repository);
     }
 
-    /** Crée et persiste un paiement client lié à une facture, à la date du jour si non précisée. */
-    public PaiementVente create(FactureClient facture, BigDecimal montant, MoyenPaiement moyen) {
+    /** Crée et persiste un paiement client à partir d'un record groupé (la date doit être résolue côté service applicatif). */
+    public PaiementVente create(PaiementVenteCreate paiementVenteCreate) {
         PaiementVente paiement = new PaiementVente();
-        paiement.setFacture(facture);
-        paiement.setMontant(montant);
-        paiement.setMoyen(moyen);
-        paiement.setDatePaiement(LocalDate.now());
+        paiement.setFacture(paiementVenteCreate.facture());
+        paiement.setMontant(paiementVenteCreate.montant());
+        paiement.setMoyen(paiementVenteCreate.moyen());
+        paiement.setDatePaiement(paiementVenteCreate.datePaiement());
         return save(paiement);
     }
 

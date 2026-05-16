@@ -29,6 +29,7 @@ import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.LigneVenteRequest;
+import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
 import org.store.vente.application.dto.VenteRequest;
@@ -243,7 +244,7 @@ class VenteServiceImplTest {
                 LocalDate.of(2026, 5, 16),
                 LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
-                new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name())
+                new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name(), null)
         );
 
         FactureClient factureAfterPaiement = new FactureClient();
@@ -266,8 +267,42 @@ class VenteServiceImplTest {
 
         VenteResponse response = service.create(req);
 
+        ArgumentCaptor<PaiementVenteCreate> paiementCaptor = ArgumentCaptor.forClass(PaiementVenteCreate.class);
         assertThat(response.facture().statut()).isEqualTo(StatutFacture.PARTIELLEMENT_PAYEE);
-        verify(paiementVenteDomainService).create(facture, new BigDecimal("500.00"), MoyenPaiement.CASH);
+        verify(paiementVenteDomainService).create(paiementCaptor.capture());
+        PaiementVenteCreate captured = paiementCaptor.getValue();
+        assertThat(captured.facture()).isSameAs(facture);
+        assertThat(captured.montant()).isEqualByComparingTo(new BigDecimal("500.00"));
+        assertThat(captured.moyen()).isEqualTo(MoyenPaiement.CASH);
+        assertThat(captured.datePaiement()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void create_should_use_datePaiement_from_request_when_provided() {
+        LocalDate datePaiementSaisi = LocalDate.of(2026, 5, 10);
+        VenteRequest req = new VenteRequest(
+                null,
+                LocalDate.of(2026, 5, 16),
+                LocalDate.of(2026, 5, 16),
+                List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
+                new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name(), datePaiementSaisi)
+        );
+
+        when(employeService.findCurrentUser()).thenReturn(vendeur);
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
+        when(commandeVenteDomainService.create(any())).thenReturn(commande);
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(new LigneCommandeVente());
+        when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
+        when(factureClientDomainService.create(any())).thenReturn(facture);
+        when(factureClientDomainService.applyPaiement(facture, new BigDecimal("500.00"))).thenReturn(facture);
+
+        service.create(req);
+
+        ArgumentCaptor<PaiementVenteCreate> paiementCaptor = ArgumentCaptor.forClass(PaiementVenteCreate.class);
+        verify(paiementVenteDomainService).create(paiementCaptor.capture());
+        assertThat(paiementCaptor.getValue().datePaiement()).isEqualTo(datePaiementSaisi);
     }
 
     @Test

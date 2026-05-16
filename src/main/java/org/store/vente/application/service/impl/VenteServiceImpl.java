@@ -25,6 +25,7 @@ import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.LigneCommandeVenteCreate;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
 import org.store.vente.application.dto.LigneVenteRequest;
+import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.dto.VenteContext;
@@ -224,7 +225,10 @@ public class VenteServiceImpl implements IVenteService {
             return facture;
         }
 
-        paiementVenteDomainService.create(facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum());
+        LocalDate datePaiement = premierPaiement.datePaiement() != null ? premierPaiement.datePaiement() : LocalDate.now();
+        paiementVenteDomainService.create(new PaiementVenteCreate(
+                facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum(), datePaiement
+        ));
         FactureClient updated = factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
         commandeVenteDomainService.applyMontantPaye(commande, premierPaiement.montant());
         return updated;
