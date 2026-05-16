@@ -153,7 +153,6 @@ class VenteServiceImplTest {
         return new VenteRequest(
                 null,
                 LocalDate.of(2026, 5, 16),
-                LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
                 null
         );
@@ -182,14 +181,8 @@ class VenteServiceImplTest {
     }
 
     @Test
-    void create_should_default_dateVente_to_today_when_null() {
-        VenteRequest req = new VenteRequest(
-                null,
-                null,
-                LocalDate.now(),
-                List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
-                null
-        );
+    void create_should_set_dateVente_to_today() {
+        VenteRequest req = sampleRequest();
 
         when(employeService.findCurrentUser()).thenReturn(vendeur);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
@@ -222,7 +215,6 @@ class VenteServiceImplTest {
         VenteRequest req = new VenteRequest(
                 null,
                 LocalDate.of(2026, 5, 16),
-                LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("5.00"))),
                 null
         );
@@ -241,7 +233,6 @@ class VenteServiceImplTest {
     void create_should_apply_premier_paiement_when_present() {
         VenteRequest req = new VenteRequest(
                 null,
-                LocalDate.of(2026, 5, 16),
                 LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
                 new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name(), null)
@@ -282,7 +273,6 @@ class VenteServiceImplTest {
         LocalDate datePaiementSaisi = LocalDate.of(2026, 5, 10);
         VenteRequest req = new VenteRequest(
                 null,
-                LocalDate.of(2026, 5, 16),
                 LocalDate.of(2026, 5, 16),
                 List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00"))),
                 new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name(), datePaiementSaisi)

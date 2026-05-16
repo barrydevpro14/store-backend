@@ -104,7 +104,7 @@ public class VenteServiceImpl implements IVenteService {
         Employe user = employeService.findCurrentUser();
         Magasin magasin = user.getMagasin();
         Client client = resolveClient(venteRequest.clientId());
-        LocalDate dateVente = venteRequest.dateVente() != null ? venteRequest.dateVente() : LocalDate.now();
+        LocalDate dateVente = LocalDate.now();
 
         List<ProductFournisseur> productFournisseurs = resolveAndValidateLignes(venteRequest);
 
