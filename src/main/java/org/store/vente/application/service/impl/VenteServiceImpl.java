@@ -224,8 +224,7 @@ public class VenteServiceImpl implements IVenteService {
 
         paiementVenteDomainService.create(facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum());
         FactureClient updated = factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
-        commande.setMontantPaye(premierPaiement.montant());
-        commandeVenteDomainService.save(commande);
+        commandeVenteDomainService.applyMontantPaye(commande, premierPaiement.montant());
         return updated;
     }
 

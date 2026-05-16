@@ -7,6 +7,8 @@ import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.repository.CommandeVenteRepository;
 
+import java.math.BigDecimal;
+
 @Service
 public class CommandeVenteDomainService extends GlobalService<CommandeVente, CommandeVenteRepository> {
     public CommandeVenteDomainService(CommandeVenteRepository repository) {
@@ -21,13 +23,20 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         commande.setDate(commandeVenteCreate.dateVente());
         commande.setReference(commandeVenteCreate.reference());
         commande.setStatut(commandeVenteCreate.statut());
-        commande.setMontantPaye(java.math.BigDecimal.ZERO);
+        commande.setMontantPaye(BigDecimal.ZERO);
         return save(commande);
     }
 
     /** Met à jour le montant total cumulé de la commande après calcul des lignes. */
-    public CommandeVente applyMontantTotal(CommandeVente commande, java.math.BigDecimal montantTotal) {
+    public CommandeVente applyMontantTotal(CommandeVente commande, BigDecimal montantTotal) {
         commande.setMontantTotal(montantTotal);
+        return save(commande);
+    }
+
+    /** Incrémente le montant payé cumulé de la commande (depuis montantPaye actuel, jamais ecrasement direct). */
+    public CommandeVente applyMontantPaye(CommandeVente commande, BigDecimal montant) {
+        BigDecimal montantPayeActuel = commande.getMontantPaye() != null ? commande.getMontantPaye() : BigDecimal.ZERO;
+        commande.setMontantPaye(montantPayeActuel.add(montant));
         return save(commande);
     }
 
