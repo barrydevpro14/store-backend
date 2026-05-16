@@ -42,7 +42,8 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
 
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */
     public FactureClient applyPaiement(FactureClient facture, BigDecimal montant) {
-        BigDecimal nouveauPaye = (facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO).add(montant);
+        BigDecimal montantPayeActuel = facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO;
+        BigDecimal nouveauPaye = montantPayeActuel.add(montant);
         facture.setMontantPaye(nouveauPaye);
 
         if (nouveauPaye.compareTo(BigDecimal.ZERO) == 0) {

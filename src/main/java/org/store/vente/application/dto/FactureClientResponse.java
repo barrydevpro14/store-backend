@@ -19,13 +19,18 @@ public record FactureClientResponse(
         UUID commandeId
 ) {
     public FactureClientResponse(FactureClient facture) {
+        this(facture,
+                facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO);
+    }
+
+    private FactureClientResponse(FactureClient facture, BigDecimal montantPaye) {
         this(
                 facture.getId(),
                 facture.getNumero(),
                 facture.getStatut(),
                 facture.getMontantTotal(),
-                facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO,
-                facture.getMontantTotal().subtract(facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO),
+                montantPaye,
+                facture.getMontantTotal().subtract(montantPaye),
                 facture.getDate(),
                 facture.getDateEcheache(),
                 facture.getCommande() != null ? facture.getCommande().getId() : null

@@ -23,6 +23,11 @@ public record CommandeVenteResponse(
         String createdAt
 ) {
     public CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user) {
+        this(commande, user,
+                commande.getMontantPaye() != null ? commande.getMontantPaye() : BigDecimal.ZERO);
+    }
+
+    private CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user, BigDecimal montantPaye) {
         this(
                 commande.getId(),
                 commande.getReference(),
@@ -32,7 +37,7 @@ public record CommandeVenteResponse(
                 user,
                 commande.getDate(),
                 commande.getMontantTotal(),
-                commande.getMontantPaye() != null ? commande.getMontantPaye() : BigDecimal.ZERO,
+                montantPaye,
                 DateHelper.format(commande.getCreatedAt())
         );
     }
