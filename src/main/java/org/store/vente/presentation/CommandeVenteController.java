@@ -12,6 +12,7 @@ import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.service.ICommandeVenteService;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -30,12 +31,18 @@ public class CommandeVenteController {
     @PreAuthorize("hasAuthority('SALE_READ')")
     public ResponseEntity<Page<CommandeVenteResponse>> list(@RequestParam UUID magasinId,
                                                             @RequestParam(required = false) UUID clientId,
+                                                            @RequestParam(required = false) UUID vendeurId,
+                                                            @RequestParam(required = false) String statut,
+                                                            @RequestParam(required = false) String reference,
+                                                            @RequestParam(required = false) BigDecimal montantMin,
+                                                            @RequestParam(required = false) BigDecimal montantMax,
                                                             @RequestParam(required = false) String startDate,
                                                             @RequestParam(required = false) String endDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(commandeVenteService.findAllByCurrentEntreprise(
-                new CommandeVenteFilter(magasinId, clientId, startDate, endDate, page, size)
+                new CommandeVenteFilter(magasinId, clientId, vendeurId, statut, reference,
+                        montantMin, montantMax, startDate, endDate, page, size)
         ));
     }
 

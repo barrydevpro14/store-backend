@@ -1,24 +1,38 @@
 package org.store.vente.application.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.store.common.tools.DateHelper;
+import org.store.common.tools.EnumHelper;
 import org.store.common.validation.DatePattern;
+import org.store.common.validation.EnumValue;
+import org.store.vente.domain.enums.CommandeVenteStatut;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record CommandeVenteFilter(
         @NotNull UUID magasinId,
         UUID clientId,
+        UUID vendeurId,
+        @EnumValue(enumClass = CommandeVenteStatut.class) String statut,
+        String reference,
+        @DecimalMin(value = "0.0") BigDecimal montantMin,
+        @DecimalMin(value = "0.0") BigDecimal montantMax,
         @DatePattern String startDate,
         @DatePattern String endDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
+    public CommandeVenteStatut statutAsEnum() {
+        return EnumHelper.parse(CommandeVenteStatut.class, statut);
+    }
+
     public LocalDateTime fromDateTime() {
         return DateHelper.parseStartOfDay(startDate);
     }

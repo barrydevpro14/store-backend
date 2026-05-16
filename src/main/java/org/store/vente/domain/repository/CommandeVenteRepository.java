@@ -17,9 +17,15 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
     @Query("""
             SELECT new org.store.vente.application.dto.CommandeVenteResponse(c)
             FROM CommandeVente c
+            LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy
             WHERE c.magasin.entreprise.id = :entrepriseId
               AND c.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.clientId} IS NULL OR c.client.id = :#{#filter.clientId})
+              AND (:#{#filter.vendeurId} IS NULL OR a.user.id = :#{#filter.vendeurId})
+              AND (:#{#filter.statutAsEnum()} IS NULL OR c.statut = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.reference} IS NULL OR LOWER(c.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
+              AND (:#{#filter.montantMin} IS NULL OR c.montantTotal >= :#{#filter.montantMin})
+              AND (:#{#filter.montantMax} IS NULL OR c.montantTotal <= :#{#filter.montantMax})
               AND (:#{#filter.fromDateTime()} IS NULL OR c.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR c.createdAt <= :#{#filter.toDateTime()})
             """)
