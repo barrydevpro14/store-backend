@@ -22,8 +22,8 @@ public class LigneCommandeVente extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_fournisseur_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_fournisseur_id", nullable = false)
     private ProductFournisseur productFournisseur;
 
     private int quantite;
