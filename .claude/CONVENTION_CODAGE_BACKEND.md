@@ -248,11 +248,12 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
 
 ### Variables explicites
 
-32. **Toute variable, paramètre ou champ doit porter un nom métier explicite**. Pas de noms d'une seule lettre ni d'abréviations cryptiques (`q`, `c`, `m`, `ent`, `f`, `dto`, `obj`).
+32. **Toute variable, paramètre, champ ET alias doit porter un nom métier explicite**. Pas de noms d'une seule lettre ni d'abréviations cryptiques (`q`, `c`, `m`, `ent`, `f`, `dto`, `obj`). Cette règle s'applique aussi aux **alias JPQL/SQL** dans les `@Query` (`FROM Client client` et non `FROM Client c`).
     - **Paramètres de méthode** : nom complet qui décrit le rôle (`String searchTerm`, pas `String q` ; `Magasin attachedMagasin`, pas `Magasin m` ; `Entreprise entreprise`, pas `Entreprise ent`).
     - **Variables locales** : même règle (`Client client`, `Fournisseur fournisseur`, `Client foreignClient` pour un client qui n'appartient pas au caller).
     - **`@RequestParam` HTTP** : la **valeur externe** (`value = "q"`) peut rester courte (convention REST), mais la **variable Java interne** doit être explicite (`String searchTerm`).
-    - **`@Param` JPQL/SQL** : doit matcher le nom de la variable Java côté repo (`@Param("searchTerm") String searchTerm`). Les alias JPQL courts (`FROM Client c`) restent autorisés — c'est la convention SQL standard.
+    - **`@Param` JPQL/SQL** : doit matcher le nom de la variable Java côté repo (`@Param("searchTerm") String searchTerm`).
+    - **Alias JPQL/SQL** : nom métier explicite (`FROM Client client`, `LEFT JOIN client.commandes commande`, `FROM PaiementVente paiement`). Plus aucune lettre seule (`c`, `f`, `a`, `u`, `p`, `m`, `s`, `e`, `l`) ni abréviation (`pf`, `pv`). Référence : 24 repositories du projet migrés en `refactor: relation inverse CommandeVente.facture + alias JPQL explicites sur tous les repositories`.
     - **Tests** : factory `sample(...)` accepte un paramètre explicite (`Magasin attachedMagasin`) et instancie une variable nommée (`Client client = new Client()`, pas `Client c = new Client()`).
     - **Exceptions tolérées** : lambdas Stream triviaux (`stream.map(item -> item.getX())`), index de boucle `i`, et noms standardisés d'API tierces (`e` pour `Exception` dans un catch).
 
