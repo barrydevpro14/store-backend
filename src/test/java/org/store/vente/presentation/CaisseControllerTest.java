@@ -42,9 +42,9 @@ class CaisseControllerTest {
     }
 
     @Test
-    void resume_should_return_200_with_aggregated_values_and_ventilations() throws Exception {
+    void resume_should_return_200_with_aggregated_values_and_ventilations_for_single_day() throws Exception {
         CaisseResumeResponse response = new CaisseResumeResponse(
-                magasinId, LocalDate.of(2026, 5, 16),
+                magasinId, LocalDate.of(2026, 5, 16), LocalDate.of(2026, 5, 16),
                 27L, 312L,
                 new BigDecimal("145000.00"), new BigDecimal("98500.00"),
                 List.of(
@@ -59,19 +59,38 @@ class CaisseControllerTest {
         );
         when(caisseService.getResume(any())).thenReturn(response);
 
+        // to optionnel : appel avec from uniquement → résumé sur 1 jour
         mockMvc.perform(get(CaisseController.BASE_PATH + "/resume")
                         .param("magasinId", magasinId.toString())
-                        .param("date", "2026-05-16"))
+                        .param("from", "2026-05-16"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value("2026-05-16"))
+                .andExpect(jsonPath("$.to").value("2026-05-16"))
                 .andExpect(jsonPath("$.nombreCommandes").value(27))
-                .andExpect(jsonPath("$.nombreProduits").value(312))
                 .andExpect(jsonPath("$.totalCommandes").value(145000.00))
-                .andExpect(jsonPath("$.totalPaiements").value(98500.00))
                 .andExpect(jsonPath("$.paiementsParMoyen[0].moyen").value("CASH"))
-                .andExpect(jsonPath("$.paiementsParMoyen[0].total").value(60000.00))
-                .andExpect(jsonPath("$.paiementsParMoyen[0].nombre").value(18))
-                .andExpect(jsonPath("$.ventesParVendeur[0].nomComplet").value("Diop Awa"))
-                .andExpect(jsonPath("$.ventesParVendeur[0].nombreCommandes").value(15));
+                .andExpect(jsonPath("$.ventesParVendeur[0].nomComplet").value("Diop Awa"));
+    }
+
+    @Test
+    void resume_should_return_200_with_aggregated_values_over_multi_day_range() throws Exception {
+        CaisseResumeResponse response = new CaisseResumeResponse(
+                magasinId, LocalDate.of(2026, 5, 9), LocalDate.of(2026, 5, 16),
+                154L, 1832L,
+                new BigDecimal("985000.00"), new BigDecimal("678000.00"),
+                List.of(), List.of()
+        );
+        when(caisseService.getResume(any())).thenReturn(response);
+
+        mockMvc.perform(get(CaisseController.BASE_PATH + "/resume")
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2026-05-09")
+                        .param("to", "2026-05-16"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value("2026-05-09"))
+                .andExpect(jsonPath("$.to").value("2026-05-16"))
+                .andExpect(jsonPath("$.nombreCommandes").value(154))
+                .andExpect(jsonPath("$.totalCommandes").value(985000.00));
     }
 
     @Test

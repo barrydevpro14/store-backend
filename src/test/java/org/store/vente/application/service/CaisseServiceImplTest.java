@@ -74,7 +74,7 @@ class CaisseServiceImplTest {
 
     @Test
     void getResume_should_aggregate_6_queries_and_return_response_with_ventilations() {
-        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16");
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16", null);
         List<PaiementParMoyenResponse> paiementsParMoyen = List.of(
                 new PaiementParMoyenResponse(MoyenPaiement.CASH, new BigDecimal("60000.00"), 18L),
                 new PaiementParMoyenResponse(MoyenPaiement.WAVE, new BigDecimal("38500.00"), 6L)
@@ -97,7 +97,8 @@ class CaisseServiceImplTest {
         CaisseResumeResponse result = service.getResume(filter);
 
         assertThat(result.magasinId()).isEqualTo(magasinId);
-        assertThat(result.date()).isEqualTo(LocalDate.of(2026, 5, 16));
+        assertThat(result.from()).isEqualTo(LocalDate.of(2026, 5, 16));
+        assertThat(result.to()).isEqualTo(LocalDate.of(2026, 5, 16));
         assertThat(result.nombreCommandes()).isEqualTo(27L);
         assertThat(result.nombreProduits()).isEqualTo(312L);
         assertThat(result.totalCommandes()).isEqualByComparingTo(new BigDecimal("145000.00"));
@@ -114,7 +115,7 @@ class CaisseServiceImplTest {
 
     @Test
     void getResume_should_propagate_forbidden_when_magasin_not_accessible() {
-        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16");
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16", null);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -162,8 +163,39 @@ class CaisseServiceImplTest {
     }
 
     @Test
+    void getResume_should_aggregate_over_multi_day_period_when_to_provided() {
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-09", "2026-05-16");
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(commandeVenteDomainService.countCommandesForCaisse(filter, entrepriseId)).thenReturn(154L);
+        when(commandeVenteDomainService.sumQuantiteProduitsForCaisse(filter, entrepriseId)).thenReturn(1832L);
+        when(factureClientDomainService.sumMontantCommandesForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("985000.00"));
+        when(paiementVenteDomainService.sumPaiementsForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("678000.00"));
+        when(paiementVenteDomainService.ventilationParMoyenForCaisse(filter, entrepriseId)).thenReturn(List.of());
+        when(commandeVenteDomainService.ventilationParVendeurForCaisse(filter, entrepriseId)).thenReturn(List.of());
+
+        CaisseResumeResponse result = service.getResume(filter);
+
+        assertThat(result.from()).isEqualTo(LocalDate.of(2026, 5, 9));
+        assertThat(result.to()).isEqualTo(LocalDate.of(2026, 5, 16));
+        assertThat(result.nombreCommandes()).isEqualTo(154L);
+        assertThat(result.totalCommandes()).isEqualByComparingTo(new BigDecimal("985000.00"));
+    }
+
+    @Test
+    void getResume_should_default_to_equal_from_when_to_null() {
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16", null);
+
+        assertThat(filter.toAsLocalDate()).isEqualTo(LocalDate.of(2026, 5, 16));
+        assertThat(filter.endOfPeriod().toLocalDate()).isEqualTo(LocalDate.of(2026, 5, 16));
+        assertThat(filter.endOfPeriod()).isAfter(filter.startOfPeriod());
+    }
+
+    @Test
     void getResume_should_return_zero_values_when_no_activity_for_day() {
-        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16");
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16", null);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);

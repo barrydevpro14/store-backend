@@ -7,7 +7,8 @@ import java.util.UUID;
 
 public record CaisseResumeResponse(
         UUID magasinId,
-        LocalDate date,
+        LocalDate from,
+        LocalDate to,
         long nombreCommandes,
         long nombreProduits,
         BigDecimal totalCommandes,

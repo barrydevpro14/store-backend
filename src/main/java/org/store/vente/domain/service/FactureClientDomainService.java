@@ -54,9 +54,9 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
         return repository.findResponseById(id, entrepriseId);
     }
 
-    /** Somme des montants totaux des factures rattachées à des commandes créées dans le magasin sur la journée du filter. */
-    public BigDecimal sumMontantCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.sumMontantTotalByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    /** Somme des montants totaux des factures rattachées à des commandes créées dans le magasin sur la période du range. */
+    public BigDecimal sumMontantCommandesForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
+        return repository.sumMontantTotalByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */

@@ -48,18 +48,18 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         return repository.findResponseById(id, entrepriseId);
     }
 
-    /** Nombre de commandes créées dans le magasin entre les bornes [startOfDay, endOfDay] du filter. */
-    public long countCommandesForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.countByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    /** Nombre de commandes créées dans le magasin entre les bornes [startOfPeriod, endOfPeriod] du range. */
+    public long countCommandesForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
+        return repository.countByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
-    /** Somme des quantités vendues (toutes lignes) dans le magasin sur la journée du filter. */
-    public long sumQuantiteProduitsForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.sumQuantiteLignesByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    /** Somme des quantités vendues (toutes lignes) dans le magasin sur la période du range. */
+    public long sumQuantiteProduitsForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
+        return repository.sumQuantiteLignesByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
     /** Ventilation des commandes par vendeur (Account.createdBy -> Utilisateur via CAST + JOIN), agrégée par UUID utilisateur. */
-    public List<VenteParVendeurResponse> ventilationParVendeurForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.ventilationParVendeurByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    public List<VenteParVendeurResponse> ventilationParVendeurForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
+        return repository.ventilationParVendeurByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 }

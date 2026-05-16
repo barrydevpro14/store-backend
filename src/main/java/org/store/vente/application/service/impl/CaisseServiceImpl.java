@@ -23,10 +23,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Agrège le résumé de caisse d'un magasin pour une journée : compte les commandes,
- * somme les quantités vendues et les montants commande + paiements. Le scoping
- * entreprise est appliqué dans chaque query JPQL ; l'accès magasin du caller est
- * validé via {@link IMagasinService}.
+ * Agrège le résumé caisse d'un magasin sur une plage [from, to] (un seul filter pour
+ * journalier et multi-jours : le frontend passe from == to pour 1 journée, from < to
+ * pour un bilan hebdomadaire / mensuel). 6 queries scalaires (4 totaux + 2 ventilations).
  */
 @Service
 @Transactional(readOnly = true)
@@ -56,7 +55,7 @@ public class CaisseServiceImpl implements ICaisseService {
         this.validatorService = validatorService;
     }
 
-    /** Valide le filter, vérifie l'accès magasin, lance les 4 queries agrégées (3 sur commandes + 1 sur paiements) et combine. */
+    /** Valide le filter, vérifie l'accès magasin, lance les 6 queries agrégées et combine. */
     @Override
     public CaisseResumeResponse getResume(CaisseResumeFilter filter) {
         validatorService.validate(filter);
@@ -72,7 +71,7 @@ public class CaisseServiceImpl implements ICaisseService {
         List<VenteParVendeurResponse> ventesParVendeur = commandeVenteDomainService.ventilationParVendeurForCaisse(filter, entrepriseId);
 
         return new CaisseResumeResponse(
-                filter.magasinId(), filter.dateAsLocalDate(),
+                filter.magasinId(), filter.fromAsLocalDate(), filter.toAsLocalDate(),
                 nombreCommandes, nombreProduits, totalCommandes, totalPaiements,
                 paiementsParMoyen, ventesParVendeur
         );

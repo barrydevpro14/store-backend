@@ -30,8 +30,9 @@ public class CaisseController {
     @GetMapping("/resume")
     @PreAuthorize("hasAuthority('SALE_READ')")
     public ResponseEntity<CaisseResumeResponse> resume(@RequestParam UUID magasinId,
-                                                       @RequestParam String date) {
-        return ResponseEntity.ok(caisseService.getResume(new CaisseResumeFilter(magasinId, date)));
+                                                       @RequestParam String from,
+                                                       @RequestParam(required = false) String to) {
+        return ResponseEntity.ok(caisseService.getResume(new CaisseResumeFilter(magasinId, from, to)));
     }
 
     @GetMapping("/top-produits")

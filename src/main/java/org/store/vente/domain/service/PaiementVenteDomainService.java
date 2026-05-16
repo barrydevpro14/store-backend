@@ -40,13 +40,13 @@ public class PaiementVenteDomainService extends GlobalService<PaiementVente, Pai
         return repository.findResponsesByFactureId(factureId, entrepriseId, pageable);
     }
 
-    /** Somme des paiements encaissés dans le magasin sur la journée du filter (tiroir-caisse du jour). */
-    public BigDecimal sumPaiementsForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.sumMontantByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    /** Somme des paiements encaissés dans le magasin sur la période du range (tiroir-caisse). */
+    public BigDecimal sumPaiementsForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
+        return repository.sumMontantByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
-    /** Ventilation des paiements groupés par moyen (CASH, MOBILE_MONEY, etc.) avec total et nombre par moyen. */
-    public List<PaiementParMoyenResponse> ventilationParMoyenForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
-        return repository.ventilationParMoyenByMagasinAndDay(filter.magasinId(), entrepriseId, filter.startOfDay(), filter.endOfDay());
+    /** Ventilation des paiements groupés par moyen (CASH, WAVE, OM, CARD) avec total et nombre par moyen. */
+    public List<PaiementParMoyenResponse> ventilationParMoyenForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
+        return repository.ventilationParMoyenByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 }
