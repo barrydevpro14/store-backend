@@ -7,7 +7,60 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-16 (après-midi — revue + durcissement F-V3)
+**Date :** 2026-05-16 (soirée — F-V4 listings vente)
+**Sujet :** **Module Vente — fonctionnalité 4 : Listings paginés filtrés** (commandes vente, factures client, paiements par facture). Symétrie directe avec le module Achat F12-F14 (`CommandeAchatController`, `FactureAchatController`). 5 endpoints en projection JPQL pure (règle 24), scoping entreprise dans la WHERE de chaque query (sécurité multi-tenant sans risque de fuite cross-entreprise). **465 / 465 tests verts** (+17 vs 448).
+
+**Ce qui a été fait :**
+
+1. **F-V4 partie 1 — Listings commandes vente** (`commit 985dd83`) :
+   - `GET /api/v1/commandes-vente` (paginé filtré : magasinId obligatoire, clientId/startDate/endDate optionnels).
+   - `GET /api/v1/commandes-vente/{id}` (détail commande avec `user` vendeur résolu).
+   - **Innovation projection JPQL** : le détail GET by id résout le vendeur (depuis l'audit `createdBy` String → `Account` UUID) **en une seule query** via `LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy LEFT JOIN a.user u` + `TRIM(BOTH FROM CONCAT(COALESCE(u.nom, ''), ' ', COALESCE(u.prenom, '')))`.
+   - 2 constructeurs `CommandeVenteResponse` ajoutés : `(CommandeVente c)` pour listing (user=null), `(CommandeVente c, UUID userId, String nomComplet)` pour GET by id.
+   - `CommandeVenteFilter` + `ICommandeVenteService` + `CommandeVenteController` + 7 tests.
+
+2. **F-V4 partie 2 — Listings factures client + paiements** (`commit 4f2438c`) :
+   - `GET /api/v1/factures-client` (paginé filtré : magasinId obligatoire, clientId/statut/dates optionnels).
+   - `GET /api/v1/factures-client/{id}` (détail facture).
+   - `GET /api/v1/factures-client/{id}/paiements` (paiements paginés, `Pageable` Spring Data).
+   - Projection JPQL via constructeurs `FactureClientResponse(FactureClient)` + `PaiementVenteResponse(PaiementVente)` déjà existants — aucune modif de DTO nécessaire.
+   - **L'option "échéances"** (équivalent achat) est retirée à la demande de l'utilisateur, remplacée par "paiements par facture" (utile pour le frontend qui veut un historique des règlements).
+   - `FactureClientFilter` + `IFactureClientService` + `IPaiementVenteService` + `FactureClientController` (qui injecte les 2 services) + 10 tests.
+
+3. **Multi-tenant strict** : chaque query JPQL filtre `WHERE ... .magasin.entreprise.id = :entrepriseId`. Une commande / facture / paiement d'une autre entreprise est invisible (Optional empty → `EntityException("notFound")` à la lecture by id, ou page vide pour les paiements). Aucun risque de fuite même si un UUID d'une autre entreprise est passé en URL.
+
+4. **i18n** : 2 nouvelles clés FR/EN — `commandeVente.notFound`, `factureClient.notFound`.
+
+5. **Doc** : `FONCTIONNALITIES.md` enrichi d'une section 33 (`Listings vente — fonctionnalité 4`).
+
+**Décisions / arbitrages :**
+
+- **`user` (vendeur) seulement sur le détail, jamais sur les listes** — décision explicite de l'utilisateur. Économie de N queries d'audit sur des pages de N éléments. Le frontend voit `"user": null` dans le listing et clique sur l'élément pour avoir les détails.
+- **JPQL pur (règle 24)** — décision explicite de l'utilisateur. Pas de "récupérer entité + mapper en Java" sur le chemin de lecture. Le détail commande utilise un constructeur 3-args qui prend (commande, userId, nomComplet) et instancie le sous-DTO `UserSummaryResponse` seulement si `userId != null`.
+- **Échéances retirées du scope** — remplacées par "paiements par facture" sur le même endpoint. Si besoin futur de filtrer les factures par date d'échéance approchante, un `?statut=NON_PAYEE&dateEcheanceAvant=...` peut être ajouté au `FactureClientFilter`.
+- **Scope entreprise dans la WHERE, pas en post-load** — pattern cohérent avec Achat. Plus simple (1 query, 1 round-trip BDD) et plus sûr (impossible de leak via getResponseById sur un UUID d'autre entreprise).
+- **`PageableHandlerMethodArgumentResolver`** dans `FactureClientControllerTest` (pour `Pageable` du listPaiements) — calque sur `FactureAchatControllerTest`.
+- **Convention `EntityException → HTTP 406`** redécouverte (au lieu du standard 404). C'est une décision projet existante depuis longtemps dans `GlobalException`. Les tests controller asserent `status().isNotAcceptable()` au lieu de `isNotFound()`.
+
+**Où on s'est arrêté :**
+
+- **465 / 465 tests verts**. Compile vert.
+- **18 commits sur `dev`, 0 en attente** (push effectué en fin de session).
+- **5 endpoints F-V4 livrés et opérationnels.**
+- **Doc à aligner** : la section 33 vient d'être ajoutée à `FONCTIONNALITIES.md` dans ce commit de clôture ; `TODO.md` a la nouvelle entrée F-V4 cochée.
+- **Pas de migration BDD** dans F-V4 (queries seulement).
+
+**Prochaine étape recommandée :**
+
+1. **F-V5 — Paiement échelonné** (`POST /api/v1/factures-client/{id}/paiements`) — ajouter un paiement après la création de la vente. Le pattern existe déjà via `factureClientDomainService.applyPaiement` + `paiementVenteDomainService.create(PaiementVenteCreate)` (utilisés dans F-V3 pour le premier paiement). Service `IFactureClientService.addPaiement(UUID factureId, PaiementVenteRequest)` à créer.
+2. **Module dashboard / reporting** — CA par période, top clients, marges (réutilise `IMarginReportService` existant côté stock).
+3. **Module inventaire physique** (fonct. 12 stock reportée) — comparer stock théorique vs physique.
+
+---
+
+### Session du 2026-05-16 (après-midi — revue + durcissement F-V3)
+
+**Date initiale :** 2026-05-16 (après-midi — revue + durcissement F-V3)
 **Sujet :** **Revue ligne à ligne du livrable F-V3 livré le matin** + correction de 20 défauts identifiés (D1–D20). 8 commits atomiques par axe de criticité. Le code F-V3 passe d'« opérationnel mais avec dette » à « aligné conventions + durci au niveau schéma + DRY restauré ». Décisions métier sollicitées sur les dates (D18–D20). **448 / 448 tests verts** (vs 441 en début de revue, +7 tests ajoutés).
 
 **Ce qui a été fait :**

@@ -765,6 +765,39 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
+## 33. Listings vente (vente, fonctionnalité 4) — `CommandeVenteServiceImpl`, `FactureClientServiceImpl`, `PaiementVenteServiceImpl`
+
+**5 endpoints** (tous en permission `SALE_READ`) :
+- `GET /api/v1/commandes-vente?magasinId=&clientId?&startDate?&endDate?&page&size` — listing paginé filtré commandes vente.
+- `GET /api/v1/commandes-vente/{id}` — détail commande **avec `user` (vendeur) résolu** via projection JPQL.
+- `GET /api/v1/factures-client?magasinId=&clientId?&statut?&startDate?&endDate?&page&size` — listing paginé filtré factures client.
+- `GET /api/v1/factures-client/{id}` — détail facture.
+- `GET /api/v1/factures-client/{id}/paiements` — paiements d'une facture, paginé (`Pageable` Spring Data, tri configurable via `?sort=`).
+
+**Cas d'usage métier** : symétrie avec les listings Achat F12-F14 (`CommandeAchatController`, `FactureAchatController`). Le vendeur / manager consulte l'historique des ventes, factures et paiements d'un magasin. Toutes les vues retournent des `Page<>` triées par `createdAt DESC` par défaut.
+
+**Stratégie projection JPQL (règle 24)** :
+- Listings (`SELECT new <X>Response(entity)`) sans résolution du vendeur côté query (économie : pas de N+1 sur Account/Utilisateur sur des pages de N éléments). Le champ `user` est nul dans les éléments de liste.
+- Détail commande (`GET /commandes-vente/{id}`) résout le vendeur en **une seule query JPQL** via `LEFT JOIN org.store.security.domain.model.Account a ON CAST(a.id AS string) = c.createdBy LEFT JOIN a.user u` + `TRIM(BOTH FROM CONCAT(COALESCE(u.nom, ''), ' ', COALESCE(u.prenom, '')))`. Le CAST est nécessaire car `AuditableEntity.createdBy` est stocké en `String` (UUID stringifié).
+
+**Constructeurs JPQL ajoutés** (`CommandeVenteResponse`) :
+- `(CommandeVente commande)` — listing, `user = null`.
+- `(CommandeVente commande, UUID userId, String nomComplet)` — détail GET by id, instancie `UserSummaryResponse` seulement si `userId != null`.
+
+**Filters** (records dans `vente/application/dto/`) :
+- `CommandeVenteFilter(magasinId, clientId?, startDate?, endDate?, page, size)` + `toPageable()` trie DESC `createdAt`.
+- `FactureClientFilter(magasinId, clientId?, statut?, startDate?, endDate?, page, size)` + `statutAsEnum()` via `EnumHelper.parse`.
+
+**Multi-tenant** : chaque query JPQL filtre obligatoirement par `entrepriseId` issu de `currentUserService.getCurrent()`. Le scoping est appliqué **dans la WHERE de la query** (pas en post-load), donc une commande / facture / paiement d'une autre entreprise est invisible (page vide ou `EntityException("notFound")` plutôt qu'un `notOwned` qui divulguerait l'existence de la ressource). En complément, le controller passe par `IMagasinService.ensureAccessibleByCurrentUser` pour vérifier l'accès magasin du caller sur les listings.
+
+**Permissions** : `SALE_READ` sur tous les endpoints (déjà en YAML : ADMIN, PROPRIETAIRE, MANAGER, VENDEUR).
+
+**i18n** : 2 nouvelles clés FR/EN — `commandeVente.notFound`, `factureClient.notFound`.
+
+**Tests** : 6 service `CommandeVenteServiceImplTest` (validate filter, magasin not accessible forbidden, getById happy with user, getById notFound) + 6 service `FactureClientServiceImplTest` + 2 service `PaiementVenteServiceImplTest` + 3 controller `CommandeVenteControllerTest` (list 200 sans user, getById 200 avec user, getById 406 notFound) + 4 controller `FactureClientControllerTest` (list 200, getById 200, getById 406, listPaiements 200). **465 / 465 verts** (+17 vs 448 pré-F-V4).
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).
