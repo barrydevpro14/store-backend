@@ -7,7 +7,101 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-16 (soirée tardive — Top produits + refactor V16 + F-V5)
+**Date :** 2026-05-16 → 2026-05-17 (longue session — inventaire physique + module utilisateur + magasin/entreprise + docs frontend)
+**Sujet :** Marathon de fonctionnalités : (1) **module inventaire physique** complet (workflow EN_COURS → BILAN → CLOTURE/ANNULE) + **rapport comptable** (formule benefice, dépenses agrégées, fond de roulement), (2) **module utilisateur** quasi-complet (CRUD employé, profil self-service, change/reset password, photo de profil), (3) **CRUD admin enrichi** sur magasin + entreprise (listings filtrés, logo), (4) **2 documents frontend** majeurs (apprentissage + architecture DDD miroir backend). **566 → 567 tests verts** (suite stabilisée).
+
+**Ce qui a été fait :**
+
+1. **Module inventaire physique complet** (commits `a9a8b11` + `f01a08f`) :
+   - Migration de l'implémentation initiale du package `org.store.stock.*` (mal placé) vers `org.store.inventaire.*` après détection conflit de beans (le module existait déjà en squelette).
+   - 4 entités/couches : `Inventaire`, `LigneInventaire`, `RapportInventaire`, enums `InventaireStatut` (EN_COURS/BILAN/CLOTURE/ANNULE) + `StatutRapport` (BENEFICE/PERTE/EQUILIBRE).
+   - Workflow : EN_COURS = saisie lignes par PF (snapshot quantité théorique = SUM lots actifs FIFO), BILAN = fige + produit rapport, CLOTURE = applique ajustements stock + dateValidation, ANNULE = abandon.
+   - **Workflow ajusté en cours de route (3 itérations utilisateur)** : initialement rapport à la clôture, basculé au passage en bilan (caisse + montantRoulement + dateDebutPeriode saisis là). dateFinPeriode = date du bilan auto.
+   - Édition/suppression de ligne (commit `f01a08f`) : PUT/DELETE `/lignes/{ligneId}` avec garde `ensureStatutEnCours` + `ensureLigneBelongsToInventaire` (anti URL forgée).
+   - Refactor demandé : construction `RapportInventaire` + calculs dérivés (ecart/benefice/status) déplacés dans `RapportInventaireDomainService` via record `RapportInventaireCommand` (règle 3 params respectée).
+   - Migrations V17 (`inventaire` + `ligne_inventaire`) et V18 (`rapport_inventaire`). Permission `STOCK_INVENTORY` ajoutée.
+   - 33 tests dédiés (16 service + 13 controller + 4 rapport domain).
+
+2. **Module utilisateur — CRUD employé complet** (commit `01dac50`) :
+   - 5 nouveaux endpoints sous `/api/v1/employees` (listing paginé filtré, GET by id, PUT update, DELETE soft via `account.enabled=false`, PATCH `/activate`).
+   - 3 nouvelles permissions `EMPLOYE_READ` / `EMPLOYE_UPDATE` / `EMPLOYE_DELETE` ajoutées au YAML.
+   - Scoping multi-tenant strict : MANAGER force automatiquement `filter.magasinId = currentUser.magasinId` (pattern `scopeFilterForManager`). PROPRIETAIRE/ADMIN voient toute l'entreprise.
+   - Règles métier de la création (un seul MANAGER par magasin, hiérarchie role) **réutilisées sur update**.
+   - Refactor connexe : `IAccountService.setEnabled(account, boolean)` ajouté pour gérer activation/désactivation depuis le service employé.
+   - `EmployeResponse.actif` ajouté (lu via `account.enabled`).
+   - 14 tests supplémentaires.
+
+3. **Module utilisateur — profil self-service** (commit `f422a9c`) :
+   - 3 endpoints sous `/api/v1/users/me` : `GET` (profil), `PUT` (update infos perso), `POST /change-password` (vérification ancien mdp via `PasswordEncoder.matches`).
+   - GET/PUT autorisent `isAuthenticated()` (pas de permission spécifique). Change-password requiert `AUTH_CHANGE_PASSWORD` (déjà sur tous les rôles).
+   - Politique mdp identique à `AccountRequest` (`@NotBlank @Size(min=8, max=100)`). 406 si ancien mdp incorrect (`account.currentPassword.invalid`).
+   - `UserProfileResponse` expose `type` (EMPLOYE/PROPRIETAIRE via `instanceof`) + `magasinId` nullable.
+   - 10 tests supplémentaires.
+
+4. **Module utilisateur — reset password admin** (commit `957e3e8`) :
+   - `POST /api/v1/employees/{id}/reset-password` body `{ newPassword }` → 204.
+   - Nouvelle permission `EMPLOYE_RESET_PASSWORD` (ADMIN/PROPRIETAIRE/MANAGER). **Distingué volontairement** de `AUTH_RESET_PASSWORD` qui sert au self-service "oublié".
+   - Scoping réutilise `findAccessibleEmploye` (MANAGER bloqué cross-magasin).
+   - `IAccountService.resetPassword(account, newPassword)` (encode + persist sans vérification ancien).
+   - 4 tests supplémentaires.
+
+5. **Module utilisateur — photo de profil** (commit `6faa120`) :
+   - 3 endpoints `/api/v1/users/me/photo` (PUT multipart, GET bytes, DELETE idempotent).
+   - Décalque du pattern `Product.imagePrincipal` : `Utilisateur.photo` en `@OneToOne` PieceJointe cascade ALL + orphanRemoval.
+   - Migration V19 : `photo_id` (FK piece_jointe nullable + index) sur `utilisateur`.
+   - `UserProfileResponse.photo` expose URL relative ou null.
+   - Réutilise `IUploadFileService.buildImage` (validation MIME image + taille).
+   - 8 tests supplémentaires.
+
+6. **CRUD Magasin enrichi** (commit `7d4e4f1` + `d1f2a4c`) :
+   - Listing filtré : `GET /api/v1/magasins?nom=&actif=&page=&size=` (DTO `MagasinFilter`, 2 critères).
+   - Permission classe passée de `PROPRIETAIRE_ACCESS` à `hasAnyAuthority('PROPRIETAIRE_ACCESS', 'ADMIN_ACCESS')` → ADMIN bénéficie des mêmes endpoints (create, list, getById, update, activate/deactivate). Scoping entreprise conservé.
+   - Logo magasin : `PUT/GET/DELETE /api/v1/magasins/{id}/logo` (multipart, bytes, idempotent). `Magasin.logo @OneToOne PieceJointe`.
+   - Migration V20 (groupée avec entreprise) : `logo_id` sur `magasin` + `entreprise`.
+
+7. **CRUD Entreprise enrichi + logo + admin** (commits `d1f2a4c` + `18a7c5d`) :
+   - Logo entreprise : `PUT/GET/DELETE /api/v1/entreprises/me/logo` (self-service propriétaire).
+   - Listing ADMIN filtré : `GET /api/v1/entreprises?sigle=&raisonSociale=&ninea=&rccm=&actif=` (DTO `EntrepriseFilter`, 5 critères, règle 33 OK).
+   - **Nouveau endpoint** `PUT /api/v1/entreprises/{id}` reservé `ADMIN_ACCESS` (modif sigle/raisonSociale/ninea/rccm/adresse de n'importe quelle entreprise). Distinct de `PUT /me` réservé au propriétaire pour la sienne.
+   - `EntrepriseResponse.logo` expose URL `/api/v1/entreprises/me/logo` ou null.
+
+8. **Fix collatéral** (commit `a626bcd`) : `VenteControllerTest.validBody()` utilisait `LocalDate.of(2026, 5, 16)` en dur pour `dateEcheance @FutureOrPresent`. Cassé au passage 2026-05-17. Remplacé par `LocalDate.now().plusDays(30)` (relatif).
+
+9. **Documentation frontend** (commit `c943148`) :
+   - `.claude/FRONTEND_LEARNING.md` (~500 lignes) : guide pédagogique transition `React+Redux+Middleware+MUI` → `Next.js + TanStack Query + Zustand + RHF/Zod + shadcn/ui`. Pour chaque pilier : concept, exemples (auth JWT, CRUD employés), équivalences Redux → moderne, anti-patterns à désapprendre. Roadmap 2 semaines.
+   - `.claude/FRONTEND_ARCHITECTURE.md` (~600 lignes) : architecture cible **calquée sur la structure DDD du backend**. Chaque module backend `org.store.<x>` trouve son écho frontend `features/<x>/` avec **les mêmes 4 couches** :
+     - `domain/` : types, schemas Zod, enums, rules (TS pur, testable Vitest, portable React Native)
+     - `application/` : hooks TanStack Query + stores Zustand (orchestration, ≈ `<X>ServiceImpl`)
+     - `infrastructure/` : api.ts axios (adaptateurs externes, ≈ `<X>JpaRepository`)
+     - `presentation/` : components + pages (UI, ≈ `<X>Controller`)
+   - Mapping détaillé 12 modules backend → 12 features frontend, exemple complet `users/` (Employe), conventions UI, stratégie tests, anti-patterns.
+
+10. **Backlog enrichi (TODO.md)** (commits `280a625`, `9d46dab`, `38e8775`) :
+    - 7 features mises en attente : annulation vente, édition/suppression ligne d'achat, réception partielle, CRUD magasin complet, reporting/dashboard, transferts inter-magasins, audit log.
+    - 5 features supplémentaires : mdp oublié email, PDF facture, hard delete, sessions JWT actives, statistiques par magasin.
+    - 4 axes UX : historique client, listing produits enrichi, top vendeurs, suppression ligne inventaire BILAN.
+    - **Module abonnement : 10 points consignés** sous section dédiée. État : 7 entités riches (`Abonnement`, `PlanAbonnement`, `TypeAbonnement`, `PaiementAbonnement`, `Promotion`, `Coupon`, `UtilisationCoupon`), 7 domain services minimaux, 2 services applicatifs internes (`createTrial`, `findFirstTrialActif`), **0 controller, 0 permission `ABONNEMENT_*`/`PLAN_*`**. Seul flow trial branché à l'inscription propriétaire. À attaquer : CRUD admin plans/types/coupons/promotions, souscription propriétaire, paiement, renouvellement auto, statut courant entreprise, catalogue public.
+
+**Migrations BDD ajoutées :** V17 (inventaire), V18 (rapport_inventaire), V19 (photo utilisateur), V20 (logos magasin + entreprise).
+
+**Permissions ajoutées au YAML :** `STOCK_INVENTORY`, `EMPLOYE_READ`, `EMPLOYE_UPDATE`, `EMPLOYE_DELETE`, `EMPLOYE_RESET_PASSWORD`.
+
+**Décisions notables (mémoire utilisateur) :**
+- Architecture frontend = miroir DDD backend (4 couches par feature).
+- Stack frontend confirmé : Next.js + TanStack Query + Zustand + RHF/Zod + shadcn/ui (pas de migration vers Redux+MUI malgré la familiarité utilisateur).
+- ADMIN bénéficie des CRUD magasin/entreprise au même titre que PROPRIETAIRE (scoping entreprise conservé).
+- Reset password admin séparé du reset password self-service (permissions distinctes : `EMPLOYE_RESET_PASSWORD` vs `AUTH_RESET_PASSWORD`).
+- Workflow inventaire : rapport au passage en BILAN (pas à la cloture). dateFinPeriode = date du bilan auto.
+
+**Prochaine étape recommandée :**
+
+1. **Module abonnement (10 points priorisés)** — voir section TODO dédiée : CRUD plans/types/coupons/promotions (ADMIN), souscription/upgrade propriétaire, paiement, renouvellement auto, statut courant, catalogue public, permissions à créer.
+2. **Annulation de vente / retour** (workflow critique multi-modules, le plus impactant du backlog).
+3. **Démarrage `store-frontend`** : suivre la checklist Phase 0-1 de `FRONTEND_ARCHITECTURE.md` (~4 jours pour fondations + première feature complète `users/`).
+
+---
+
+### Session du 2026-05-16 (soirée tardive — Top produits + refactor V16 + F-V5)
 **Sujet :** Suite d'évolutions sur le module Vente : (1) endpoint top N produits les plus vendus, (2) **refactor structurel V16 supprimant la redondance `montantTotal`/`montantPaye` sur `CommandeVente`**, (3) **F-V5 paiement échelonné** (`POST /api/v1/factures-client/{id}/paiements`). **481 / 481 tests verts** (+11 vs 470).
 
 **Ce qui a été fait :**
