@@ -7,6 +7,65 @@
 
 ## 📌 Dernière session
 
+**Date :** 2026-05-17 (session module abonnement — 8/10 étapes livrées + refactor conventions)
+**Sujet :** Module SaaS **abonnement** complet sauf renouvellement automatique. 9 endpoints livrés (CRUD admin × 4 catalogues + catalogue public + souscription propriétaire + toggle renouvellement auto + paiement manuel + validation admin + listing abonnements + statut courant). Refactor complet en 6 blocs pour aligner sur les conventions de codage (R1-R6). **567 → 703 tests verts** (+136), commit `e840020` poussé sur `dev`.
+
+**Ce qui a été fait :**
+
+1. **Étape 0 — Fondations** : enum `PermissionCode` enrichi (+27 permissions `PLAN_*`/`SUBSCRIPTION_TYPE_*`/`COUPON_*`/`PROMOTION_*`/`SUBSCRIPTION_*` + `SUBSCRIPTION_VALIDATE`). YAML `roles-permissions.yml` aligné (ADMIN CRUD complet sur les 4 catalogues, PROPRIETAIRE READ catalogues + cycle souscription). 21 clés i18n FR/EN. **Décision** : pas de migration BDD pour les 7 tables abonnement (déjà dans `V1__init_schema.sql`).
+
+2. **Étapes 1-4 — CRUD ADMIN** des 4 catalogues : `PlanAbonnement`, `TypeAbonnement` (→ `SubscriptionType*`), `Coupon`, `Promotion`. Pattern décalqué sur `CategoryProduct` (DTOs Request/Response/Summary/Filter, repo SpEL `:#{#filter.X}`, domain service avec `applyRequest`, app service avec validations métier). Endpoints `POST`/`GET`+filtre/`GET id`/`PUT`/`PATCH activate`/`PATCH deactivate`/`DELETE` sur chaque. Validation cohérence `reductionType`/`valeurReduction` (POURCENTAGE ≤ 100, l'un sans l'autre interdit) et fenêtre temporelle (`dateFin ≥ dateDebut`).
+
+3. **Étape 5 — Catalogue public** : `GET /api/v1/catalog/public` (permitAll dans `SecurityConfig`). Endpoint **agrégé** retournant `PublicCatalogResponse(plans, subscriptionTypes, globalPromotions)`. Plans visibles+actifs triés par ordre avec **promotions imbriquées par planId** (partition Java). Types actifs triés ordre+durée. Promotions globales (`plan=null`) en section dédiée. Filtre temporel `dateDebut ≤ today ≤ dateFin` côté JPQL. 1 endpoint, 3 queries optimisées.
+
+4. **Étape 6 — Souscription propriétaire** : `POST /api/v1/abonnements/subscribe` (perm `SUBSCRIPTION_CREATE`). Workflow **2 étapes** : crée Abonnement EN_ATTENTE sans dateDebut/dateFin (fixés au paiement étape 7). Stratégie upgrade/downgrade : **remplacement à dateFin** (le nouveau démarre `currentActif.dateFin+1`). Calculateur `SubscriptionAmountCalculator` (`@Component`) avec record `SubscriptionAmountInputs` : applique réductions séquentielles prix×durée → type → promotion active → coupon, clamp à zéro, scale BigDecimal 2 HALF_UP. Validations : plan `actif && visible && !trial`, type `actif`, coupon `actif + fenêtre + utilisations restantes + plan match`. Coupon réservé à la souscription (`UtilisationCoupon` créé + `nombreUtilisations++`). Retourne `SubscribeResponse(abonnement, breakdown, couponCodeApplied, promotionNomApplied)`.
+
+5. **Toggle renouvellement auto** : `PATCH /api/v1/abonnements/{id}/renouvellement-auto` (perm `SUBSCRIPTION_UPDATE`). Le propriétaire bascule le flag à tout moment (avant/pendant/après activation), scoping `ensureBelongsToCurrentEntreprise` → 403 si autre entreprise.
+
+6. **Étape 7 — Paiement manuel + validation admin** : décision utilisateur (pas d'intégrateur de paiement, paiement manuel hors-app avec preuve image). Entité `PaiementAbonnement` enrichie de 3 champs (`statut` enum `StatutPaiementAbonnement{EN_ATTENTE_VALIDATION,VALIDE,REJETE}`, `preuve` PieceJointe `@OneToOne` cascade ALL, `motifRejet` TEXT). Migration V21. `POST /api/v1/paiements-abonnement/abonnements/{id}` multipart (perm `SUBSCRIPTION_PAY`) avec preuve image obligatoire — montant recalculé serveur (`SubscriptionAmountCalculator` réutilisé). `PATCH /{id}/validate` (perm `SUBSCRIPTION_VALIDATE` ADMIN) → `Abonnement.statut=ACTIF` + dateDebut/dateFin calculés. `PATCH /{id}/reject` avec `motifRejet` → rollback coupon (suppression `UtilisationCoupon` + `nombreUtilisations--`). Listing paginé `GET /paiements-abonnement` auto-scopé entreprise pour non-ADMIN. Endpoints `GET /{id}` + `GET /{id}/preuve` (download bytes image).
+
+7. **Étape 8 — Listing abonnements + statut courant** : `GET /api/v1/abonnements` (ADMIN, filtre `entrepriseId/statut/planId`), `GET /me` (PROPRIETAIRE auto-scopé), `GET /me/current` (PROPRIETAIRE → `CurrentAbonnementResponse(abonnement, joursRestants, isTrial, fonctionnalites)`). Sous-DTOs `PlanFeaturesResponse`. Repository `findEntitiesByFilter` JPQL SpEL + mapping en mémoire `page.map(AbonnementResponse::new)` (compromis lazy loading).
+
+8. **Refactor conventions R1-R6** (sur signalement utilisateur "respecter les règles établies") :
+    - **R1** : helper `SubscriptionRules` (`final class` + static methods) factorise `ensureReductionConsistent` (×3 dans Type/Coupon/Promotion) et `ensurePeriodValid` (×2 dans Coupon/Promotion). Règle 4 (code réutilisable = méthode publique du service propriétaire — tolérance helper utilitaire trivial). +9 tests dédiés `SubscriptionRulesTest`.
+    - **R2** : `IPlanAbonnementService.findByIdOrNull(UUID)` default method (réutilisée par Coupon/Promotion à la place de `resolvePlan` privé). Règle 27.
+    - **R3** : record `PaiementAbonnementCreationContext(abonnement, request, breakdown, preuve)` (4 params → 1 dans `PaiementAbonnementDomainService.createPending`). Règle 30 (max 3 params).
+    - **R4** : injection `ValidatorService` + `validate(filter)` en première ligne dans **tous** les `findAll(filter)` / `findMyHistory(filter)` (Plan, Type, Coupon, Promotion, Abonnement, PaiementAbonnement). Règle 33.
+    - **R5** : suppression des 6 méthodes privées non-triviales (`ensureReductionConsistent`, `ensurePeriodValid`, `resolvePlan` × 2) rendues publiques via helpers/default methods. 2 helpers BigDecimal `reductionOf`/`clamp` de `SubscriptionAmountCalculator` conservés privés (exception "helpers triviaux sur objet utilitaire" règle 27).
+    - **R6 critique** : règle 26 ratée initialement (signalée par l'utilisateur — "la gestion de l'enregistrement des données doit être dans domain/service"). Tous les `entity.setX()` + `domainService.save(entity)` dispersés dans les ServiceImpl rapatriés dans les DomainService comme méthodes métier nommées :
+      - 4 `setActive(entity, boolean)` (Plan/Type/Coupon/Promotion)
+      - `AbonnementDomainService.setRenouvellementAuto(abonnement, enabled)` + `activate(abonnement, dateDebut, dateFin)`
+      - `CouponDomainService.incrementUsage(coupon)` + `decrementUsage(coupon)`
+      - `UtilisationCouponDomainService.create(coupon, entreprise, abonnement)`
+      - `PaiementAbonnementDomainService.markAsValide(paiement)` + `markAsRejete(paiement, motifRejet)`
+      
+      Les ServiceImpl ne font plus aucun setter direct sur les entités. Tests adaptés en conséquence (stubs `setActive`/`markAs*` au lieu de `save`).
+
+**Migration BDD ajoutée :** V21 (`paiement_abonnement` : `statut` NOT NULL default 'EN_ATTENTE_VALIDATION', `preuve_id` FK piece_jointe, `motif_rejet` TEXT + 2 index).
+
+**Permissions ajoutées au YAML :** 27 nouvelles (PLAN_*, SUBSCRIPTION_TYPE_*, COUPON_*, PROMOTION_*, SUBSCRIPTION_PAY, SUBSCRIPTION_RENEW, SUBSCRIPTION_VALIDATE).
+
+**Décisions notables (mémoire utilisateur) :**
+- **Convention permissions anglaise** (SUBSCRIPTION_* au lieu de ABONNEMENT_*) — cohérence YAML existant.
+- **Paiement manuel** sans intégrateur : propriétaire enregistre paiement + preuve image, admin valide.
+- **Workflow paiement 2 étapes** : POST /subscribe crée EN_ATTENTE, POST /paiements active à la validation admin.
+- **Upgrade/downgrade = remplacement à dateFin** (pas de prorata) — simplicité MVP.
+- **Rollback coupon au rejet** : libère la place (décrémenté + UtilisationCoupon supprimée).
+- **Preuve image obligatoire** à la création du paiement (pas de paiement EN_ATTENTE_VALIDATION sans preuve).
+- **Règle 26 stricte** : aucun `entity.setX()` + `save` dans les ServiceImpl, tout dans le DomainService comme méthode métier nommée.
+
+**Commit :** `e840020` Module abonnement complet (étapes 0-8) + refactor conventions — 92 fichiers, +6215/-43, poussé sur `dev`.
+
+**Prochaine étape recommandée :**
+
+1. **Étape 9 — Renouvellement automatique** (dernière étape du module abonnement) : worker `@Scheduled` qui parcourt `Abonnement` avec `renouvellementAuto=true` et `dateFin` approchant, déclenche paiement automatique (à clarifier avec utilisateur : avec preuve auto ? validation auto admin ? ou désactiver le renouvellement auto puisque paiement manuel ?), transition `EXPIRE` à `dateFin` sinon. Endpoint manuel `POST /abonnements/{id}/renew` pour test.
+2. **Annulation de vente / retour** (workflow critique multi-modules, le plus impactant du backlog).
+3. **Démarrage `store-frontend`** : suivre la checklist Phase 0-1 de `FRONTEND_ARCHITECTURE.md`.
+
+---
+
+## 📜 Sessions précédentes
+
 **Date :** 2026-05-16 → 2026-05-17 (longue session — inventaire physique + module utilisateur + magasin/entreprise + docs frontend)
 **Sujet :** Marathon de fonctionnalités : (1) **module inventaire physique** complet (workflow EN_COURS → BILAN → CLOTURE/ANNULE) + **rapport comptable** (formule benefice, dépenses agrégées, fond de roulement), (2) **module utilisateur** quasi-complet (CRUD employé, profil self-service, change/reset password, photo de profil), (3) **CRUD admin enrichi** sur magasin + entreprise (listings filtrés, logo), (4) **2 documents frontend** majeurs (apprentissage + architecture DDD miroir backend). **566 → 567 tests verts** (suite stabilisée).
 
