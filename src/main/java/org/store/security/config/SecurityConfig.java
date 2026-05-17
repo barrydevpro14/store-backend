@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
                                 .requestMatchers("/api/v1/auth/**").permitAll()
+                                .requestMatchers("/api/v1/catalog/public/**").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .addFilterBefore(corsConfiguration, SessionManagementFilter.class)
