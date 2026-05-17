@@ -1,10 +1,10 @@
 package org.store.entreprise.domain.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
+import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.domain.model.Entreprise;
@@ -30,8 +30,9 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         return save(entreprise);
     }
 
-    public Page<EntrepriseResponse> findAllProjected(Pageable pageable) {
-        return repository.findAllProjected(pageable);
+    /** Listing pagine filtre (sigle/raisonSociale/ninea/rccm LIKE insensitive, actif). */
+    public Page<EntrepriseResponse> findResponsesByFilter(EntrepriseFilter filter) {
+        return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 
     /** Pose ou remplace le logo. orphanRemoval supprime auto l'ancienne PieceJointe. */

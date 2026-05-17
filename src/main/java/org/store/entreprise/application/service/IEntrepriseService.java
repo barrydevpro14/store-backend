@@ -1,9 +1,9 @@
 package org.store.entreprise.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
+import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.domain.model.Entreprise;
@@ -34,9 +34,14 @@ public interface IEntrepriseService {
     EntrepriseResponse updateCurrentUserEntreprise(EntrepriseRequest entrepriseRequest);
 
     /**
-     * Listing paginé de toutes les entreprises (ADMIN).
+     * Listing paginé filtré de toutes les entreprises (ADMIN).
      */
-    Page<EntrepriseResponse> findAll(Pageable pageable);
+    Page<EntrepriseResponse> findAll(EntrepriseFilter filter);
+
+    /**
+     * Modification par ADMIN des infos d'une entreprise quelconque.
+     */
+    EntrepriseResponse update(java.util.UUID id, EntrepriseRequest request);
 
     /**
      * Lecture d'une entreprise par id (ADMIN).

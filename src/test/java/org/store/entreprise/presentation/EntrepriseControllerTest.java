@@ -94,7 +94,7 @@ class EntrepriseControllerTest {
     @Test
     void should_return_200_with_page_when_admin_lists() throws Exception {
         Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(entrepriseService.findAll(any(Pageable.class))).thenReturn(page);
+        when(entrepriseService.findAll(any(org.store.entreprise.application.dto.EntrepriseFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(EntrepriseController.BASE_PATH))
                 .andExpect(status().isOk())

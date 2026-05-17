@@ -2,7 +2,6 @@ package org.store.entreprise.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +14,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
+import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
@@ -50,14 +51,28 @@ public class EntrepriseController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
-    public ResponseEntity<Page<EntrepriseResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(entrepriseService.findAll(pageable));
+    public ResponseEntity<Page<EntrepriseResponse>> list(@RequestParam(required = false) String sigle,
+                                                         @RequestParam(required = false) String raisonSociale,
+                                                         @RequestParam(required = false) String ninea,
+                                                         @RequestParam(required = false) String rccm,
+                                                         @RequestParam(required = false) Boolean actif,
+                                                         @RequestParam(defaultValue = "0") int page,
+                                                         @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(entrepriseService.findAll(
+                new EntrepriseFilter(sigle, raisonSociale, ninea, rccm, actif, page, size)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
     public ResponseEntity<EntrepriseResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(entrepriseService.findResponseById(id));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<EntrepriseResponse> update(@PathVariable UUID id,
+                                                     @Valid @RequestBody EntrepriseRequest request) {
+        return ResponseEntity.ok(entrepriseService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")

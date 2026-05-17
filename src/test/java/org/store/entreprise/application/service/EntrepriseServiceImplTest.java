@@ -36,6 +36,7 @@ class EntrepriseServiceImplTest {
     @Mock private EntrepriseDomainService entrepriseDomainService;
     @Mock private org.store.common.service.IUploadFileService uploadFileService;
     @Mock private ICurrentUserService currentUserService;
+    @Mock private org.store.common.service.ValidatorService validatorService;
 
     @InjectMocks
     private EntrepriseServiceImpl service;
@@ -130,16 +131,32 @@ class EntrepriseServiceImplTest {
     }
 
     @Test
-    void findAll_should_delegate_to_domain_service() {
-        Pageable pageable = PageRequest.of(0, 10);
+    void findAll_should_delegate_filter_to_domain_service() {
+        org.store.entreprise.application.dto.EntrepriseFilter filter =
+                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, 0, 10);
         EntrepriseResponse sample = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
                 "N", "R", "A", true, true, null);
-        Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), pageable, 1);
-        when(entrepriseDomainService.findAllProjected(pageable)).thenReturn(page);
+        Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
+        when(entrepriseDomainService.findResponsesByFilter(filter)).thenReturn(page);
 
-        Page<EntrepriseResponse> result = service.findAll(pageable);
+        Page<EntrepriseResponse> result = service.findAll(filter);
 
         assertThat(result.getContent()).containsExactly(sample);
+        verify(validatorService).validate(filter);
+    }
+
+    @Test
+    void update_should_apply_changes_via_domain_service() {
+        Entreprise existing = new Entreprise();
+        existing.setId(entrepriseId);
+        when(entrepriseDomainService.findById(entrepriseId)).thenReturn(existing);
+        when(entrepriseDomainService.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EntrepriseResponse response = service.update(entrepriseId,
+                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr"));
+
+        assertThat(response.sigle()).isEqualTo("NEW");
+        assertThat(response.raisonSociale()).isEqualTo("NEW SARL");
     }
 
     @Test

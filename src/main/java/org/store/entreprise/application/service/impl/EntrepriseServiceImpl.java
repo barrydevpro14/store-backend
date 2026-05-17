@@ -3,7 +3,6 @@ package org.store.entreprise.application.service.impl;
 import org.store.entreprise.application.service.*;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,6 +11,8 @@ import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
+import org.store.common.service.ValidatorService;
+import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.domain.model.Entreprise;
@@ -28,13 +29,16 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     private final EntrepriseDomainService entrepriseDomainService;
     private final IUploadFileService uploadFileService;
     private final ICurrentUserService currentUserService;
+    private final ValidatorService validatorService;
 
     public EntrepriseServiceImpl(EntrepriseDomainService entrepriseDomainService,
                                  IUploadFileService uploadFileService,
-                                 ICurrentUserService currentUserService) {
+                                 ICurrentUserService currentUserService,
+                                 ValidatorService validatorService) {
         this.entrepriseDomainService = entrepriseDomainService;
         this.uploadFileService = uploadFileService;
         this.currentUserService = currentUserService;
+        this.validatorService = validatorService;
     }
 
     @Override
@@ -68,8 +72,22 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     }
 
     @Override
-    public Page<EntrepriseResponse> findAll(Pageable pageable) {
-        return entrepriseDomainService.findAllProjected(pageable);
+    public Page<EntrepriseResponse> findAll(EntrepriseFilter filter) {
+        validatorService.validate(filter);
+        return entrepriseDomainService.findResponsesByFilter(filter);
+    }
+
+    @Override
+    @Transactional
+    public EntrepriseResponse update(java.util.UUID id, EntrepriseRequest request) {
+        validatorService.validate(request);
+        Entreprise entreprise = entrepriseDomainService.findById(id);
+        entreprise.setSigle(request.sigle());
+        entreprise.setRaisonSociale(request.raisonSociale());
+        entreprise.setNinea(request.ninea());
+        entreprise.setRccm(request.rccm());
+        entreprise.setAdresse(request.adresse());
+        return new EntrepriseResponse(entrepriseDomainService.save(entreprise));
     }
 
     @Override
