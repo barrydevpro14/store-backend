@@ -65,7 +65,7 @@ class VenteControllerTest {
     private VenteRequest validBody() {
         return new VenteRequest(
                 null,
-                LocalDate.of(2026, 5, 16),
+                LocalDate.now().plusDays(30),
                 List.of(new LigneVenteRequest(productFournisseurId, 10, new BigDecimal("15.00"))),
                 null
         );
