@@ -177,7 +177,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     /** Lève `BadArgumentException` si un paiement EN_ATTENTE_VALIDATION existe déjà pour cet abonnement. */
     public void ensureNoPendingPayment(UUID abonnementId) {
-        if (paiementAbonnementDomainService.findFirstPendingByAbonnement(abonnementId).isPresent()) {
+        if (paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId)) {
             throw new BadArgumentException("paiementAbonnement.alreadyPending");
         }
     }
@@ -195,8 +195,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 .findFirstActivePromotionForPlan(abonnement.getPlan().getId(), LocalDate.now())
                 .orElse(null);
 
-        Coupon coupon = utilisationCouponDomainService.findByAbonnementId(abonnement.getId())
-                .map(UtilisationCoupon::getCoupon)
+        Coupon coupon = utilisationCouponDomainService.findCouponIdByAbonnementId(abonnement.getId())
+                .map(couponDomainService::findById)
                 .orElse(null);
 
         return amountCalculator.calculate(new SubscriptionAmountInputs(
@@ -207,9 +207,9 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     public void activateAbonnement(Abonnement abonnement) {
         UUID entrepriseId = abonnement.getEntreprise().getId();
 
-        LocalDate dateDebut = abonnementDomainService.findCurrentActif(entrepriseId)
-                .filter(currentActif -> !currentActif.getId().equals(abonnement.getId()))
-                .map(currentActif -> currentActif.getDateFin() == null ? LocalDate.now() : currentActif.getDateFin().plusDays(1))
+        LocalDate dateDebut = abonnementDomainService
+                .findLatestActifDateFin(entrepriseId, abonnement.getId())
+                .map(latestDateFin -> latestDateFin.plusDays(1))
                 .orElse(LocalDate.now());
 
         LocalDate dateFin = dateDebut.plusMonths(abonnement.getTypeAbonnement().getDureeMois());
@@ -217,14 +217,12 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         abonnementDomainService.activate(abonnement, dateDebut, dateFin);
     }
 
-    /** Libère le coupon réservé : décrémente `coupon.nombreUtilisations` puis supprime `UtilisationCoupon`. */
+    /** Libère le coupon réservé : décrémente `coupon.nombreUtilisations` puis supprime l'`UtilisationCoupon` via bulk delete. */
     public void releaseReservedCouponIfAny(UUID abonnementId) {
-        utilisationCouponDomainService.findByAbonnementId(abonnementId).ifPresent(utilisation -> {
-            Coupon coupon = utilisation.getCoupon();
-            if (coupon != null) {
-                couponDomainService.decrementUsage(coupon);
-            }
-            utilisationCouponDomainService.delete(utilisation);
+        utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId).ifPresent(couponId -> {
+            Coupon coupon = couponDomainService.findById(couponId);
+            couponDomainService.decrementUsage(coupon);
+            utilisationCouponDomainService.deleteByAbonnementId(abonnementId);
         });
     }
 

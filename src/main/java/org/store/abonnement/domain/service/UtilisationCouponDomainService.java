@@ -25,7 +25,11 @@ public class UtilisationCouponDomainService extends GlobalService<UtilisationCou
         return save(utilisation);
     }
 
-    public Optional<UtilisationCoupon> findByAbonnementId(UUID abonnementId) {
-        return repository.findByAbonnementId(abonnementId);
+    public Optional<UUID> findCouponIdByAbonnementId(UUID abonnementId) {
+        return repository.findCouponIdByAbonnementId(abonnementId);
+    }
+
+    public void deleteByAbonnementId(UUID abonnementId) {
+        repository.deleteByAbonnementId(abonnementId);
     }
 }

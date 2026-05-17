@@ -16,8 +16,6 @@ public interface TypeAbonnementRepository extends BaseRepository<TypeAbonnement>
 
     boolean existsByNom(String nom);
 
-    Optional<TypeAbonnement> findByNom(String nom);
-
     @Query("""
             SELECT new org.store.abonnement.application.dto.SubscriptionTypeResponse(type)
             FROM TypeAbonnement type

@@ -9,10 +9,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
 import org.store.abonnement.application.dto.PromotionResponse;
 import org.store.abonnement.application.dto.PublicCatalogResponse;
+import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.application.dto.SubscriptionTypeResponse;
 import org.store.abonnement.application.service.impl.PublicCatalogServiceImpl;
 import org.store.abonnement.domain.enums.ReductionType;
-import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.PromotionDomainService;
 import org.store.abonnement.domain.service.TypeAbonnementDomainService;
@@ -45,18 +45,12 @@ class PublicCatalogServiceImplTest {
         planBId = UUID.randomUUID();
     }
 
-    private PlanAbonnement plan(UUID id, String nom, int ordre) {
-        PlanAbonnement p = new PlanAbonnement();
-        p.setId(id);
-        p.setNom(nom);
-        p.setPrix(new BigDecimal("9900"));
-        p.setOrdre(ordre);
-        p.setActif(true);
-        p.setVisible(true);
-        p.setGestionStock(true);
-        p.setGestionVente(true);
-        p.setGestionAchat(true);
-        return p;
+    private PublicPlanResponse plan(UUID id, String nom, int ordre) {
+        return new PublicPlanResponse(
+                id, nom, null, new BigDecimal("9900"),
+                1, 3,
+                true, true, true, false,
+                false, ordre);
     }
 
     private PromotionResponse promo(String nom, UUID planId, String planNom) {
@@ -77,14 +71,14 @@ class PublicCatalogServiceImplTest {
 
     @Test
     void findCatalog_should_aggregate_plans_types_and_promotions() {
-        when(planAbonnementDomainService.findAllVisibleAndActif())
+        when(planAbonnementDomainService.findPublicResponses())
                 .thenReturn(List.of(plan(planAId, "Starter", 10), plan(planBId, "Pro", 20)));
         when(typeAbonnementDomainService.findAllActifResponses())
                 .thenReturn(List.of(type("Mensuel", 1), type("Annuel", 12)));
-        when(promotionDomainService.findAllActifResponses(any(LocalDate.class)))
-                .thenReturn(List.of(
-                        promo("Black Friday Pro", planBId, "Pro"),
-                        promo("Lancement global", null, null)));
+        when(promotionDomainService.findActiveGlobalResponses(any(LocalDate.class)))
+                .thenReturn(List.of(promo("Lancement global", null, null)));
+        when(promotionDomainService.findActiveScopedResponses(any(LocalDate.class)))
+                .thenReturn(List.of(promo("Black Friday Pro", planBId, "Pro")));
 
         PublicCatalogResponse response = service.findCatalog();
 
@@ -93,7 +87,7 @@ class PublicCatalogServiceImplTest {
         assertThat(response.globalPromotions())
                 .extracting(PromotionResponse::nom)
                 .containsExactly("Lancement global");
-        assertThat(response.plans().get(0).promotions()).isEmpty(); // Starter pas de promo dédiée
+        assertThat(response.plans().get(0).promotions()).isEmpty();
         assertThat(response.plans().get(1).promotions())
                 .extracting(PromotionResponse::nom)
                 .containsExactly("Black Friday Pro");
@@ -101,9 +95,10 @@ class PublicCatalogServiceImplTest {
 
     @Test
     void findCatalog_should_return_empty_collections_when_no_data() {
-        when(planAbonnementDomainService.findAllVisibleAndActif()).thenReturn(List.of());
+        when(planAbonnementDomainService.findPublicResponses()).thenReturn(List.of());
         when(typeAbonnementDomainService.findAllActifResponses()).thenReturn(List.of());
-        when(promotionDomainService.findAllActifResponses(any(LocalDate.class))).thenReturn(List.of());
+        when(promotionDomainService.findActiveGlobalResponses(any(LocalDate.class))).thenReturn(List.of());
+        when(promotionDomainService.findActiveScopedResponses(any(LocalDate.class))).thenReturn(List.of());
 
         PublicCatalogResponse response = service.findCatalog();
 
@@ -114,10 +109,11 @@ class PublicCatalogServiceImplTest {
 
     @Test
     void findCatalog_should_attach_multiple_promotions_to_same_plan() {
-        when(planAbonnementDomainService.findAllVisibleAndActif())
+        when(planAbonnementDomainService.findPublicResponses())
                 .thenReturn(List.of(plan(planAId, "Starter", 10)));
         when(typeAbonnementDomainService.findAllActifResponses()).thenReturn(List.of());
-        when(promotionDomainService.findAllActifResponses(any(LocalDate.class)))
+        when(promotionDomainService.findActiveGlobalResponses(any(LocalDate.class))).thenReturn(List.of());
+        when(promotionDomainService.findActiveScopedResponses(any(LocalDate.class)))
                 .thenReturn(List.of(
                         promo("Promo 1", planAId, "Starter"),
                         promo("Promo 2", planAId, "Starter")));

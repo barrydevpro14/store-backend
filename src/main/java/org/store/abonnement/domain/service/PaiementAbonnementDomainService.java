@@ -12,7 +12,6 @@ import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.repository.PaiementAbonnementRepository;
 import org.store.common.service.GlobalService;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -40,8 +39,8 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         return save(paiement);
     }
 
-    public Optional<PaiementAbonnement> findFirstPendingByAbonnement(UUID abonnementId) {
-        return repository.findFirstByAbonnementIdAndStatut(abonnementId, StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
+    public boolean existsPendingForAbonnement(UUID abonnementId) {
+        return repository.existsByAbonnementIdAndStatut(abonnementId, StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
     }
 
     public Page<PaiementAbonnementResponse> findResponses(PaiementAbonnementFilter filter) {

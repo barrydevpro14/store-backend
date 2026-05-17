@@ -10,20 +10,19 @@ import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.common.repository.BaseRepository;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbonnement> {
 
-    Optional<PaiementAbonnement> findFirstByAbonnementIdAndStatut(UUID abonnementId, StatutPaiementAbonnement statut);
+    boolean existsByAbonnementIdAndStatut(UUID abonnementId, StatutPaiementAbonnement statut);
 
     @Query("""
-            SELECT new org.store.abonnement.application.dto.PaiementAbonnementResponse(p)
-            FROM PaiementAbonnement p
-            JOIN p.abonnement a
-            WHERE (:statut       IS NULL OR p.statut       = :statut)
-              AND (:abonnementId IS NULL OR a.id           = :abonnementId)
-              AND (:entrepriseId IS NULL OR a.entreprise.id = :entrepriseId)
+            SELECT new org.store.abonnement.application.dto.PaiementAbonnementResponse(paiement)
+            FROM PaiementAbonnement paiement
+            JOIN paiement.abonnement abonnement
+            WHERE (:statut       IS NULL OR paiement.statut    = :statut)
+              AND (:abonnementId IS NULL OR abonnement.id      = :abonnementId)
+              AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
             """)
     Page<PaiementAbonnementResponse> findResponsesByFilter(@Param("statut") StatutPaiementAbonnement statut,
                                                            @Param("abonnementId") UUID abonnementId,

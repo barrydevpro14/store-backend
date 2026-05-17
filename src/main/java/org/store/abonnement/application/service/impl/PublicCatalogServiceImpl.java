@@ -7,7 +7,6 @@ import org.store.abonnement.application.dto.PublicCatalogResponse;
 import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.application.dto.SubscriptionTypeResponse;
 import org.store.abonnement.application.service.IPublicCatalogService;
-import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.PromotionDomainService;
 import org.store.abonnement.domain.service.TypeAbonnementDomainService;
@@ -38,29 +37,25 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
     }
 
     /**
-     * Charge en 3 queries : plans visibles+actifs, types actifs, promotions actives ce jour.
-     * Partitionne les promotions par plan (clé null = globales) puis attache chaque sous-liste à son plan.
+     * Charge en 4 queries projetées : plans visibles+actifs, types actifs, promotions globales actives (plan IS NULL),
+     * promotions scopées actives (plan IS NOT NULL). Groupe les scopées par planId et les attache au plan via `withPromotions`.
      */
     @Override
     public PublicCatalogResponse findCatalog() {
         LocalDate today = LocalDate.now();
 
-        List<PlanAbonnement> plans = planAbonnementDomainService.findAllVisibleAndActif();
+        List<PublicPlanResponse> plansWithoutPromotions = planAbonnementDomainService.findPublicResponses();
         List<SubscriptionTypeResponse> subscriptionTypes = typeAbonnementDomainService.findAllActifResponses();
-        List<PromotionResponse> activePromotions = promotionDomainService.findAllActifResponses(today);
+        List<PromotionResponse> globalPromotions = promotionDomainService.findActiveGlobalResponses(today);
+        List<PromotionResponse> scopedPromotions = promotionDomainService.findActiveScopedResponses(today);
 
-        Map<UUID, List<PromotionResponse>> promotionsByPlanId = activePromotions.stream()
-                .filter(p -> p.plan() != null)
-                .collect(Collectors.groupingBy(p -> p.plan().id()));
+        Map<UUID, List<PromotionResponse>> promotionsByPlanId = scopedPromotions.stream()
+                .collect(Collectors.groupingBy(promotion -> promotion.plan().id()));
 
-        List<PromotionResponse> globalPromotions = activePromotions.stream()
-                .filter(p -> p.plan() == null)
+        List<PublicPlanResponse> plans = plansWithoutPromotions.stream()
+                .map(plan -> plan.withPromotions(promotionsByPlanId.getOrDefault(plan.id(), List.of())))
                 .toList();
 
-        List<PublicPlanResponse> publicPlans = plans.stream()
-                .map(plan -> new PublicPlanResponse(plan, promotionsByPlanId.getOrDefault(plan.getId(), List.of())))
-                .toList();
-
-        return new PublicCatalogResponse(publicPlans, subscriptionTypes, globalPromotions);
+        return new PublicCatalogResponse(plans, subscriptionTypes, globalPromotions);
     }
 }

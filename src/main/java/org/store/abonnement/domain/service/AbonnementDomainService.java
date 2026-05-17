@@ -65,7 +65,11 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return repository.findFirstByEntrepriseAndStatut(entrepriseId, AbonnementStatut.ACTIF);
     }
 
+    public Optional<LocalDate> findLatestActifDateFin(UUID entrepriseId, UUID excludeAbonnementId) {
+        return repository.findLatestActifDateFin(entrepriseId, excludeAbonnementId);
+    }
+
     public Page<AbonnementResponse> findResponses(AbonnementFilter filter) {
-        return repository.findEntitiesByFilter(filter, filter.toPageable()).map(AbonnementResponse::new);
+        return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 }

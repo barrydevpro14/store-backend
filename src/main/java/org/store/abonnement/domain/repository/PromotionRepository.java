@@ -29,13 +29,25 @@ public interface PromotionRepository extends BaseRepository<Promotion> {
     @Query("""
             SELECT new org.store.abonnement.application.dto.PromotionResponse(promotion)
             FROM Promotion promotion
+            WHERE promotion.actif    = true
+              AND promotion.dateDebut <= :today
+              AND promotion.dateFin   >= :today
+              AND promotion.plan      IS NULL
+            ORDER BY promotion.dateDebut ASC
+            """)
+    List<PromotionResponse> findActiveGlobalResponses(@Param("today") LocalDate today);
+
+    @Query("""
+            SELECT new org.store.abonnement.application.dto.PromotionResponse(promotion)
+            FROM Promotion promotion
             LEFT JOIN promotion.plan plan
             WHERE promotion.actif    = true
               AND promotion.dateDebut <= :today
               AND promotion.dateFin   >= :today
+              AND promotion.plan      IS NOT NULL
             ORDER BY promotion.dateDebut ASC
             """)
-    List<PromotionResponse> findAllActifResponses(@Param("today") LocalDate today);
+    List<PromotionResponse> findActiveScopedResponses(@Param("today") LocalDate today);
 
     @Query("""
             SELECT promotion

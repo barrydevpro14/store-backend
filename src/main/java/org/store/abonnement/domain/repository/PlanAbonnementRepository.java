@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.abonnement.application.dto.PlanAbonnementFilter;
 import org.store.abonnement.application.dto.PlanAbonnementResponse;
+import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.common.repository.BaseRepository;
 
@@ -18,8 +19,6 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
 
     boolean existsByNom(String nom);
 
-    Optional<PlanAbonnement> findByNom(String nom);
-
     @Query("""
             SELECT new org.store.abonnement.application.dto.PlanAbonnementResponse(plan)
             FROM PlanAbonnement plan
@@ -31,10 +30,14 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
     Page<PlanAbonnementResponse> findResponsesByFilter(@Param("filter") PlanAbonnementFilter filter, Pageable pageable);
 
     @Query("""
-            SELECT plan
+            SELECT new org.store.abonnement.application.dto.PublicPlanResponse(
+                    plan.id, plan.nom, plan.description, plan.prix,
+                    plan.nombreMagasinsMax, plan.nombreEmployesMax,
+                    plan.gestionStock, plan.gestionVente, plan.gestionAchat, plan.gestionComptabilite,
+                    plan.trial, plan.ordre)
             FROM PlanAbonnement plan
             WHERE plan.actif = true AND plan.visible = true
             ORDER BY plan.ordre ASC, plan.nom ASC
             """)
-    List<PlanAbonnement> findAllVisibleAndActif();
+    List<PublicPlanResponse> findPublicResponses();
 }

@@ -43,8 +43,12 @@ public class PromotionDomainService extends GlobalService<Promotion, PromotionRe
         return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 
-    public List<PromotionResponse> findAllActifResponses(LocalDate today) {
-        return repository.findAllActifResponses(today);
+    public List<PromotionResponse> findActiveGlobalResponses(LocalDate today) {
+        return repository.findActiveGlobalResponses(today);
+    }
+
+    public List<PromotionResponse> findActiveScopedResponses(LocalDate today) {
+        return repository.findActiveScopedResponses(today);
     }
 
     public Optional<Promotion> findFirstActivePromotionForPlan(UUID planId, LocalDate today) {

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.PlanAbonnementFilter;
 import org.store.abonnement.application.dto.PlanAbonnementRequest;
 import org.store.abonnement.application.dto.PlanAbonnementResponse;
+import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.PlanAbonnementRepository;
 import org.store.common.service.GlobalService;
@@ -49,8 +50,8 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
         return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 
-    public List<PlanAbonnement> findAllVisibleAndActif() {
-        return repository.findAllVisibleAndActif();
+    public List<PublicPlanResponse> findPublicResponses() {
+        return repository.findPublicResponses();
     }
 
     public boolean existsByNom(String nom) {
