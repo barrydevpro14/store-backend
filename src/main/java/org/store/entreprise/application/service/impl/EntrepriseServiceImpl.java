@@ -6,7 +6,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.model.PieceJointe;
+import org.store.common.service.IUploadFileService;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.domain.model.Entreprise;
@@ -21,11 +26,14 @@ import java.util.UUID;
 public class EntrepriseServiceImpl implements IEntrepriseService {
 
     private final EntrepriseDomainService entrepriseDomainService;
+    private final IUploadFileService uploadFileService;
     private final ICurrentUserService currentUserService;
 
     public EntrepriseServiceImpl(EntrepriseDomainService entrepriseDomainService,
+                                 IUploadFileService uploadFileService,
                                  ICurrentUserService currentUserService) {
         this.entrepriseDomainService = entrepriseDomainService;
+        this.uploadFileService = uploadFileService;
         this.currentUserService = currentUserService;
     }
 
@@ -83,6 +91,39 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
         Entreprise entreprise = entrepriseDomainService.findById(id);
         entreprise.setActif(false);
         return new EntrepriseResponse(entrepriseDomainService.save(entreprise));
+    }
+
+    @Override
+    @Transactional
+    public EntrepriseResponse uploadCurrentUserLogo(MultipartFile file) {
+        Entreprise entreprise = findCurrentEntreprise();
+        PieceJointe logo = uploadFileService.buildImage(file);
+        Entreprise updated = entrepriseDomainService.setLogo(entreprise, logo);
+        return new EntrepriseResponse(updated);
+    }
+
+    @Override
+    public ImageDownloadResponse getCurrentUserLogo() {
+        PieceJointe logo = findCurrentEntreprise().getLogo();
+        if (logo == null) {
+            throw new EntityException("entreprise.logo.notFound");
+        }
+        return new ImageDownloadResponse(logo.getDocument(), logo.getContentType());
+    }
+
+    @Override
+    @Transactional
+    public void deleteCurrentUserLogo() {
+        Entreprise entreprise = findCurrentEntreprise();
+        if (entreprise.getLogo() != null) {
+            entrepriseDomainService.clearLogo(entreprise);
+        }
+    }
+
+    /** Resout l'entreprise du proprietaire connecte via UserPrincipal.entrepriseId. */
+    public Entreprise findCurrentEntreprise() {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        return ensureBelongsToCurrentUser(entrepriseDomainService.findById(currentUser.entrepriseId()));
     }
 
     @Override

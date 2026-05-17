@@ -1,6 +1,7 @@
 package org.store.magasin.application.dto;
 
 import org.store.magasin.domain.model.Magasin;
+import org.store.magasin.presentation.MagasinController;
 
 import java.util.UUID;
 
@@ -9,7 +10,8 @@ public record MagasinResponse(
         String nom,
         String adresse,
         boolean actif,
-        UUID entrepriseId
+        UUID entrepriseId,
+        String logo
 ) {
     public MagasinResponse(Magasin magasin) {
         this(
@@ -17,7 +19,8 @@ public record MagasinResponse(
                 magasin.getNom(),
                 magasin.getAdresse(),
                 magasin.isActif(),
-                magasin.getEntreprise().getId()
+                magasin.getEntreprise().getId(),
+                magasin.getLogo() != null ? MagasinController.BASE_PATH + "/" + magasin.getId() + "/logo" : null
         );
     }
 }

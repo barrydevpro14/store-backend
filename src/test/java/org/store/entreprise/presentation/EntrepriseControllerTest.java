@@ -66,7 +66,7 @@ class EntrepriseControllerTest {
     }
 
     private EntrepriseResponse sample() {
-        return new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", true, true);
+        return new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", true, true, null);
     }
 
     private RegisterPropertyRequest validRegisterBody() {
@@ -125,7 +125,7 @@ class EntrepriseControllerTest {
     @Test
     void should_return_200_when_admin_deactivates() throws Exception {
         EntrepriseResponse deactivated = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
-                "N", "R", "Dakar", false, true);
+                "N", "R", "Dakar", false, true, null);
         when(entrepriseService.deactivate(eq(entrepriseId))).thenReturn(deactivated);
 
         mockMvc.perform(patch(EntrepriseController.BASE_PATH + "/" + entrepriseId + "/deactivate"))
@@ -148,7 +148,7 @@ class EntrepriseControllerTest {
     void should_return_200_when_proprietaire_updates_his_own() throws Exception {
         EntrepriseRequest body = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2");
         EntrepriseResponse updated = new EntrepriseResponse(entrepriseId, "NEW", "NEW SARL",
-                "N2", "R2", "Adr2", true, true);
+                "N2", "R2", "Adr2", true, true, null);
         when(entrepriseService.updateCurrentUserEntreprise(any(EntrepriseRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put(EntrepriseController.BASE_PATH + "/me")

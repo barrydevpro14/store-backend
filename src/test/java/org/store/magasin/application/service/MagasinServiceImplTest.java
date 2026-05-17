@@ -41,6 +41,7 @@ class MagasinServiceImplTest {
 
     @Mock private MagasinDomainService magasinDomainService;
     @Mock private IEntrepriseService entrepriseService;
+    @Mock private org.store.common.service.IUploadFileService uploadFileService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
 
@@ -136,9 +137,51 @@ class MagasinServiceImplTest {
     }
 
     @Test
+    void uploadLogo_should_build_pieceJointe_and_set_on_magasin() {
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "logo.png", "image/png", new byte[]{1, 2, 3});
+        Magasin magasin = magasinIn(entreprise);
+        org.store.common.model.PieceJointe piece = new org.store.common.model.PieceJointe();
+        piece.setDocument(new byte[]{1, 2, 3});
+        piece.setContentType("image/png");
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(magasinDomainService.findById(magasinId)).thenReturn(magasin);
+        when(uploadFileService.buildImage(file)).thenReturn(piece);
+        when(magasinDomainService.setLogo(magasin, piece)).thenReturn(magasin);
+
+        service.uploadLogo(magasinId, file);
+
+        verify(magasinDomainService).setLogo(magasin, piece);
+    }
+
+    @Test
+    void getLogo_should_throw_when_magasin_has_no_logo() {
+        Magasin magasin = magasinIn(entreprise);
+        magasin.setLogo(null);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(magasinDomainService.findById(magasinId)).thenReturn(magasin);
+
+        assertThatThrownBy(() -> service.getLogo(magasinId))
+                .isInstanceOf(org.store.common.exceptions.EntityException.class);
+    }
+
+    @Test
+    void deleteLogo_should_be_noop_when_no_logo() {
+        Magasin magasin = magasinIn(entreprise);
+        magasin.setLogo(null);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(magasinDomainService.findById(magasinId)).thenReturn(magasin);
+
+        service.deleteLogo(magasinId);
+
+        verify(magasinDomainService, never()).clearLogo(any());
+    }
+
+    @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
         MagasinFilter filter = new MagasinFilter("centre", true, 0, 10);
-        MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "Centre-ville", "Adr", true, entrepriseId);
+        MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "Centre-ville", "Adr", true, entrepriseId, null);
         Page<MagasinResponse> page = new PageImpl<>(List.of(first), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());

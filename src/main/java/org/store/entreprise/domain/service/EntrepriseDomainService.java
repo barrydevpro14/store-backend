@@ -3,6 +3,7 @@ package org.store.entreprise.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -31,5 +32,17 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
 
     public Page<EntrepriseResponse> findAllProjected(Pageable pageable) {
         return repository.findAllProjected(pageable);
+    }
+
+    /** Pose ou remplace le logo. orphanRemoval supprime auto l'ancienne PieceJointe. */
+    public Entreprise setLogo(Entreprise entreprise, PieceJointe logo) {
+        entreprise.setLogo(logo);
+        return save(entreprise);
+    }
+
+    /** Supprime le logo (orphanRemoval supprime la PieceJointe). */
+    public Entreprise clearLogo(Entreprise entreprise) {
+        entreprise.setLogo(null);
+        return save(entreprise);
     }
 }

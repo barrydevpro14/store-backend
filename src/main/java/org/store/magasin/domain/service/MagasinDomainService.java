@@ -2,6 +2,7 @@ package org.store.magasin.domain.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.dto.MagasinFilter;
@@ -30,5 +31,17 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
     /** Listing pagine filtre (nom LIKE insensitive, actif) scope entreprise. */
     public Page<MagasinResponse> findResponsesByFilter(MagasinFilter filter, UUID entrepriseId) {
         return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+    }
+
+    /** Pose ou remplace le logo. orphanRemoval supprime auto l'ancienne PieceJointe. */
+    public Magasin setLogo(Magasin magasin, PieceJointe logo) {
+        magasin.setLogo(logo);
+        return save(magasin);
+    }
+
+    /** Supprime le logo (orphanRemoval supprime la PieceJointe). */
+    public Magasin clearLogo(Magasin magasin) {
+        magasin.setLogo(null);
+        return save(magasin);
     }
 }

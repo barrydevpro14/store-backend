@@ -27,12 +27,14 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EntrepriseServiceImplTest {
 
     @Mock private EntrepriseDomainService entrepriseDomainService;
+    @Mock private org.store.common.service.IUploadFileService uploadFileService;
     @Mock private ICurrentUserService currentUserService;
 
     @InjectMocks
@@ -96,10 +98,42 @@ class EntrepriseServiceImplTest {
     }
 
     @Test
+    void uploadCurrentUserLogo_should_build_pieceJointe_and_set() {
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "logo.png", "image/png", new byte[]{1, 2, 3});
+        Entreprise entreprise = new Entreprise();
+        entreprise.setId(entrepriseId);
+        org.store.common.model.PieceJointe piece = new org.store.common.model.PieceJointe();
+        piece.setDocument(new byte[]{1, 2, 3});
+        piece.setContentType("image/png");
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire(entrepriseId));
+        when(entrepriseDomainService.findById(entrepriseId)).thenReturn(entreprise);
+        when(uploadFileService.buildImage(file)).thenReturn(piece);
+        when(entrepriseDomainService.setLogo(entreprise, piece)).thenReturn(entreprise);
+
+        service.uploadCurrentUserLogo(file);
+
+        verify(entrepriseDomainService).setLogo(entreprise, piece);
+    }
+
+    @Test
+    void getCurrentUserLogo_should_throw_when_no_logo() {
+        Entreprise entreprise = new Entreprise();
+        entreprise.setId(entrepriseId);
+        entreprise.setLogo(null);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire(entrepriseId));
+        when(entrepriseDomainService.findById(entrepriseId)).thenReturn(entreprise);
+
+        assertThatThrownBy(() -> service.getCurrentUserLogo())
+                .isInstanceOf(org.store.common.exceptions.EntityException.class);
+    }
+
+    @Test
     void findAll_should_delegate_to_domain_service() {
         Pageable pageable = PageRequest.of(0, 10);
         EntrepriseResponse sample = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
-                "N", "R", "A", true, true);
+                "N", "R", "A", true, true, null);
         Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), pageable, 1);
         when(entrepriseDomainService.findAllProjected(pageable)).thenReturn(page);
 

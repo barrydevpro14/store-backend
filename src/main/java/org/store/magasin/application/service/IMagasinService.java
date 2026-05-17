@@ -1,6 +1,8 @@
 package org.store.magasin.application.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
@@ -49,4 +51,13 @@ public interface IMagasinService {
      * Throw `ForbiddenException("magasin.notOwned")` sinon.
      */
     Magasin ensureAccessibleByCurrentUser(Magasin magasin);
+
+    /** Upload (ou remplace) le logo du magasin. */
+    MagasinResponse uploadLogo(UUID id, MultipartFile file);
+
+    /** Télécharge le logo du magasin. Throw `EntityException("magasin.logo.notFound")` si absent. */
+    ImageDownloadResponse getLogo(UUID id);
+
+    /** Supprime le logo du magasin (idempotent). */
+    void deleteLogo(UUID id);
 }

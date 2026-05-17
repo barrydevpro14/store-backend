@@ -5,7 +5,12 @@ import org.store.magasin.application.service.*;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.store.common.dto.ImageDownloadResponse;
+import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.model.PieceJointe;
+import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
@@ -25,15 +30,18 @@ public class MagasinServiceImpl implements IMagasinService {
 
     private final MagasinDomainService magasinDomainService;
     private final IEntrepriseService entrepriseService;
+    private final IUploadFileService uploadFileService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
 
     public MagasinServiceImpl(MagasinDomainService magasinDomainService,
                               IEntrepriseService entrepriseService,
+                              IUploadFileService uploadFileService,
                               ICurrentUserService currentUserService,
                               ValidatorService validatorService) {
         this.magasinDomainService = magasinDomainService;
         this.entrepriseService = entrepriseService;
+        this.uploadFileService = uploadFileService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
     }
@@ -102,6 +110,34 @@ public class MagasinServiceImpl implements IMagasinService {
             throw new ForbiddenException("magasin.notOwned");
         }
         return magasin;
+    }
+
+    @Override
+    @Transactional
+    public MagasinResponse uploadLogo(UUID id, MultipartFile file) {
+        Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
+        PieceJointe logo = uploadFileService.buildImage(file);
+        Magasin updated = magasinDomainService.setLogo(magasin, logo);
+        return new MagasinResponse(updated);
+    }
+
+    @Override
+    public ImageDownloadResponse getLogo(UUID id) {
+        Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
+        PieceJointe logo = magasin.getLogo();
+        if (logo == null) {
+            throw new EntityException("magasin.logo.notFound");
+        }
+        return new ImageDownloadResponse(logo.getDocument(), logo.getContentType());
+    }
+
+    @Override
+    @Transactional
+    public void deleteLogo(UUID id) {
+        Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
+        if (magasin.getLogo() != null) {
+            magasinDomainService.clearLogo(magasin);
+        }
     }
 
     @Override

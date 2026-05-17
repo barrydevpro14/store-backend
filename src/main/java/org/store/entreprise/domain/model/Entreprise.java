@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.common.base.AuditableEntity;
+import org.store.common.model.PieceJointe;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
 import org.store.users.domain.model.Proprietaire;
@@ -38,4 +39,8 @@ public class Entreprise extends AuditableEntity {
 
     @OneToMany(mappedBy = "entreprise")
     private List<Product> products;
+
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "logo_id")
+    private PieceJointe logo;
 }
