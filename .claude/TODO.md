@@ -86,6 +86,21 @@
 - [ ] **Listing produits global enrichi** — Ajouter à `GET /products` des filtres : par catégorie, par qualité, par seuil prix, par disponibilité en stock. Aujourd'hui le listing est basique (pagination seule).
 - [ ] **Top vendeurs (par CA)** — `GET /api/v1/ventes/caisse/top-vendeurs?magasinId=&from=&to=&nombre=N` : classe les vendeurs par CA cumulé sur la période. Complément au top-produits déjà livré.
 - [ ] **Suppression ligne d'inventaire en BILAN** — Aujourd'hui les lignes sont figées au BILAN (rapport produit). Permettre la suppression d'une ligne en BILAN si on détecte une erreur avant clôture, avec régénération du rapport. Affine la correction post-bilan.
+
+#### Module abonnement (10 points — squelette riche en entités, pas de REST exposé)
+
+État actuel : 7 entités (`Abonnement`, `PlanAbonnement`, `TypeAbonnement`, `PaiementAbonnement`, `Promotion`, `Coupon`, `UtilisationCoupon`), 7 domain services minimaux, 2 services applicatifs internes (`createTrial`, `findFirstTrialActif`), 0 controller, 0 permission `ABONNEMENT_*`/`PLAN_*` dans le YAML. Seul le flow trial est branché à l'inscription propriétaire.
+
+- [ ] **CRUD PlanAbonnement** (ADMIN) — création / liste filtrée / GET by id / PUT update / activate / deactivate des tiers (`nom`, `prix`, `nombreMagasinsMax`, `nombreEmployesMax`, flags fonctionnels, `ordre`, `visible`, `trial`).
+- [ ] **CRUD TypeAbonnement** (ADMIN) — durées (`dureeMois`) + réduction intégrée (`reductionType` + `valeurReduction`). Toggle `recommande`.
+- [ ] **CRUD Coupon** (ADMIN) — codes promo : `code` unique, `reductionType`, `valeurReduction`, `nombreUtilisationsMax`, fenêtre temporelle, optionnel scope plan.
+- [ ] **CRUD Promotion** (ADMIN) — réductions automatiques liées à un plan, fenêtre temporelle.
+- [ ] **Souscription / upgrade / downgrade Abonnement** (PROPRIETAIRE) — choisir un plan + un typeAbonnement, déclencher un paiement, créer un `Abonnement` actif. Gestion des transitions (upgrade au prorata ? remplacement à la fin ?) — décisions métier à prendre.
+- [ ] **Paiement abonnement** — workflow complet : calcul du montant (`prix plan × duree − reduction typeAbonnement − reduction promo/coupon`), journalisation `PaiementAbonnement`, activation/extension de l'abonnement. Lien moyen paiement.
+- [ ] **Renouvellement automatique** — worker périodique sur abonnements approchant `dateFin` avec `renouvellementAuto=true` : déclenche un paiement automatique + extension. Sinon transition `EXPIRE` à `dateFin`.
+- [ ] **Listing abonnements** — ADMIN voit tous (filtre par entreprise, statut, plan). PROPRIETAIRE voit son historique + son actif (`GET /me/abonnements`).
+- [ ] **Statut courant entreprise** — `GET /me/abonnement` : plan actuel, jours restants, mode trial vs payant, fonctionnalités débloquées. Utile pour le frontend qui adapte l'UI selon les limites du plan.
+- [ ] **Permissions + catalogue public** — ajouter `PLAN_*`, `ABONNEMENT_*`, `COUPON_*`, `PROMOTION_*` au YAML. Endpoint `GET /api/v1/plans` lisible sans auth pour la landing page de souscription (uniquement plans `visible=true && actif=true`).
 - [ ] Couche `application/` : services use case + DTO + mappers (par module, en commençant par `security`, `magasin`, `users`)
 - [ ] Couche `presentation/` : controllers REST (CRUD basique sur chaque ressource)
 - [ ] Specifications JPA (`infrastructure/specifications/`) pour les filtres complexes (recherche produits, etc.)
