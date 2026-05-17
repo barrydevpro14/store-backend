@@ -2,7 +2,6 @@ package org.store.magasin.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,7 +12,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.application.service.IMagasinService;
@@ -22,7 +23,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping(MagasinController.BASE_PATH)
-@PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+@PreAuthorize("hasAnyAuthority('PROPRIETAIRE_ACCESS', 'ADMIN_ACCESS')")
 public class MagasinController {
 
     public static final String BASE_PATH = "/api/v1/magasins";
@@ -40,8 +41,11 @@ public class MagasinController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<MagasinResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise(pageable));
+    public ResponseEntity<Page<MagasinResponse>> list(@RequestParam(required = false) String nom,
+                                                      @RequestParam(required = false) Boolean actif,
+                                                      @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise(new MagasinFilter(nom, actif, page, size)));
     }
 
     @GetMapping("/{id}")

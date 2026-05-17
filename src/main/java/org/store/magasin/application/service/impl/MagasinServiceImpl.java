@@ -3,12 +3,13 @@ package org.store.magasin.application.service.impl;
 import org.store.magasin.application.service.*;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.service.ValidatorService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
@@ -25,13 +26,16 @@ public class MagasinServiceImpl implements IMagasinService {
     private final MagasinDomainService magasinDomainService;
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
+    private final ValidatorService validatorService;
 
     public MagasinServiceImpl(MagasinDomainService magasinDomainService,
                               IEntrepriseService entrepriseService,
-                              ICurrentUserService currentUserService) {
+                              ICurrentUserService currentUserService,
+                              ValidatorService validatorService) {
         this.magasinDomainService = magasinDomainService;
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
+        this.validatorService = validatorService;
     }
 
     @Override
@@ -60,9 +64,10 @@ public class MagasinServiceImpl implements IMagasinService {
     }
 
     @Override
-    public Page<MagasinResponse> findAllByCurrentEntreprise(Pageable pageable) {
+    public Page<MagasinResponse> findAllByCurrentEntreprise(MagasinFilter filter) {
+        validatorService.validate(filter);
         UserPrincipal currentUser = currentUserService.getCurrent();
-        return magasinDomainService.findResponsesByEntrepriseId(currentUser.entrepriseId(), pageable);
+        return magasinDomainService.findResponsesByFilter(filter, currentUser.entrepriseId());
     }
 
     @Override

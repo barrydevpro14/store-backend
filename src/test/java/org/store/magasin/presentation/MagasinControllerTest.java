@@ -21,6 +21,7 @@ import org.store.magasin.application.service.IMagasinService;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -93,12 +94,29 @@ class MagasinControllerTest {
     @Test
     void should_return_200_with_page_when_list() throws Exception {
         Page<MagasinResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(magasinService.findAllByCurrentEntreprise(any(Pageable.class))).thenReturn(page);
+        when(magasinService.findAllByCurrentEntreprise(any(org.store.magasin.application.dto.MagasinFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(MagasinController.BASE_PATH))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(magasinId.toString()))
                 .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void should_propagate_filter_params_to_service() throws Exception {
+        Page<MagasinResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
+        org.mockito.ArgumentCaptor<org.store.magasin.application.dto.MagasinFilter> captor =
+                org.mockito.ArgumentCaptor.forClass(org.store.magasin.application.dto.MagasinFilter.class);
+        when(magasinService.findAllByCurrentEntreprise(captor.capture())).thenReturn(page);
+
+        mockMvc.perform(get(MagasinController.BASE_PATH)
+                        .param("nom", "centre")
+                        .param("actif", "true"))
+                .andExpect(status().isOk());
+
+        org.store.magasin.application.dto.MagasinFilter captured = captor.getValue();
+        assertThat(captured.nom()).isEqualTo("centre");
+        assertThat(captured.actif()).isTrue();
     }
 
     @Test

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
 
@@ -16,6 +17,11 @@ public interface MagasinRepository extends BaseRepository<Magasin> {
             SELECT new org.store.magasin.application.dto.MagasinResponse(magasin)
             FROM Magasin magasin
             WHERE magasin.entreprise.id = :entrepriseId
+              AND (:#{#filter.nom} IS NULL OR LOWER(magasin.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
+              AND (:#{#filter.actif} IS NULL OR magasin.actif = :#{#filter.actif})
+            ORDER BY magasin.nom ASC
             """)
-    Page<MagasinResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
+    Page<MagasinResponse> findResponsesByFilter(@Param("filter") MagasinFilter filter,
+                                                @Param("entrepriseId") UUID entrepriseId,
+                                                Pageable pageable);
 }

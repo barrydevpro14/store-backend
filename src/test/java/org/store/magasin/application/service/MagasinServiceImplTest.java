@@ -14,8 +14,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.service.ValidatorService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
@@ -40,6 +42,7 @@ class MagasinServiceImplTest {
     @Mock private MagasinDomainService magasinDomainService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private ICurrentUserService currentUserService;
+    @Mock private ValidatorService validatorService;
 
     @InjectMocks
     private MagasinServiceImpl service;
@@ -133,17 +136,18 @@ class MagasinServiceImplTest {
     }
 
     @Test
-    void findAllByCurrentEntreprise_should_paginate() {
-        Pageable pageable = PageRequest.of(0, 10);
-        MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "A", "Adr", true, entrepriseId);
-        Page<MagasinResponse> page = new PageImpl<>(List.of(first), pageable, 1);
+    void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
+        MagasinFilter filter = new MagasinFilter("centre", true, 0, 10);
+        MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "Centre-ville", "Adr", true, entrepriseId);
+        Page<MagasinResponse> page = new PageImpl<>(List.of(first), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(magasinDomainService.findResponsesByEntrepriseId(entrepriseId, pageable)).thenReturn(page);
+        when(magasinDomainService.findResponsesByFilter(filter, entrepriseId)).thenReturn(page);
 
-        Page<MagasinResponse> result = service.findAllByCurrentEntreprise(pageable);
+        Page<MagasinResponse> result = service.findAllByCurrentEntreprise(filter);
 
         assertThat(result.getContent()).containsExactly(first);
+        verify(validatorService).validate(filter);
     }
 
     @Test

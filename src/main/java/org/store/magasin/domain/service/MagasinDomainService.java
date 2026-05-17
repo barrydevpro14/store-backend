@@ -1,10 +1,10 @@
 package org.store.magasin.domain.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
@@ -27,7 +27,8 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
         return save(magasin);
     }
 
-    public Page<MagasinResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
-        return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
+    /** Listing pagine filtre (nom LIKE insensitive, actif) scope entreprise. */
+    public Page<MagasinResponse> findResponsesByFilter(MagasinFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 }

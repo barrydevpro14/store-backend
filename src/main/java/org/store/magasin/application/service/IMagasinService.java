@@ -1,8 +1,8 @@
 package org.store.magasin.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
@@ -28,7 +28,7 @@ public interface IMagasinService {
 
     MagasinResponse findResponseById(UUID id);
 
-    Page<MagasinResponse> findAllByCurrentEntreprise(Pageable pageable);
+    Page<MagasinResponse> findAllByCurrentEntreprise(MagasinFilter filter);
 
     MagasinResponse update(UUID id, MagasinRequest magasinRequest);
 
