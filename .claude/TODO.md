@@ -70,6 +70,13 @@
 ## 🟡 Priorité normale
 
 ### Backend
+- [ ] **Annulation de vente / retour** — `POST /api/v1/ventes/{id}/annuler` : ré-injecte le stock (compense les `SortieStock` consommés FIFO), invalide la `FactureClient`, annule les `PaiementVente`. Workflow critique multi-modules (vente + stock + facture). Décisions à clarifier : statut intermédiaire `ANNULEE` sur `CommandeVente`, traçabilité du motif d'annulation, fenêtre temporelle autorisée.
+- [ ] **Édition/suppression ligne d'achat** — `PUT /api/v1/purchases/orders/{cmdId}/lignes/{ligneId}` + `DELETE` avant validation de la commande. Symétrique à ce qu'on a livré sur l'inventaire physique (correction de saisie). Bloquer si la commande est déjà réceptionnée/facturée.
+- [ ] **Réception partielle commande achat** — Aujourd'hui `CommandeAchat` = entrée stock immédiate tout-ou-rien. Permettre de réceptionner les lignes en plusieurs livraisons. Nouvelle entité `ReceptionAchat` (ou statut par ligne `EN_ATTENTE`/`PARTIELLEMENT_RECUE`/`RECUE`) + endpoint `POST /purchases/orders/{id}/receptions` qui crée les `EntreeStock` au fur et à mesure.
+- [ ] **CRUD Magasin complet** — Magasin a un domain service mais peu d'endpoints exposés. Compléter : listing paginé filtré, GET by id, PUT update, activate/deactivate. Symétrique au CRUD employé qu'on vient de livrer.
+- [ ] **Reporting / dashboard** — Endpoints agrégés pour dashboard : CA cumulé sur période, marge globale, top clients, stock dormant, factures en retard. Pas de UI, juste les API. Compose au-dessus des modules vente/stock/facture existants.
+- [ ] **Transferts inter-magasins** — Permission `STOCK_TRANSFER` existe déjà dans le YAML mais aucun endpoint. `POST /api/v1/stocks/transfers` : sortir d'un magasin source vers magasin destination, deux mouvements stock symétriques (`TRANSFER_OUT` + `TRANSFER_IN`). Conservation des lots PF + prix d'achat moyen.
+- [ ] **Audit log / historique** — Endpoint `GET /api/v1/audit-logs` pour parcourir les actions sensibles (création/suppression employé, ajustements stock, annulations). Filtre par utilisateur, période, type d'action. Aujourd'hui audit dispersé dans `createdBy`/`updatedBy` — soit on construit une vue dédiée, soit on introduit une table `audit_log` avec entrée par action.
 - [ ] Couche `application/` : services use case + DTO + mappers (par module, en commençant par `security`, `magasin`, `users`)
 - [ ] Couche `presentation/` : controllers REST (CRUD basique sur chaque ressource)
 - [ ] Specifications JPA (`infrastructure/specifications/`) pour les filtres complexes (recherche produits, etc.)
