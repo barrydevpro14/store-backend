@@ -329,7 +329,7 @@
 - Validation/rejet admin (active l'abonnement avec stratégie "remplacement à dateFin", rollback coupon au rejet)
 - Listing ADMIN tous abonnements + historique PROPRIETAIRE + statut courant (jours restants, trial, fonctionnalités)
 
-> **Étape 9 non livrée** : renouvellement automatique (worker `@Scheduled`).
+> **Étape 9 DIFFÉRÉE** : renouvellement automatique. Dépend de l'intégration d'un intégrateur de paiement automatique (Wave / Orange Money / Stripe / PayPal). Aujourd'hui le paiement est manuel, donc le concept "auto-débit à `dateFin`" n'a pas de support technique. Le flag `Abonnement.renouvellementAuto`, perm `SUBSCRIPTION_RENEW` et endpoint `PATCH /{id}/renouvellement-auto` restent en place (réutilisables tels quels).
 
 | Méthode | Path | Permission | Acteur |
 |---------|------|------------|--------|

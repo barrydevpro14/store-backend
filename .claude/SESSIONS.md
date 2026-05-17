@@ -7,8 +7,8 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-17 (session module abonnement — 8/10 étapes livrées + refactor conventions)
-**Sujet :** Module SaaS **abonnement** complet sauf renouvellement automatique. 9 endpoints livrés (CRUD admin × 4 catalogues + catalogue public + souscription propriétaire + toggle renouvellement auto + paiement manuel + validation admin + listing abonnements + statut courant). Refactor complet en 6 blocs pour aligner sur les conventions de codage (R1-R6). **567 → 703 tests verts** (+136), commit `e840020` poussé sur `dev`.
+**Date :** 2026-05-17 (session module abonnement — 9 use cases livrés sur 10 + refactor conventions R1-R7 + règle 38 externalisation + doc global)
+**Sujet :** Module SaaS **abonnement** complet sauf renouvellement automatique (étape 9 **différée**, dépend de l'intégration paiement auto). 9 use cases livrés. Refactor en 7 blocs (R1-R7) pour aligner sur les conventions de codage. Règle 38 inscrite (externalisation valeurs fixes). Doc global `MODULES_OVERVIEW.md` créé. **567 → 703 tests verts** (+136). Commits poussés : `e840020`, `e38ca38`, `205e4c0`, `7452787`.
 
 **Ce qui a été fait :**
 
@@ -54,13 +54,39 @@
 - **Preuve image obligatoire** à la création du paiement (pas de paiement EN_ATTENTE_VALIDATION sans preuve).
 - **Règle 26 stricte** : aucun `entity.setX()` + `save` dans les ServiceImpl, tout dans le DomainService comme méthode métier nommée.
 
-**Commit :** `e840020` Module abonnement complet (étapes 0-8) + refactor conventions — 92 fichiers, +6215/-43, poussé sur `dev`.
+**Commits successifs (dans l'ordre) :**
+- `e840020` — Module abonnement complet (étapes 0-8) + refactor conventions R1-R6 (92 fichiers, +6215/-43)
+- `e38ca38` — docs(session): clôture session module abonnement + refactor conventions
+- `205e4c0` — Optimisations repository module abonnement (R7) — 17 fichiers, +182/-121
+- `7452787` — Externalisation des valeurs fixes (R38) + doc global modules — 14 fichiers, +520/-17
+
+**Suite session (après-midi/soir) — Refactor R7 + R38 + doc global + différé étape 9 :**
+
+11. **Refactor R7 — Optimisations repository** : aligner les méthodes repository sur la règle "projection record obligatoire" (en-tête `CONVENTION_CODAGE_BACKEND.md`). 5 sous-tâches :
+    - **R7a** : `AbonnementRepository.findLatestActifDateFin(entrepriseId, excludeId) → Optional<LocalDate>` JPQL `MAX(dateFin)`. Remplace le pattern `findCurrentActif().filter().map(getDateFin().plusDays(1)).orElse(now())` dans `PaiementAbonnementServiceImpl.activateAbonnement`. **Bonus** : renommage `findEntitiesByFilter → findResponsesByFilter` avec projection `SELECT new AbonnementResponse(abonnement) ... LEFT JOIN FETCH plan/type/entreprise` + `countQuery` séparé. Suppression du `.map(AbonnementResponse::new)` côté service.
+    - **R7b** : `PaiementAbonnementRepository.existsByAbonnementIdAndStatut → boolean` (au lieu de `findFirstBy...isPresent()`). DomainService renommé en `existsPendingForAbonnement`.
+    - **R7c** : `UtilisationCouponRepository` : remplace `findByAbonnementId` (entité complète) par `findCouponIdByAbonnementId → Optional<UUID>` (projection JPQL `SELECT u.coupon.id`) + `deleteByAbonnementId` `@Modifying` bulk delete. `releaseReservedCouponIfAny` et `recomputeBreakdown` chargent le `Coupon` via son ID au lieu de naviguer la relation lazy.
+    - **R7d** : suppression méthodes orphelines `findByNom` (Plan + Type) jamais appelées.
+    - **R7e** : `PlanAbonnementRepository.findAllVisibleAndActif` (entity) → `findPublicResponses` avec projection JPQL `SELECT new PublicPlanResponse(plan.id, plan.nom, ...)`. `PublicPlanResponse` enrichi d'un constructeur secondaire 12 args + `withPromotions(...)` (immutabilité préservée). `PromotionRepository.findAllActifResponses` split en 2 queries JPQL distinctes : `findActiveGlobalResponses` (`WHERE plan IS NULL`) + `findActiveScopedResponses` (`WHERE plan IS NOT NULL`) — élimine le double filter Java sur la même liste.
+    - **Cas justifiés conservés en entité** (table petite + cohérence record `SubscriptionAmountInputs`) : `findByCode`, `findFirstActivePromotionForPlan`, `findCurrentActif`, `findFirstByTrialTrueAndActifTrue`.
+
+12. **Règle 38 — Externalisation des valeurs fixes** inscrite dans `CONVENTION_CODAGE_BACKEND.md` : toute valeur métier paramétrable doit être externalisée via `@ConfigurationProperties` (records dans `org.store.property`). Pattern : record `<X>Properties` + clé YAML kebab-case + override env var. **Externalisations appliquées** :
+    - `SubscriptionProperties(int trialDays)` — préfixe `subscription`, valeur 30 (override `SUBSCRIPTION_TRIAL_DAYS`). Refactor `AbonnementDomainService` (suppression `private static final int TRIAL_DAYS = 30`).
+    - `LoggingProperties(int maxPayloadLength)` — préfixe `logging.http`, valeur 2048 (override `LOG_HTTP_MAX_PAYLOAD_LENGTH`). Refactor `HttpRequestLoggingFilter`.
+    - **Cas borderline non externalisés (justifiés)** : seeds `DataInitializer` (jamais relus après boot), `latestDateFin.plusDays(1)` (convention métier intemporelle), libellé `"PROPRIETAIRE"` (constante de domaine fermé).
+
+13. **`SubscriptionRules` déplacé** de `abonnement/application/service/` vers `common/tools/` — cohérence avec convention "helpers transverses dans `common/tools`".
+
+14. **Doc global `MODULES_OVERVIEW.md`** créé à la racine du backend (458 lignes) — cartographie compacte des 11 modules métier + squelette notification : use cases livrés + tableaux d'endpoints REST (méthode, path complet, permission, acteur) + matrice rôles/capacités. Complète `FONCTIONNALITIES.md` (qui reste le doc détaillé use case par use case).
+
+15. **Étape 9 — Renouvellement automatique DIFFÉRÉE** : décision utilisateur. Vu que le paiement est manuel (étape 7), le concept "auto-débit du propriétaire à `dateFin`" n'a pas de support technique. **À reprendre quand l'intégrateur paiement automatique sera intégré** (Wave/Orange Money/Stripe/PayPal). Le flag `Abonnement.renouvellementAuto`, perm `SUBSCRIPTION_RENEW` et endpoint `PATCH /{id}/renouvellement-auto` restent en place (réutilisables tels quels).
 
 **Prochaine étape recommandée :**
 
-1. **Étape 9 — Renouvellement automatique** (dernière étape du module abonnement) : worker `@Scheduled` qui parcourt `Abonnement` avec `renouvellementAuto=true` et `dateFin` approchant, déclenche paiement automatique (à clarifier avec utilisateur : avec preuve auto ? validation auto admin ? ou désactiver le renouvellement auto puisque paiement manuel ?), transition `EXPIRE` à `dateFin` sinon. Endpoint manuel `POST /abonnements/{id}/renew` pour test.
-2. **Annulation de vente / retour** (workflow critique multi-modules, le plus impactant du backlog).
+1. **Annulation de vente / retour** (workflow critique multi-modules — le plus impactant du backlog).
+2. **Édition/suppression ligne d'achat** (avant validation commande).
 3. **Démarrage `store-frontend`** : suivre la checklist Phase 0-1 de `FRONTEND_ARCHITECTURE.md`.
+4. **Intégrateur paiement automatique** (débloque étape 9 abonnement).
 
 ---
 

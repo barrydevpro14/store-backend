@@ -881,10 +881,193 @@ Limit via `Pageable` (= `PageRequest.of(0, nombre)`). Le repo retourne `List<Top
 
 ---
 
+## 36. CRUDs catalogue abonnement (ADMIN) — `PlanAbonnementServiceImpl`, `SubscriptionTypeServiceImpl`, `CouponServiceImpl`, `PromotionServiceImpl`
+
+**Endpoints** : `/api/v1/plans`, `/api/v1/subscription-types`, `/api/v1/coupons`, `/api/v1/promotions` (POST/GET/GET id/PUT/PATCH activate/PATCH deactivate/DELETE). Permissions `PLAN_*`, `SUBSCRIPTION_TYPE_*`, `COUPON_*`, `PROMOTION_*`.
+
+**Cas d'usage métier** : seul l'ADMIN SaaS gère le **référentiel global** d'abonnement (tiers, durées, codes promo, promotions automatiques). Ces entités ne sont pas multi-tenant — elles sont partagées entre toutes les entreprises clientes.
+
+**Logique commune (pattern décalqué sur `CategoryProductServiceImpl`)** :
+1. `validatorService.validate(filter)` en première ligne du `findAll(filter)` (règle 33).
+2. Création : unicité (nom/code), validation cohérence (`SubscriptionRules.ensureReductionConsistent` + `ensurePeriodValid`), persistence via `<X>DomainService.create(request[, plan])`.
+3. Update : `findById` + revérification unicité si nom/code changé + revalidation cohérence + `applyRequest` + save.
+4. Activate/Deactivate via `<X>DomainService.setActive(entity, boolean)` (règle 26 — pas de setter+save dans l'app service).
+5. Pour Coupon/Promotion : résolution du plan optionnel via `IPlanAbonnementService.findByIdOrNull(UUID)` (default method).
+
+**Validations communes** (helper `org.store.common.tools.SubscriptionRules`, règles 4 + 27) :
+- `ensureReductionConsistent(reductionType, valeurReduction, invalidKey)` : type sans valeur (ou inverse) interdit, POURCENTAGE ≤ 100.
+- `ensurePeriodValid(dateDebut, dateFin, invalidPeriodKey)` : `dateFin ≥ dateDebut`.
+
+**i18n** : `plan.notFound/alreadyExists/reduction.invalid`, `subscriptionType.*`, `coupon.*`/`expired`/`exhausted`/`notApplicable`, `promotion.*`.
+
+**Tests** : 14 service + 9 controller (Plan), 14 service + 8 controller (Type), 12 service + 8 controller (Coupon), 12 service + 7 controller (Promotion). +9 tests dédiés `SubscriptionRulesTest`.
+
+---
+
+## 37. Catalogue public d'abonnement — `PublicCatalogServiceImpl`
+
+**Endpoint** : `GET /api/v1/catalog/public` (**permitAll** dans `SecurityConfig` — pas d'authentification). Status 200.
+
+**Cas d'usage métier** : la **landing pricing** du site (visiteur non-authentifié) consomme cet endpoint pour afficher les plans + types + promotions actives. 1 round-trip serveur, agrégat complet retourné.
+
+**Logique** :
+1. `today = LocalDate.now()`.
+2. Charge en parallèle (4 queries JPQL projetées, pas d'entités) :
+   - `planAbonnementDomainService.findPublicResponses()` → `List<PublicPlanResponse>` (`actif=true && visible=true` triés `ordre, nom`)
+   - `typeAbonnementDomainService.findAllActifResponses()` → `List<SubscriptionTypeResponse>` (`actif=true`)
+   - `promotionDomainService.findActiveGlobalResponses(today)` → `List<PromotionResponse>` (`plan IS NULL && actif=true && dateDebut ≤ today ≤ dateFin`)
+   - `promotionDomainService.findActiveScopedResponses(today)` → idem mais `plan IS NOT NULL`
+3. Groupe les `scopedPromotions` par `planId` via stream.
+4. Attache chaque sous-liste à son plan via `PublicPlanResponse.withPromotions(...)` (records immutables — retourne nouveau record).
+5. Retourne `PublicCatalogResponse(plans, subscriptionTypes, globalPromotions)`.
+
+**Pourquoi 4 queries projetées au lieu d'1 LEFT JOIN agrégé** : la séparation `global vs scoped` se fait en SQL (`WHERE plan IS NULL` / `IS NOT NULL`), pas en Java post-load. Plus économe en données transférées que charger toutes les promotions actives + filtrer côté serveur. Un seul stream Java pour l'assemblage final (records immutables).
+
+**Optimisation** : `PublicPlanResponse` a 2 constructeurs — un canonique (13 champs avec `promotions`) et un secondaire (12 champs sans, utilisé par la projection JPQL). La méthode `withPromotions(...)` reconstruit le record avec la liste injectée.
+
+**Tests** : 3 service `PublicCatalogServiceImplTest` (happy avec plans+types+promos, vide, multiples promos sur 1 plan) + 2 controller `PublicCatalogControllerTest` (catalogue complet, catalogue vide).
+
+---
+
+## 38. Souscription propriétaire — `AbonnementServiceImpl.subscribe`
+
+**Endpoint** : `POST /api/v1/abonnements/subscribe` (permission `SUBSCRIPTION_CREATE`). Body `SubscribeRequest(planId, typeId, couponCode?, renouvellementAuto)`. Status 201.
+
+**Cas d'usage métier** : le propriétaire souscrit (ou upgrade/downgrade) un abonnement. **Workflow 2 étapes** : `subscribe` crée juste l'Abonnement en EN_ATTENTE (avec breakdown du montant à payer pour info frontend), puis `POST /paiements-abonnement/abonnements/{id}` (use case 41) avec preuve image obligatoire active l'abonnement après validation admin (use case 42).
+
+**Logique** :
+1. `currentUserService.getCurrent().entrepriseId()` → résout l'entreprise du caller.
+2. Charge `plan` via `IPlanAbonnementService.findById` puis `ensurePlanSubscribable` (`actif && visible && !trial`).
+3. Charge `type` via `ISubscriptionTypeService.findById` puis `ensureTypeActif`.
+4. Résolution coupon optionnel via `resolveCoupon(couponCode, planId)` :
+   - `couponDomainService.findByCode(code)` → `EntityException("coupon.notFound")` si absent.
+   - Validations : `actif=true`, `dateDebut ≤ today ≤ dateFin` (sinon `coupon.expired`), `nombreUtilisationsMax == 0 || nombreUtilisations < max` (sinon `coupon.exhausted`), `coupon.plan == null || coupon.plan.id == planId` (sinon `coupon.notApplicable`).
+5. Recherche promotion automatique active pour le plan : `promotionDomainService.findFirstActivePromotionForPlan(planId, today)` (entité, table petite, justifié).
+6. Calcule le breakdown via `SubscriptionAmountCalculator.calculate(SubscriptionAmountInputs(plan, type, promotion, coupon))` : applique réductions séquentielles `prix×durée → type → promotion → coupon`, clamp à zéro, scale BigDecimal 2 HALF_UP.
+7. Crée l'Abonnement EN_ATTENTE via `abonnementDomainService.createPending(entreprise, plan, type)` (sans `dateDebut`/`dateFin` — fixés au paiement étape 7).
+8. Configure renouvellementAuto via `abonnementDomainService.setRenouvellementAuto(abonnement, request.renouvellementAuto())`.
+9. Si coupon : `reserveCoupon(coupon, entreprise, abonnement)` — délègue à `UtilisationCouponDomainService.create(coupon, entreprise, abonnement)` + `CouponDomainService.incrementUsage(coupon)`.
+10. Retourne `SubscribeResponse(abonnement, breakdown, couponCodeApplied, promotionNomApplied)`.
+
+**Stratégie upgrade/downgrade** : **remplacement à `dateFin`** (décision utilisateur, MVP). L'abonnement actuel reste ACTIF jusqu'à sa `dateFin` ; le nouveau démarre `currentActif.dateFin+1` (calcul effectif à la validation du paiement, use case 42). Pas de prorata.
+
+**Validations publiques** (règle 27) : `ensurePlanSubscribable(plan)`, `ensureTypeActif(type)`, `resolveCoupon(code, planId)`, `ensureBelongsToCurrentEntreprise(abonnement)`.
+
+**i18n** : `plan.notSubscribable`, `subscriptionType.notSubscribable`, `coupon.notFound/expired/exhausted/notApplicable`.
+
+**Tests** : 9 service `AbonnementServiceImplTest` (happy sans coupon / avec coupon réservé / avec promotion / plan inactif / plan trial / type inactif / coupon inexistant / expired / exhausted / scope plan invalide) + 6 calculateur `SubscriptionAmountCalculatorTest` (base / pourcentage / montant_fixe / séquentiel / clamp zero) + 3 controller `AbonnementControllerTest`.
+
+---
+
+## 39. Toggle renouvellement auto — `AbonnementServiceImpl.updateRenouvellementAuto`
+
+**Endpoint** : `PATCH /api/v1/abonnements/{id}/renouvellement-auto` (permission `SUBSCRIPTION_UPDATE`). Body `RenouvellementAutoRequest(boolean)`. Status 200.
+
+**Cas d'usage métier** : le propriétaire peut **basculer le flag à tout moment** du cycle de vie de l'abonnement (avant/pendant/après activation), à sa convenance.
+
+**Logique** :
+1. Charge l'abonnement via `abonnementDomainService.findById(id)`.
+2. `ensureBelongsToCurrentEntreprise(abonnement)` → `ForbiddenException("abonnement.notOwned")` si l'abonnement appartient à une autre entreprise.
+3. Délègue le set+save au DomainService via `abonnementDomainService.setRenouvellementAuto(abonnement, request.renouvellementAuto())` (règle 26).
+4. Retourne `AbonnementResponse(abonnement)`.
+
+**Note** : aujourd'hui le paiement est manuel donc le flag `renouvellementAuto=true` n'a pas encore d'effet runtime (le worker de renouvellement automatique est **différé** — étape 9, dépend de l'intégration d'un intégrateur paiement). L'endpoint est livré pour préparer le futur.
+
+**Tests** : 2 service (toggle + autre entreprise = Forbidden) + 1 controller.
+
+---
+
+## 40. Listings abonnement + statut courant entreprise — `AbonnementServiceImpl.findAll/findMyHistory/findMyCurrent`
+
+**Endpoints** :
+- `GET /api/v1/abonnements?entrepriseId=&statut=&planId=&page=&size=` (perm `ADMIN_ACCESS`) — ADMIN voit tous les abonnements (filtre libre par entreprise).
+- `GET /api/v1/abonnements/me?statut=&planId=&page=&size=` (perm `SUBSCRIPTION_READ`) — PROPRIETAIRE voit son historique (auto-scopé à son entreprise).
+- `GET /api/v1/abonnements/me/current` (perm `SUBSCRIPTION_READ`) — PROPRIETAIRE voit l'abonnement actif courant + jours restants + flag trial + fonctionnalités du plan.
+
+**Cas d'usage métier** : visualisation et reporting. ADMIN supervise tous les comptes SaaS, propriétaire consulte son abonnement courant pour adapter l'UI selon les limites du plan (`nombreMagasinsMax`, `nombreEmployesMax`, `gestionStock/Vente/Achat/Comptabilite`).
+
+**Logique** :
+- `findAll(filter)` : `validatorService.validate(filter)` + `abonnementDomainService.findResponses(filter)` (projection JPQL `SELECT new AbonnementResponse(abonnement) ... LEFT JOIN FETCH plan/type/entreprise` + `countQuery` séparé pour la pagination).
+- `findMyHistory(filter)` : force `filter.entrepriseId = currentUser.entrepriseId()` (record reconstruit avec scope) avant délégation.
+- `findMyCurrent()` : `abonnementDomainService.findCurrentActif(entrepriseId)` (entité — besoin pour le constructeur secondaire de `CurrentAbonnementResponse`). Calcule `joursRestants = max(0, ChronoUnit.DAYS.between(today, dateFin))`. Retourne `CurrentAbonnementResponse(abonnement, joursRestants, isTrial, PlanFeaturesResponse(...))`.
+
+**Optimisation repository** (R7a) : `AbonnementRepository.findResponsesByFilter` utilise une projection JPQL avec `LEFT JOIN FETCH` sur les relations `@ManyToOne` (plan, type, entreprise) — pas de N+1 lazy load + warning `Pageable+collection` évité car ce sont des ManyToOne.
+
+**i18n** : `abonnement.noActive` si pas d'abonnement actif (404).
+
+**Tests** : 4 service + 3 controller.
+
+---
+
+## 41. Paiement manuel (PROPRIETAIRE) — `PaiementAbonnementServiceImpl.create`
+
+**Endpoint** : `POST /api/v1/paiements-abonnement/abonnements/{abonnementId}` (perm `SUBSCRIPTION_PAY`). Multipart : `data` (JSON `PaiementAbonnementRequest(moyen, referenceTransaction, datePaiement)`) + `file` (image, **obligatoire**). Status 201.
+
+**Cas d'usage métier** : **pas d'intégrateur de paiement automatique** dans le projet. Le propriétaire paie hors-app (Wave/Orange Money/virement/cash) puis enregistre la transaction dans l'app avec une **preuve image obligatoire** (capture/photo du reçu). L'admin valide ensuite (use case 42).
+
+**Logique** :
+1. Charge abonnement + `ensureAbonnementBelongsToCurrentEntreprise` → `ForbiddenException` si autre entreprise.
+2. `ensureAbonnementIsPending(abonnement)` : statut doit être EN_ATTENTE (sinon `abonnement.notPending`).
+3. `ensureNoPendingPayment(abonnementId)` : via `paiementAbonnementDomainService.existsPendingForAbonnement` (boolean projection, R7b) — sinon `paiementAbonnement.alreadyPending`.
+4. **Recalcule** le breakdown via `recomputeBreakdown(abonnement)` :
+   - Promotion active à `today` (peut différer de la souscription).
+   - Coupon : `utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId)` (projection UUID, R7c) → `couponDomainService.findById(couponId)`.
+   - `amountCalculator.calculate(SubscriptionAmountInputs(plan, type, promotion, coupon))`.
+5. Build de la `PieceJointe` preuve via `IUploadFileService.buildImage(file)` (validation MIME + blob + contentType).
+6. Crée `PaiementAbonnement` en EN_ATTENTE_VALIDATION via `paiementAbonnementDomainService.createPending(new PaiementAbonnementCreationContext(abonnement, request, breakdown, preuveImage))` (record context, R3 — règle 30 max 3 params).
+7. Retourne `PaiementAbonnementResponse(paiement)` (sans bytes preuve, juste `preuveId` — download via endpoint dédié).
+
+**Montant recalculé côté serveur** : le propriétaire ne saisit pas de montant. Le système recalcule au moment du paiement (plan × durée − réductions). Si l'admin estime que le montant payé est incorrect, il rejette (use case 42).
+
+**Migration** : V21 enrichit `paiement_abonnement` de `statut` (NOT NULL default EN_ATTENTE_VALIDATION), `preuve_id` (FK piece_jointe), `motif_rejet` (TEXT).
+
+**i18n** : `abonnement.notPending`, `paiementAbonnement.alreadyPending`, `upload.file.empty`, `upload.file.invalidImageType`.
+
+**Tests** : 4 service (happy create + autre entreprise + abonnement non pending + paiement pending déjà).
+
+---
+
+## 42. Validation / rejet paiement (ADMIN) — `PaiementAbonnementServiceImpl.validate/reject`
+
+**Endpoints** :
+- `PATCH /api/v1/paiements-abonnement/{id}/validate` (perm `SUBSCRIPTION_VALIDATE`). Body vide. Status 200.
+- `PATCH /api/v1/paiements-abonnement/{id}/reject` (perm `SUBSCRIPTION_VALIDATE`). Body `RejectPaiementRequest(motifRejet)`. Status 200.
+
+**Cas d'usage métier** : l'admin SaaS examine la preuve image fournie par le propriétaire et :
+- **Valide** → l'abonnement passe en ACTIF avec `dateDebut`/`dateFin` calculés selon la stratégie de **remplacement à `dateFin`**.
+- **Rejette** avec motif → l'abonnement reste EN_ATTENTE, le coupon réservé est **libéré** (rollback).
+
+**Logique `validate`** :
+1. Charge paiement + `ensurePaiementIsPendingValidation` (sinon `paiementAbonnement.notPendingValidation`).
+2. `activateAbonnement(abonnement)` :
+   - `abonnementDomainService.findLatestActifDateFin(entrepriseId, abonnement.getId())` (JPQL `MAX(dateFin)`, R7a) → si présent : `dateDebut = max+1`, sinon `dateDebut = today`.
+   - `dateFin = dateDebut + typeAbonnement.dureeMois`.
+   - `abonnementDomainService.activate(abonnement, dateDebut, dateFin)` (règle 26 — setter+save dans domain).
+3. Marque paiement VALIDE via `paiementAbonnementDomainService.markAsValide(paiement)`.
+
+**Logique `reject`** :
+1. Charge paiement + `ensurePaiementIsPendingValidation`.
+2. `releaseReservedCouponIfAny(abonnementId)` :
+   - `utilisationCouponDomainService.findCouponIdByAbonnementId` → si présent : `couponDomainService.findById(couponId)` + `couponDomainService.decrementUsage(coupon)` + `utilisationCouponDomainService.deleteByAbonnementId(abonnementId)` (bulk delete R7c).
+3. Marque paiement REJETE avec motif via `paiementAbonnementDomainService.markAsRejete(paiement, motifRejet)`.
+
+**Scoping listing/lecture** :
+- `findAll(filter)` : auto-scopé entreprise pour non-ADMIN (`scopeFilterForNonAdmin`).
+- `findResponseById` + `getPreuve` : ADMIN tout, sinon entreprise du caller (`ensurePaiementAccessibleByCaller`).
+
+**i18n** : `paiementAbonnement.notPendingValidation`, `paiementAbonnement.preuve.notFound`.
+
+**Tests** : 4 validate/reject (activate dates today / dates currentActif+1 / already validated / release coupon / without coupon / reject sans motif 400) + 5 controller (list / get / get preuve / validate / reject).
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).
 - **Sécurité** : `@PreAuthorize` au niveau controller pour la coarse‑grained auth ; service responsable des règles métier fines.
 - **Isolation services** : un `<X>ServiceImpl` n'injecte que `<X>DomainService` + des `I<Y>Service` d'autres agrégats (jamais un `<Y>Repository`).
-- **Responses** : tout `<X>Response` doit exposer un constructeur `(<X> entity)`.
+- **Responses** : tout `<X>Response` doit exposer un constructeur `(<X> entity)` — ou des constructeurs secondaires pour les projections JPQL multi-champs (cf. `PublicPlanResponse` use case 37, `AbonnementResponse` use case 40).
 - **Permissions** : centralisées dans l'enum `PermissionCode` ; chaque valeur = code en BDD.
+- **Setters dans DomainService** (règle 26) : tout `entity.setX()` + `save(entity)` vit dans `<X>DomainService` comme méthode métier nommée (`setActive`, `activate`, `markAsValide`, `incrementUsage`, etc.). Les ServiceImpl orchestrent uniquement.
+- **Projections record** (règle 24 + 38) : les méthodes repository retournent par défaut des `<X>Response` (projection JPQL `SELECT new`), pas des entités. Cas justifiés en entité : FK pour création / petite table partagée par plusieurs use cases / domaine fermé.
+- **Externalisation valeurs fixes** (règle 38) : `@ConfigurationProperties` (records dans `org.store.property/`) — pas de `private static final` pour valeurs métier paramétrables (`SubscriptionProperties.trialDays`, `LoggingProperties.maxPayloadLength`, etc.).
