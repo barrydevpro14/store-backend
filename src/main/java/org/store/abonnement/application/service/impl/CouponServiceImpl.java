@@ -8,12 +8,12 @@ import org.store.abonnement.application.dto.CouponRequest;
 import org.store.abonnement.application.dto.CouponResponse;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPlanAbonnementService;
-import org.store.abonnement.application.service.SubscriptionRules;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.SubscriptionRules;
 
 import java.util.UUID;
 

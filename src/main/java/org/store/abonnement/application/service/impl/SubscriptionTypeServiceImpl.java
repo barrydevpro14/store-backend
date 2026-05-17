@@ -7,7 +7,7 @@ import org.store.abonnement.application.dto.SubscriptionTypeFilter;
 import org.store.abonnement.application.dto.SubscriptionTypeRequest;
 import org.store.abonnement.application.dto.SubscriptionTypeResponse;
 import org.store.abonnement.application.service.ISubscriptionTypeService;
-import org.store.abonnement.application.service.SubscriptionRules;
+import org.store.common.tools.SubscriptionRules;
 import org.store.abonnement.domain.model.TypeAbonnement;
 import org.store.abonnement.domain.service.TypeAbonnementDomainService;
 import org.store.common.exceptions.UniqueResourceException;

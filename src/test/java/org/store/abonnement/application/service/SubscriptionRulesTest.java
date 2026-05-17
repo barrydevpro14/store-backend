@@ -3,6 +3,7 @@ package org.store.abonnement.application.service;
 import org.junit.jupiter.api.Test;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.common.exceptions.BadArgumentException;
+import org.store.common.tools.SubscriptionRules;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

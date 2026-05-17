@@ -11,6 +11,7 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.AbonnementRepository;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.property.SubscriptionProperties;
 
 import java.time.LocalDate;
 
@@ -22,16 +23,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AbonnementDomainServiceTest {
 
-    @Mock
-    private AbonnementRepository repository;
+    @Mock private AbonnementRepository repository;
+    @Mock private SubscriptionProperties subscriptionProperties;
 
     @InjectMocks
     private AbonnementDomainService service;
 
     @Test
-    void createTrial_should_build_abonnement_with_30_days_and_active_status() {
+    void createTrial_should_build_abonnement_with_configured_trial_days_and_active_status() {
         Entreprise entreprise = new Entreprise();
         PlanAbonnement plan = new PlanAbonnement();
+        when(subscriptionProperties.trialDays()).thenReturn(30);
         when(repository.save(any(Abonnement.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Abonnement result = service.createTrial(entreprise, plan);

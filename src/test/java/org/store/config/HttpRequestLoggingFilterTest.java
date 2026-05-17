@@ -26,7 +26,7 @@ class HttpRequestLoggingFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new HttpRequestLoggingFilter();
+        filter = new HttpRequestLoggingFilter(new org.store.property.LoggingProperties(2048));
         filterLogger = (Logger) LoggerFactory.getLogger(HttpRequestLoggingFilter.class);
         appender = new ListAppender<>();
         appender.start();

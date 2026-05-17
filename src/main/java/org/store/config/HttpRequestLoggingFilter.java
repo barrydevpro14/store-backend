@@ -37,7 +37,7 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
             "/v3/api-docs/**"
     );
 
-    private static final int MAX_PAYLOAD_LENGTH = 2048;
+    private final int maxPayloadLength;
 
     private static final List<String> SENSITIVE_FIELDS = List.of(
             "password", "accessToken", "refreshToken", "secret", "token"
@@ -49,6 +49,10 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
     );
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    public HttpRequestLoggingFilter(org.store.property.LoggingProperties loggingProperties) {
+        this.maxPayloadLength = loggingProperties.maxPayloadLength();
+    }
 
     /**
      * Retourne true pour les paths techniques (actuator, swagger, openapi) qui ne doivent pas être logués.
@@ -67,7 +71,7 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, MAX_PAYLOAD_LENGTH * 2);
+        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, maxPayloadLength * 2);
         ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
 
         String requestId = UUID.randomUUID().toString();
@@ -102,7 +106,7 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Décode un body binaire en String avec tronquage à MAX_PAYLOAD_LENGTH
+     * Décode un body binaire en String avec tronquage à maxPayloadLength
      * et remplace les contenus non textuels par [binary].
      */
     private String extractBody(byte[] content, String encoding, String contentType) {
@@ -119,8 +123,8 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
         }
         Charset charset = encoding != null ? Charset.forName(encoding) : StandardCharsets.UTF_8;
         String body = new String(content, charset);
-        if (body.length() > MAX_PAYLOAD_LENGTH) {
-            return body.substring(0, MAX_PAYLOAD_LENGTH) + "...[truncated]";
+        if (body.length() > maxPayloadLength) {
+            return body.substring(0, maxPayloadLength) + "...[truncated]";
         }
         return body;
     }

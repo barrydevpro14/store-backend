@@ -8,11 +8,11 @@ import org.store.abonnement.application.dto.PromotionRequest;
 import org.store.abonnement.application.dto.PromotionResponse;
 import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.abonnement.application.service.IPromotionService;
-import org.store.abonnement.application.service.SubscriptionRules;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.Promotion;
 import org.store.abonnement.domain.service.PromotionDomainService;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.SubscriptionRules;
 
 import java.util.UUID;
 

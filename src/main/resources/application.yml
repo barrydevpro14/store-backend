@@ -32,6 +32,8 @@ management:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-}] %logger{36} - %msg%n"
+  http:
+    max-payload-length: ${LOG_HTTP_MAX_PAYLOAD_LENGTH:2048}
 
 security:
   jwt:
@@ -51,3 +53,6 @@ upload:
     - image/png
     - image/webp
     - image/gif
+
+subscription:
+  trial-days: ${SUBSCRIPTION_TRIAL_DAYS:30}

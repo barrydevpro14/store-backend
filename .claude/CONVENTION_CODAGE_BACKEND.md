@@ -342,6 +342,27 @@ Le récap (entrée, flux, règles, exceptions, sortie) de chaque service applica
       - Stream inline d'une seule ligne (`list.forEach(System.out::println);`) : pas de séparation forcée.
     - **Cohérent avec règle 31** (indentation par blocs avec lignes vides entre étapes logiques).
 
+### Externalisation des valeurs fixes
+
+38. **Toute valeur métier paramétrable doit être externalisée via `@ConfigurationProperties` (records dans `org.store.property`)**, jamais codée en dur (`private static final int TRIAL_DAYS = 30;` interdit pour les valeurs métier).
+    - **Concerné** : durées (trial, expiration, refresh), seuils, limites (max files, retry, batch size), URLs externes, paramètres business.
+    - **Non concerné** : constantes mathématiques pures (`HUNDRED`, `SCALE` BigDecimal, divisions par 2, `Math.PI`), constantes techniques sans variation possible (header HTTP `Authorization`, regex de format), valeurs de domaine fermé (enum.name()).
+    - **Pattern** : record `<X>Properties` dans `org.store.property/`, préfixe en kebab-case dans `application.yml`, override possible via variable d'env `${MY_VAR:defaultValue}`. Exemple :
+      ```java
+      // org.store.property.SubscriptionProperties
+      @ConfigurationProperties(prefix = "subscription")
+      public record SubscriptionProperties(int trialDays) {}
+      ```
+      ```yaml
+      # application.yml
+      subscription:
+        trial-days: ${SUBSCRIPTION_TRIAL_DAYS:30}
+      ```
+    - **Injection** : par constructeur dans les services qui en ont besoin (`subscriptionProperties.trialDays()`).
+    - **Test** : `@Mock SubscriptionProperties subscriptionProperties` + `when(subscriptionProperties.trialDays()).thenReturn(30)`.
+    - **`@ConfigurationPropertiesScan`** : déjà activé sur `StoreApplication` pour le package `org.store.property`. Les nouveaux records sont auto-découverts.
+    - **Référence** : `JwtProperties`, `RbacProperties`, `UploadProperties`, `SubscriptionProperties`.
+
 ---
 
 ## Conventions de commits

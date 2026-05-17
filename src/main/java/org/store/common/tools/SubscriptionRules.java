@@ -1,4 +1,4 @@
-package org.store.abonnement.application.service;
+package org.store.common.tools;
 
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.common.exceptions.BadArgumentException;

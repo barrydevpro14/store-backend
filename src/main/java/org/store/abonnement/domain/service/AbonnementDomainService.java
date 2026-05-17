@@ -11,6 +11,7 @@ import org.store.abonnement.domain.model.TypeAbonnement;
 import org.store.abonnement.domain.repository.AbonnementRepository;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.property.SubscriptionProperties;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -19,10 +20,12 @@ import java.util.UUID;
 @Service
 public class AbonnementDomainService extends GlobalService<Abonnement, AbonnementRepository> {
 
-    private static final int TRIAL_DAYS = 30;
+    private final SubscriptionProperties subscriptionProperties;
 
-    public AbonnementDomainService(AbonnementRepository repository) {
+    public AbonnementDomainService(AbonnementRepository repository,
+                                   SubscriptionProperties subscriptionProperties) {
         super(repository);
+        this.subscriptionProperties = subscriptionProperties;
     }
 
     public Abonnement createTrial(Entreprise entreprise, PlanAbonnement plan) {
@@ -30,7 +33,7 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         abonnement.setEntreprise(entreprise);
         abonnement.setPlan(plan);
         abonnement.setDateDebut(LocalDate.now());
-        abonnement.setDateFin(LocalDate.now().plusDays(TRIAL_DAYS));
+        abonnement.setDateFin(LocalDate.now().plusDays(subscriptionProperties.trialDays()));
         abonnement.setActif(true);
         abonnement.setRenouvellementAuto(false);
         abonnement.setStatut(AbonnementStatut.ACTIF);
