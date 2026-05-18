@@ -19,6 +19,7 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             WHERE entree.magasin.id = :magasinId
               AND entree.produit.id = :productId
               AND entree.quantiteRestante > 0
+              AND entree.annulee = false
             ORDER BY entree.createdAt ASC
             """)
     List<EntreeStock> findAvailableLotsForFifo(@Param("magasinId") UUID magasinId, @Param("productId") UUID productId);
@@ -28,6 +29,7 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             WHERE entree.magasin.id = :magasinId
               AND entree.productFournisseur.id = :productFournisseurId
               AND entree.quantiteRestante > 0
+              AND entree.annulee = false
             ORDER BY entree.createdAt ASC
             """)
     List<EntreeStock> findAvailableLotsForFifoByProductFournisseur(@Param("magasinId") UUID magasinId,
@@ -42,6 +44,7 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
               AND entree.dateExpiration IS NOT NULL
               AND entree.dateExpiration <= :#{#filter.untilDate()}
               AND entree.quantiteRestante > 0
+              AND entree.annulee = false
             ORDER BY entree.dateExpiration ASC
             """)
     Page<ExpiringLotResponse> findExpiringLots(@Param("filter") ExpiringLotsFilter filter,
@@ -55,6 +58,7 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             JOIN FETCH productFournisseur.quality
             WHERE entree.magasin.id = :magasinId
               AND entree.quantiteRestante > 0
+              AND entree.annulee = false
               AND entree.produit.id IN :productIds
             ORDER BY entree.createdAt ASC
             """)

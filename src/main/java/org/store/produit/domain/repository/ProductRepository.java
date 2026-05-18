@@ -35,6 +35,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                   WHERE entree.produit = produit
                     AND entree.magasin.id = :magasinId
                     AND entree.quantiteRestante > 0
+                    AND entree.annulee = false
               )
             """)
     Page<Product> searchByEntrepriseWithActiveLots(@Param("searchTerm") String searchTerm,
