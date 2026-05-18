@@ -60,4 +60,10 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             """)
     List<EntreeStock> findActiveLotsByMagasinAndProductIds(@Param("magasinId") UUID magasinId,
                                                            @Param("productIds") List<UUID> productIds);
+
+    @Query("""
+            SELECT entree FROM EntreeStock entree
+            WHERE entree.commandeAchat.id = :commandeAchatId
+            """)
+    List<EntreeStock> findByCommandeAchatId(@Param("commandeAchatId") UUID commandeAchatId);
 }

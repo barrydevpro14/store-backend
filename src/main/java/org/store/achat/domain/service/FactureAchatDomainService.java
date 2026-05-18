@@ -46,6 +46,12 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
         return repository.findByCommandeId(commandeId);
     }
 
+    /** Bascule la facture en statut ANNULEE (paiements conservés tels quels pour audit). */
+    public FactureAchat cancel(FactureAchat facture) {
+        facture.setStatut(StatutFacture.ANNULEE);
+        return save(facture);
+    }
+
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */
     public FactureAchat applyPaiement(FactureAchat facture, BigDecimal montant) {
         BigDecimal nouveauPaye = (facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO).add(montant);

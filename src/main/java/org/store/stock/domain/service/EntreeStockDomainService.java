@@ -54,6 +54,17 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return save(lot);
     }
 
+    /** Liste tous les lots issus d'une commande d'achat donnée (utilisé par l'annulation d'achat). */
+    public List<EntreeStock> findByCommandeAchatId(UUID commandeAchatId) {
+        return repository.findByCommandeAchatId(commandeAchatId);
+    }
+
+    /** Marque un lot comme annulé lors d'une annulation d'achat (lot retiré du stock + retourné au fournisseur). */
+    public EntreeStock markAsAnnulee(EntreeStock lot) {
+        lot.setAnnulee(true);
+        return save(lot);
+    }
+
     /** Création d'une entrée stock à partir d'un record groupé (peut être liée à une CommandeAchat). */
     public EntreeStock create(EntreeStockCreate entreeStockCreate) {
         EntreeStock entreeStock = new EntreeStock();

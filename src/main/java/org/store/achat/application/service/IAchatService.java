@@ -5,6 +5,8 @@ import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AchatValidateRequest;
+import org.store.achat.application.dto.AnnulationAchatRequest;
+import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
 
@@ -43,4 +45,12 @@ public interface IAchatService {
      * Scoping entreprise du caller via la commande.
      */
     AchatDetailsResponse findDetailsById(UUID commandeId);
+
+    /**
+     * Annule une commande RECEPTIONNEE dans la fenêtre temporelle autorisée. Retire le stock alimenté par
+     * cet achat (chaque lot doit être intact : aucun lot consommé par une vente), flag annulee=true sur
+     * chaque EntreeStock, journalise un RETOUR_FOURNISSEUR par lot, bascule commande + facture en ANNULEE.
+     * Les paiements éventuels sont conservés (remboursement hors-app).
+     */
+    AnnulationAchatResponse cancel(UUID commandeId, AnnulationAchatRequest annulationAchatRequest);
 }

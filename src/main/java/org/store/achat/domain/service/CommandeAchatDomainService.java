@@ -6,11 +6,13 @@ import org.store.achat.application.dto.CommandeAchatCreate;
 import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.domain.enums.CommandeAchatStatut;
+import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.repository.CommandeAchatRepository;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -43,6 +45,15 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
     /** Bascule la commande en statut RECEPTIONNEE lors de la validation (matérialisation stock + facture). */
     public CommandeAchat validate(CommandeAchat commande) {
         commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+        return save(commande);
+    }
+
+    /** Bascule la commande en statut ANNULEE en horodatant et en archivant motif + commentaire. */
+    public CommandeAchat cancel(CommandeAchat commande, MotifAnnulationAchat motif, String commentaire) {
+        commande.setStatut(CommandeAchatStatut.ANNULEE);
+        commande.setMotifAnnulation(motif);
+        commande.setCommentaireAnnulation(commentaire);
+        commande.setDateAnnulation(LocalDateTime.now());
         return save(commande);
     }
 }

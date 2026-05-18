@@ -7,6 +7,8 @@ import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AchatValidateRequest;
+import org.store.achat.application.dto.AnnulationAchatRequest;
+import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.CommandeAchatCreate;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.dto.FactureAchatCreate;
@@ -16,6 +18,7 @@ import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.RetraitStockResult;
 import org.store.achat.application.service.IAchatService;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.application.service.IFournisseurService;
@@ -28,21 +31,25 @@ import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.achat.domain.service.LigneCommandeAchatDomainService;
 import org.store.common.exceptions.BadArgumentException;
+import org.store.common.exceptions.EntityException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.property.PurchaseProperties;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
 import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -70,6 +77,7 @@ public class AchatServiceImpl implements IAchatService {
     private final IProductFournisseurService productFournisseurService;
     private final ICommandeAchatService commandeAchatService;
     private final ValidatorService validatorService;
+    private final PurchaseProperties purchaseProperties;
 
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
@@ -81,7 +89,8 @@ public class AchatServiceImpl implements IAchatService {
                             IFournisseurService fournisseurService,
                             IProductFournisseurService productFournisseurService,
                             ICommandeAchatService commandeAchatService,
-                            ValidatorService validatorService) {
+                            ValidatorService validatorService,
+                            PurchaseProperties purchaseProperties) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
@@ -93,6 +102,7 @@ public class AchatServiceImpl implements IAchatService {
         this.productFournisseurService = productFournisseurService;
         this.commandeAchatService = commandeAchatService;
         this.validatorService = validatorService;
+        this.purchaseProperties = purchaseProperties;
     }
 
     /** Crée la commande DRAFT et ses lignes (validations PF + prix), sans toucher au stock ni à la facture. */
@@ -257,6 +267,89 @@ public class AchatServiceImpl implements IAchatService {
                 ligne.quantite(), ligne.prixAchat(), ligne.prixVente(),
                 ligne.numeroLot(), ligne.dateExpiration()
         )));
+    }
+
+    /**
+     * Annule une commande RECEPTIONNEE dans la fenêtre autorisée, retire le stock alimenté par cet achat
+     * (chaque lot doit être intact : aucun lot consommé par une vente), bascule commande + facture en ANNULEE.
+     */
+    @Override
+    @Transactional
+    public AnnulationAchatResponse cancel(UUID commandeId, AnnulationAchatRequest annulationAchatRequest) {
+        validatorService.validate(annulationAchatRequest);
+
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        ensureCancellable(commande);
+        ensureWithinCancelWindow(commande);
+
+        List<EntreeStock> lots = entreeStockDomainService.findByCommandeAchatId(commande.getId());
+        ensureNoLotConsumed(lots);
+
+        RetraitStockResult retrait = lots.stream()
+                .map(lot -> withdrawStockForLot(commande, lot))
+                .reduce(RetraitStockResult.empty(), RetraitStockResult::merge);
+
+        CommandeAchat cancelled = commandeAchatDomainService.cancel(commande, annulationAchatRequest.motifAsEnum(), annulationAchatRequest.commentaire());
+
+        Optional<FactureAchat> facture = factureAchatDomainService.findByCommandeId(cancelled.getId());
+        facture.ifPresent(factureAchatDomainService::cancel);
+
+        return new AnnulationAchatResponse(cancelled, retrait.totalQuantite(), retrait.nombreMouvements());
+    }
+
+    /** Lève BadArgument si la commande n'est pas en statut RECEPTIONNEE (déjà annulée ou pas encore validée). */
+    public void ensureCancellable(CommandeAchat commande) {
+        CommandeAchatStatut statut = commande.getStatut();
+        if (statut == CommandeAchatStatut.ANNULEE) {
+            throw new BadArgumentException("commandeAchat.cancel.alreadyCancelled");
+        }
+        if (statut != CommandeAchatStatut.RECEPTIONNEE) {
+            throw new BadArgumentException("commandeAchat.cancel.notReceptionnee", statut.name());
+        }
+    }
+
+    /** Lève BadArgument si la commande dépasse la fenêtre d'annulation autorisée (configurable via PurchaseProperties). */
+    public void ensureWithinCancelWindow(CommandeAchat commande) {
+        int maxHours = purchaseProperties.cancelWindowHours();
+        LocalDateTime deadline = commande.getCreatedAt().plusHours(maxHours);
+        if (deadline.isBefore(LocalDateTime.now())) {
+            throw new BadArgumentException("commandeAchat.cancel.windowExpired", maxHours);
+        }
+    }
+
+    /**
+     * Lève BadArgument si au moins un lot a été partiellement ou totalement consommé par une vente
+     * ({@code quantiteRestante < quantiteInitiale}) — l'annulation symétrique n'est plus possible dans ce cas.
+     */
+    public void ensureNoLotConsumed(List<EntreeStock> lots) {
+        boolean atLeastOneConsumed = lots.stream()
+                .anyMatch(lot -> lot.getQuantiteRestante() < lot.getQuantiteInitiale());
+        if (atLeastOneConsumed) {
+            throw new BadArgumentException("commandeAchat.cancel.lotAlreadyConsumed");
+        }
+    }
+
+    /** Décrémente le stock agrégé de la quantité du lot, marque le lot comme annulé et journalise un RETOUR_FOURNISSEUR. */
+    public RetraitStockResult withdrawStockForLot(CommandeAchat commande, EntreeStock lot) {
+        int quantite = lot.getQuantiteRestante();
+
+        Stock stock = stockDomainService.findByMagasinIdAndProduitId(lot.getMagasin().getId(), lot.getProduit().getId())
+                .orElseThrow(() -> new EntityException("stock.notFound"));
+        int stockAvant = stock.getQuantiteDisponible();
+
+        Stock updated = stockDomainService.decrement(stock, quantite);
+        entreeStockDomainService.markAsAnnulee(lot);
+
+        mouvementStockDomainService.journalize(updated, new MouvementJournalize(
+                MouvementStockType.RETOUR_FOURNISSEUR,
+                quantite,
+                stockAvant,
+                updated.getQuantiteDisponible(),
+                commande.getReference(),
+                null
+        ));
+
+        return new RetraitStockResult(quantite, 1);
     }
 
     /** Crée le lot d'entrée stock pour une ligne validée, upsert le Stock agrégé, journalise et met à jour le prixVente PF courant. */

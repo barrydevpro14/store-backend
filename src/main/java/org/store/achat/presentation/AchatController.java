@@ -17,6 +17,8 @@ import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AchatValidateRequest;
+import org.store.achat.application.dto.AnnulationAchatRequest;
+import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
 import org.store.achat.application.service.IAchatService;
@@ -68,5 +70,12 @@ public class AchatController {
                                             @PathVariable UUID ligneId) {
         achatService.deleteLigne(commandeId, ligneId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{commandeId}/annuler")
+    @PreAuthorize("hasAuthority('PURCHASE_CANCEL')")
+    public ResponseEntity<AnnulationAchatResponse> cancel(@PathVariable UUID commandeId,
+                                                          @Valid @RequestBody AnnulationAchatRequest annulationAchatRequest) {
+        return ResponseEntity.ok(achatService.cancel(commandeId, annulationAchatRequest));
     }
 }
