@@ -332,14 +332,20 @@ public class AchatServiceImpl implements IAchatService {
         return new AnnulationAchatResponse(cancelled, retrait.totalQuantite(), retrait.nombreMouvements());
     }
 
-    /** Lève BadArgument si la commande n'est pas en statut RECEPTIONNEE (déjà annulée ou pas encore validée). */
+    /**
+     * Lève BadArgument si la commande n'est pas dans un statut annulable (VALIDEE / PARTIELLEMENT_RECEPTIONNEE
+     * / RECEPTIONNEE) — DRAFT exclu (rien à annuler, supprimer les lignes pour abandonner un brouillon) et
+     * ANNULEE exclu (déjà annulée).
+     */
     public void ensureCancellable(CommandeAchat commande) {
         CommandeAchatStatut statut = commande.getStatut();
         if (statut == CommandeAchatStatut.ANNULEE) {
             throw new BadArgumentException("commandeAchat.cancel.alreadyCancelled");
         }
-        if (statut != CommandeAchatStatut.RECEPTIONNEE) {
-            throw new BadArgumentException("commandeAchat.cancel.notReceptionnee", statut.name());
+        if (statut != CommandeAchatStatut.VALIDEE
+                && statut != CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE
+                && statut != CommandeAchatStatut.RECEPTIONNEE) {
+            throw new BadArgumentException("commandeAchat.cancel.notCancellable", statut.name());
         }
     }
 

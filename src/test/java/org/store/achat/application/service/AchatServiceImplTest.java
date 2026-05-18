@@ -521,7 +521,7 @@ class AchatServiceImplTest {
     }
 
     @Test
-    void cancel_should_throw_when_not_receptionnee() {
+    void cancel_should_throw_when_statut_is_draft() {
         commande.setStatut(CommandeAchatStatut.DRAFT);
         commande.setCreatedAt(LocalDateTime.now().minusHours(1));
 
@@ -530,7 +530,7 @@ class AchatServiceImplTest {
 
         assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
                 .isInstanceOf(BadArgumentException.class)
-                .hasMessageContaining("notReceptionnee");
+                .hasMessageContaining("notCancellable");
 
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }
