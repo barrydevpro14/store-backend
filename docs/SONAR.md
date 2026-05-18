@@ -1,64 +1,64 @@
-# SonarQube + JaCoCo — guide d'usage
+# SonarQube + JaCoCo — usage guide
 
-Analyse statique de qualité de code + couverture des tests. Setup local self-hosted via Docker Compose, scan déclenché manuellement via Maven.
+Static code quality analysis + test coverage. Local self-hosted setup via Docker Compose, scan triggered manually via Maven.
 
 ---
 
-## TL;DR — Cycle complet
+## TL;DR — Full cycle
 
 ```bash
-# 1. Démarrer Sonar (premier coup d'usage seulement, puis tourne en arrière-plan)
+# 1. Start Sonar (first use only, then runs in the background)
 docker compose -f docker-compose.sonar.yml up -d
 
-# 2. Lancer un scan (depuis la racine du backend, avec le token généré dans l'UI)
+# 2. Run a scan (from the backend root, with the token generated in the UI)
 mvn clean verify sonar:sonar -Dsonar.token=sqp_xxxxxxxxxxxxxxxxxxxxxxxx
 
-# 3. Consulter le rapport
-#    - Dashboard Sonar  : http://localhost:9000/dashboard?id=store-backend
-#    - Rapport JaCoCo HTML (local, sans Sonar) : target/site/jacoco/index.html
+# 3. Read the report
+#    - Sonar dashboard          : http://localhost:9000/dashboard?id=store-backend
+#    - JaCoCo HTML report (local, no Sonar) : target/site/jacoco/index.html
 ```
 
 ---
 
-## 1. Premier setup (une seule fois)
+## 1. First setup (one time only)
 
-### 1.1 Démarrer l'infra
+### 1.1 Start the infra
 
 ```bash
 docker compose -f docker-compose.sonar.yml up -d
 ```
 
-Attendre ~60 s le démarrage de SonarQube (Elasticsearch interne, première initialisation lente).
+Wait ~60s for SonarQube to start up (internal Elasticsearch, slow first init).
 
-Vérifier que l'UI répond :
+Check that the UI responds:
 
 ```bash
 curl -s http://localhost:9000/api/system/status
 # {"status":"UP"}
 ```
 
-### 1.2 Configurer l'admin
+### 1.2 Configure the admin
 
-1. Ouvrir http://localhost:9000
-2. Login : `admin` / `admin`
-3. SonarQube force le changement du mot de passe — choisir un nouveau mdp et le garder en lieu sûr
+1. Open http://localhost:9000
+2. Login: `admin` / `admin`
+3. SonarQube forces a password change — choose a new password and keep it somewhere safe
 
-### 1.3 Créer le projet
+### 1.3 Create the project
 
 1. **Projects → Create Project → Manually**
-2. Project key : `store-backend` (doit matcher la property `sonar.projectKey` du `pom.xml`)
-3. Display name : `Store Backend`
-4. Branch (main) : `dev`
+2. Project key: `store-backend` (must match the `sonar.projectKey` property in `pom.xml`)
+3. Display name: `Store Backend`
+4. Branch (main): `dev`
 5. **Set up project** → **Locally**
 
-### 1.4 Générer un token
+### 1.4 Generate a token
 
 1. **My Account → Security → Generate Tokens**
-2. Name : `store-backend-local`
-3. Type : `User Token` (ou `Project Analysis Token` scopé au projet `store-backend`)
-4. Expires in : `30 days` ou plus
-5. **Generate** → copier le token (format `sqp_...`), il ne sera plus jamais affiché
-6. Optionnel : l'exporter en variable d'env permanente :
+2. Name: `store-backend-local`
+3. Type: `User Token` (or `Project Analysis Token` scoped to the `store-backend` project)
+4. Expires in: `30 days` or more
+5. **Generate** → copy the token (format `sqp_...`), it will never be shown again
+6. Optional: export it as a permanent env variable:
    ```bash
    echo 'export SONAR_TOKEN=sqp_xxxxxxxxxxxxxxxxxxxxxxxx' >> ~/.bashrc
    source ~/.bashrc
@@ -66,80 +66,80 @@ curl -s http://localhost:9000/api/system/status
 
 ---
 
-## 2. Lancer un scan
+## 2. Run a scan
 
-Depuis la racine du backend (`store/`) :
+From the backend root (`store/`):
 
 ```bash
 mvn clean verify sonar:sonar -Dsonar.token=$SONAR_TOKEN
 ```
 
-Ou si la variable d'env est exportée :
+Or if the env variable is exported:
 
 ```bash
 mvn clean verify sonar:sonar
-# (sonar:sonar lit automatiquement la variable SONAR_TOKEN)
+# (sonar:sonar reads the SONAR_TOKEN variable automatically)
 ```
 
-Étapes que Maven exécute :
+Steps Maven runs:
 
-1. `clean` → vide `target/`
-2. `compile` → compile le code de prod
-3. `test` → exécute les 741 tests **avec l'agent JaCoCo attaché** (instrumentation runtime)
-4. `verify` → exécute le goal `jacoco:report` qui génère :
-   - `target/site/jacoco/jacoco.xml` (consommé par Sonar)
-   - `target/site/jacoco/index.html` (rapport HTML navigable, utilisable seul)
-5. `sonar:sonar` → envoie l'analyse + le XML JaCoCo à `localhost:9000`
+1. `clean` → empties `target/`
+2. `compile` → compiles production code
+3. `test` → runs the 741 tests **with the JaCoCo agent attached** (runtime instrumentation)
+4. `verify` → runs the `jacoco:report` goal which produces:
+   - `target/site/jacoco/jacoco.xml` (consumed by Sonar)
+   - `target/site/jacoco/index.html` (navigable HTML report, usable standalone)
+5. `sonar:sonar` → sends the analysis + the JaCoCo XML to `localhost:9000`
 
-Durée totale : ~1 min (build + tests + scan).
+Total duration: ~1 min (build + tests + scan).
 
 ---
 
-## 3. Lire les rapports
+## 3. Read the reports
 
-### 3.1 Dashboard Sonar
+### 3.1 Sonar dashboard
 
 http://localhost:9000/dashboard?id=store-backend
 
-Métriques par défaut :
-- **Bugs** : erreurs logiques détectées (NullPointerException probables, etc.)
-- **Vulnerabilities** : trous de sécurité (mot de passe en clair, SQL injection, etc.)
-- **Code Smells** : pratiques sous-optimales (méthode trop longue, complexité cyclomatique, paramètres inutilisés, etc.)
-- **Coverage** : % de lignes/branches couvertes par les tests (lu depuis JaCoCo)
-- **Duplications** : blocs de code dupliqués
-- **Hotspots** : zones à inspecter manuellement (ex. usage de `Random`, cryptographie)
+Default metrics:
+- **Bugs**: logic errors detected (likely NullPointerExceptions, etc.)
+- **Vulnerabilities**: security holes (cleartext passwords, SQL injection, etc.)
+- **Code Smells**: sub-optimal practices (overly long method, cyclomatic complexity, unused parameters, etc.)
+- **Coverage**: % of lines/branches covered by tests (read from JaCoCo)
+- **Duplications**: duplicated code blocks
+- **Hotspots**: areas to inspect manually (e.g., use of `Random`, cryptography)
 
-### 3.2 Rapport JaCoCo local (sans Sonar)
+### 3.2 Local JaCoCo report (no Sonar)
 
-Ouvrir `target/site/jacoco/index.html` dans un navigateur.
+Open `target/site/jacoco/index.html` in a browser.
 
-Vue par package → classe → méthode. Couleurs ligne par ligne :
-- **Vert** : exécuté pendant les tests
-- **Jaune** : exécuté partiellement (branche `if` couverte mais pas `else`, par exemple)
-- **Rouge** : non exécuté
+View by package → class → method. Line-by-line colors:
+- **Green**: executed during the tests
+- **Yellow**: partially executed (e.g., `if` branch covered but not `else`)
+- **Red**: not executed
 
-Très utile pour identifier les zones non testées sans même démarrer Sonar.
-
----
-
-## 4. Quality Gate (optionnel)
-
-Sonar applique par défaut le **"Sonar Way"** Quality Gate qui rejette une analyse si :
-- Nouveau code : Coverage < 80 %
-- Nouveau code : Duplications > 3 %
-- Nouveau code : Maintainability/Reliability/Security < A
-
-Pour customiser : **Quality Gates → Create** dans l'UI.
+Very useful to spot untested areas without even starting Sonar.
 
 ---
 
-## 5. Configuration côté projet
+## 4. Quality Gate (optional)
 
-### 5.1 `sonar-project.properties` (racine du backend)
+Sonar applies by default the **"Sonar Way"** Quality Gate that rejects an analysis if:
+- New code: Coverage < 80%
+- New code: Duplications > 3%
+- New code: Maintainability/Reliability/Security < A
 
-**C'est ici qu'on édite la config Sonar**, pas dans `pom.xml`. Format officiel Sonar (key=value), lu par :
-- Le scanner CLI standalone (`sonar-scanner`) automatiquement
-- `mvn sonar:sonar` via `properties-maven-plugin` qui charge le fichier en phase Maven `initialize`
+To customize: **Quality Gates → Create** in the UI.
+
+---
+
+## 5. Project-side configuration
+
+### 5.1 `sonar-project.properties` (backend root)
+
+**This is where you edit the Sonar config**, not in `pom.xml`. Official Sonar format (key=value), read by:
+- The standalone scanner CLI (`sonar-scanner`) automatically
+- `mvn sonar:sonar` via `properties-maven-plugin` which loads the file during the Maven `initialize` phase
 
 ```properties
 sonar.projectKey=store-backend
@@ -153,11 +153,11 @@ sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 sonar.sourceEncoding=UTF-8
 ```
 
-Override à l'exécution toujours possible : `mvn sonar:sonar -Dsonar.projectKey=autre`.
+Runtime override always possible: `mvn sonar:sonar -Dsonar.projectKey=other`.
 
-### 5.2 `pom.xml` — uniquement les versions de plugins
+### 5.2 `pom.xml` — plugin versions only
 
-Le `pom.xml` ne contient **plus aucune property business Sonar**, seulement les versions :
+The `pom.xml` no longer contains **any Sonar business property**, only the versions:
 
 ```xml
 <properties>
@@ -167,58 +167,58 @@ Le `pom.xml` ne contient **plus aucune property business Sonar**, seulement les 
 </properties>
 ```
 
-Plugins déclarés :
+Declared plugins:
 - `jacoco-maven-plugin` 0.8.13 — agent + reporting
-- `properties-maven-plugin` 1.2.1 — charge `sonar-project.properties` en phase `initialize`
-- `sonar-maven-plugin` 5.0.0.4389 — scanner Sonar
+- `properties-maven-plugin` 1.2.1 — loads `sonar-project.properties` during the `initialize` phase
+- `sonar-maven-plugin` 5.0.0.4389 — Sonar scanner
 
 ---
 
 ## 6. Troubleshooting
 
-### SonarQube ne démarre pas — `max_map_count too low`
+### SonarQube does not start — `max_map_count too low`
 
-L'Elasticsearch interne de SonarQube nécessite une valeur minimale sur Linux :
+SonarQube's internal Elasticsearch requires a minimum value on Linux:
 
 ```bash
 sudo sysctl -w vm.max_map_count=524288
-# permanent (ajouter dans /etc/sysctl.conf) :
+# permanent (add to /etc/sysctl.conf):
 echo 'vm.max_map_count=524288' | sudo tee -a /etc/sysctl.conf
 ```
 
-### `Connection refused` au scan
+### `Connection refused` at scan time
 
-Sonar n'est pas démarré ou Elasticsearch n'a pas fini son init :
+Sonar is not started or Elasticsearch has not finished its init:
 
 ```bash
-docker compose -f docker-compose.sonar.yml ps   # statut conteneurs
-docker compose -f docker-compose.sonar.yml logs -f sonarqube   # logs en direct
-curl -s http://localhost:9000/api/system/status   # devrait répondre {"status":"UP"}
+docker compose -f docker-compose.sonar.yml ps   # container status
+docker compose -f docker-compose.sonar.yml logs -f sonarqube   # live logs
+curl -s http://localhost:9000/api/system/status   # should answer {"status":"UP"}
 ```
 
-Attendre 30-60s après `up -d` avant de scanner.
+Wait 30-60s after `up -d` before scanning.
 
-### Token expiré
+### Token expired
 
-L'erreur `401 Unauthorized` au scan → générer un nouveau token dans **My Account → Security → Generate Tokens** et mettre à jour la variable.
+The `401 Unauthorized` error at scan time → generate a new token in **My Account → Security → Generate Tokens** and update the variable.
 
-### Reset complet
+### Full reset
 
 ```bash
-docker compose -f docker-compose.sonar.yml down -v   # -v supprime les volumes (perd toutes les analyses)
+docker compose -f docker-compose.sonar.yml down -v   # -v deletes the volumes (loses all analyses)
 docker compose -f docker-compose.sonar.yml up -d
 ```
 
-### Coverage à 0 % alors que les tests passent
+### Coverage at 0% while tests pass
 
-Vérifier que `target/site/jacoco/jacoco.xml` existe (généré par la phase `verify`). Si absent → la phase `verify` n'a pas été déclenchée. Toujours lancer `mvn clean verify sonar:sonar` (pas `mvn sonar:sonar` seul).
+Check that `target/site/jacoco/jacoco.xml` exists (generated by the `verify` phase). If missing → the `verify` phase was not triggered. Always run `mvn clean verify sonar:sonar` (not `mvn sonar:sonar` alone).
 
 ---
 
-## 7. Arrêter Sonar
+## 7. Stop Sonar
 
 ```bash
-docker compose -f docker-compose.sonar.yml stop          # arrêt (garde les volumes)
-docker compose -f docker-compose.sonar.yml down          # arrêt + suppression conteneurs (garde les volumes)
-docker compose -f docker-compose.sonar.yml down -v       # arrêt + suppression volumes (perd tout)
+docker compose -f docker-compose.sonar.yml stop          # stop (keeps volumes)
+docker compose -f docker-compose.sonar.yml down          # stop + remove containers (keeps volumes)
+docker compose -f docker-compose.sonar.yml down -v       # stop + remove volumes (loses everything)
 ```
