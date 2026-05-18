@@ -223,11 +223,14 @@
 
 **Use cases livrés :**
 - CRUD fournisseur (scoping entreprise, unicité référence)
-- Achat atomique (CommandeAchat + FactureAchat + lignes + entrées stock immédiates + paiement initial éventuel — 1 transaction)
+- Création d'une commande d'achat en DRAFT (lignes + traçabilité lot persistées, pas de stock ni facture)
+- Édition d'une ligne d'une commande DRAFT (quantité, prix, lot)
+- Suppression d'une ligne d'une commande DRAFT (refus si dernière ligne)
+- Validation d'une commande DRAFT (matérialisation : facture + entrées stock + journal + update prixVente PF + bascule RECEPTIONNEE)
 - Listing commandes d'achat paginé filtré
 - Listing factures d'achat paginé filtré
 - Échéances factures (factures non payées)
-- Détail commande/facture
+- Détail commande/facture (facture null si DRAFT)
 - Paiement échelonné sur facture (recalcul statut auto)
 - Listing paiements d'une facture
 
@@ -242,6 +245,9 @@
 | **Achats** | | | |
 | POST | `/api/v1/achats` | `PURCHASE_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/achats/{commandeId}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
+| PUT | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_UPDATE` | PROPRIETAIRE/MANAGER |
+| DELETE | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/achats/{commandeId}/validate` | `PURCHASE_APPROVE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-achat?magasinId=&fournisseurId=&statut=&page=&size=` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-achat/{id}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/factures-achat?...` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
@@ -250,7 +256,7 @@
 | POST | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_PAY` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 14
+**Total endpoints** : 17
 
 ---
 

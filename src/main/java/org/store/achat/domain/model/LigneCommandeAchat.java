@@ -7,6 +7,7 @@ import org.store.common.base.BaseEntity;
 import org.store.produit.domain.model.ProductFournisseur;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -28,4 +29,10 @@ public class LigneCommandeAchat extends BaseEntity {
 
     @Column(name = "prix_vente", nullable = false, precision = 19, scale = 2)
     private BigDecimal prixVente;
+
+    @Column(name = "numero_lot", length = 100)
+    private String numeroLot;
+
+    @Column(name = "date_expiration")
+    private LocalDate dateExpiration;
 }

@@ -7,7 +7,73 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-18 (annulation de vente — workflow critique multi-modules livré bout en bout)
+**Date :** 2026-05-18 (refactor achat 2 étapes DRAFT → VALIDATE + édition/suppression ligne)
+**Sujet :** Refactor structurel du module achat. `POST /api/v1/achats` crée désormais une commande en **DRAFT** (lignes + traçabilité lot persistées, sans stock ni facture). Nouveaux endpoints `PUT/DELETE /achats/orders/{cmdId}/lignes/{ligneId}` pour éditer/supprimer une ligne tant que la commande est DRAFT, et `POST /achats/{cmdId}/validate` pour matérialiser (facture + entrées stock + journal + bascule RECEPTIONNEE). Le `pf.prixVente` n'est plus contaminé par un brouillon non validé — l'update est déplacé dans `validate`. Migration V23 : `ligne_commande_achat +numero_lot +date_expiration` (la traçabilité doit persister entre les 2 phases, plus juste un transit `LigneAchatRequest → EntreeStockCreate`). **711 → 725 tests verts** (+14).
+
+**Pourquoi ce refactor :** le backlog demandait l'édition/suppression de ligne avant validation, mais le flow existant créait tout en `RECEPTIONNEE` atomiquement (pas de phase brouillon réelle, malgré l'enum qui prévoyait DRAFT/VALIDEE/RECEPTIONNEE). L'utilisateur a explicitement choisi **Option 2 : refactor 2 étapes** pour permettre la visualisation avant engagement, plutôt qu'une édition rétroactive symétrique à l'annulation de vente.
+
+**Ce qui a été fait :**
+
+1. **Migration V23** : `ligne_commande_achat +numero_lot VARCHAR(100) +date_expiration DATE`. Persistance entre DRAFT (saisie) et VALIDATE (lecture pour EntreeStock). Backfill non nécessaire (toutes les commandes existantes sont RECEPTIONNEE, plus jamais éditées).
+
+2. **DTOs**
+    - `AchatRequest` : retiré `facture` (saisie à la validation). Conserve `magasinId, fournisseurId, dateCommande, lignes`.
+    - `AchatDraftResponse(CommandeAchatResponse commande)` (HTTP 201 du POST /achats).
+    - `AchatValidateRequest(FactureAchatCreateRequest facture)` (body du POST /validate).
+    - `LigneAchatUpdateRequest(quantite, prixAchat, prixVente, numeroLot?, dateExpiration?)` (body PUT).
+    - `LigneCommandeAchatCreate` + `LigneCommandeAchatResponse` enrichis de `numeroLot` + `dateExpiration`.
+
+3. **Entités**
+    - `LigneCommandeAchat` : +`numeroLot` (`@Column length=100`), +`dateExpiration` (`LocalDate`).
+
+4. **Domain services (règle 26 — setters dans DomainService)**
+    - `CommandeAchatDomainService.validate(commande)` : statut → RECEPTIONNEE + save.
+    - `LigneCommandeAchatDomainService.update(ligne, qty, prixAchat, prixVente, numeroLot, dateExpiration)` : setters + save.
+    - `LigneCommandeAchatDomainService.create` enrichi (les 2 nouveaux champs).
+
+5. **App service `AchatServiceImpl` refactoré**
+    - `create(AchatRequest) → AchatDraftResponse` : validations PF (scoping + cohérence fournisseur + `prixVente > prixAchat`), crée commande DRAFT + lignes. **Plus** d'`applyPrixVenteFromPurchase`, **plus** d'entrées stock, **plus** de facture.
+    - `validate(commandeId, AchatValidateRequest) → AchatResponse` : nouvelle méthode. Recalcule `montantTotal` depuis les lignes courantes (peuvent avoir été éditées), crée facture, matérialise stock par ligne, applique `pf.prixVente`, bascule statut.
+    - `updateLigne(commandeId, ligneId, LigneAchatUpdateRequest) → LigneCommandeAchatResponse` : valide PUT.
+    - `deleteLigne(commandeId, ligneId)` : 204.
+    - `findDetailsById` : adapté pour retourner `facture = null` si DRAFT (utilise `factureAchatDomainService.findByCommandeId` Optional au lieu de l'`IFactureAchatService` qui throw).
+    - Validations publiques (règle 27) : `ensureCommandeIsDraft`, `ensureLigneBelongsToCommande`, `ensureNotLastLigne`.
+    - Injection nettoyée : `IFactureAchatService` retiré (plus utilisé, remplacé par appel direct au domain).
+
+6. **Endpoint `AchatController`** (BASE_PATH conservé `/api/v1/achats`)
+    - `POST` (existant, signature de réponse changée → `AchatDraftResponse`).
+    - `POST /{cmdId}/validate` (perm `PURCHASE_APPROVE`, déjà en YAML).
+    - `PUT /orders/{cmdId}/lignes/{ligneId}` (perm `PURCHASE_UPDATE`).
+    - `DELETE /orders/{cmdId}/lignes/{ligneId}` (perm `PURCHASE_DELETE`).
+
+7. **i18n** (4 nouvelles clés FR/EN)
+    - `commandeAchat.notDraft` ({0} = statut courant), `commandeAchat.cannotDeleteLastLigne`, `ligneCommandeAchat.notFound`, `ligneCommandeAchat.notMatchingCommande`.
+
+8. **Tests**
+    - `AchatServiceImplTest` réécrit : 13 tests (3 create DRAFT — nominal, PF mismatch, magasin not accessible) + (4 validate — nominal, compute total, not draft 400, cross-tenant 403) + (3 updateLigne — OK, not draft, cross-commande) + (3 deleteLigne — OK, last ligne 400, not draft) + (3 findDetails — OK, null facture DRAFT, not owned 403).
+    - `AchatControllerTest` réécrit : 8 tests (POST 201 DRAFT, POST 400 lignes vides, POST /validate 200, POST /validate 400 facture blank, GET 200, PUT 200, PUT 400 quantite=0, DELETE 204).
+
+9. **Doc** : `FONCTIONNALITIES.md` section 28 refondue en 4 sous-sections (28.a Création DRAFT / 28.b Édition-suppression / 28.c Validation / 28.d Détail) + ajout migration V23 + tests bilan. `MODULES_OVERVIEW.md` section 8 : 3 nouveaux endpoints + total 14→17 + 3 nouveaux use cases. `TODO.md` statut [x].
+
+**Migration BDD ajoutée :** V23 (`ligne_commande_achat +numero_lot +date_expiration`).
+
+**Permissions modifiées :** aucune (toutes déjà dans le YAML — `PURCHASE_CREATE/UPDATE/DELETE/APPROVE/READ/PAY`).
+
+**Décisions notables (mémoire utilisateur) :**
+- Le `pf.prixVente = ligne.prixVente` est désormais à la **validation**, pas à la création — sinon un brouillon non validé contaminerait le prix de vente courant du PF.
+- Le `montantTotal` de la facture est **recalculé à la validation** depuis les lignes courantes, pas depuis la requête (qui peut être obsolète si les lignes ont été éditées).
+- Pas de FK `commande_achat → entreprise` ajoutée : on continue à scoper via `commande.magasin.entreprise`.
+- L'enum `CommandeAchatStatut.VALIDEE` reste inutilisé pour l'instant (workflow direct DRAFT → RECEPTIONNEE). Pourrait servir plus tard pour réception partielle.
+
+**Prochaine étape recommandée :**
+
+1. **Annulation d'achat** — symétrique à l'annulation de vente (sortir EntreeStock, marquer FactureAchat ANNULEE, fenêtre temporelle PurchaseProperties).
+2. **Réception partielle** — exploiter le statut `VALIDEE` intermédiaire et créer N réceptions partielles avant RECEPTIONNEE.
+3. **Démarrage `store-frontend`** : suivre Phase 0-1 de `FRONTEND_ARCHITECTURE.md`.
+
+---
+
+## Session du 2026-05-18 matin (annulation de vente — workflow critique multi-modules livré bout en bout)
 **Sujet :** Endpoint `POST /api/v1/ventes/{id}/annuler` complet : ré-injection stock FIFO (recrédite EntreeStock, flag `annulee` sur SortieStock pour préserver l'audit marges, mouvement compensatoire RETOUR_CLIENT par lot), bascule CommandeVente + FactureClient en ANNULEE, motif enum typé + commentaire libre, fenêtre temporelle configurable via `SaleProperties.cancelWindowHours` (défaut 24h, règle 38). Permission `SALE_CANCEL` retirée du VENDEUR pour rester ADMIN/PROPRIETAIRE/MANAGER (sécurité fraude). 6 queries Caisse + Margin adaptées pour exclure les ventes annulées. **703 → 711 tests verts** (+8).
 
 **Décisions clés validées en début de session :**

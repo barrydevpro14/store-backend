@@ -471,35 +471,67 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ---
 
-## 28. Module Achat — Création atomique commande + facture + paiements — `AchatServiceImpl`
+## 28. Module Achat — Workflow 2 étapes : DRAFT → VALIDATE — `AchatServiceImpl`
 
-**Endpoint** : `POST /api/v1/achats` (auth requise, `@PreAuthorize("hasAuthority('PURCHASE_CREATE')")`)
+**Refactor 2026-05-18** : la création atomique a été éclatée en 2 étapes pour permettre la **visualisation et l'édition** de la commande avant engagement (matérialisation stock + facture). Symétrique à l'inventaire physique (statuts EN_COURS / BILAN / CLOTURE).
 
-**Endpoint détails** : `GET /api/v1/achats/{commandeId}` (permission `PURCHASE_READ`) → retourne `AchatDetailsResponse(commande, facture, lignes[])` où chaque `LigneCommandeAchatResponse` expose `produit (ProductSummaryResponse), fournisseur, quantite, prixAchat, prixVente, montantLigne`. Scoping entreprise via la commande.
+### 28.a Création DRAFT — `POST /api/v1/achats`
 
-**Cas d'usage métier** : le manager appelle/visite le fournisseur, commande la marchandise, le livreur arrive avec la marchandise + la facture. Le manager renseigne tout en une seule fois (pas de réception partielle, pas de workflow multi-étapes).
+**Permission** : `PURCHASE_CREATE` (ADMIN/PROPRIETAIRE/MANAGER).
 
-**Entrée** : `AchatRequest`
+**Entrée** : `AchatRequest{ magasinId, fournisseurId, dateCommande, lignes[] }` — **plus de `facture`** (saisie à la validation).
 ```json
 {
   "magasinId": "uuid",
   "fournisseurId": "uuid",
-  "facture": { "numero": "F2026-001", "date": "2026-05-14", "dateEcheance": "2026-06-14" },
-  "lignes": [ { "productFournisseurId": "uuid", "quantite": 10, "prixUnitaire": 1500.00 } ],
-  "premierPaiement": { "montant": 5000.00, "modePaiement": "CASH" }  // optionnel
+  "dateCommande": "2026-05-18",
+  "lignes": [
+    { "productFournisseurId": "uuid", "quantite": 10, "prixAchat": 100.00, "prixVente": 150.00,
+      "numeroLot": "LOT-A", "dateExpiration": "2027-06-01" }
+  ]
 }
 ```
 
-**Flux atomique (transaction unique)** :
-1. Vérifier scoping magasin + fournisseur (entreprise du caller).
-2. Vérifier cohérence `productFournisseur.fournisseur == fournisseurId` pour chaque ligne (sinon `BadArgumentException("achat.fournisseur.productMismatch")`).
-3. Vérifier unicité `factureAchat.numero` par entreprise.
-4. Créer `CommandeAchat` avec référence auto via `ReferenceHelper.generate("CMD")` → format `CMD-yyyyMMdd-HHmmssSSS`.
-5. Créer `FactureAchat` liée à la commande, `montantFacture = SUM(qty × prixUnitaire)` calculé.
-6. Pour chaque ligne : créer `LigneCommandeAchat` + appeler `IEntreeStockService.create(...)` (entrée stock immédiate avec lot FIFO + upsert Stock + journalisation `MouvementStock(ENTREE_ACHAT)`).
-7. Si `premierPaiement` présent : créer `PaiementAchat` (vérifier `montant <= montantFacture`).
+**Flux** :
+1. Validations PF (scoping entreprise + cohérence fournisseur + `prixVente > prixAchat`).
+2. Crée `CommandeAchat` en statut `DRAFT` (référence auto `CMD-yyyyMMdd-HHmmssSSS`).
+3. Persiste chaque `LigneCommandeAchat` avec **snapshot** prix + traçabilité lot (numeroLot + dateExpiration, migrés sur la table — V23).
+4. **Pas de facture, pas d'entrée stock, pas d'update PF prixVente.**
 
-**Sortie** : `AchatResponse{ commande, facture }` — HTTP 201. Les détails complets (lignes + montants) sont disponibles via `GET /api/v1/achats/{commandeId}` après création.
+**Sortie** : `AchatDraftResponse{ commande }` — HTTP 201. La commande peut alors être consultée (`GET /{id}`), éditée ligne par ligne ou validée.
+
+### 28.b Édition / suppression de ligne — `PUT/DELETE /api/v1/achats/orders/{commandeId}/lignes/{ligneId}`
+
+**Permissions** : `PURCHASE_UPDATE` (PUT) / `PURCHASE_DELETE` (DELETE).
+
+**Garde** : `ensureCommandeIsDraft` — interdit toute modification dès que la commande passe en RECEPTIONNEE. `ensureLigneBelongsToCommande` (anti URL forgée) + `ensureNotLastLigne` (commande vide non autorisée).
+
+**PUT body** : `LigneAchatUpdateRequest{ quantite, prixAchat, prixVente, numeroLot?, dateExpiration? }`. Re-validation `prixVente > prixAchat`. Retourne le `LigneCommandeAchatResponse` mis à jour.
+
+**DELETE** : 204. Refuse si c'est la dernière ligne (`commandeAchat.cannotDeleteLastLigne`).
+
+### 28.c Validation — `POST /api/v1/achats/{commandeId}/validate`
+
+**Permission** : `PURCHASE_APPROVE`.
+
+**Entrée** : `AchatValidateRequest{ facture: { numero, date, dateEcheance } }`.
+
+**Flux atomique (transaction unique)** :
+1. Validations : `ensureBelongsToCurrentEntreprise` + `ensureCommandeIsDraft`.
+2. Recalcule `montantTotal = SUM(qty × prixAchat)` depuis les lignes courantes (peuvent avoir été éditées).
+3. Crée `FactureAchat` liée à la commande (statut NON_PAYEE).
+4. Pour chaque ligne : crée `EntreeStock` (lot FIFO avec numéro lot + dateExpiration), upsert `Stock` agrégé, journalise `MouvementStock(ENTREE_ACHAT)`, applique `pf.prixVente = ligne.prixVente` (déplacé depuis create — sinon un draft non validé contaminerait le prix de vente courant).
+5. Bascule `commande.statut → RECEPTIONNEE` via `commandeAchatDomainService.validate` (règle 26).
+
+**Sortie** : `AchatResponse{ commande (statut RECEPTIONNEE), facture }` — HTTP 200.
+
+### 28.d Détail — `GET /api/v1/achats/{commandeId}`
+
+**Permission** : `PURCHASE_READ`. Retourne `AchatDetailsResponse(commande, facture (null si DRAFT), lignes[])`.
+
+### Migration BDD V23
+
+`ligne_commande_achat` : `+numero_lot VARCHAR(100)`, `+date_expiration DATE`. Auparavant ces infos étaient transmises directement de `LigneAchatRequest` à `EntreeStockCreate` au moment de la création atomique ; avec la séparation DRAFT/VALIDATE, la traçabilité doit être persistée sur la ligne entre les 2 phases.
 
 **Sous-services exposés** :
 - `ICommandeAchatService` : `findResponsesByFilter` (listing paginé), `findResponseById`.
@@ -534,7 +566,7 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 - `montantFacture` et `montantAccompte` **calculés** (jamais saisis directement).
 - `PaiementAchat.montant` ne peut pas dépasser `montantFacture - somme_paiements_existants` (`BadArgumentException("paiementAchat.montant.exceedsRemaining")`).
 
-**Tests** : 28 nouveaux tests (controller + services + domain). Suite à 384 / 384 verts.
+**Tests refactor 2026-05-18** : suite **725 / 725 verts** (+14 vs 711). 13 service `AchatServiceImplTest` (create DRAFT + validate + updateLigne + deleteLigne + findDetails) + 8 controller (création DRAFT 201, validate 200, update ligne 200, delete 204, 400 sur edge cases).
 
 ---
 

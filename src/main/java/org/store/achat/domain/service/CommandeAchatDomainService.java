@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.store.achat.application.dto.CommandeAchatCreate;
 import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
+import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.repository.CommandeAchatRepository;
 import org.store.common.service.GlobalService;
@@ -37,5 +38,11 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
 
     public Page<CommandeAchatResponse> findResponsesByFilter(CommandeAchatFilter filter, UUID entrepriseId) {
         return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+    }
+
+    /** Bascule la commande en statut RECEPTIONNEE lors de la validation (matérialisation stock + facture). */
+    public CommandeAchat validate(CommandeAchat commande) {
+        commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+        return save(commande);
     }
 }

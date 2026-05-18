@@ -4,6 +4,7 @@ import org.store.achat.domain.model.LigneCommandeAchat;
 import org.store.produit.application.dto.ProductSummaryResponse;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record LigneCommandeAchatResponse(
@@ -13,7 +14,9 @@ public record LigneCommandeAchatResponse(
         int quantite,
         BigDecimal prixAchat,
         BigDecimal prixVente,
-        BigDecimal montantLigne
+        BigDecimal montantLigne,
+        String numeroLot,
+        LocalDate dateExpiration
 ) {
     public LigneCommandeAchatResponse(LigneCommandeAchat ligne) {
         this(
@@ -23,7 +26,9 @@ public record LigneCommandeAchatResponse(
                 ligne.getQuantite(),
                 ligne.getPrixAchat(),
                 ligne.getPrixVente(),
-                ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()))
+                ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite())),
+                ligne.getNumeroLot(),
+                ligne.getDateExpiration()
         );
     }
 }
