@@ -1,44 +1,44 @@
-# MODULES_OVERVIEW.md — Cartographie globale du backend
+# MODULES_OVERVIEW.md — Backend global map
 
-> Vue d'ensemble compacte de tous les modules métier livrés : use cases couverts + endpoints REST + permissions.
-> Pour le détail use case par use case (entrée/flux/règles/sortie), voir `FONCTIONNALITIES.md`.
-> Pour l'architecture des packages, voir `.claude/ARCHITECTURE.md`.
+> Compact overview of every delivered business module: covered use cases + REST endpoints + permissions.
+> For per-use-case detail (input/flow/rules/output), see `FEATURES.md`.
+> For package architecture, see `.claude/ARCHITECTURE.md`.
 
-**Dernière mise à jour** : 2026-05-17
-**Total modules** : 11 modules métier livrés + 1 squelette (notification)
-**Total endpoints REST** : ~163
-**Total permissions YAML** : 70+ (centralisées dans `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`)
-**Rôles** : ADMIN, PROPRIETAIRE, MANAGER, VENDEUR
+**Last updated**: 2026-05-17
+**Total modules**: 11 business modules delivered + 1 skeleton (notification)
+**Total REST endpoints**: ~167
+**Total YAML permissions**: 70+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`)
+**Roles**: ADMIN, PROPRIETAIRE, MANAGER, VENDEUR
 
 ---
 
-## 1. Module SECURITY (auth)
+## 1. SECURITY (auth) module
 
-**Use cases livrés :**
-- Inscription d'un propriétaire (création atomique Account + Proprietaire + Entreprise + premier Magasin + abonnement trial)
-- Connexion (login + JWT + refresh token)
-- Rafraîchissement du JWT
-- Déconnexion (révocation refresh token)
+**Delivered use cases:**
+- Owner registration (atomic creation of Account + Proprietaire + Entreprise + first Magasin + trial subscription)
+- Login (login + JWT + refresh token)
+- JWT refresh
+- Logout (refresh token revocation)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | POST | `/api/v1/auth/register` | permitAll | public |
 | POST | `/api/v1/auth/login` | permitAll | public |
 | POST | `/api/v1/auth/refresh` | permitAll | public |
 | POST | `/api/v1/auth/logout` | permitAll | public |
 
-**Total endpoints** : 4
+**Total endpoints**: 4
 
 ---
 
-## 2. Module ENTREPRISE
+## 2. ENTREPRISE module
 
-**Use cases livrés :**
-- CRUD admin des entreprises (création, listing filtré, détail, update, activate/deactivate)
-- Self-service propriétaire (consultation + update de sa propre entreprise)
-- Logo entreprise (upload, download bytes, delete)
+**Delivered use cases:**
+- Admin CRUD for companies (create, filtered listing, detail, update, activate/deactivate)
+- Owner self-service (read + update of one's own company)
+- Company logo (upload, download bytes, delete)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | POST | `/api/v1/entreprises` | `ADMIN_ACCESS` | ADMIN |
 | GET | `/api/v1/entreprises?sigle=&raisonSociale=&ninea=&rccm=&actif=&page=&size=` | `ADMIN_ACCESS` | ADMIN |
@@ -52,43 +52,43 @@
 | GET | `/api/v1/entreprises/me/logo` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
 | DELETE | `/api/v1/entreprises/me/logo` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
 
-**Total endpoints** : 11
+**Total endpoints**: 11
 
 ---
 
-## 3. Module MAGASIN
+## 3. MAGASIN module
 
-**Use cases livrés :**
-- CRUD magasin (scoping entreprise, accès ADMIN au même titre que PROPRIETAIRE)
-- Listing filtré paginé (`nom`, `actif`)
+**Delivered use cases:**
+- Store CRUD (company scoping, ADMIN access alongside PROPRIETAIRE)
+- Paginated filtered listing (`nom`, `actif`)
 - Activate/deactivate
-- Logo magasin (upload, download bytes, delete)
+- Store logo (upload, download bytes, delete)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | POST | `/api/v1/magasins` | `PROPRIETAIRE_ACCESS` OR `ADMIN_ACCESS` | PROPRIETAIRE/ADMIN |
-| GET | `/api/v1/magasins?nom=&actif=&page=&size=` | idem | PROPRIETAIRE/ADMIN |
-| GET | `/api/v1/magasins/{id}` | idem | PROPRIETAIRE/ADMIN |
-| PUT | `/api/v1/magasins/{id}` | idem | PROPRIETAIRE/ADMIN |
-| PATCH | `/api/v1/magasins/{id}/activate` | idem | PROPRIETAIRE/ADMIN |
-| PATCH | `/api/v1/magasins/{id}/deactivate` | idem | PROPRIETAIRE/ADMIN |
-| PUT (multipart) | `/api/v1/magasins/{id}/logo` | idem | PROPRIETAIRE/ADMIN |
-| GET | `/api/v1/magasins/{id}/logo` | idem | PROPRIETAIRE/ADMIN |
-| DELETE | `/api/v1/magasins/{id}/logo` | idem | PROPRIETAIRE/ADMIN |
+| GET | `/api/v1/magasins?nom=&actif=&page=&size=` | same | PROPRIETAIRE/ADMIN |
+| GET | `/api/v1/magasins/{id}` | same | PROPRIETAIRE/ADMIN |
+| PUT | `/api/v1/magasins/{id}` | same | PROPRIETAIRE/ADMIN |
+| PATCH | `/api/v1/magasins/{id}/activate` | same | PROPRIETAIRE/ADMIN |
+| PATCH | `/api/v1/magasins/{id}/deactivate` | same | PROPRIETAIRE/ADMIN |
+| PUT (multipart) | `/api/v1/magasins/{id}/logo` | same | PROPRIETAIRE/ADMIN |
+| GET | `/api/v1/magasins/{id}/logo` | same | PROPRIETAIRE/ADMIN |
+| DELETE | `/api/v1/magasins/{id}/logo` | same | PROPRIETAIRE/ADMIN |
 
-**Total endpoints** : 9
+**Total endpoints**: 9
 
 ---
 
-## 4. Module USERS
+## 4. USERS module
 
-**Use cases livrés :**
-- Profil self-service (consultation, update, change-password)
-- Photo de profil (upload, download, delete)
-- CRUD employé (création avec règles RBAC data-driven, listing, détail, update, soft delete, activate)
-- Reset password admin (distinct du change-password self-service)
+**Delivered use cases:**
+- Self-service profile (read, update, change-password)
+- Profile photo (upload, download, delete)
+- Employee CRUD (creation with data-driven RBAC rules, listing, detail, update, soft delete, activate)
+- Admin password reset (distinct from self-service change-password)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | GET | `/api/v1/users/me` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
 | PUT | `/api/v1/users/me` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
@@ -104,37 +104,37 @@
 | PATCH | `/api/v1/employees/{id}/activate` | `EMPLOYE_DELETE` | PROPRIETAIRE/ADMIN/MANAGER |
 | POST | `/api/v1/employees/{id}/reset-password` | `EMPLOYE_RESET_PASSWORD` | PROPRIETAIRE/ADMIN/MANAGER |
 
-**Total endpoints** : 13
+**Total endpoints**: 13
 
 ---
 
-## 5. Module PRODUIT
+## 5. PRODUIT module
 
-**Use cases livrés :**
-- CRUD catégorie de produit (scoping entreprise, unicité libellé)
-- CRUD qualité (scoping entreprise, unicité libellé)
-- CRUD produit (catégorie + qualité, scoping entreprise, unicité référence)
-- Image principale produit (upload, download, delete via `PieceJointe @OneToOne`)
-- Galerie produit (upload multiple, listing, download par id, delete par id)
-- Recherche produit côté vendeur (`q=*&magasinId=*` retournant produit + variantes PF + stock)
-- CRUD ProductFournisseur (variantes produit × fournisseur × qualité + prix achat/vente)
-- Ajustement prix vente par variante PF
+**Delivered use cases:**
+- Product category CRUD (company scoping, label uniqueness)
+- Quality CRUD (company scoping, label uniqueness)
+- Product CRUD (category + quality, company scoping, reference uniqueness)
+- Main product image (upload, download, delete via `PieceJointe @OneToOne`)
+- Product gallery (multi-upload, listing, download by id, delete by id)
+- Seller-side product search (`q=*&magasinId=*` returning product + PF variants + stock)
+- ProductFournisseur CRUD (product × supplier × quality variants + purchase/sale price)
+- Sale-price adjustment per PF variant
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| **Catégories** | | | |
+| **Categories** | | | |
 | POST | `/api/v1/category-products` | `CATEGORY_PRODUCT_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/category-products` | `CATEGORY_PRODUCT_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_READ` | PROPRIETAIRE/MANAGER |
 | PUT | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_DELETE` | PROPRIETAIRE/MANAGER |
-| **Qualités** | | | |
+| **Qualities** | | | |
 | POST | `/api/v1/qualities` | `QUALITY_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/qualities` | `QUALITY_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/qualities/{id}` | `QUALITY_READ` | PROPRIETAIRE/MANAGER |
 | PUT | `/api/v1/qualities/{id}` | `QUALITY_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/qualities/{id}` | `QUALITY_DELETE` | PROPRIETAIRE/MANAGER |
-| **Produits** | | | |
+| **Products** | | | |
 | POST | `/api/v1/products` | `PRODUCT_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/products` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/products/search?q=&magasinId=&page=&size=` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
@@ -148,7 +148,7 @@
 | GET | `/api/v1/products/{id}/images` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | DELETE | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_UPLOAD_IMAGE` | PROPRIETAIRE/MANAGER |
-| **ProductFournisseur (variantes)** | | | |
+| **ProductFournisseur (variants)** | | | |
 | POST | `/api/v1/product-suppliers` | `SUPPLIER_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/product-suppliers?productId=&page=&size=` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/product-suppliers/{id}` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
@@ -156,24 +156,24 @@
 | PUT | `/api/v1/product-suppliers/{id}/prix-vente` | `SUPPLIER_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/product-suppliers/{id}` | `SUPPLIER_DELETE` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 29
+**Total endpoints**: 29
 
 ---
 
-## 6. Module STOCK
+## 6. STOCK module
 
-**Use cases livrés :**
-- Consultation stock (par magasin, par produit, paginé)
-- Stock en dessous du seuil d'approvisionnement
-- Valorisation stock (`SUM(qty × prixAchatMoyen)`)
-- Lots expirants (par fenêtre de jours)
-- Mise à jour seuil d'approvisionnement
-- Entrée stock manuelle (lot FIFO + mouvement journalisé)
-- Ajustement stock manuel (POSITIF/NEGATIF avec motifs typés)
-- Consultation mouvements stock (historique paginé filtré)
-- Reporting marges (par produit/fournisseur/période)
+**Delivered use cases:**
+- Stock read (per store, per product, paginated)
+- Stock below the supply threshold
+- Stock valuation (`SUM(qty × prixAchatMoyen)`)
+- Expiring lots (per days window)
+- Update of supply threshold
+- Manual stock entry (FIFO lot + journaled movement)
+- Manual stock adjustment (POSITIF/NEGATIF with typed reasons)
+- Stock movements read (filtered paginated history)
+- Margin reporting (per product/supplier/period)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | GET | `/api/v1/stocks?magasinId=&productId=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/stocks/below-threshold?magasinId=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
@@ -186,22 +186,22 @@
 | GET | `/api/v1/stock-movements?magasinId=&stockId=&productId=&type=&startDate=&endDate=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/reports/margins?magasinId=&productId=&fournisseurId=&startDate=&endDate=` | `REPORT_STOCK` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 10
+**Total endpoints**: 10
 
 ---
 
-## 7. Module INVENTAIRE
+## 7. INVENTAIRE module
 
-**Use cases livrés :**
-- Création inventaire (scoping magasin, statut EN_COURS)
-- CRUD lignes inventaire (PF + quantité comptée, snapshot quantité théorique FIFO)
-- Passage en BILAN (fige les lignes + génère `RapportInventaire` avec calculs benefice/perte/écart)
-- Clôture (applique les ajustements stock + dateValidation)
-- Annulation (abandon, statut ANNULE)
-- Consultation rapport inventaire (formule comptable benefice + dépenses agrégées + fond de roulement)
-- Listing inventaires paginé
+**Delivered use cases:**
+- Inventory creation (store scoping, status EN_COURS)
+- Inventory line CRUD (PF + counted quantity, theoretical FIFO quantity snapshot)
+- Switch to BILAN (freezes lines + generates `RapportInventaire` with profit/loss/variance computations)
+- Closure (applies stock adjustments + dateValidation)
+- Cancellation (abandon, status ANNULE)
+- Read inventory report (accounting formula benefit + aggregated expenses + working capital)
+- Paginated inventory listing
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | POST | `/api/v1/inventaires` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/inventaires?magasinId=&statut=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
@@ -215,36 +215,36 @@
 | POST | `/api/v1/inventaires/{id}/annuler` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/inventaires/{id}/rapport` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 11
+**Total endpoints**: 11
 
 ---
 
-## 8. Module ACHAT
+## 8. ACHAT module
 
-**Use cases livrés :**
-- CRUD fournisseur (scoping entreprise, unicité référence)
-- Création d'une commande d'achat en DRAFT (lignes + traçabilité lot persistées, pas de stock ni facture)
-- Édition d'une ligne d'une commande DRAFT (quantité, prix, lot)
-- Suppression d'une ligne d'une commande DRAFT (refus si dernière ligne)
-- Validation comptable d'une commande DRAFT (création facture, montants gelés, bascule VALIDEE — sans matérialisation stock)
-- Réception physique en une ou plusieurs étapes (`POST /receptions`) : crée les `EntreeStock` au fur et à mesure, incrémente `quantiteRecue` par ligne, bascule en `PARTIELLEMENT_RECEPTIONNEE` ou `RECEPTIONNEE` selon avancement
-- Annulation d'une commande VALIDEE / PARTIELLEMENT_RECEPTIONNEE / RECEPTIONNEE avec retrait stock (flag `EntreeStock.annulee=true`, mouvement `RETOUR_FOURNISSEUR`, fenêtre temporelle configurable, refus si un lot a déjà été consommé par une vente)
-- Listing commandes d'achat paginé filtré
-- Listing factures d'achat paginé filtré
-- Échéances factures (factures non payées)
-- Détail commande/facture (facture null si DRAFT)
-- Paiement échelonné sur facture (recalcul statut auto)
-- Listing paiements d'une facture
+**Delivered use cases:**
+- Supplier CRUD (company scoping, reference uniqueness)
+- Create a purchase order in DRAFT (lines + lot traceability persisted, no stock nor invoice)
+- Edit a DRAFT order line (quantity, price, lot)
+- Delete a DRAFT order line (refused if it's the last line)
+- Accounting validation of a DRAFT order (invoice creation, amounts frozen, switch to VALIDEE — no stock materialization)
+- Physical reception in one or more steps (`POST /receptions`): creates the `EntreeStock` along the way, increments `quantiteRecue` per line, switches to `PARTIELLEMENT_RECEPTIONNEE` or `RECEPTIONNEE` based on progress
+- Cancel a VALIDEE / PARTIELLEMENT_RECEPTIONNEE / RECEPTIONNEE order with stock withdrawal (flag `EntreeStock.annulee=true`, movement `RETOUR_FOURNISSEUR`, configurable time window, refused if a lot has already been consumed by a sale)
+- Paginated filtered purchase order listing
+- Paginated filtered purchase invoice listing
+- Invoice due dates (unpaid invoices)
+- Order/invoice detail (invoice null if DRAFT)
+- Installment payment on an invoice (auto status recompute)
+- Listing of payments per invoice
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| **Fournisseurs** | | | |
+| **Suppliers** | | | |
 | POST | `/api/v1/suppliers` | `SUPPLIER_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/suppliers` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/suppliers/{id}` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER |
 | PUT | `/api/v1/suppliers/{id}` | `SUPPLIER_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/suppliers/{id}` | `SUPPLIER_DELETE` | PROPRIETAIRE/MANAGER |
-| **Achats** | | | |
+| **Purchases** | | | |
 | POST | `/api/v1/achats` | `PURCHASE_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/achats/{commandeId}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 | PUT | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_UPDATE` | PROPRIETAIRE/MANAGER |
@@ -260,28 +260,28 @@
 | POST | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_PAY` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 19
+**Total endpoints**: 19
 
 ---
 
-## 9. Module VENTE
+## 9. VENTE module
 
-**Use cases livrés :**
-- CRUD client (scoping magasin/entreprise, recherche nom/prénom)
-- Création d'une vente en DRAFT (lignes par PF + validation prix plancher, pas de stock ni facture)
-- Édition d'une ligne d'une vente DRAFT (quantité, prixUnitaire)
-- Suppression d'une ligne d'une vente DRAFT (refus si dernière ligne)
-- Validation d'une vente DRAFT (consomme stock FIFO + crée FactureClient + paiement initial éventuel + bascule DELIVERED)
-- Validation `prixUnitaire ≥ pf.prixVente` (plancher PF)
-- Vendeur EMPLOYE obligatoire (PROPRIETAIRE → 403), client nullable (vente anonyme)
-- Listing commandes vente paginé filtré (magasinId, clientId, vendeurId, statut, montant, référence, dates)
-- Listing factures client + paiements par facture
-- Paiement échelonné sur facture client (recalcul statut)
-- Résumé caisse journalier (nombre commandes/produits, totaux commandes/paiements — exclut DRAFT et ANNULEE)
-- Top N produits les plus vendus par jour (tri par quantité vendue, exclut DRAFT et ANNULEE)
-- Annulation de vente avec ré-injection stock FIFO (compensation `MouvementStock(RETOUR_CLIENT)`, fenêtre temporelle configurable)
+**Delivered use cases:**
+- Client CRUD (store/company scoping, name/first-name search)
+- Create a sale in DRAFT (lines per PF + price floor validation, no stock nor invoice)
+- Edit a DRAFT sale line (quantity, unit price)
+- Delete a DRAFT sale line (refused if last line)
+- Validate a DRAFT sale (consumes FIFO stock + creates FactureClient + optional initial payment + switches to DELIVERED)
+- Validation `prixUnitaire ≥ pf.prixVente` (PF floor)
+- EMPLOYE seller required (PROPRIETAIRE → 403), client nullable (anonymous sale)
+- Paginated filtered sale order listing (magasinId, clientId, vendeurId, statut, montant, reference, dates)
+- Client invoices + payments per invoice listing
+- Installment payment on a client invoice (status recompute)
+- Daily cash summary (orders/products count, orders/payments totals — excludes DRAFT and ANNULEE)
+- Top N best-selling products per day (sorted by quantity sold, excludes DRAFT and ANNULEE)
+- Sale cancellation with FIFO stock re-injection (`MouvementStock(RETOUR_CLIENT)` compensation, configurable time window)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | **Clients** | | | |
 | POST | `/api/v1/clients` | `CLIENT_CREATE` | PROPRIETAIRE/MANAGER/VENDEUR |
@@ -289,7 +289,7 @@
 | GET | `/api/v1/clients/{id}` | `CLIENT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | PUT | `/api/v1/clients/{id}` | `CLIENT_UPDATE` | PROPRIETAIRE/MANAGER/VENDEUR |
 | DELETE | `/api/v1/clients/{id}` | `CLIENT_DELETE` | PROPRIETAIRE/MANAGER |
-| **Ventes** | | | |
+| **Sales** | | | |
 | POST | `/api/v1/ventes` | `SALE_CREATE` | VENDEUR/MANAGER |
 | GET | `/api/v1/ventes/{commandeId}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | PUT | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_UPDATE` | VENDEUR/MANAGER |
@@ -302,23 +302,23 @@
 | GET | `/api/v1/factures-client/{id}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/factures-client/{id}/paiements` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | POST | `/api/v1/factures-client/{id}/paiements` | `SALE_PAY` | PROPRIETAIRE/MANAGER/VENDEUR |
-| **Caisse** | | | |
+| **Cash register** | | | |
 | GET | `/api/v1/ventes/caisse/resume?magasinId=&date=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/ventes/caisse/top-produits?magasinId=&date=&nombre=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 
-**Total endpoints** : 19
+**Total endpoints**: 19
 
 ---
 
-## 10. Module DÉPENSE
+## 10. DEPENSE module
 
-**Use cases livrés :**
-- CRUD catégorie de dépense (scoping entreprise, unicité nom)
-- CRUD dépense (scoping magasin, libellé, date, montant, mode paiement, catégorie)
-- Listing dépenses paginé filtré (magasinId, categoryId, modePaiement, startDate, endDate)
-- Total dépenses agrégé (même filtres)
+**Delivered use cases:**
+- Expense category CRUD (company scoping, name uniqueness)
+- Expense CRUD (store scoping, label, date, amount, payment method, category)
+- Paginated filtered expense listing (magasinId, categoryId, modePaiement, startDate, endDate)
+- Aggregated expense total (same filters)
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | POST | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_CREATE` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_READ` | PROPRIETAIRE/MANAGER |
@@ -332,24 +332,24 @@
 | PUT | `/api/v1/depenses/{id}` | `EXPENSE_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/depenses/{id}` | `EXPENSE_DELETE` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 11
+**Total endpoints**: 11
 
 ---
 
-## 11. Module ABONNEMENT
+## 11. ABONNEMENT module
 
-**Use cases livrés :**
-- CRUD ADMIN : PlanAbonnement / SubscriptionType / Coupon / Promotion
-- Catalogue public (sans auth, agrégé : plans + types + promotions avec promotions imbriquées par plan)
-- Souscription propriétaire (création EN_ATTENTE + breakdown calcul réductions séquentiel type→promotion→coupon)
-- Toggle renouvellement auto
-- Paiement manuel (PROPRIETAIRE upload preuve image obligatoire)
-- Validation/rejet admin (active l'abonnement avec stratégie "remplacement à dateFin", rollback coupon au rejet)
-- Listing ADMIN tous abonnements + historique PROPRIETAIRE + statut courant (jours restants, trial, fonctionnalités)
+**Delivered use cases:**
+- ADMIN CRUD: PlanAbonnement / SubscriptionType / Coupon / Promotion
+- Public catalog (no auth, aggregated: plans + types + promotions with per-plan nested promotions)
+- Owner subscription (create EN_ATTENTE + sequential discount-calc breakdown type → promotion → coupon)
+- Auto-renewal toggle
+- Manual payment (PROPRIETAIRE uploads mandatory proof image)
+- Admin validation/rejection (activates the subscription with "replacement at dateFin" strategy, coupon rollback on rejection)
+- ADMIN listing of all subscriptions + PROPRIETAIRE history + current status (days left, trial, features)
 
-> **Étape 9 DIFFÉRÉE** : renouvellement automatique. Dépend de l'intégration d'un intégrateur de paiement automatique (Wave / Orange Money / Stripe / PayPal). Aujourd'hui le paiement est manuel, donc le concept "auto-débit à `dateFin`" n'a pas de support technique. Le flag `Abonnement.renouvellementAuto`, perm `SUBSCRIPTION_RENEW` et endpoint `PATCH /{id}/renouvellement-auto` restent en place (réutilisables tels quels).
+> **Step 9 DEFERRED**: automatic renewal. Depends on integrating an automatic payment provider (Wave / Orange Money / Stripe / PayPal). Today the payment is manual, so the concept "auto-debit at `dateFin`" has no technical support. The flag `Abonnement.renouvellementAuto`, permission `SUBSCRIPTION_RENEW` and endpoint `PATCH /{id}/renouvellement-auto` remain in place (reusable as-is).
 
-| Méthode | Path | Permission | Acteur |
+| Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | **Plans (ADMIN)** | | | |
 | POST | `/api/v1/plans` | `PLAN_CREATE` | ADMIN |
@@ -383,15 +383,15 @@
 | PATCH | `/api/v1/promotions/{id}/activate` | `PROMOTION_UPDATE` | ADMIN |
 | PATCH | `/api/v1/promotions/{id}/deactivate` | `PROMOTION_UPDATE` | ADMIN |
 | DELETE | `/api/v1/promotions/{id}` | `PROMOTION_DELETE` | ADMIN |
-| **Catalogue public** | | | |
+| **Public catalog** | | | |
 | GET | `/api/v1/catalog/public` | permitAll | public |
-| **Souscription / Statut** | | | |
+| **Subscription / Status** | | | |
 | POST | `/api/v1/abonnements/subscribe` | `SUBSCRIPTION_CREATE` | PROPRIETAIRE |
 | PATCH | `/api/v1/abonnements/{id}/renouvellement-auto` | `SUBSCRIPTION_UPDATE` | PROPRIETAIRE |
 | GET | `/api/v1/abonnements?entrepriseId=&statut=&planId=&page=&size=` | `ADMIN_ACCESS` | ADMIN |
 | GET | `/api/v1/abonnements/me?statut=&planId=&page=&size=` | `SUBSCRIPTION_READ` | PROPRIETAIRE |
 | GET | `/api/v1/abonnements/me/current` | `SUBSCRIPTION_READ` | PROPRIETAIRE |
-| **Paiements abonnement** | | | |
+| **Subscription payments** | | | |
 | POST (multipart) | `/api/v1/paiements-abonnement/abonnements/{abonnementId}` | `SUBSCRIPTION_PAY` | PROPRIETAIRE |
 | GET | `/api/v1/paiements-abonnement?statut=&abonnementId=&entrepriseId=&page=&size=` | `SUBSCRIPTION_READ` | ADMIN/PROPRIETAIRE |
 | GET | `/api/v1/paiements-abonnement/{id}` | `SUBSCRIPTION_READ` | ADMIN/PROPRIETAIRE |
@@ -399,22 +399,22 @@
 | PATCH | `/api/v1/paiements-abonnement/{id}/validate` | `SUBSCRIPTION_VALIDATE` | ADMIN |
 | PATCH | `/api/v1/paiements-abonnement/{id}/reject` | `SUBSCRIPTION_VALIDATE` | ADMIN |
 
-**Total endpoints** : 40
+**Total endpoints**: 40
 
 ---
 
-## 12. Module NOTIFICATION (squelette)
+## 12. NOTIFICATION module (skeleton)
 
-> Structure DDD posée mais **aucun controller implémenté**. Entités présentes : `Notification`, `Echeance`, `TemplateNotification`.
-> Use case envisagé : worker qui parcourt `Echeance` (factures impayées approchant, abonnements expirants…) et envoie via canal `EMAIL` / `SMS`.
+> DDD structure in place but **no controller implemented**. Entities present: `Notification`, `Echeance`, `TemplateNotification`.
+> Planned use case: a worker that walks `Echeance` (overdue invoices approaching, expiring subscriptions…) and sends via `EMAIL` / `SMS` channel.
 
-**Total endpoints** : 0
+**Total endpoints**: 0
 
 ---
 
-## 📊 Récap global
+## 📊 Global summary
 
-| Module | Endpoints | Permissions clés |
+| Module | Endpoints | Key permissions |
 |--------|-----------|------------------|
 | security (auth) | 4 | (public) |
 | entreprise | 11 | `ADMIN_ACCESS`, `PROPRIETAIRE_ACCESS` |
@@ -424,37 +424,37 @@
 | stock | 10 | `STOCK_READ`, `STOCK_ENTRY`, `STOCK_ADJUSTMENT`, `REPORT_STOCK` |
 | inventaire | 11 | `STOCK_INVENTORY`, `STOCK_READ` |
 | achat | 19 | `SUPPLIER_*`, `PURCHASE_*` |
-| vente | 15 | `CLIENT_*`, `SALE_*` |
+| vente | 19 | `CLIENT_*`, `SALE_*` |
 | depense | 11 | `EXPENSE_*`, `EXPENSE_CATEGORY_*` |
 | abonnement | 40 | `PLAN_*`, `SUBSCRIPTION_TYPE_*`, `COUPON_*`, `PROMOTION_*`, `SUBSCRIPTION_*` |
 | notification | 0 | — |
-| **TOTAL** | **167** | **70+ permissions** |
+| **TOTAL** | **176** | **70+ permissions** |
 
 ---
 
-## 👥 Matrice rôles ↔ capacités
+## 👥 Roles ↔ capabilities matrix
 
-| Rôle | Capacités principales |
+| Role | Main capabilities |
 |------|----------------------|
-| **ADMIN** | CRUD entreprises (autres que la sienne), CRUD plans/types/coupons/promotions abonnement, validation/rejet paiements abonnement, listing global abonnements |
-| **PROPRIETAIRE** | Tout sur sa propre entreprise (magasins, employés, produits, stocks, ventes, achats, dépenses), souscription abonnement, paiement abonnement, statut courant |
-| **MANAGER** | Idem PROPRIETAIRE mais scopé à son magasin (employés, stocks, ventes, achats, dépenses, inventaires) |
-| **VENDEUR** | Lecture produits + recherche, gestion clients, ventes (création/lecture/paiement), caisse |
+| **ADMIN** | CRUD on companies (other than their own), CRUD on subscription plans/types/coupons/promotions, validation/rejection of subscription payments, global subscription listing |
+| **PROPRIETAIRE** | Everything on their own company (stores, employees, products, stock, sales, purchases, expenses), subscription, subscription payment, current status |
+| **MANAGER** | Same as PROPRIETAIRE but scoped to their store (employees, stock, sales, purchases, expenses, inventories) |
+| **VENDEUR** | Products read + search, client management, sales (create/read/pay), cash register |
 
 ---
 
-## 🗂️ Modules transverses (non métier)
+## 🗂️ Cross-cutting modules (non-business)
 
-- **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `LocalizedRuntimeException` + 12 custom exceptions, `IMessageSourceService`, `PieceJointe`, validators custom (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper`/`EnumHelper`/`UuidHelper`/`SubscriptionRules`/`NameHelper`/`ReferenceHelper`/`LotConsumptionContext`.
+- **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `LocalizedRuntimeException` + 12 custom exceptions, `IMessageSourceService`, `PieceJointe`, custom validators (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper`/`EnumHelper`/`UuidHelper`/`SubscriptionRules`/`NameHelper`/`ReferenceHelper`/`LotConsumptionContext`.
 - **`config/`** — `StoreApplication`, `I18nConfig`, `AuditorAwareImpl`, `DataInitializer`, `HttpRequestLoggingFilter`.
 - **`property/`** — `JwtProperties`, `RbacProperties` (records `@ConfigurationProperties`).
 
 ---
 
-## 📝 Pour aller plus loin
+## 📝 Further reading
 
-- **Detail use case par use case** (entrée/flux/règles/sortie) : voir `FONCTIONNALITIES.md`.
-- **Structure des packages, stack, conventions** : voir `.claude/ARCHITECTURE.md`.
-- **Règles de codage obligatoires** : voir `.claude/CONVENTION_CODAGE_BACKEND.md`.
-- **Backlog / TODO** : voir `.claude/TODO.md`.
-- **Journal des sessions** : voir `.claude/SESSIONS.md`.
+- **Per-use-case detail** (input/flow/rules/output): see `FEATURES.md`.
+- **Package structure, stack, conventions**: see `.claude/ARCHITECTURE.md`.
+- **Mandatory coding rules**: see `.claude/BACKEND_CODING_CONVENTIONS.md`.
+- **Backlog / TODO**: see `.claude/TODO.md`.
+- **Session journal**: see `.claude/SESSIONS.md`.
