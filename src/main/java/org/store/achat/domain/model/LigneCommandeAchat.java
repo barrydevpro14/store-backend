@@ -24,6 +24,9 @@ public class LigneCommandeAchat extends BaseEntity {
 
     private int quantite;
 
+    @Column(name = "quantite_recue", nullable = false)
+    private int quantiteRecue;
+
     @Column(precision = 19, scale = 2)
     private BigDecimal prixAchat;
 
