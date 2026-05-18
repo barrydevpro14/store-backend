@@ -1,5 +1,7 @@
 package org.store.achat.application.service.impl;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import org.store.achat.domain.model.Fournisseur;
 import org.store.achat.domain.service.FournisseurDomainService;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.config.RedisCacheConfig;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.security.application.dto.UserPrincipal;
@@ -36,9 +39,10 @@ public class FournisseurServiceImpl implements IFournisseurService {
         this.currentUserService = currentUserService;
     }
 
-    /** Crée un fournisseur pour l'entreprise du caller après contrôle d'unicité de la référence. */
+    /** Crée un fournisseur pour l'entreprise du caller après contrôle d'unicité de la référence. Invalide le cache des fournisseurs. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.FOURNISSEURS_BY_ENTREPRISE, allEntries = true)
     public FournisseurResponse create(FournisseurRequest fournisseurRequest) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         ensureReferenceAvailable(fournisseurRequest.reference(), entrepriseId);
@@ -59,16 +63,18 @@ public class FournisseurServiceImpl implements IFournisseurService {
         return new FournisseurResponse(fournisseur);
     }
 
-    /** Liste paginée des fournisseurs de l'entreprise du caller. */
+    /** Liste paginée des fournisseurs de l'entreprise du caller. Résultat caché par (entrepriseId, pageable) — TTL 30 min. */
     @Override
+    @Cacheable(value = RedisCacheConfig.FOURNISSEURS_BY_ENTREPRISE, keyGenerator = "entrepriseScopedKeyGenerator")
     public Page<FournisseurResponse> findAllByCurrentEntreprise(Pageable pageable) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         return fournisseurDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
     }
 
-    /** Met à jour le fournisseur après contrôle d'appartenance et d'unicité de référence si modifiée. */
+    /** Met à jour le fournisseur après contrôle d'appartenance et d'unicité de référence si modifiée. Invalide le cache des fournisseurs. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.FOURNISSEURS_BY_ENTREPRISE, allEntries = true)
     public FournisseurResponse update(UUID id, FournisseurRequest fournisseurRequest) {
         Fournisseur fournisseur = ensureBelongsToCurrentEntreprise(fournisseurDomainService.findById(id));
         if (!java.util.Objects.equals(fournisseur.getReference(), fournisseurRequest.reference())) {
@@ -84,9 +90,10 @@ public class FournisseurServiceImpl implements IFournisseurService {
         return new FournisseurResponse(fournisseurDomainService.save(fournisseur));
     }
 
-    /** Supprime le fournisseur après contrôle d'appartenance à l'entreprise du caller. */
+    /** Supprime le fournisseur après contrôle d'appartenance à l'entreprise du caller. Invalide le cache des fournisseurs. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.FOURNISSEURS_BY_ENTREPRISE, allEntries = true)
     public void delete(UUID id) {
         Fournisseur fournisseur = ensureBelongsToCurrentEntreprise(fournisseurDomainService.findById(id));
         fournisseurDomainService.delete(fournisseur);

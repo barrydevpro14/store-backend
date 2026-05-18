@@ -32,13 +32,21 @@ import java.util.Map;
 public class RedisCacheConfig {
 
     public static final String PUBLIC_CATALOG = "public-catalog";
+    public static final String CATEGORIES_PRODUCT_BY_ENTREPRISE = "categories-product-by-entreprise";
+    public static final String QUALITIES_BY_ENTREPRISE = "qualities-by-entreprise";
+    public static final String FOURNISSEURS_BY_ENTREPRISE = "fournisseurs-by-entreprise";
+    public static final String EXPENSE_CATEGORIES_BY_ENTREPRISE = "expense-categories-by-entreprise";
 
     @Bean
     public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration defaultConfig = buildBaseConfig().entryTtl(Duration.ofMinutes(10));
 
         Map<String, RedisCacheConfiguration> namedCaches = Map.of(
-                PUBLIC_CATALOG, buildBaseConfig().entryTtl(Duration.ofMinutes(5))
+                PUBLIC_CATALOG, buildBaseConfig().entryTtl(Duration.ofMinutes(5)),
+                CATEGORIES_PRODUCT_BY_ENTREPRISE, buildBaseConfig().entryTtl(Duration.ofHours(1)),
+                QUALITIES_BY_ENTREPRISE, buildBaseConfig().entryTtl(Duration.ofHours(1)),
+                FOURNISSEURS_BY_ENTREPRISE, buildBaseConfig().entryTtl(Duration.ofMinutes(30)),
+                EXPENSE_CATEGORIES_BY_ENTREPRISE, buildBaseConfig().entryTtl(Duration.ofHours(1))
         );
 
         return RedisCacheManager.builder(connectionFactory)
@@ -57,7 +65,9 @@ public class RedisCacheConfig {
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .activateDefaultTyping(typeValidator, ObjectMapper.DefaultTyping.NON_FINAL);
 
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+        GenericJackson2JsonRedisSerializer jsonSerializer = GenericJackson2JsonRedisSerializer.builder()
+                .objectMapper(objectMapper)
+                .build();
 
         return RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))

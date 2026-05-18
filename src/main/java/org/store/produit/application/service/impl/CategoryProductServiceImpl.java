@@ -1,11 +1,14 @@
 package org.store.produit.application.service.impl;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.config.RedisCacheConfig;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.CategoryProductRequest;
@@ -36,9 +39,10 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         this.currentUserService = currentUserService;
     }
 
-    /** Crée une catégorie pour l'entreprise du caller après contrôle d'unicité du libellé. */
+    /** Crée une catégorie pour l'entreprise du caller après contrôle d'unicité du libellé. Invalide le cache des catégories. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.CATEGORIES_PRODUCT_BY_ENTREPRISE, allEntries = true)
     public CategoryProductResponse create(CategoryProductRequest categoryProductRequest) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         ensureLibelleAvailable(categoryProductRequest.libelle(), entrepriseId);
@@ -59,16 +63,18 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         return new CategoryProductResponse(categoryProduct);
     }
 
-    /** Liste paginée des catégories de l'entreprise du caller. */
+    /** Liste paginée des catégories de l'entreprise du caller. Résultat caché par (entrepriseId, pageable) — TTL 1h. */
     @Override
+    @Cacheable(value = RedisCacheConfig.CATEGORIES_PRODUCT_BY_ENTREPRISE, keyGenerator = "entrepriseScopedKeyGenerator")
     public Page<CategoryProductResponse> findAllByCurrentEntreprise(Pageable pageable) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         return categoryProductDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
     }
 
-    /** Met à jour libellé et description après contrôle d'appartenance et d'unicité. */
+    /** Met à jour libellé et description après contrôle d'appartenance et d'unicité. Invalide le cache des catégories. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.CATEGORIES_PRODUCT_BY_ENTREPRISE, allEntries = true)
     public CategoryProductResponse update(UUID id, CategoryProductRequest categoryProductRequest) {
         CategoryProduct categoryProduct = ensureBelongsToCurrentEntreprise(categoryProductDomainService.findById(id));
         if (!categoryProduct.getLibelle().equals(categoryProductRequest.libelle())) {
@@ -79,9 +85,10 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         return new CategoryProductResponse(categoryProductDomainService.save(categoryProduct));
     }
 
-    /** Supprime la catégorie après contrôle d'appartenance à l'entreprise du caller. */
+    /** Supprime la catégorie après contrôle d'appartenance à l'entreprise du caller. Invalide le cache des catégories. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.CATEGORIES_PRODUCT_BY_ENTREPRISE, allEntries = true)
     public void delete(UUID id) {
         CategoryProduct categoryProduct = ensureBelongsToCurrentEntreprise(categoryProductDomainService.findById(id));
         categoryProductDomainService.delete(categoryProduct);

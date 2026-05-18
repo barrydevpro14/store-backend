@@ -1,11 +1,14 @@
 package org.store.produit.application.service.impl;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.config.RedisCacheConfig;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.QualityRequest;
@@ -36,9 +39,10 @@ public class QualityServiceImpl implements IQualityService {
         this.currentUserService = currentUserService;
     }
 
-    /** Crée une qualité pour l'entreprise du caller après contrôle d'unicité du libellé. */
+    /** Crée une qualité pour l'entreprise du caller après contrôle d'unicité du libellé. Invalide le cache des qualités. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.QUALITIES_BY_ENTREPRISE, allEntries = true)
     public QualityResponse create(QualityRequest qualityRequest) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         ensureLibelleAvailable(qualityRequest.libelle(), entrepriseId);
@@ -59,16 +63,18 @@ public class QualityServiceImpl implements IQualityService {
         return new QualityResponse(quality);
     }
 
-    /** Liste paginée des qualités de l'entreprise du caller. */
+    /** Liste paginée des qualités de l'entreprise du caller. Résultat caché par (entrepriseId, pageable) — TTL 1h. */
     @Override
+    @Cacheable(value = RedisCacheConfig.QUALITIES_BY_ENTREPRISE, keyGenerator = "entrepriseScopedKeyGenerator")
     public Page<QualityResponse> findAllByCurrentEntreprise(Pageable pageable) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         return qualityDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
     }
 
-    /** Met à jour libellé et description après contrôle d'appartenance et d'unicité. */
+    /** Met à jour libellé et description après contrôle d'appartenance et d'unicité. Invalide le cache des qualités. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.QUALITIES_BY_ENTREPRISE, allEntries = true)
     public QualityResponse update(UUID id, QualityRequest qualityRequest) {
         Quality quality = ensureBelongsToCurrentEntreprise(qualityDomainService.findById(id));
         if (!quality.getLibelle().equals(qualityRequest.libelle())) {
@@ -79,9 +85,10 @@ public class QualityServiceImpl implements IQualityService {
         return new QualityResponse(qualityDomainService.save(quality));
     }
 
-    /** Supprime la qualité après contrôle d'appartenance à l'entreprise du caller. */
+    /** Supprime la qualité après contrôle d'appartenance à l'entreprise du caller. Invalide le cache des qualités. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.QUALITIES_BY_ENTREPRISE, allEntries = true)
     public void delete(UUID id) {
         Quality quality = ensureBelongsToCurrentEntreprise(qualityDomainService.findById(id));
         qualityDomainService.delete(quality);
