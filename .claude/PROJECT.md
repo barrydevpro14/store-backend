@@ -1,120 +1,120 @@
-# PROJECT.md — Specs du projet
+# PROJECT.md — Project specs
 
 ---
 
-## 1. Vision générale
+## 1. Overall vision
 
-**Nom du projet** → STORE
+**Project name** → STORE
 
-**En une phrase** → Plateforme SaaS multi‑tenant pour la gestion d'un magasin de pièces détachées (vente, achat, stock, comptabilité). Mono‑repo composé de **`store/`** (backend Spring Boot) et **`store-frontend/`** (frontend Next.js).
+**In one sentence** → Multi-tenant SaaS platform to manage a spare-parts store (sales, purchases, stock, accounting). Monorepo with **`store/`** (Spring Boot backend) and **`store-frontend/`** (Next.js frontend).
 
-**Quel problème ça résout ? Pour qui ?**
-→ Informatiser la gestion complète d'un magasin de pièces de rechange. ERP conçu comme une plateforme **SaaS multi‑magasins et multi‑utilisateurs**, vendue par abonnement aux propriétaires de magasins.
-
----
-
-## 2. Objectif principal — modules métier
-
-1. Authentification & Sécurité (JWT, RBAC)
-2. Gestion Entreprise (tenant racine)
-3. Gestion Magasin (sous‑tenant : un propriétaire peut avoir plusieurs magasins)
-4. Gestion Utilisateurs (Propriétaire, Employé)
-5. Gestion Produits (catalogue, catégories, qualité, fournisseurs liés)
-6. Gestion Stock (entrées/sorties FIFO, mouvements, seuils)
-7. Gestion Achats (commandes, factures, paiements fournisseur)
-8. Gestion Ventes (commandes, factures, paiements client)
-9. Gestion Dépenses
-10. Gestion Paiements (achat / vente / abonnement)
-11. Gestion Abonnements SaaS (plans, types, coupons, promotions)
-12. Gestion Notifications (notifications + échéances + templates)
-13. Gestion Documents & Images (`PieceJointe`)
-14. Dashboard & Reporting (à venir)
-15. Paramétrage Système
-16. Audit & Historique (`AuditableEntity` : created/updated by/at)
-17. Multi‑tenant & Permissions
-18. API & Intégrations (REST + OpenAPI)
+**What problem it solves, and for whom?**
+→ Digitize the full management of a spare-parts store. Designed as an ERP **SaaS multi-store, multi-user**, sold by subscription to store owners.
 
 ---
 
-## 3. Utilisateurs
+## 2. Main goal — business modules
 
-**Qui utilise** → Propriétaires de magasins (clients SaaS) + leurs employés (vendeurs).
-
-**Rôles** :
-- `Proprietaire` — possède une `Entreprise`, gère ses magasins, ses employés et son abonnement.
-- `Employe` — rattaché à un magasin, gère ventes/achats/stock selon ses permissions.
-- (Futur) Admin SaaS — gestion plateforme côté éditeur.
-
-Permissions fines via `Role` ↔ `Permissions` (N‑N).
-
----
-
-## 4. Fonctionnalités
-
-**Indispensables (MVP)** :
-- Inscription propriétaire + création entreprise + premier magasin
-- Authentification JWT + refresh token
-- CRUD produits / catégories / qualité
-- Gestion stock FIFO (entrées via achats, sorties via ventes)
-- Cycle achat : commande → facture → paiement
-- Cycle vente : commande → facture → paiement
-- Abonnement SaaS avec essai gratuit (`PlanAbonnement.trial`, `Entreprise.trialUsed`)
-
-**Secondaires (nice‑to‑have)** :
-- Notifications email/SMS sur échéances impayées
-- Coupons et promotions sur abonnements
-- Inventaires physiques avec écarts
-- Dashboard et rapports
-
-**Hors scope** :
-- Caisse physique / TPV
-- Comptabilité analytique avancée
-- Mobile natif (le frontend web devra rester responsive)
+1. Authentication & Security (JWT, RBAC)
+2. Company management (root tenant)
+3. Store management (sub-tenant: one owner can have multiple stores)
+4. Users (Owner, Employee)
+5. Products (catalog, categories, quality, linked suppliers)
+6. Stock (FIFO entries/exits, movements, thresholds)
+7. Purchases (orders, invoices, supplier payments)
+8. Sales (orders, invoices, client payments)
+9. Expenses
+10. Payments (purchase / sale / subscription)
+11. SaaS subscriptions (plans, types, coupons, promotions)
+12. Notifications (alerts, due dates, templates)
+13. Documents & images (`PieceJointe`)
+14. Dashboard & reporting (planned)
+15. System settings
+16. Audit & history (`AuditableEntity`: created/updated by/at)
+17. Multi-tenant & permissions
+18. API & integrations (REST + OpenAPI)
 
 ---
 
-## 5. Stack technique
+## 3. Users
+
+**Who uses it** → Store owners (SaaS customers) and their employees (sellers).
+
+**Roles**:
+- `Proprietaire` (Owner) — owns a `Entreprise` (Company), manages stores, employees, and their subscription.
+- `Employe` (Employee) — assigned to a store, handles sales/purchases/stock per permission.
+- (Future) SaaS Admin — platform management on the vendor side.
+
+Fine-grained permissions via `Role` ↔ `Permissions` (N‑N).
+
+---
+
+## 4. Features
+
+**Must-have (MVP)**:
+- Owner registration + company creation + first store
+- JWT authentication + refresh token
+- CRUD for products / categories / quality
+- FIFO stock management (entries via purchases, exits via sales)
+- Purchase cycle: order → invoice → payment
+- Sale cycle: order → invoice → payment
+- SaaS subscription with free trial (`PlanAbonnement.trial`, `Entreprise.trialUsed`)
+
+**Nice-to-have**:
+- Email/SMS notifications on unpaid due dates
+- Coupons and promotions on subscriptions
+- Physical inventories with discrepancies
+- Dashboard and reports
+
+**Out of scope**:
+- Physical POS / cash register
+- Advanced analytical accounting
+- Native mobile (the web frontend must stay responsive)
+
+---
+
+## 5. Tech stack
 
 ### Backend (`store/`)
-- **Langage** → Java 21
-- **Framework** → Spring Boot 4.0.6 (web, data‑jpa, security, validation, actuator)
-- **Base de données** → PostgreSQL (Hibernate, `ddl-auto: update` en dev)
+- **Language** → Java 21
+- **Framework** → Spring Boot 4.0.6 (web, data-jpa, security, validation, actuator)
+- **Database** → PostgreSQL (Hibernate, `ddl-auto: update` in dev)
 - **Auth** → Spring Security + JWT (`io.jsonwebtoken:jjwt 0.11.5`)
-- **API doc** → springdoc‑openapi 2.8.1 (Swagger UI)
-- **Boilerplate** → Lombok (`@Getter` / `@Setter` sur entités, jamais `@Data`)
+- **API docs** → springdoc-openapi 2.8.1 (Swagger UI)
+- **Boilerplate** → Lombok (`@Getter` / `@Setter` on entities, never `@Data`)
 - **Tests** → JUnit 5 + Mockito
 
 ### Frontend (`store-frontend/`)
 - **Framework** → Next.js 16.2.6 (App Router, React Server Components)
-  ⚠️ Next.js 16 a des **breaking changes** vs versions antérieures — voir `store-frontend/AGENTS.md` et `node_modules/next/dist/docs/` avant de coder.
-- **Lib UI** → React 19.2.4 + TypeScript 5
-- **Styles** → Tailwind CSS 4 (config CSS‑variables dans `src/app/globals.css`, plus de `tailwind.config.ts`)
-- **Composants** → shadcn/ui (style `base-nova`, baseColor `neutral`) + `@base-ui/react` 1.4.1 (primitives headless, remplace Radix)
-- **Icônes** → lucide‑react
-- **Forms** → react‑hook‑form + zod + `@hookform/resolvers`
-- **State client** → zustand 5
+  ⚠️ Next.js 16 has **breaking changes** vs earlier versions — see `store-frontend/AGENTS.md` and `node_modules/next/dist/docs/` before writing code.
+- **UI lib** → React 19.2.4 + TypeScript 5
+- **Styles** → Tailwind CSS 4 (CSS-variables config in `src/app/globals.css`, no `tailwind.config.ts` anymore)
+- **Components** → shadcn/ui (style `base-nova`, baseColor `neutral`) + `@base-ui/react` 1.4.1 (headless primitives, replaces Radix)
+- **Icons** → lucide-react
+- **Forms** → react-hook-form + zod + `@hookform/resolvers`
+- **Client state** → zustand 5
 - **Data fetching** → TanStack React Query + axios
 - **Lint** → ESLint (`eslint-config-next`)
 
-### Déploiement
-À définir (probable : Docker pour le backend, Vercel ou Docker pour le frontend).
+### Deployment
+TBD (likely Docker for backend, Vercel or Docker for frontend).
 
 ---
 
-## 6. Contraintes
+## 6. Constraints
 
-**Techniques** :
-- Multi‑tenant strict : toute requête doit être scopée à l'`Entreprise` / `Magasin` de l'utilisateur courant.
-- Audit obligatoire sur toutes les entités métier (héritage `AuditableEntity`).
-- IDs en `UUID` (pas de `Long auto-increment`).
+**Technical**:
+- Strict multi-tenancy: every request must be scoped to the current user's `Entreprise` / `Magasin`.
+- Mandatory audit on every business entity (`AuditableEntity` inheritance).
+- IDs as `UUID` (no `Long auto-increment`).
 
-**Données sensibles** :
-- Mots de passe (hashés côté `Account.password`)
+**Sensitive data**:
+- Passwords (hashed in `Account.password`)
 - Tokens (JWT + `RefreshToken`)
-- Données financières (montants `BigDecimal precision=19 scale=2`)
+- Financial data (`BigDecimal precision=19 scale=2`)
 
 ---
 
-## 7. Priorité absolue
+## 7. Top priority
 
-Si une seule chose à livrer : **flux d'inscription d'un propriétaire avec création d'entreprise + premier magasin + activation d'un abonnement d'essai**, suivi de l'authentification JWT (backend) + **écran d'inscription / login sur le frontend qui consomme ces endpoints**. Tout le reste s'enchaîne derrière ce flux.
+If only one thing must ship: **owner registration flow with company creation + first store + trial subscription activation**, followed by JWT authentication (backend) + **a registration / login screen on the frontend consuming these endpoints**. Everything else chains behind this flow.

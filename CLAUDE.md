@@ -1,26 +1,26 @@
 # CLAUDE.md
 
-> Point d'entrée pour Claude Code. Lis les fichiers dans cet ordre avant de commencer.
+> Entry point for Claude Code. Read the files in this order before starting.
 
-## 📚 Fichiers de contexte
+## 📚 Context files
 
-| Fichier | Contenu |
+| File | Content |
 |--------|---------|
-| `.claude/CLAUDE.md` | Règles de comportement et de validation |
-| `.claude/PROJECT.md` | Specs, objectifs et périmètre du projet |
-| `.claude/ARCHITECTURE.md` | Stack technique et structure des packages |
-| `.claude/CONVENTION_CODAGE_BACKEND.md` | Conventions de codage et règles obligatoires côté backend |
-| `.claude/CONVENTION_CODAGE_FRONTEND.md` | Conventions de codage et règles obligatoires côté frontend |
-| `.claude/TODO.md` | Tâches à faire, en cours, terminées |
-| `.claude/SESSIONS.md` | Journal des sessions — lis la dernière en premier |
+| `.claude/CLAUDE.md` | Behavior and validation rules |
+| `.claude/PROJECT.md` | Specs, goals, and project scope |
+| `.claude/ARCHITECTURE.md` | Tech stack and package structure |
+| `.claude/BACKEND_CODING_CONVENTIONS.md` | Mandatory backend coding conventions |
+| `.claude/FRONTEND_CODING_CONVENTIONS.md` | Mandatory frontend coding conventions |
+| `.claude/TODO.md` | Tasks: pending, in progress, done |
+| `.claude/SESSIONS.md` | Session journal — read the latest entry first |
 
-## ⚡ Démarrage rapide
+## ⚡ Quick start
 
-1. Lis `.claude/CLAUDE.md` en entier
-2. Lis `.claude/PROJECT.md` pour comprendre le projet
-3. Lis `.claude/ARCHITECTURE.md` pour la stack et la structure
-4. Lis la convention de codage correspondant à ton scope (backend ou frontend)
-5. Lis `.claude/TODO.md` pour voir où on en est
-6. Lis `.claude/SESSIONS.md` pour reprendre le contexte de la dernière session
-7. Annonce-moi ce que tu as compris en 3 lignes max
-8. Demande-moi quelle tâche démarrer — ne commence pas seul
+1. Read `.claude/CLAUDE.md` in full
+2. Read `.claude/PROJECT.md` to understand the project
+3. Read `.claude/ARCHITECTURE.md` for stack and structure
+4. Read the coding convention matching your scope (backend or frontend)
+5. Read `.claude/TODO.md` to see where we are
+6. Read `.claude/SESSIONS.md` to pick up the context from the last session
+7. Tell me what you understood in 3 lines max
+8. Ask me which task to start — don't start on your own

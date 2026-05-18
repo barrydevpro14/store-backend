@@ -1,6 +1,6 @@
 # Store
 
-Backend SaaS multi‑tenant de gestion de commerce/magasin (ventes, achats, stock, inventaire, dépenses, abonnement).
+Multi-tenant SaaS backend for retail/store management (sales, purchases, stock, inventory, expenses, subscription).
 
 ## Stack
 
@@ -8,13 +8,13 @@ Backend SaaS multi‑tenant de gestion de commerce/magasin (ventes, achats, stoc
 - **PostgreSQL** + Spring Data JPA (Hibernate)
 - **Spring Security** + **JWT** (`jjwt 0.11.5`)
 - **springdoc-openapi 2.8.1** (Swagger UI)
-- **Lombok** pour les entités
+- **Lombok** for entities
 - JUnit 5 + Mockito
 
-## Démarrage
+## Getting started
 
 ```bash
-# Variables (valeurs par défaut entre parenthèses)
+# Environment variables (defaults in parentheses)
 export URL_DATABASE=localhost:5432
 export DB_NAME=db_store
 export DB_USERNAME=
@@ -23,53 +23,53 @@ export DB_PASSWORD=
 ./mvnw spring-boot:run
 ```
 
-Application sur `http://localhost:8080` ; healthcheck Actuator sur `/actuator/health`.
+Application on `http://localhost:8080`; Actuator health check at `/actuator/health`.
 
 ## Architecture
 
-Architecture **DDD / hexagonale**, organisée par module métier (bounded context). Chaque module suit la même structure à 4 couches :
+**DDD / hexagonal** architecture, organized per business module (bounded context). Each module follows the same 4-layer structure:
 
 ```
 <module>/
-├── domain/           # cœur métier (model, enums, repository, service)
-│   ├── model/        # entités JPA
+├── domain/           # business core (model, enums, repository, service)
+│   ├── model/        # JPA entities
 │   ├── enums/
 │   ├── repository/   # interfaces (ports)
-│   └── service/      # logique métier
-├── application/      # cas d'usage
+│   └── service/      # business logic
+├── application/      # use cases
 │   ├── service/      # orchestration
 │   ├── dto/
 │   └── mappers/
-├── infrastructure/   # adaptateurs techniques
-│   ├── repository/   # implémentations Spring Data
+├── infrastructure/   # technical adapters
+│   ├── repository/   # Spring Data implementations
 │   └── specifications/
-└── presentation/     # API REST (controllers)
+└── presentation/     # REST API (controllers)
 ```
 
-### Modules métier
+### Business modules
 
-| Module | Rôle |
+| Module | Role |
 |---|---|
-| `magasin` | Tenant root : `Entreprise`, `Magasin` |
-| `users` | Utilisateurs : `Person`, `Utilisateur`, `Proprietaire`, `Employe` |
-| `security` | Authentification & RBAC : `Account`, `Role`, `Permissions`, `RefreshToken` |
-| `produit` | Catalogue : `Product`, `CategoryProduct`, `Quality`, `ProductFournisseur` |
-| `stock` | Stocks et mouvements : `Stock`, `MouvementStock`, `EntreeStock`, `SortieStock` |
-| `inventaire` | Inventaires physiques : `Inventaire`, `LigneInventaire` |
-| `achat` | Achats : `CommandeAchat`, `Fournisseur`, `FactureAchat`, `PaiementAchat` |
-| `vente` | Ventes : `CommandeVente`, `Client`, `FactureClient` |
-| `abonnement` | Facturation SaaS : `PlanAbonnement`, `Abonnement`, `Coupon`, `Promotion`, `PaiementAbonnement` |
-| `notification` | Notifs & échéances : `Notification`, `NotificationTemplate`, `Echeance` |
-| `depense` | Dépenses : `Depense`, `CategoryDepense` |
-| `common` | Bases techniques : `BaseEntity`, `AuditableEntity`, `Person`, `PieceJointe` |
+| `magasin` | Root tenant: `Entreprise`, `Magasin` |
+| `users` | Users: `Person`, `Utilisateur`, `Proprietaire`, `Employe` |
+| `security` | Authentication & RBAC: `Account`, `Role`, `Permissions`, `RefreshToken` |
+| `produit` | Catalog: `Product`, `CategoryProduct`, `Quality`, `ProductFournisseur` |
+| `stock` | Stock and movements: `Stock`, `MouvementStock`, `EntreeStock`, `SortieStock` |
+| `inventaire` | Physical inventories: `Inventaire`, `LigneInventaire` |
+| `achat` | Purchases: `CommandeAchat`, `Fournisseur`, `FactureAchat`, `PaiementAchat` |
+| `vente` | Sales: `CommandeVente`, `Client`, `FactureClient` |
+| `abonnement` | SaaS billing: `PlanAbonnement`, `Abonnement`, `Coupon`, `Promotion`, `PaiementAbonnement` |
+| `notification` | Notifications & due dates: `Notification`, `NotificationTemplate`, `Echeance` |
+| `depense` | Expenses: `Depense`, `CategoryDepense` |
+| `common` | Technical foundations: `BaseEntity`, `AuditableEntity`, `Person`, `PieceJointe` |
 
-## Modèle de données
+## Data model
 
-- **Multi‑tenancy** applicatif : `Entreprise` (1) → `Magasin` (N) → `Employe` / `Client` (N).
-- **Propriété** : un `Proprietaire` (sous‑classe de `Utilisateur`) possède une `Entreprise`.
-- **Authentification** : `Utilisateur` ↔ `Account` (1‑1), `Account` ↔ `Role` (N‑1), `Role` ↔ `Permissions` (N‑N).
-- **Héritage** : `Person` (`@Inheritance JOINED`) → `Utilisateur` → `Proprietaire` / `Employe` ; `Person` est aussi parent de `Client` et `Fournisseur`.
-- **Audit** : toutes les entités étendent `BaseEntity` (UUID) ou `AuditableEntity` (`createdAt`/`updatedAt`/`createdBy`/`updatedBy` via Spring Data Auditing).
-- **Abonnement** : un `PlanAbonnement` (Trial/Standard/Pro) + un `TypeAbonnement` (durée + remise) → `Abonnement` lié à une `Entreprise`. Réductions via `Coupon` (avec `UtilisationCoupon`) et `Promotion`.
-- **Stock FIFO** : entrées (`EntreeStock` lié à `CommandeAchat`) consommées par sorties (`SortieStock` lié à `LigneCommandeVente`), mouvements tracés par `MouvementStock`.
-- **Facturation** : `CommandeVente` → `FactureClient`, `CommandeAchat` → `FactureAchat`, paiements suivis séparément.
+- **Application multi-tenancy**: `Entreprise` (1) → `Magasin` (N) → `Employe` / `Client` (N).
+- **Ownership**: a `Proprietaire` (subclass of `Utilisateur`) owns an `Entreprise`.
+- **Authentication**: `Utilisateur` ↔ `Account` (1-1), `Account` ↔ `Role` (N-1), `Role` ↔ `Permissions` (N-N).
+- **Inheritance**: `Person` (`@Inheritance JOINED`) → `Utilisateur` → `Proprietaire` / `Employe`; `Person` is also the parent of `Client` and `Fournisseur`.
+- **Audit**: every entity extends `BaseEntity` (UUID) or `AuditableEntity` (`createdAt` / `updatedAt` / `createdBy` / `updatedBy` via Spring Data Auditing).
+- **Subscription**: a `PlanAbonnement` (Trial/Standard/Pro) + a `TypeAbonnement` (duration + discount) → `Abonnement` linked to an `Entreprise`. Discounts via `Coupon` (with `UtilisationCoupon`) and `Promotion`.
+- **FIFO stock**: entries (`EntreeStock` linked to `CommandeAchat`) consumed by exits (`SortieStock` linked to `LigneCommandeVente`), movements tracked by `MouvementStock`.
+- **Billing**: `CommandeVente` → `FactureClient`, `CommandeAchat` → `FactureAchat`, payments tracked separately.
