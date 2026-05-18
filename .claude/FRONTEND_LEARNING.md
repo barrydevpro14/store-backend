@@ -1,30 +1,30 @@
-# FRONTEND_LEARNING.md — Guide d'apprentissage du stack actuel
+# FRONTEND_LEARNING.md — Learning guide for the current stack
 
-> Document de transition pour passer de **React+Redux+Middleware+MUI** (stack connu) vers **Next.js + TanStack Query + Zustand + React Hook Form + Zod + shadcn/ui** (stack du projet).
+> Transition doc to move from **React + Redux + Middleware + MUI** (familiar stack) to **Next.js + TanStack Query + Zustand + React Hook Form + Zod + shadcn/ui** (project stack).
 
 ---
 
-## 🎯 Pourquoi ce stack
+## 🎯 Why this stack
 
-Le stack du projet n'est pas un caprice technique : c'est celui que choisissent les équipes qui démarrent un SaaS en 2025/2026. Chaque pièce répond à un problème précis que Redux+MUI résolvait avec beaucoup de boilerplate :
+The project stack is not a technical whim: it's the one teams choose when they start a SaaS in 2025/2026. Each piece answers a specific problem that Redux + MUI solved with a lot of boilerplate:
 
-| Problème | Réponse Redux+MUI (verbeux) | Réponse stack actuel (concis) |
+| Problem | Redux + MUI answer (verbose) | Current stack answer (concise) |
 |---|---|---|
-| Récupérer des données API avec cache/loading/error | Redux + Thunk + 3 fichiers (actions, reducer, slice) | `useQuery(...)` une ligne |
-| State client local (modale ouverte, user connecté) | Redux store + slice + dispatch | `useStore()` Zustand, 10 lignes au total |
-| Formulaire validé | Formik + Yup | React Hook Form + Zod (perfs, typesafe) |
-| Composant UI accessible | MUI (lourd, opinionné) | shadcn/ui (copié dans le projet, customizable) |
-| Routing + SEO | React Router (CSR seul) | Next.js App Router (SSR + CSR au choix) |
+| Fetch API data with cache/loading/error | Redux + Thunk + 3 files (actions, reducer, slice) | `useQuery(...)` one line |
+| Local client state (modal open, user logged in) | Redux store + slice + dispatch | `useStore()` Zustand, 10 lines total |
+| Validated form | Formik + Yup | React Hook Form + Zod (perf, typesafe) |
+| Accessible UI component | MUI (heavy, opinionated) | shadcn/ui (copied into the project, customizable) |
+| Routing + SEO | React Router (CSR only) | Next.js App Router (SSR + CSR as you wish) |
 
-**Investissement attendu** : ~2 semaines pour maîtriser les 4 piliers. Tu vas être **plus productif** qu'en Redux+MUI une fois la courbe passée.
+**Expected investment**: ~2 weeks to master the 4 pillars. You'll be **more productive** than with Redux + MUI once the curve is behind you.
 
 ---
 
-## 1️⃣ Zustand — State client (le plus facile, 1h)
+## 1️⃣ Zustand — Client state (easiest, 1h)
 
-**Concept** : un store global accessible depuis n'importe quel composant via un hook, sans `Provider`, sans actions, sans reducers. Tu fais juste un objet avec ton state et tes fonctions.
+**Concept**: a global store accessible from any component via a hook, without a `Provider`, without actions, without reducers. You just make an object with your state and your functions.
 
-### Exemple : store d'authentification
+### Example: auth store
 
 ```ts
 // src/lib/stores/auth-store.ts
@@ -51,39 +51,39 @@ export const useAuthStore = create<AuthState>()(
 )
 ```
 
-### Utilisation dans un composant
+### Use in a component
 
 ```tsx
 function Header() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
-  return <button onClick={logout}>Déconnexion ({user?.username})</button>
+  return <button onClick={logout}>Sign out ({user?.username})</button>
 }
 ```
 
-**Équivalences Redux → Zustand** :
+**Redux → Zustand equivalences**:
 | Redux | Zustand |
 |---|---|
 | `createSlice` + `actions` + `reducer` | `create((set) => ({ ... }))` |
-| `dispatch(action(payload))` | appel direct de la fonction du store |
+| `dispatch(action(payload))` | direct function call on the store |
 | `useSelector(state => state.auth.user)` | `useAuthStore((s) => s.user)` |
-| `Provider` autour de l'app | rien, le hook marche partout |
-| 3 fichiers par feature | 1 fichier |
+| `Provider` around the app | nothing, the hook works everywhere |
+| 3 files per feature | 1 file |
 
-**Règle d'or** : utilise Zustand **uniquement** pour du state client (auth, UI, préférences). Les données qui viennent de l'API → TanStack Query.
+**Golden rule**: use Zustand **only** for client state (auth, UI, preferences). Data coming from the API → TanStack Query.
 
-**Doc** : https://docs.pmnd.rs/zustand
+**Docs**: https://docs.pmnd.rs/zustand
 
 ---
 
-## 2️⃣ TanStack Query — State serveur (1 jour)
+## 2️⃣ TanStack Query — Server state (1 day)
 
-**Concept** : tu ne stockes plus les données API dans Redux. Tu les *queries* à la demande. TanStack Query gère pour toi : cache, deduplication, refetch en background, invalidation après mutation, retry sur erreur, etc.
+**Concept**: you no longer store API data in Redux. You *query* it on demand. TanStack Query handles, for you: cache, deduplication, background refetch, invalidation after mutation, retry on error, etc.
 
-### Lecture (`useQuery`)
+### Read (`useQuery`)
 
 ```tsx
-// Récupérer la liste des employés
+// Fetch the list of employees
 function EmployeesList() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['employees', { actif: true }],
@@ -96,7 +96,7 @@ function EmployeesList() {
 }
 ```
 
-### Écriture (`useMutation`)
+### Write (`useMutation`)
 
 ```tsx
 function CreateEmployeeForm() {
@@ -104,9 +104,9 @@ function CreateEmployeeForm() {
   const mutation = useMutation({
     mutationFn: (payload) => api.post('/api/v1/employees', payload),
     onSuccess: () => {
-      // Invalide le cache → la liste se recharge auto
+      // Invalidates the cache → the list auto-reloads
       queryClient.invalidateQueries({ queryKey: ['employees'] })
-      toast.success('Employé créé')
+      toast.success('Employee created')
     },
     onError: (err) => toast.error(err.message),
   })
@@ -115,16 +115,16 @@ function CreateEmployeeForm() {
 }
 ```
 
-### Pourquoi c'est mieux que Redux + Thunk
+### Why it's better than Redux + Thunk
 
-- **Cache automatique** : si 3 composants demandent `['employees']`, 1 seul appel HTTP
-- **Refetch en background** : revenant sur l'onglet, TanStack revalide silencieusement
-- **Optimistic update** : mutation visible avant la réponse serveur, rollback si erreur
-- **Pas de loading/error spinner manuel** : `isLoading`, `error`, `isFetching` exposés gratos
-- **Pagination/infinite scroll** : `useInfiniteQuery`
-- **Typesafe avec TypeScript** sans effort
+- **Automatic cache**: if 3 components ask for `['employees']`, only 1 HTTP call.
+- **Background refetch**: when you come back to the tab, TanStack silently revalidates.
+- **Optimistic update**: mutation visible before the server response, rollback on error.
+- **No manual loading/error spinner**: `isLoading`, `error`, `isFetching` exposed for free.
+- **Pagination/infinite scroll**: `useInfiniteQuery`.
+- **Typesafe with TypeScript** with no effort.
 
-### Pattern projet : un client axios + intercepteur JWT
+### Project pattern: one axios client + JWT interceptor
 
 ```ts
 // src/lib/api/client.ts
@@ -148,31 +148,31 @@ api.interceptors.response.use(
 )
 ```
 
-**Doc** : https://tanstack.com/query/latest/docs/framework/react/overview
+**Docs**: https://tanstack.com/query/latest/docs/framework/react/overview
 
 ---
 
-## 3️⃣ React Hook Form + Zod — Forms (1 jour)
+## 3️⃣ React Hook Form + Zod — Forms (1 day)
 
-**Concept** : un schema Zod = source de vérité (types TS générés + validation runtime). RHF gère le state du formulaire sans re-render à chaque keystroke (perf).
+**Concept**: a Zod schema = source of truth (generated TS types + runtime validation). RHF manages the form state without re-rendering on every keystroke (perf).
 
-### Exemple complet
+### Complete example
 
 ```tsx
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
-// 1. Schéma Zod (= règles backend + types TS d'un seul coup)
+// 1. Zod schema (= backend rules + TS types in one shot)
 const employeeSchema = z.object({
-  nom: z.string().min(1, 'Nom obligatoire'),
-  prenom: z.string().min(1, 'Prénom obligatoire'),
-  email: z.string().email('Email invalide'),
+  nom: z.string().min(1, 'Last name is required'),
+  prenom: z.string().min(1, 'First name is required'),
+  email: z.string().email('Invalid email'),
   role: z.enum(['MANAGER', 'VENDEUR']),
 })
-type EmployeeForm = z.infer<typeof employeeSchema> // types auto
+type EmployeeForm = z.infer<typeof employeeSchema> // automatic types
 
-// 2. Composant
+// 2. Component
 function NewEmployeeForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<EmployeeForm>({
     resolver: zodResolver(employeeSchema),
@@ -188,50 +188,50 @@ function NewEmployeeForm() {
       {errors.nom && <span>{errors.nom.message}</span>}
       <input {...register('email')} />
       {errors.email && <span>{errors.email.message}</span>}
-      <button type="submit">Créer</button>
+      <button type="submit">Create</button>
     </form>
   )
 }
 ```
 
-**Bénéfices vs Formik+Yup** :
-- Pas de `<Field>`, `<FieldArray>` : juste `register` ou `<Controller>` pour composants custom
-- 10× plus rapide en re-render (RHF utilise des refs)
-- Inférence TypeScript automatique depuis le schema Zod
-- Zod schemas réutilisables ailleurs (validation côté serveur si tu fais du Next.js full-stack, dérivation de types API, etc.)
+**Benefits vs Formik + Yup**:
+- No `<Field>`, `<FieldArray>`: just `register` or `<Controller>` for custom components.
+- 10× faster re-renders (RHF uses refs).
+- Automatic TypeScript inference from the Zod schema.
+- Zod schemas reusable elsewhere (server-side validation if you go Next.js full-stack, API type derivation, etc.).
 
-**Doc** : https://react-hook-form.com + https://zod.dev
+**Docs**: https://react-hook-form.com + https://zod.dev
 
 ---
 
-## 4️⃣ Next.js App Router — Routing + SSR (1 semaine, la vraie courbe)
+## 4️⃣ Next.js App Router — Routing + SSR (1 week, the real curve)
 
-**Concept** : un router file-system based (`app/dashboard/page.tsx` = `/dashboard`). Distinction **Server Components** (rendus sur serveur) vs **Client Components** (`'use client'`, rendus dans le navigateur).
+**Concept**: a file-system based router (`app/dashboard/page.tsx` = `/dashboard`). Distinction between **Server Components** (rendered on the server) and **Client Components** (`'use client'`, rendered in the browser).
 
-### Structure de base
+### Basic structure
 
 ```
 src/app/
-  layout.tsx              # layout racine, persiste entre navigations
-  page.tsx                # homepage publique /
-  (auth)/                 # groupe sans préfixe URL
+  layout.tsx              # root layout, persists across navigation
+  page.tsx                # public homepage /
+  (auth)/                 # group with no URL prefix
     login/page.tsx        # → /login
     register/page.tsx     # → /register
   (dashboard)/
-    layout.tsx            # layout commun dashboard (sidebar, header)
+    layout.tsx            # shared dashboard layout (sidebar, header)
     employees/
-      page.tsx            # → /employees (liste)
-      [id]/page.tsx       # → /employees/abc-123 (détail dynamique)
+      page.tsx            # → /employees (list)
+      [id]/page.tsx       # → /employees/abc-123 (dynamic detail)
       new/page.tsx        # → /employees/new
 ```
 
 ### Server Component vs Client Component
 
 ```tsx
-// Server Component (par défaut) — pas de hooks, peut fetch direct
+// Server Component (default) — no hooks, can fetch directly
 // app/(dashboard)/employees/page.tsx
 export default async function EmployeesPage() {
-  // Cet appel se fait CÔTÉ SERVEUR (pas de loading visible client)
+  // This call happens SERVER-SIDE (no visible loading on the client)
   const res = await fetch('http://api/employees', { cache: 'no-store' })
   const data = await res.json()
   return <EmployeesList initialData={data} />
@@ -239,7 +239,7 @@ export default async function EmployeesPage() {
 ```
 
 ```tsx
-// Client Component — hooks, événements, state
+// Client Component — hooks, events, state
 // app/(dashboard)/employees/_components/EmployeesList.tsx
 'use client'
 import { useQuery } from '@tanstack/react-query'
@@ -254,15 +254,15 @@ export function EmployeesList({ initialData }) {
 }
 ```
 
-### Règles à retenir
+### Rules to remember
 
-1. **Par défaut, tout est Server Component**. Ajoute `'use client'` en haut du fichier seulement si tu as besoin de hooks, événements ou state.
-2. **Server Components ne peuvent pas** : `useState`, `useEffect`, événements DOM (`onClick`).
-3. **Client Components ne peuvent pas** : `async/await` directement (utilise `useQuery`).
-4. **Tu peux importer un Client Component depuis un Server Component**, jamais l'inverse en tant que parent direct.
-5. **Navigation** : `<Link href="/employees/123">` ou `router.push()` via `useRouter` (depuis `next/navigation`, pas `next/router`).
+1. **By default, everything is a Server Component**. Add `'use client'` at the top of the file only if you need hooks, events, or state.
+2. **Server Components cannot**: `useState`, `useEffect`, DOM events (`onClick`).
+3. **Client Components cannot**: direct `async/await` (use `useQuery`).
+4. **You can import a Client Component from a Server Component**, never the opposite as a direct parent.
+5. **Navigation**: `<Link href="/employees/123">` or `router.push()` via `useRouter` (from `next/navigation`, not `next/router`).
 
-### Garde de session (auth required)
+### Session guard (auth required)
 
 ```tsx
 // src/app/(dashboard)/layout.tsx
@@ -284,93 +284,93 @@ export default function DashboardLayout({ children }) {
 }
 ```
 
-**Doc** : https://nextjs.org/docs/app
+**Docs**: https://nextjs.org/docs/app
 
 ---
 
-## ⭐ Bonus : shadcn/ui
+## ⭐ Bonus: shadcn/ui
 
-**Pas une lib** : un catalogue de composants accessibles (Radix Primitives + Tailwind) que tu **copies** dans ton projet via la CLI :
+**Not a library**: a catalog of accessible components (Radix Primitives + Tailwind) that you **copy** into your project via the CLI:
 
 ```bash
 npx shadcn@latest add button
-# Crée src/components/ui/button.tsx, à toi de le modifier
+# Creates src/components/ui/button.tsx, edit as you like
 ```
 
-Tu possèdes le code → modifier les couleurs/radius/animations = éditer un fichier dans ton repo.
+You own the code → tweaking colors / radius / animations = editing a file in your repo.
 
-Avantages vs MUI :
-- Bundle final ~10× plus léger (tu n'as que ce que tu utilises)
-- Customization triviale (pas de `sx`, theme override, etc.)
-- Tu vois le code, tu débugues le code
-- Tailwind = consistance design system
+Advantages vs MUI:
+- ~10× smaller final bundle (you ship only what you use).
+- Trivial customization (no `sx`, theme overrides, etc.).
+- You see the code, you debug the code.
+- Tailwind = design system consistency.
 
-Inconvénient : tu as plus de fichiers dans ton repo. C'est voulu (ownership).
+Downside: more files in your repo. That's intentional (ownership).
 
-**Doc** : https://ui.shadcn.com
+**Docs**: https://ui.shadcn.com
 
 ---
 
-## 🗺️ Roadmap d'apprentissage (2 semaines)
+## 🗺️ Learning roadmap (2 weeks)
 
-### Semaine 1 — Concepts isolés
+### Week 1 — Isolated concepts
 
-| Jour | Sujet | Livrables |
+| Day | Topic | Deliverables |
 |---|---|---|
-| Lun | Zustand | Refais l'auth-store du projet, ajoute une persistance localStorage |
-| Mar | TanStack Query (lecture) | `useQuery` sur 3 endpoints (employees, magasins, products) |
-| Mer | TanStack Query (mutation) | `useMutation` + `invalidateQueries` pour create/update/delete employé |
-| Jeu | RHF + Zod | Formulaire de création employé avec validation complète |
-| Ven | shadcn/ui | Copie 5 composants (button, input, dialog, table, toast), assemble la page liste employés |
+| Mon | Zustand | Redo the project's auth store, add localStorage persistence |
+| Tue | TanStack Query (read) | `useQuery` on 3 endpoints (employees, magasins, products) |
+| Wed | TanStack Query (mutation) | `useMutation` + `invalidateQueries` for create/update/delete employee |
+| Thu | RHF + Zod | Employee creation form with full validation |
+| Fri | shadcn/ui | Copy 5 components (button, input, dialog, table, toast), assemble the employees list page |
 
-### Semaine 2 — Next.js + intégration
+### Week 2 — Next.js + integration
 
-| Jour | Sujet | Livrables |
+| Day | Topic | Deliverables |
 |---|---|---|
-| Lun-Mar | Next.js App Router, fichiers `layout.tsx`/`page.tsx` | Pages `/login`, `/register`, `/dashboard` avec garde de session |
-| Mer | Server vs Client Components | Identifie pour chaque page si elle peut être Server (catalogue produits public) ou Client (dashboard avec interactions) |
-| Jeu | Intégration full-flow | CRUD employés complet bout-en-bout (liste, création, édition, désactivation) |
-| Ven | Polish | Toasts d'erreur globaux, loading skeletons, gestion 401 (logout auto + redirect login) |
+| Mon-Tue | Next.js App Router, `layout.tsx`/`page.tsx` files | Pages `/login`, `/register`, `/dashboard` with session guard |
+| Wed | Server vs Client Components | For each page, decide if it can be Server (public product catalog) or Client (dashboard with interactions) |
+| Thu | Full-flow integration | Full end-to-end employees CRUD (list, create, edit, deactivate) |
+| Fri | Polish | Global error toasts, loading skeletons, 401 handling (auto logout + login redirect) |
 
 ---
 
-## ⚠️ Anti-patterns à désapprendre (réflexes Redux/MUI à oublier)
+## ⚠️ Anti-patterns to unlearn (Redux/MUI reflexes to forget)
 
-1. **❌ Ne pas mettre les données API dans Zustand**. Zustand = state client. TanStack Query = state serveur. Si tu veux refetcher une liste, c'est `queryClient.invalidateQueries`, pas un `dispatch`.
+1. **❌ Don't put API data in Zustand**. Zustand = client state. TanStack Query = server state. If you want to refetch a list, it's `queryClient.invalidateQueries`, not a `dispatch`.
 
-2. **❌ Ne pas créer un "userSlice + employeesSlice + magasinsSlice"** comme en Redux. Tu n'as pas besoin de slices : `useQuery(['employees'])` suffit, le cache TanStack Query EST ton store serveur.
+2. **❌ Don't create a "userSlice + employeesSlice + magasinsSlice"** like in Redux. You don't need slices: `useQuery(['employees'])` is enough, the TanStack Query cache IS your server store.
 
-3. **❌ Ne pas écrire d'actions/thunks**. `useMutation` remplace tout ça en 3 lignes.
+3. **❌ Don't write actions/thunks**. `useMutation` replaces all that in 3 lines.
 
-4. **❌ Ne pas utiliser `useEffect` pour fetch des données**. Si tu écris `useEffect(() => fetch(...), [])` au lieu d'un `useQuery`, tu reviens dans la galère Redux.
+4. **❌ Don't use `useEffect` to fetch data**. If you write `useEffect(() => fetch(...), [])` instead of a `useQuery`, you're back in Redux hell.
 
-5. **❌ Ne pas chercher un "Provider"**. Zustand n'en a pas besoin. TanStack Query en a UN seul, à mettre dans `app/layout.tsx`.
+5. **❌ Don't look for a "Provider"**. Zustand doesn't need one. TanStack Query needs ONE, to put in `app/layout.tsx`.
 
-6. **❌ Ne pas styler avec inline `style={{...}}` ou `sx={{...}}`**. Utilise les classes Tailwind (`className="px-4 py-2 rounded bg-primary"`). Tu peux abstraire dans un composant shadcn si répétitif.
+6. **❌ Don't style with inline `style={{...}}` or `sx={{...}}`**. Use Tailwind classes (`className="px-4 py-2 rounded bg-primary"`). You can abstract into a shadcn component if it repeats.
 
-7. **❌ Ne pas créer un BaseDialog/BaseButton/BaseInput**. shadcn te donne `<Button>`, `<Dialog>`, `<Input>` déjà accessibles. Tu modifies le fichier `components/ui/button.tsx` si besoin.
+7. **❌ Don't create a BaseDialog/BaseButton/BaseInput**. shadcn gives you `<Button>`, `<Dialog>`, `<Input>` already accessible. Modify the `components/ui/button.tsx` file if needed.
 
-8. **❌ Ne pas faire de "container component" vs "presentational component"**. Pattern obsolète depuis les hooks. Un composant client peut être les deux.
-
----
-
-## 📚 Ressources prioritaires
-
-1. **TanStack Query** : tutorial officiel + vidéo de TkDodo (https://tkdodo.eu/blog/practical-react-query) → indispensable
-2. **Next.js App Router** : tutorial officiel `nextjs.org/learn/dashboard-app` (60-90 min, projet complet)
-3. **Zustand** : la doc tient en 10 minutes
-4. **RHF + Zod** : tutorial RHF officiel + section "with schema validation"
-5. **shadcn/ui** : la doc est le code des composants, pas besoin d'autre chose
+8. **❌ Don't make "container components" vs "presentational components"**. Obsolete pattern since hooks. A client component can be both.
 
 ---
 
-## 🚦 Quand tu seras à l'aise
+## 📚 Priority resources
 
-Une fois ces 4 piliers maîtrisés, tu auras les outils pour livrer **toute l'UI du projet store-frontend** sans frustration. Les patterns deviennent naturels :
-- Nouvelle page = nouveau fichier `page.tsx`
-- Nouvelle donnée = nouveau `useQuery`
-- Nouvelle action = nouveau `useMutation`
-- Nouveau formulaire = nouveau schema Zod + `useForm`
-- Nouveau state global UI = nouveau store Zustand (ou ajout dans un existant)
+1. **TanStack Query**: official tutorial + TkDodo's video (https://tkdodo.eu/blog/practical-react-query) → essential.
+2. **Next.js App Router**: official tutorial `nextjs.org/learn/dashboard-app` (60-90 min, complete project).
+3. **Zustand**: the docs fit in 10 minutes.
+4. **RHF + Zod**: official RHF tutorial + "with schema validation" section.
+5. **shadcn/ui**: the docs are the component code itself, nothing else needed.
 
-Pas de boilerplate, pas de cérémonie. Et tu gardes la porte ouverte pour évoluer (RSC, server actions, streaming, etc.) au fur et à mesure.
+---
+
+## 🚦 When you're comfortable
+
+Once these 4 pillars are mastered, you'll have what you need to ship **the entire store-frontend UI** without frustration. The patterns become second nature:
+- New page = new `page.tsx` file
+- New data = new `useQuery`
+- New action = new `useMutation`
+- New form = new Zod schema + `useForm`
+- New global UI state = new Zustand store (or addition to an existing one)
+
+No boilerplate, no ceremony. And you keep the door open to evolve (RSC, server actions, streaming, etc.) along the way.
