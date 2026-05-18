@@ -21,6 +21,8 @@ import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.ReceptionAchatRequest;
+import org.store.achat.application.dto.ReceptionAchatResponse;
 import org.store.achat.application.service.IAchatService;
 
 import java.util.UUID;
@@ -54,6 +56,13 @@ public class AchatController {
     public ResponseEntity<AchatResponse> validate(@PathVariable UUID commandeId,
                                                   @Valid @RequestBody AchatValidateRequest achatValidateRequest) {
         return ResponseEntity.ok(achatService.validate(commandeId, achatValidateRequest));
+    }
+
+    @PostMapping("/{commandeId}/receptions")
+    @PreAuthorize("hasAuthority('PURCHASE_APPROVE')")
+    public ResponseEntity<ReceptionAchatResponse> receive(@PathVariable UUID commandeId,
+                                                          @Valid @RequestBody ReceptionAchatRequest receptionAchatRequest) {
+        return ResponseEntity.ok(achatService.receive(commandeId, receptionAchatRequest));
     }
 
     @PutMapping("/orders/{commandeId}/lignes/{ligneId}")

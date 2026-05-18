@@ -9,6 +9,8 @@ import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.ReceptionAchatRequest;
+import org.store.achat.application.dto.ReceptionAchatResponse;
 
 import java.util.UUID;
 
@@ -22,11 +24,21 @@ public interface IAchatService {
     AchatDraftResponse create(AchatRequest achatRequest);
 
     /**
-     * Matérialise une commande DRAFT : crée la FactureAchat (montantTotal recalculé depuis les lignes
-     * courantes), produit les entrées stock + journal ENTREE_ACHAT par ligne, met à jour le prixVente
-     * courant des PF, et bascule le statut en RECEPTIONNEE. Lève BadArgument si la commande n'est pas en DRAFT.
+     * Valide une commande DRAFT : crée la FactureAchat (montantTotal recalculé depuis les lignes
+     * courantes) et bascule le statut en VALIDEE. Le stock physique n'est pas encore matérialisé —
+     * il sera créé par 1 ou plusieurs appels à {@link #receive(UUID, ReceptionAchatRequest)}.
+     * Lève BadArgument si la commande n'est pas en DRAFT.
      */
     AchatResponse validate(UUID commandeId, AchatValidateRequest achatValidateRequest);
+
+    /**
+     * Réceptionne tout ou partie des lignes d'une commande VALIDEE ou PARTIELLEMENT_RECEPTIONNEE :
+     * crée une EntreeStock par ligne reçue (lot distinct possible), upsert le Stock agrégé, journalise
+     * un ENTREE_ACHAT, met à jour le prixVente PF et incrémente quantiteRecue sur la ligne. Bascule
+     * automatiquement en RECEPTIONNEE si toutes les lignes sont totalement reçues après cette réception,
+     * sinon en PARTIELLEMENT_RECEPTIONNEE.
+     */
+    ReceptionAchatResponse receive(UUID commandeId, ReceptionAchatRequest receptionAchatRequest);
 
     /**
      * Édite une ligne d'une commande DRAFT (quantité, prix, traçabilité lot). Garde stricte : commande

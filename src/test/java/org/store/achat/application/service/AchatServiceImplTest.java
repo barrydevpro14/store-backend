@@ -232,35 +232,30 @@ class AchatServiceImplTest {
     }
 
     @Test
-    void validate_should_materialize_facture_and_stock_and_switch_status() {
+    void validate_should_create_facture_and_switch_to_validee_without_stock() {
         LigneCommandeAchat ligne = sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"));
         commande.setLignes(List.of(ligne));
-
-        Stock stock = new Stock();
-        stock.setQuantiteDisponible(100);
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(eq(magasin), eq(produit), eq(100), eq(new BigDecimal("10.00")))).thenReturn(stock);
         when(commandeAchatDomainService.validate(commande)).thenAnswer(inv -> {
-            commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+            commande.setStatut(CommandeAchatStatut.VALIDEE);
             return commande;
         });
 
         AchatResponse response = service.validate(commandeId, sampleValidateRequest());
 
-        assertThat(response.commande().statut()).isEqualTo(CommandeAchatStatut.RECEPTIONNEE);
+        assertThat(response.commande().statut()).isEqualTo(CommandeAchatStatut.VALIDEE);
         assertThat(response.facture().numero()).isEqualTo("FAC-001");
 
         ArgumentCaptor<FactureAchatCreate> factureCaptor = ArgumentCaptor.forClass(FactureAchatCreate.class);
         verify(factureAchatDomainService).create(factureCaptor.capture());
         assertThat(factureCaptor.getValue().montantTotal()).isEqualByComparingTo(new BigDecimal("1000.00"));
 
-        verify(mouvementStockDomainService).journalize(eq(stock), any(MouvementJournalize.class));
-        verify(productFournisseurService).applyPrixVenteFromPurchase(productFournisseur, new BigDecimal("15.00"));
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+        verify(mouvementStockDomainService, never()).journalize(any(), any());
+        verify(productFournisseurService, never()).applyPrixVenteFromPurchase(any(), any());
     }
 
     @Test
@@ -270,15 +265,9 @@ class AchatServiceImplTest {
         l2.setId(UUID.randomUUID());
         commande.setLignes(List.of(l1, l2));
 
-        Stock stock = new Stock();
-        stock.setQuantiteDisponible(0);
-
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProduitId(any(), any())).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(), any(), any(int.class), any())).thenReturn(stock);
         when(commandeAchatDomainService.validate(commande)).thenReturn(commande);
 
         service.validate(commandeId, sampleValidateRequest());

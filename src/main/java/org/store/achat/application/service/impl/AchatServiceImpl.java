@@ -18,6 +18,9 @@ import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.LigneReceptionRequest;
+import org.store.achat.application.dto.ReceptionAchatRequest;
+import org.store.achat.application.dto.ReceptionAchatResponse;
 import org.store.achat.application.dto.RetraitStockResult;
 import org.store.achat.application.service.IAchatService;
 import org.store.achat.application.service.ICommandeAchatService;
@@ -49,6 +52,7 @@ import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
@@ -127,7 +131,11 @@ public class AchatServiceImpl implements IAchatService {
         return new AchatDraftResponse(new CommandeAchatResponse(commandeAchatDomainService.findById(commande.getId())));
     }
 
-    /** Matérialise une commande DRAFT : facture + entrées stock + journal + update prixVente PF + bascule RECEPTIONNEE. */
+    /**
+     * Valide une commande DRAFT : crée la facture (montantTotal recalculé depuis les lignes courantes),
+     * bascule statut en VALIDEE. Le stock physique n'est pas encore matérialisé — il sera créé par
+     * 1 ou plusieurs appels à {@link #receive(UUID, ReceptionAchatRequest)}.
+     */
     @Override
     @Transactional
     public AchatResponse validate(UUID commandeId, AchatValidateRequest achatValidateRequest) {
@@ -136,10 +144,7 @@ public class AchatServiceImpl implements IAchatService {
         CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
         ensureCommandeIsDraft(commande);
 
-        List<LigneCommandeAchat> lignes = commande.getLignes();
-        Magasin magasin = commande.getMagasin();
-
-        BigDecimal montantTotal = lignes.stream()
+        BigDecimal montantTotal = commande.getLignes().stream()
                 .map(ligne -> ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -150,14 +155,44 @@ public class AchatServiceImpl implements IAchatService {
                 montantTotal
         ));
 
-        lignes.forEach(ligne -> materializeLigneStock(magasin, commande, facture, ligne));
-
-        CommandeAchat receptionnee = commandeAchatDomainService.validate(commande);
+        CommandeAchat validee = commandeAchatDomainService.validate(commande);
 
         return new AchatResponse(
-                new CommandeAchatResponse(receptionnee),
+                new CommandeAchatResponse(validee),
                 new FactureAchatResponse(facture)
         );
+    }
+
+    /**
+     * Réceptionne tout ou partie des lignes d'une commande VALIDEE/PARTIELLEMENT_RECEPTIONNEE :
+     * crée une EntreeStock par ligne reçue (lot distinct possible), upsert le Stock agrégé, journalise
+     * un ENTREE_ACHAT, met à jour le prixVente PF, incrémente quantiteRecue sur la ligne. Bascule en
+     * RECEPTIONNEE si toutes les lignes sont totalement reçues, sinon PARTIELLEMENT_RECEPTIONNEE.
+     */
+    @Override
+    @Transactional
+    public ReceptionAchatResponse receive(UUID commandeId, ReceptionAchatRequest receptionAchatRequest) {
+        validatorService.validate(receptionAchatRequest);
+
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        ensureReceivable(commande);
+        ensureLignesDistinctes(receptionAchatRequest.lignes());
+
+        FactureAchat facture = factureAchatDomainService.findByCommandeId(commande.getId()).orElse(null);
+
+        int totalRecueDansCetteReception = receptionAchatRequest.lignes().stream()
+                .mapToInt(ligneReception -> receiveOneLine(commande, facture, ligneReception))
+                .sum();
+
+        int totalCommande = commande.getLignes().stream().mapToInt(LigneCommandeAchat::getQuantite).sum();
+        int totalRecueGlobale = commande.getLignes().stream().mapToInt(LigneCommandeAchat::getQuantiteRecue).sum();
+
+        CommandeAchat updated = totalRecueGlobale == totalCommande
+                ? commandeAchatDomainService.markReceptionnee(commande)
+                : commandeAchatDomainService.markPartiallyReceived(commande);
+
+        return new ReceptionAchatResponse(updated.getId(), updated.getReference(), updated.getStatut(),
+                totalRecueDansCetteReception, totalRecueGlobale, totalCommande);
     }
 
     /** Édite une ligne d'une commande DRAFT (quantité, prix, traçabilité lot) après validations publiques. */
@@ -352,30 +387,68 @@ public class AchatServiceImpl implements IAchatService {
         return new RetraitStockResult(quantite, 1);
     }
 
-    /** Crée le lot d'entrée stock pour une ligne validée, upsert le Stock agrégé, journalise et met à jour le prixVente PF courant. */
-    public void materializeLigneStock(Magasin magasin, CommandeAchat commande, FactureAchat facture, LigneCommandeAchat ligne) {
+    /** Lève BadArgument si la commande n'est pas réceptionnable (statut ≠ VALIDEE / PARTIELLEMENT_RECEPTIONNEE). */
+    public void ensureReceivable(CommandeAchat commande) {
+        CommandeAchatStatut statut = commande.getStatut();
+        if (statut != CommandeAchatStatut.VALIDEE && statut != CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE) {
+            throw new BadArgumentException("commandeAchat.receive.notValidee", statut.name());
+        }
+    }
+
+    /** Lève BadArgument si une même ligne apparaît plusieurs fois dans une seule réception (anti double-comptage). */
+    public void ensureLignesDistinctes(List<LigneReceptionRequest> lignes) {
+        long distinctCount = lignes.stream().map(LigneReceptionRequest::ligneId).distinct().count();
+        if (distinctCount != lignes.size()) {
+            throw new BadArgumentException("commandeAchat.receive.duplicateLine");
+        }
+    }
+
+    /** Lève BadArgument si la quantité à recevoir dépasse la quantité commandée restante de la ligne. */
+    public void ensureQuantiteRecueNotExceeded(LigneCommandeAchat ligne, int quantiteARecevoir) {
+        int restante = ligne.getQuantite() - ligne.getQuantiteRecue();
+        if (quantiteARecevoir > restante) {
+            throw new BadArgumentException("commandeAchat.receive.lineQuantityExceeded", quantiteARecevoir, restante);
+        }
+    }
+
+    /**
+     * Reçoit une ligne d'une commande : crée un nouvel EntreeStock (lot du request si fourni, sinon snapshot ligne),
+     * upsert le Stock agrégé, journalise un ENTREE_ACHAT (ref facture si présente), met à jour le prixVente PF
+     * et incrémente quantiteRecue sur la ligne. Retourne la quantité réceptionnée pour totalisation.
+     */
+    public int receiveOneLine(CommandeAchat commande, FactureAchat facture, LigneReceptionRequest ligneReception) {
+        LigneCommandeAchat ligne = ensureLigneBelongsToCommande(
+                ligneCommandeAchatDomainService.findById(ligneReception.ligneId()), commande);
+        ensureQuantiteRecueNotExceeded(ligne, ligneReception.quantite());
+
+        Magasin magasin = commande.getMagasin();
         ProductFournisseur productFournisseur = ligne.getProductFournisseur();
         Product produit = productFournisseur.getProduct();
+        String numeroLot = ligneReception.numeroLot() != null ? ligneReception.numeroLot() : ligne.getNumeroLot();
+        LocalDate dateExpiration = ligneReception.dateExpiration() != null ? ligneReception.dateExpiration() : ligne.getDateExpiration();
 
         int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
                 .map(Stock::getQuantiteDisponible).orElse(0);
 
         entreeStockDomainService.create(new EntreeStockCreate(
                 magasin, produit, productFournisseur,
-                ligne.getQuantite(), ligne.getPrixAchat(),
-                ligne.getNumeroLot(), ligne.getDateExpiration(),
+                ligneReception.quantite(), ligne.getPrixAchat(),
+                numeroLot, dateExpiration,
                 commande
         ));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, ligne.getQuantite(), ligne.getPrixAchat());
+        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, ligneReception.quantite(), ligne.getPrixAchat());
 
         mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,
-                ligne.getQuantite(), stockAvant, stock.getQuantiteDisponible(),
-                facture.getNumero(),
+                ligneReception.quantite(), stockAvant, stock.getQuantiteDisponible(),
+                facture != null ? facture.getNumero() : null,
                 null
         ));
 
         productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.getPrixVente());
+        ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, ligneReception.quantite());
+
+        return ligneReception.quantite();
     }
 }
