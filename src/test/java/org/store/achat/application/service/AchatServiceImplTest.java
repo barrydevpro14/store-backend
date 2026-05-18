@@ -11,6 +11,8 @@ import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AchatValidateRequest;
+import org.store.achat.application.dto.AnnulationAchatRequest;
+import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.CommandeAchatCreate;
 import org.store.achat.application.dto.FactureAchatCreate;
 import org.store.achat.application.dto.FactureAchatCreateRequest;
@@ -20,6 +22,7 @@ import org.store.achat.application.dto.LigneCommandeAchatCreate;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
 import org.store.achat.application.service.impl.AchatServiceImpl;
 import org.store.achat.domain.enums.CommandeAchatStatut;
+import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.FactureAchat;
@@ -37,8 +40,10 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.property.PurchaseProperties;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
@@ -47,6 +52,7 @@ import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -74,6 +80,7 @@ class AchatServiceImplTest {
     @Mock private IProductFournisseurService productFournisseurService;
     @Mock private org.store.achat.application.service.ICommandeAchatService commandeAchatService;
     @Mock private ValidatorService validatorService;
+    @Mock private PurchaseProperties purchaseProperties;
 
     @InjectMocks
     private AchatServiceImpl service;
@@ -447,5 +454,144 @@ class AchatServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(factureAchatDomainService, never()).findByCommandeId(any());
+    }
+
+    private EntreeStock sampleLot(int quantiteInitiale, int quantiteRestante) {
+        EntreeStock lot = new EntreeStock();
+        lot.setId(UUID.randomUUID());
+        lot.setMagasin(magasin);
+        lot.setProduit(produit);
+        lot.setProductFournisseur(productFournisseur);
+        lot.setQuantiteInitiale(quantiteInitiale);
+        lot.setQuantiteRestante(quantiteRestante);
+        lot.setPrixAchat(new BigDecimal("10.00"));
+        lot.setCommandeAchat(commande);
+        return lot;
+    }
+
+    private void prepareReceptionneeCommande() {
+        commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+    }
+
+    @Test
+    void cancel_should_withdraw_stock_and_switch_status_when_nominal() {
+        prepareReceptionneeCommande();
+        EntreeStock lot = sampleLot(100, 100);
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(100);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(purchaseProperties.cancelWindowHours()).thenReturn(24);
+        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.of(stock));
+        when(stockDomainService.decrement(stock, 100)).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(0);
+            return stock;
+        });
+        when(commandeAchatDomainService.cancel(eq(commande), eq(MotifAnnulationAchat.ERREUR_SAISIE), any())).thenAnswer(inv -> {
+            commande.setStatut(CommandeAchatStatut.ANNULEE);
+            commande.setMotifAnnulation(MotifAnnulationAchat.ERREUR_SAISIE);
+            commande.setDateAnnulation(LocalDateTime.now());
+            return commande;
+        });
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
+
+        AnnulationAchatResponse response = service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", "Saisie erronée"));
+
+        assertThat(response.statut()).isEqualTo(CommandeAchatStatut.ANNULEE);
+        assertThat(response.motif()).isEqualTo(MotifAnnulationAchat.ERREUR_SAISIE);
+        assertThat(response.totalQuantiteRetiree()).isEqualTo(100);
+        assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
+
+        verify(entreeStockDomainService).markAsAnnulee(lot);
+        verify(factureAchatDomainService).cancel(facture);
+
+        ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
+        verify(mouvementStockDomainService).journalize(eq(stock), mouvementCaptor.capture());
+        assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.RETOUR_FOURNISSEUR);
+        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(100);
+        assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("CMD-AUTO");
+    }
+
+    @Test
+    void cancel_should_throw_when_already_cancelled() {
+        commande.setStatut(CommandeAchatStatut.ANNULEE);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("alreadyCancelled");
+
+        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+        verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void cancel_should_throw_when_not_receptionnee() {
+        commande.setStatut(CommandeAchatStatut.DRAFT);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("notReceptionnee");
+
+        verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void cancel_should_throw_when_cancel_window_expired() {
+        commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(48));
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(purchaseProperties.cancelWindowHours()).thenReturn(24);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("windowExpired");
+
+        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+    }
+
+    @Test
+    void cancel_should_propagate_forbidden_when_not_owned() {
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande))
+                .thenThrow(new ForbiddenException("commandeAchat.notOwned"));
+
+        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+        verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void cancel_should_throw_when_at_least_one_lot_already_consumed() {
+        prepareReceptionneeCommande();
+        EntreeStock lotIntact = sampleLot(100, 100);
+        EntreeStock lotConsomme = sampleLot(50, 30);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(purchaseProperties.cancelWindowHours()).thenReturn(24);
+        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lotIntact, lotConsomme));
+
+        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("lotAlreadyConsumed");
+
+        verify(stockDomainService, never()).decrement(any(), any(int.class));
+        verify(entreeStockDomainService, never()).markAsAnnulee(any());
+        verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }
 }

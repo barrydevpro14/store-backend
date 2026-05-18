@@ -13,6 +13,8 @@ import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AchatValidateRequest;
+import org.store.achat.application.dto.AnnulationAchatRequest;
+import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.dto.FactureAchatCreateRequest;
 import org.store.achat.application.dto.FactureAchatResponse;
@@ -22,6 +24,7 @@ import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
 import org.store.achat.application.service.IAchatService;
 import org.store.achat.domain.enums.CommandeAchatStatut;
+import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
@@ -216,5 +219,46 @@ class AchatControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(achatService).deleteLigne(commandeId, ligneId);
+    }
+
+    @Test
+    void should_return_200_when_cancel_purchase() throws Exception {
+        AnnulationAchatResponse response = new AnnulationAchatResponse(
+                commandeId, "CMD-AUTO", CommandeAchatStatut.ANNULEE,
+                MotifAnnulationAchat.ERREUR_SAISIE, "Saisie erronée", "2026-05-18 10:00:00",
+                100, 1
+        );
+        when(achatService.cancel(eq(commandeId), any(AnnulationAchatRequest.class))).thenReturn(response);
+
+        AnnulationAchatRequest body = new AnnulationAchatRequest("ERREUR_SAISIE", "Saisie erronée");
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("ANNULEE"))
+                .andExpect(jsonPath("$.motif").value("ERREUR_SAISIE"))
+                .andExpect(jsonPath("$.totalQuantiteRetiree").value(100))
+                .andExpect(jsonPath("$.nombreMouvementsCrees").value(1));
+    }
+
+    @Test
+    void should_return_400_when_cancel_motif_invalid() throws Exception {
+        AnnulationAchatRequest body = new AnnulationAchatRequest("MOTIF_INEXISTANT", null);
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_400_when_cancel_motif_blank() throws Exception {
+        AnnulationAchatRequest body = new AnnulationAchatRequest("", null);
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
     }
 }

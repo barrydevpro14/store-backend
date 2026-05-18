@@ -227,6 +227,7 @@
 - Édition d'une ligne d'une commande DRAFT (quantité, prix, lot)
 - Suppression d'une ligne d'une commande DRAFT (refus si dernière ligne)
 - Validation d'une commande DRAFT (matérialisation : facture + entrées stock + journal + update prixVente PF + bascule RECEPTIONNEE)
+- Annulation d'une commande RECEPTIONNEE avec retrait stock (flag `EntreeStock.annulee=true`, mouvement `RETOUR_FOURNISSEUR`, fenêtre temporelle configurable, refus si un lot a déjà été consommé par une vente)
 - Listing commandes d'achat paginé filtré
 - Listing factures d'achat paginé filtré
 - Échéances factures (factures non payées)
@@ -248,6 +249,7 @@
 | PUT | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_DELETE` | PROPRIETAIRE/MANAGER |
 | POST | `/api/v1/achats/{commandeId}/validate` | `PURCHASE_APPROVE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/achats/{commandeId}/annuler` | `PURCHASE_CANCEL` | ADMIN/PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-achat?magasinId=&fournisseurId=&statut=&page=&size=` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-achat/{id}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/factures-achat?...` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
@@ -256,7 +258,7 @@
 | POST | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_PAY` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 17
+**Total endpoints** : 18
 
 ---
 
@@ -419,7 +421,7 @@
 | produit | 29 | `PRODUCT_*`, `CATEGORY_PRODUCT_*`, `QUALITY_*`, `SUPPLIER_*` |
 | stock | 10 | `STOCK_READ`, `STOCK_ENTRY`, `STOCK_ADJUSTMENT`, `REPORT_STOCK` |
 | inventaire | 11 | `STOCK_INVENTORY`, `STOCK_READ` |
-| achat | 14 | `SUPPLIER_*`, `PURCHASE_*` |
+| achat | 18 | `SUPPLIER_*`, `PURCHASE_*` |
 | vente | 15 | `CLIENT_*`, `SALE_*` |
 | depense | 11 | `EXPENSE_*`, `EXPENSE_CATEGORY_*` |
 | abonnement | 40 | `PLAN_*`, `SUBSCRIPTION_TYPE_*`, `COUPON_*`, `PROMOTION_*`, `SUBSCRIPTION_*` |

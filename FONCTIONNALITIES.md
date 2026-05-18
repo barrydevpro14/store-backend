@@ -1225,6 +1225,49 @@ Repos concernés : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLi
 
 ---
 
+## 49. Annulation d'achat (achat, workflow critique multi-modules) — `AchatServiceImpl.cancel`
+
+**Endpoint** : `POST /api/v1/achats/{commandeId}/annuler` (permission `PURCHASE_CANCEL` — ADMIN/PROPRIETAIRE/MANAGER, **pas VENDEUR**).
+
+**Cas d'usage métier** : un achat RECEPTIONNEE est annulé (erreur de saisie, refus du fournisseur, article défectueux livré). Le stock alimenté par cet achat doit être retiré ; la facture fournisseur est invalidée ; les paiements existants sont conservés pour audit (remboursement hors-app). L'annulation n'est autorisée que dans une fenêtre temporelle configurable (défaut 24 h après création) **et uniquement si aucun lot n'a déjà été partiellement ou totalement consommé par une vente** — sinon l'annulation symétrique stock + facture n'est plus possible et il faut passer par un autre flow (retour fournisseur partiel, hors-scope).
+
+**Entrée** : `AnnulationAchatRequest{ motif (enum `MotifAnnulationAchat` : ERREUR_SAISIE, REFUS_FOURNISSEUR, ARTICLE_DEFECTUEUX, AUTRE) + commentaire optional ≤ 1000 chars }`.
+
+**Flux atomique** (1 transaction `@Transactional`) :
+1. `validatorService.validate(request)`.
+2. Charge commande + `ensureBelongsToCurrentEntreprise` (`commandeAchat.notOwned` 403).
+3. `ensureCancellable(commande)` :
+   - Si statut = `ANNULEE` → `BadArgumentException("commandeAchat.cancel.alreadyCancelled")`.
+   - Si statut ≠ `RECEPTIONNEE` → `BadArgumentException("commandeAchat.cancel.notReceptionnee", statut)`.
+4. `ensureWithinCancelWindow(commande)` :
+   - `commande.createdAt + purchaseProperties.cancelWindowHours` doit être ≥ `now()`, sinon `BadArgumentException("commandeAchat.cancel.windowExpired", maxHours)`.
+5. Charge tous les `EntreeStock` issus de cette commande via `entreeStockDomainService.findByCommandeAchatId(commandeId)`.
+6. `ensureNoLotConsumed(lots)` : si au moins un lot a `quantiteRestante < quantiteInitiale` → `BadArgumentException("commandeAchat.cancel.lotAlreadyConsumed")`. Tout-ou-rien.
+7. Pour chaque lot : `stockDomainService.findByMagasinIdAndProduitId(...)` → `stockDomainService.decrement(stock, lot.quantiteRestante)` + `entreeStockDomainService.markAsAnnulee(lot)` + `mouvementStockDomainService.journalize(stock, MouvementJournalize(RETOUR_FOURNISSEUR, qty, stockAvant, stockApres, commande.reference, null))`.
+8. Bascule commande → `ANNULEE` + remplit `motifAnnulation`, `commentaireAnnulation`, `dateAnnulation` (méthode `commandeAchatDomainService.cancel`, règle 26).
+9. Bascule facture → `ANNULEE` si présente (méthode `factureAchatDomainService.cancel`, règle 26). Paiements `PaiementAchat` conservés tels quels.
+
+**Sortie** : `AnnulationAchatResponse{ commandeId, reference, statut=ANNULEE, motif, commentaire, dateAnnulation (yyyy-MM-dd HH:mm:ss), totalQuantiteRetiree, nombreMouvementsCrees }`. HTTP 200.
+
+**Conservation audit** :
+- `EntreeStock.annulee = true` permet aux queries reporting d'exclure les lots retournés via `WHERE entree.annulee = false`. `entree.quantiteRestante` est volontairement conservée (snapshot historique du moment de l'annulation), donc le filtre `quantiteRestante > 0` à lui seul ne suffit pas.
+- 5 queries adaptées : `EntreeStockRepository.findAvailableLotsForFifo`, `.findAvailableLotsForFifoByProductFournisseur`, `.findExpiringLots`, `.findActiveLotsByMagasinAndProductIds`, et `ProductRepository.searchByEntrepriseWithActiveLots`. La consommation FIFO côté vente, les lots expirants, et la recherche produit n'incluent plus les lots retournés.
+- `Stock` agrégé (`computeValuation`, `findResponsesByFilter`, `findResponsesBelowThreshold`) déjà décrémenté par `cancel` → aucun ajustement de query.
+- `MarginReportRepository.computeMargin` joint sur `SortieStock` qui filtre déjà `annulee=false` → pas d'impact direct (l'annulation d'achat n'affecte les marges que si une vente avait déjà consommé le lot, ce qui est précisément interdit).
+- Les `MouvementStock(ENTREE_ACHAT)` initiaux ne sont pas supprimés — chaque RETOUR_FOURNISSEUR compensatoire est journalisé en pendant, avec la référence de la commande source en `referenceDocument`.
+
+**Configuration** : `purchase.cancel-window-hours: ${PURCHASE_CANCEL_WINDOW_HOURS:24}` (record `PurchaseProperties` dans `org.store.property`, règle 38).
+
+**Migration BDD** : V24 — `commande_achat +motif_annulation VARCHAR(30) / +commentaire_annulation TEXT / +date_annulation TIMESTAMP`, `entree_stock +annulee BOOLEAN NOT NULL DEFAULT FALSE` + index.
+
+**Validations publiques** (règle 27) : `ensureCancellable`, `ensureWithinCancelWindow`, `ensureNoLotConsumed`, `withdrawStockForLot`. Toutes accessibles individuellement, testables isolément.
+
+**i18n** : 4 clés FR/EN — `commandeAchat.cancel.alreadyCancelled`, `commandeAchat.cancel.notReceptionnee` ({0}=statut courant), `commandeAchat.cancel.windowExpired` ({0}=max hours), `commandeAchat.cancel.lotAlreadyConsumed`.
+
+**Tests** : 6 service (nominal retrait + journalize RETOUR_FOURNISSEUR + statut ANNULEE / déjà annulée 400 / pas RECEPTIONNEE 400 / fenêtre dépassée 400 / cross-entreprise 403 / lot déjà consommé 400) + 3 controller (200 OK / 400 motif invalide / 400 motif blank). **750 / 750 verts** (+9 vs 741).
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

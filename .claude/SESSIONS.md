@@ -7,7 +7,41 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-18 (refactor vente 2 étapes DRAFT → VALIDATE + édition/suppression ligne, miroir du refactor achat)
+**Date :** 2026-05-18 (annulation d'achat — workflow critique symétrique à l'annulation de vente)
+**Sujet :** Endpoint `POST /api/v1/achats/{id}/annuler` (permission `PURCHASE_CANCEL` créée, attribuée à ADMIN/PROPRIETAIRE/MANAGER, volontairement absente de VENDEUR). Retrait du stock alimenté par cet achat (décrément `Stock.quantite`, flag `EntreeStock.annulee=true`, 1 `MouvementStock(RETOUR_FOURNISSEUR)` par lot avec ref commande). Bascule `CommandeAchat.statut=ANNULEE` + motif typé enum `MotifAnnulationAchat{ERREUR_SAISIE, REFUS_FOURNISSEUR, ARTICLE_DEFECTUEUX, AUTRE}` + commentaire libre, et `FactureAchat.statut=ANNULEE`. Fenêtre temporelle configurable via `PurchaseProperties.cancelWindowHours` (défaut 24h, env `PURCHASE_CANCEL_WINDOW_HOURS`, règle 38). 5 queries reporting adaptées pour exclure les lots annulés. **739 → 750 tests verts** (+11). 4 commits atomiques (squelette / endpoint / reporting / tests + doc).
+
+**Différence clé vs annulation de vente : garde métier `ensureNoLotConsumed`.** Une vente peut toujours être annulée (les sorties FIFO sont toujours réversibles individuellement, on remet juste le lot d'origine). Un achat **ne peut pas** être annulé si une vente a déjà consommé un de ses lots — l'annulation symétrique stock + facture n'est plus possible. Tout-ou-rien : on refuse au premier lot consommé. Pour ce cas il faudra plus tard un autre flow (retour fournisseur partiel, hors-scope).
+
+**Décisions notables :**
+- **Pas de décrément `entree.quantiteRestante` à l'annulation** : seule la flag `annulee=true` est posée. La quantité restante est gelée comme snapshot historique. Les 5 queries reporting filtrent maintenant explicitement `entree.annulee = false` (le filtre `quantiteRestante > 0` à lui seul aurait laissé passer des lots annulés intacts).
+- **Pas de re-calcul du `prixAchatMoyen` du Stock à l'annulation** : décision pragmatique. Si l'annulation touche un stock mixé avec d'autres achats, la moyenne pondérée reste légèrement biaisée — symétrie avec `pf.prixVente` qui n'est pas non plus retroactivement recalculé. Le compromis : audit clair (mouvement compensatoire RETOUR_FOURNISSEUR), pas de recompute coûteux, pas de risque d'incohérence avec des ventes futures.
+- **`MarginReport` non impacté** : il joint sur `SortieStock` qui filtre déjà `annulee=false`. Comme `ensureNoLotConsumed` garantit qu'aucune vente n'a touché les lots de la commande, il n'y a pas de marge à invalider.
+- **6 queries Caisse non impactées** : elles concernent le module vente. L'annulation d'achat n'altère pas le CA ou la marge des ventes.
+- **Pas de migration sur `commande_achat → entreprise`** : on continue à scoper via `commande.magasin.entreprise.id`.
+
+**Ce qui a été fait (4 commits atomiques) :**
+
+1. **Commit `9a3e89c` — Squelette** : migration V24 (`commande_achat` +3 cols, `entree_stock +annulee` + index), `CommandeAchatStatut +ANNULEE`, nouveau enum `MotifAnnulationAchat`, `CommandeAchat +3 champs`, `EntreeStock +annulee`, record `PurchaseProperties`, `application.yml purchase.cancel-window-hours`, permission `PURCHASE_CANCEL` au catalogue YAML + 3 rôles, 4 clés i18n FR/EN.
+
+2. **Commit `d93dc01` — Endpoint cancel** : DTOs `AnnulationAchatRequest/Response` + record `RetraitStockResult`. Domain services (règle 26) : `CommandeAchatDomainService.cancel`, `FactureAchatDomainService.cancel`, `EntreeStockDomainService.markAsAnnulee` + `findByCommandeAchatId`, `EntreeStockRepository.findByCommandeAchatId` JPQL. `AchatServiceImpl.cancel` + 3 validations publiques `ensureCancellable`/`ensureWithinCancelWindow`/`ensureNoLotConsumed` (règle 27) + boucle stream sur les lots → `withdrawStockForLot` qui décrémente `Stock`, flag `EntreeStock.annulee=true`, journalise `RETOUR_FOURNISSEUR` avec ref commande. `PurchaseProperties` injecté. `IAchatService.cancel` ajouté. `AchatController POST /{id}/annuler` permission `PURCHASE_CANCEL`.
+
+3. **Commit `3e0f32d` — Reporting** : 5 queries adaptées pour exclure `entree.annulee=true` — `findAvailableLotsForFifo`, `findAvailableLotsForFifoByProductFournisseur`, `findExpiringLots`, `findActiveLotsByMagasinAndProductIds` (`EntreeStockRepository`) + `searchByEntrepriseWithActiveLots` (`ProductRepository`). `Stock` agrégé déjà décrémenté → aucun ajustement. `MarginReport` non impacté.
+
+4. **Commit (à venir) — Tests + doc** : 6 tests service (nominal retrait + journalize RETOUR_FOURNISSEUR + statut ANNULEE / déjà annulée 400 / pas RECEPTIONNEE 400 / fenêtre dépassée 400 / cross-entreprise 403 / lot déjà consommé 400) + 3 tests controller (200 / 400 motif invalide / 400 motif blank). Doc `FONCTIONNALITIES.md` (section 49), `MODULES_OVERVIEW.md` (endpoint + total 17→18), `TODO.md` [x].
+
+**Migration BDD ajoutée :** V24 (`commande_achat +motif_annulation, +commentaire_annulation, +date_annulation` ; `entree_stock +annulee BOOLEAN NOT NULL DEFAULT FALSE` + index).
+
+**Permissions modifiées :** `PURCHASE_CANCEL` créée (catalogue + ADMIN + PROPRIETAIRE + MANAGER).
+
+**Prochaine étape recommandée :**
+
+1. **Réception partielle achat** — exploiter le statut intermédiaire `CommandeAchatStatut.VALIDEE` (inutilisé aujourd'hui) pour permettre de réceptionner les lignes en plusieurs livraisons. Endpoint `POST /achats/orders/{id}/receptions`.
+2. **CRUD Magasin complet** — Magasin a un domain service mais peu d'endpoints exposés. Compléter listing paginé filtré + GET/PUT/activate/deactivate.
+3. **Démarrage `store-frontend`** : suivre Phase 0-1 de `FRONTEND_ARCHITECTURE.md`.
+
+---
+
+## Session du 2026-05-18 (refactor vente 2 étapes DRAFT → VALIDATE + édition/suppression ligne, miroir du refactor achat)
 **Sujet :** Refactor structurel du module vente, symétrique au refactor achat du matin. `POST /api/v1/ventes` crée désormais en `DRAFT` (lignes + validations PF/prix plancher, sans consommation stock ni facture). Nouveaux endpoints `PUT/DELETE /ventes/orders/{cmdId}/lignes/{ligneId}` et `POST /ventes/{cmdId}/validate` qui matérialise (consomme stock FIFO + facture + paiement initial + bascule DELIVERED). `VenteRequest` allégé (sans `dateEcheance` ni `premierPaiement` — déplacés dans `VenteValidateRequest`). Permission **`SALE_APPROVE`** créée (cohérence avec `PURCHASE_APPROVE`), attribuée à VENDEUR/MANAGER/PROPRIETAIRE/ADMIN. 6 queries Caisse passées de `<> ANNULEE` à `= DELIVERED` (exclut DRAFT + ANNULEE). **725 → 739 tests verts** (+14).
 
 **Décisions notables :**
