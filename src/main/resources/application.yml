@@ -22,6 +22,15 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 1
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      database: ${REDIS_DATABASE:0}
+  cache:
+    type: ${SPRING_CACHE_TYPE:redis}
 
 management:
   endpoints:
