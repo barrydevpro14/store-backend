@@ -67,6 +67,7 @@ Au démarrage de chaque session, lis dans cet ordre :
 - Ne réécris **jamais** du code existant sans me le signaler
 - Ne fais **jamais** de refactoring non demandé
 - En cas de doute sur le scope : **demande avant d'agir**
+- Ne fais **jamais** `git commit` ni `git push` sans une instruction explicite et distincte de ma part. Un « go », « OK », « valide » sur le code ne vaut **pas** autorisation git. Termine la modif, lance les tests/build pour vérifier, puis **arrête-toi** et demande : « Je commit ? » ou « Je commit et push ? ». Les deux opérations sont distinctes et chacune nécessite sa propre autorisation. Cette règle s'applique aux deux repos (`store/` backend et `store-frontend/` frontend) et à toutes les branches.
 
 ---
 

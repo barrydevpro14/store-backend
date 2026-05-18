@@ -7,7 +7,92 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-18 (annulation d'achat — workflow critique symétrique à l'annulation de vente)
+**Date :** 2026-05-18 (session marathon : 2 features backend + tentative Redis avortée + démarrage frontend Phase 0-1 + outillage tests)
+
+**Sujet :** Session multi-thèmes étalée sur la journée. Côté backend : livraison **annulation d'achat** (workflow critique, symétrique annulation vente) puis **réception partielle achat** (refactor structurel DRAFT → VALIDEE → PARTIELLEMENT_RECEPTIONNEE → RECEPTIONNEE en exploitant le statut VALIDEE inutilisé). Tentative d'**intégration Redis cache** (5 commits) **revertée intégralement** suite à un blocage structurel Spring Boot 4 sur la désérialisation `Page<T>`. Fix indépendant `AuditorAwareImpl` (bug ClassCastException sur permitAll, découvert pendant test live Redis). Côté frontend : fix critique du `package.json` (`"root": "github:tanstack/react-query"` cassé qui installait tout le mono-repo TanStack), **Phase 1.1 livrée** (fondations `common/infrastructure/` : api-client + QueryProvider + auth-token + env + types), et **Phase 1.2 prête** (9 composants `shared/` à responsabilité unique + 7 shadcn UI + outillage Vitest complet avec 76 tests, 97% coverage — **en attente d'autorisation pour commit/push**). 9 commits backend pushés sur dev, 2 commits frontend pushés sur dev, +1 commit P1.2 frontend non committé.
+
+**Décisions notables :**
+
+### Décisions backend
+- **Réception partielle** : `validate` ne crée plus le stock — déplacé vers nouvel endpoint `POST /achats/{id}/receptions` qui peut être appelé N fois jusqu'à RECEPTIONNEE complète. `validate` se contente désormais de créer la facture + bascule `VALIDEE`. `cancel` élargi à VALIDEE et PARTIELLEMENT_RECEPTIONNEE (avant : RECEPTIONNEE uniquement).
+- **Redis abandonné en Spring Boot 4** : la désérialisation `Page<X>` casse systématiquement (`PageImpl` n'a pas de constructeur Jackson). Workarounds testés : `As.PROPERTY`, wrapper `RestPage<T>`, `@JsonIgnoreProperties`, `@JsonIgnore` sur `getPageable()/getSort()` — tous insuffisants. Décision : retrait complet. Si besoin Redis revient, options : (a) cacher uniquement des records simples (catalogue public marchait avec `As.PROPERTY`), (b) utiliser `PagedModel<T>` au retour des services à cacher, (c) attendre support natif Spring Data.
+- **Fix `AuditorAwareImpl`** (bug pré-existant) : cast aveugle `(UserPrincipal) authentication.getPrincipal()` plantait sur endpoints permitAll où Spring Security pose `"anonymousUser"` (String). Fix avec `instanceof UserPrincipal userPrincipal`. Conservé hors-scope du revert Redis.
+
+### Décisions frontend
+- **`package.json` corrigé** : `"root": "github:tanstack/react-query"` (qui installait tout le mono-repo TanStack sous `node_modules/root/`) remplacé par `@tanstack/react-query` + `@tanstack/react-table` + `sonner`. `shadcn` déplacé en `devDependencies`.
+- **Stockage JWT** : `localStorage` (vs cookie httpOnly) — simple, suffisant pour démarrer. À reconsidérer si exigence sécurité accrue.
+- **Toast lib** : `sonner` (déjà installé).
+- **Variable API URL** : `NEXT_PUBLIC_API_URL=http://localhost:8080` dans `.env.local` (+ `.env.example` versionné via exception `.gitignore`).
+- **Arborescence shadcn** : `src/common/presentation/ui/` (aligné DDD du backend) au lieu du défaut shadcn `src/components/ui/`. Bouton existant déplacé.
+- **Architecture DDD frontend** : 4 couches `domain/application/infrastructure/presentation/` par feature, miroir backend (cf. `FRONTEND_ARCHITECTURE.md`). `common/` joue le rôle de `org.store.common` côté backend.
+- **`auth-token` browser-only** : checks SSR `typeof window === 'undefined'` supprimés (impossibles à atteindre en jsdom). Documenté en commentaire : ne doit jamais être appelé depuis Server Component ni Route Handler.
+- **Tests obligatoires, seuil 80%** : règle 39 ajoutée à `CONVENTION_CODAGE_FRONTEND.md`. Toute fonction métier + composant UI métier doit avoir un test. Exclusions documentées : `src/app/**`, `src/common/presentation/ui/**` (shadcn), `*.d.ts`, `src/common/domain/types.ts`.
+- **Tests dans `src/test/`, miroir source** : règle 40 ajoutée. Aligné convention Maven backend `src/main` ↔ `src/test`. Pas de co-localisation `Foo.tsx + Foo.test.tsx`.
+- **Composants `shared/` à responsabilité unique** : tri / pagination / loading / empty / error sont 5 composants distincts au lieu d'un `DataTable` monolithique. Le caller compose selon les besoins.
+
+### Règles de comportement durcies
+- **`.claude/CLAUDE.md` § Limites strictes** : ajout de la règle « jamais commit/push sans instruction explicite distincte ». Un « go » sur le code ne vaut pas autorisation git.
+- **Branche `dev` uniquement** : backend et frontend. `main` intouché (sauf push initial frontend lors du setup du remote, isolé).
+- **Énoncer toujours la tâche en détail avant d'agir** : format `📋 PROCHAINE ACTION` avec tâche, ce que je vais faire, fichiers impactés.
+
+**Ce qui a été fait (chronologie commits) :**
+
+### Backend (`store/`, branche `dev`)
+
+1. **`9a3e89c`** — Annulation d'achat squelette (migration V24 + enums + entités + i18n)
+2. **`d93dc01`** — Annulation d'achat endpoint `POST /achats/{id}/annuler` + 3 validations publiques (`ensureCancellable`, `ensureWithinCancelWindow`, `ensureNoLotConsumed`)
+3. **`3e0f32d`** — 5 queries reporting adaptées pour exclure `entree.annulee=true`
+4. **`70367e4`** — Annulation d'achat tests (6 service + 3 controller) + doc (FONCTIONNALITIES section 49, MODULES_OVERVIEW endpoint + 17→18)
+5. **`8cb742a`** — Réception partielle squelette (migration V25 +`quantite_recue`, statut `PARTIELLEMENT_RECEPTIONNEE`)
+6. **`f9447e5`** — Réception partielle refactor `validate` (ne matérialise plus le stock) + nouvel endpoint `POST /achats/{id}/receptions`
+7. **`66ca5ef`** — Annulation élargie aux statuts VALIDEE + PARTIELLEMENT_RECEPTIONNEE (i18n `notReceptionnee` → `notCancellable`)
+8. **`c43bd43`** — Réception partielle tests (10 receive + 2 cancel additionnels + 3 controller) + doc (FONCTIONNALITIES section 50, MODULES_OVERVIEW 18→19)
+9. **`cb4af95`** — Intégration Redis infrastructure (Maven + config + docker-compose) [REVERTED]
+10. **`1ed8b56`** — Cache catalogue public + 15 `@CacheEvict` admin [REVERTED]
+11. **`ab27f25`** — Doc Redis [REVERTED]
+12. **`73f2b2e`** — Cache Redis L1 référentiels (4 services + KeyGenerator) [REVERTED]
+13. **`ec11648`** — Fix sérialisation Redis (`As.PROPERTY`) [REVERTED]
+14. **`6f0867b`** — Fix `AuditorAwareImpl` ClassCastException sur permitAll (bug pré-existant, **conservé** hors revert Redis)
+15. **`e535c61`** — Retrait complet intégration Redis (revert des 5 commits Redis en bloc)
+16. **`1b00089`** — TODO cleanup : retrait du doublon "CRUD Magasin complet" (déjà livré le 2026-05-12)
+
+### Frontend (`store-frontend/`, branche `dev`)
+
+1. **`0c38e5e`** sur main puis poussé en dev — Installation package (init shadcn `button.tsx` + `components.json` + `globals.css`), `.gitignore` nettoyé (retrait doublon `/.idea` `.idea`, ajout section `# IDE`), `.idea/` retiré du tracking
+2. **`b774884`** — `feat(common): fondations infrastructure` (P1.1) : api-client + auth-token + env + api-errors + query-client + PageResponse + QueryProvider + intégration root layout (FR + Toaster sonner)
+
+**Frontend NON commité (P1.2 prêt en attente)** :
+- 7 composants shadcn (`input`, `label`, `table`, `dialog`, `dropdown-menu`, `select`, `badge`) + `button` déplacé dans `src/common/presentation/ui/`
+- 9 composants partagés (`LoadingState`, `EmptyState`, `ErrorBanner`, `PageHeader`, `ConfirmDialog`, `Pagination`, `SortableHeader`, `DataTable`, `FormField`) à responsabilité unique dans `src/common/presentation/shared/`
+- Outillage Vitest complet : `vitest.config.ts` (seuil 80%), `src/test/setup.ts`, 8 devDeps, 3 scripts npm
+- 15 fichiers de tests dans `src/test/` (76 tests, coverage 97% statements / 98% branches / 94% functions / 96% lines)
+- `auth-token.ts` modifié (checks SSR supprimés, browser-only documenté)
+- `components.json` réorienté vers `@/common/presentation/*`
+- `CONVENTION_CODAGE_FRONTEND.md` : section Tests → obligatoire, règles 39 (tests obligatoires) + 40 (emplacement `src/test/`)
+- `.claude/CLAUDE.md` : règle commit/push autorisation explicite
+
+**Migrations BDD ajoutées (backend) :** V24 (annulation achat) + V25 (`ligne_commande_achat +quantite_recue`).
+
+**Permissions modifiées (backend) :** `PURCHASE_CANCEL` créée (catalogue + ADMIN + PROPRIETAIRE + MANAGER, hors VENDEUR).
+
+**Tests backend :** **765 / 765 verts** (+15 vs début de session).
+**Tests frontend :** **76 / 76 verts** (nouveaux, outillage Vitest mis en place).
+
+**Memories ajoutées :**
+- `feedback_pas_de_cloture_session.md` — Ne pas écrire dans SESSIONS.md sans autorisation
+- `feedback_branche_dev_uniquement.md` — Travail sur `dev`, jamais `main` sans demande
+- `feedback_commit_push_autorisation_explicite.md` — Pas de commit/push sans instruction explicite distincte
+
+**Prochaine étape recommandée :**
+
+1. **Décider du sort du P1.2 frontend** : commit + push (ce qui a été préparé : 1 commit unique ou scinder en 3 — composants shared + outillage tests + conventions update). Tout est build/lint/tests vert.
+2. **P1.3 frontend** : feature `security` complète (4 couches) avec `LoginForm` + `RegisterForm` + `PermissionGuard` + `auth-store` Zustand + `useLogin/useLogout/useRefresh` hooks TanStack. C'est la première feature qui consomme l'`api-client` et permet de tester l'auth end-to-end avec le backend localhost:8080.
+3. **P1.4 frontend** : routing `app/(auth)/{login,register}/page.tsx` + `app/(dashboard)/layout.tsx` avec garde JWT + `Sidebar/Header/UserMenu` dans `common/presentation/layout/`.
+4. **Backend `Statistiques par magasin`** ou **`Reporting / dashboard`** (TODO priorité normale) si on veut alterner front/back.
+
+---
+
+## Session du 2026-05-18 (annulation d'achat — workflow critique symétrique à l'annulation de vente)
 **Sujet :** Endpoint `POST /api/v1/achats/{id}/annuler` (permission `PURCHASE_CANCEL` créée, attribuée à ADMIN/PROPRIETAIRE/MANAGER, volontairement absente de VENDEUR). Retrait du stock alimenté par cet achat (décrément `Stock.quantite`, flag `EntreeStock.annulee=true`, 1 `MouvementStock(RETOUR_FOURNISSEUR)` par lot avec ref commande). Bascule `CommandeAchat.statut=ANNULEE` + motif typé enum `MotifAnnulationAchat{ERREUR_SAISIE, REFUS_FOURNISSEUR, ARTICLE_DEFECTUEUX, AUTRE}` + commentaire libre, et `FactureAchat.statut=ANNULEE`. Fenêtre temporelle configurable via `PurchaseProperties.cancelWindowHours` (défaut 24h, env `PURCHASE_CANCEL_WINDOW_HOURS`, règle 38). 5 queries reporting adaptées pour exclure les lots annulés. **739 → 750 tests verts** (+11). 4 commits atomiques (squelette / endpoint / reporting / tests + doc).
 
 **Différence clé vs annulation de vente : garde métier `ensureNoLotConsumed`.** Une vente peut toujours être annulée (les sorties FIFO sont toujours réversibles individuellement, on remet juste le lot d'origine). Un achat **ne peut pas** être annulé si une vente a déjà consommé un de ses lots — l'annulation symétrique stock + facture n'est plus possible. Tout-ou-rien : on refuse au premier lot consommé. Pour ce cas il faudra plus tard un autre flow (retour fournisseur partiel, hors-scope).

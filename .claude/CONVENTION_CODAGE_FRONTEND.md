@@ -102,8 +102,12 @@
 
 ## Tests
 
-- **Vitest + Testing Library** (à mettre en place — nice-to-have actuellement).
-- Tests par composant métier (forms, layouts complexes), pas par composant UI shadcn.
+**Obligatoire** : toute fonction métier (`domain/`, `application/`, `infrastructure/`) et tout composant UI métier (`presentation/`) **doit** avoir au moins un test. Cf. règles 39 et 40.
+
+- **Vitest + Testing Library** (configuré, scripts `npm run test`, `test:watch`, `test:coverage`).
+- **Seuil de couverture** : 80% sur statements / branches / functions / lines. Le runner échoue en dessous.
+- **Pas de tests sur les composants shadcn copiés** (`src/common/presentation/ui/`) — exclus de la coverage.
+- **Pas de tests sur le routing Next.js** (`src/app/**`) — exclu de la coverage.
 - E2E sur les flux critiques (login, inscription, vente, achat) via Playwright (futur).
 
 ---
@@ -228,6 +232,63 @@ useEffect(() => {
 return ( ... );
 ```
 Une ligne vide avant et après chaque bloc `useQuery`, `useMutation`, `useMemo`, `useCallback`, `useEffect`, ou transformation multi-ligne.
+
+### 39. Toute fonction métier et tout composant UI doit être testé
+
+**Règle obligatoire**. Aucune fonction de `domain/`, `application/`, `infrastructure/` ni aucun composant `presentation/` (sauf `ui/` shadcn) ne peut être livré sans au moins un test associé. Le runner Vitest impose un seuil global de **80%** (statements / branches / functions / lines) — toute baisse en dessous bloque le runner via `npm run test:coverage`.
+
+- **Fonctions métier** : test happy path + au moins un cas d'erreur ou de fallback.
+- **Composants UI métier** : test de rendu minimal + tests des interactions critiques (clics, soumission, ouverture/fermeture).
+- **Exclusions justifiées** (déjà configurées dans `vitest.config.ts`) : `src/app/**` (routing Next.js), `src/common/presentation/ui/**` (shadcn copiés), `src/common/domain/types.ts` (types-only sans logique exécutable), fichiers `*.d.ts`.
+- **Branches de défense impossibles à tester en jsdom** (ex. early return SSR dans un fichier browser-only) : préférer **supprimer la branche** et documenter le contrat (« browser-only ») plutôt qu'utiliser `/* v8 ignore next */`. L'ignore reste toléré ponctuellement mais doit être justifié en commentaire.
+
+### 40. Tests dans `src/test/`, en miroir de l'arborescence source
+
+Les tests vivent dans **`src/test/`** (aligné convention Maven backend `src/main` ↔ `src/test`), avec une arborescence **miroir exact** de `src/` :
+
+| Source | Test |
+|---|---|
+| `src/common/infrastructure/api-client.ts` | `src/test/common/infrastructure/api-client.test.ts` |
+| `src/common/presentation/shared/DataTable.tsx` | `src/test/common/presentation/shared/DataTable.test.tsx` |
+| `src/features/security/domain/rules.ts` | `src/test/features/security/domain/rules.test.ts` |
+
+**Pas de co-localisation** (`Foo.tsx` + `Foo.test.tsx` côte à côte est **interdit**). Configuration : `vitest.config.ts` inclut `src/test/**/*.test.{ts,tsx}` et exclut les exclusions ci-dessus de la coverage. Setup global : `src/test/setup.ts`.
+
+### 38. Ligne vide entre méthodes/propriétés d'un même objet ou classe
+
+Toujours séparer les méthodes (et propriétés multi-lignes) d'un même objet ou classe par une ligne vide. Améliore la lisibilité et délimite visuellement chaque responsabilité.
+
+```ts
+// Mal :
+export const authToken = {
+  getAccess() {
+    return localStorage.getItem('token')
+  },
+  setAccess(token) {
+    localStorage.setItem('token', token)
+  },
+  clear() {
+    localStorage.removeItem('token')
+  },
+}
+
+// Bien :
+export const authToken = {
+  getAccess() {
+    return localStorage.getItem('token')
+  },
+
+  setAccess(token) {
+    localStorage.setItem('token', token)
+  },
+
+  clear() {
+    localStorage.removeItem('token')
+  },
+}
+```
+
+S'applique aux **objets littéraux**, **classes**, **interfaces** et **types** dès qu'ils contiennent au moins 2 méthodes ou propriétés multi-lignes. Les propriétés mono-lignes (constantes, types simples) restent groupées sans ligne vide entre elles.
 
 ---
 
