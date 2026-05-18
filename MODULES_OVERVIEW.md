@@ -264,14 +264,17 @@
 
 **Use cases livrés :**
 - CRUD client (scoping magasin/entreprise, recherche nom/prénom)
-- Vente atomique (CommandeVente + lignes par PF + sorties stock FIFO + FactureClient + paiement initial éventuel — 1 transaction)
+- Création d'une vente en DRAFT (lignes par PF + validation prix plancher, pas de stock ni facture)
+- Édition d'une ligne d'une vente DRAFT (quantité, prixUnitaire)
+- Suppression d'une ligne d'une vente DRAFT (refus si dernière ligne)
+- Validation d'une vente DRAFT (consomme stock FIFO + crée FactureClient + paiement initial éventuel + bascule DELIVERED)
 - Validation `prixUnitaire ≥ pf.prixVente` (plancher PF)
 - Vendeur EMPLOYE obligatoire (PROPRIETAIRE → 403), client nullable (vente anonyme)
 - Listing commandes vente paginé filtré (magasinId, clientId, vendeurId, statut, montant, référence, dates)
 - Listing factures client + paiements par facture
 - Paiement échelonné sur facture client (recalcul statut)
-- Résumé caisse journalier (nombre commandes/produits, totaux commandes/paiements)
-- Top N produits les plus vendus par jour (tri par quantité vendue)
+- Résumé caisse journalier (nombre commandes/produits, totaux commandes/paiements — exclut DRAFT et ANNULEE)
+- Top N produits les plus vendus par jour (tri par quantité vendue, exclut DRAFT et ANNULEE)
 - Annulation de vente avec ré-injection stock FIFO (compensation `MouvementStock(RETOUR_CLIENT)`, fenêtre temporelle configurable)
 
 | Méthode | Path | Permission | Acteur |
@@ -285,6 +288,9 @@
 | **Ventes** | | | |
 | POST | `/api/v1/ventes` | `SALE_CREATE` | VENDEUR/MANAGER |
 | GET | `/api/v1/ventes/{commandeId}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
+| PUT | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_UPDATE` | VENDEUR/MANAGER |
+| DELETE | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_DELETE` | VENDEUR/MANAGER |
+| POST | `/api/v1/ventes/{commandeId}/validate` | `SALE_APPROVE` | VENDEUR/MANAGER |
 | POST | `/api/v1/ventes/{commandeId}/annuler` | `SALE_CANCEL` | ADMIN/PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-vente?magasinId=&clientId=&vendeurId=&statut=&reference=&montantMin=&montantMax=&startDate=&endDate=&page=&size=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/commandes-vente/{id}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
@@ -296,7 +302,7 @@
 | GET | `/api/v1/ventes/caisse/resume?magasinId=&date=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/ventes/caisse/top-produits?magasinId=&date=&nombre=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 
-**Total endpoints** : 16
+**Total endpoints** : 19
 
 ---
 

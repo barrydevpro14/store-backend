@@ -97,6 +97,7 @@ permissions:
   - SALE_DELETE
   - SALE_READ
   - SALE_PAY
+  - SALE_APPROVE
   - SALE_CANCEL
 
   # EXPENSE
@@ -239,6 +240,7 @@ roles:
       - SALE_DELETE
       - SALE_READ
       - SALE_PAY
+      - SALE_APPROVE
       - SALE_CANCEL
       - EXPENSE_CREATE
       - EXPENSE_UPDATE
@@ -354,6 +356,7 @@ roles:
       - SALE_DELETE
       - SALE_READ
       - SALE_PAY
+      - SALE_APPROVE
       - SALE_CANCEL
       - EXPENSE_CREATE
       - EXPENSE_UPDATE
@@ -448,6 +451,7 @@ roles:
       - SALE_DELETE
       - SALE_READ
       - SALE_PAY
+      - SALE_APPROVE
       - SALE_CANCEL
       - EXPENSE_CREATE
       - EXPENSE_UPDATE
@@ -488,5 +492,6 @@ roles:
       - SALE_DELETE
       - SALE_READ
       - SALE_PAY
+      - SALE_APPROVE
       - PAYMENT_CREATE
       - PAYMENT_READ

@@ -705,6 +705,8 @@ Constructeur compact qui normalise en minuscules + rend immutable. Modification 
 
 ## 32. Vente atomique (vente, fonctionnalité 3) — `VenteServiceImpl`
 
+> ⚠️ **Refactor 2026-05-18 — Workflow 2 étapes DRAFT → VALIDATE** : la création atomique a été éclatée en 2 étapes pour permettre la visualisation + l'édition d'une vente avant encaissement. **Voir section 48 pour le nouveau workflow** (cette section décrit l'état historique pré-refactor).
+
 **Endpoint principal** : `POST /api/v1/ventes` (permission `SALE_CREATE`).
 **Endpoint détails** : `GET /api/v1/ventes/{commandeId}` (permission `SALE_READ`).
 
@@ -1132,6 +1134,94 @@ Limit via `Pageable` (= `PageRequest.of(0, nombre)`). Le repo retourne `List<Top
 **i18n** : 3 clés FR/EN — `commandeVente.cancel.alreadyCancelled`, `commandeVente.cancel.windowExpired` ({0}=max hours), `commandeVente.cancel.notDelivered` ({0}=statut courant).
 
 **Tests** : 5 service (nominal recrédit + journalize RETOUR_CLIENT + statut ANNULEE / déjà annulée 400 / pas DELIVERED 400 / fenêtre dépassée 400 / cross-entreprise 403) + 3 controller (200 OK / 400 motif invalide / 400 motif blank). **711 / 711 verts** (+8 vs 703).
+
+---
+
+## 48. Refactor vente — Workflow 2 étapes : DRAFT → VALIDATE — `VenteServiceImpl`
+
+**Refactor 2026-05-18** : symétrie avec le refactor achat (section 28). La création atomique a été éclatée pour permettre **visualisation et édition** d'une vente avant encaissement (correction d'erreur de saisie, ajustement de quantité ou prix par le vendeur, choix d'une autre variante PF).
+
+### 48.a Création DRAFT — `POST /api/v1/ventes`
+
+**Permission** : `SALE_CREATE` (VENDEUR/MANAGER/PROPRIETAIRE/ADMIN).
+
+**Entrée** : `VenteRequest{ clientId?, lignes[] }` — **plus de `dateEcheance` ni `premierPaiement`** (saisis à la validation).
+
+**Flux** :
+1. Validations : vendeur EMPLOYE obligatoire (`employeService.findCurrentUser` throw 403 sinon), client résolu si fourni (scoping double), pour chaque ligne : PF scopé entreprise + `prixUnitaire ≥ pf.prixVente` (plancher).
+2. Crée `CommandeVente` en statut `DRAFT` (référence auto `VTE-yyyyMMdd-HHmmssSSS`, `dateVente = today`).
+3. Persiste chaque `LigneCommandeVente` (snapshot prixUnitaire + montantTotal calculé).
+4. **Pas de consommation stock, pas de facture, pas de paiement.**
+
+**Sortie** : `VenteDraftResponse{ commande }` — HTTP 201.
+
+### 48.b Édition / suppression de ligne — `PUT/DELETE /api/v1/ventes/orders/{commandeId}/lignes/{ligneId}`
+
+**Permissions** : `SALE_UPDATE` (PUT) / `SALE_DELETE` (DELETE).
+
+**Garde** : `ensureCommandeIsDraft` + `ensureLigneBelongsToCommande` (anti URL forgée) + `ensureNotLastLigne` (DELETE refusé sur la dernière ligne).
+
+**PUT body** : `LigneVenteUpdateRequest{ quantite, prixUnitaire }`. Re-validation `prixUnitaire ≥ pf.prixVente` (le PF de la ligne reste immuable — pour changer de variante : supprimer + recréer). Retourne le `LigneCommandeVenteResponse` mis à jour.
+
+**DELETE** : 204. Refus si dernière ligne (`commandeVente.cannotDeleteLastLigne`).
+
+### 48.c Validation — `POST /api/v1/ventes/{commandeId}/validate`
+
+**Permission** : `SALE_APPROVE` (nouvelle, créée 2026-05-18 ; attribuée VENDEUR+MANAGER+PROPRIETAIRE+ADMIN).
+
+**Entrée** : `VenteValidateRequest{ dateEcheance (@FutureOrPresent), premierPaiement? }`.
+
+**Flux atomique (transaction unique)** :
+1. Validations : `ensureBelongsToCurrentEntreprise` + `ensureCommandeIsDraft`.
+2. Pour chaque ligne : `sortieStockService.consumeForVente(...)` — consomme les lots FIFO du PF, crée 1 SortieStock par lot consommé (lié à la ligne via FK), décrémente Stock agrégé, journalise `MouvementStock(SORTIE_VENTE)`. Si stock insuffisant → `BadArgumentException("stock.exit.insufficientQuantity")` (le user doit ajuster la ligne ou attendre approvisionnement).
+3. Recalcule `montantTotal = SUM(lignes.montantTotal)` depuis les lignes courantes (peuvent avoir été éditées).
+4. Crée `FactureClient` (numéro auto `FAC-VTE-yyyyMMdd-HHmmssSSS`, statut NON_PAYEE, `dateEcheance` saisie).
+5. Si `premierPaiement` présent : crée `PaiementVente` + `factureClientDomainService.applyPaiement` (recalcule statut PAYEE/PARTIELLEMENT_PAYEE).
+6. Bascule `commande.statut → DELIVERED` via `commandeVenteDomainService.validate` (règle 26).
+
+**Sortie** : `VenteResponse{ commande (DELIVERED), facture }` — HTTP 200.
+
+### 48.d Détail — `GET /api/v1/ventes/{commandeId}`
+
+Adapté pour gérer DRAFT : `facture` peut être null si la commande n'a pas encore été validée. Les paiements sont chargés uniquement si la facture existe.
+
+### Queries Caisse adaptées : `= DELIVERED` (au lieu de `<> ANNULEE`)
+
+6 queries de reporting ne comptent désormais que les ventes effectivement DELIVERED — exclut DRAFT (brouillons non finalisés) et ANNULEE (déjà exclu auparavant). Sémantique tiroir-caisse stricte.
+
+Repos concernés : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLignes / ventilationParVendeur`, `FactureClientRepository.sumMontantTotalByMagasinAndDay`, `PaiementVenteRepository.sumMontantByMagasinAndDay / ventilationParMoyen`, `LigneCommandeVenteRepository.findTopProduitsByMagasinAndDay`.
+
+### Compatibilité avec l'annulation (section 47)
+
+`cancel` (livré matinée 2026-05-18) continue à n'accepter que `DELIVERED` (statut → ANNULEE + ré-injection FIFO). Un DRAFT n'est pas "annulable" formellement — pour abandonner un brouillon, supprimer les lignes une à une (laisser la dernière) ou laisser le DRAFT mourir sans cleanup automatique.
+
+### Migration BDD
+
+**Aucune** — pas de nouveau champ à persister (la traçabilité lot ne s'applique pas à la vente, seulement à l'achat où elle a nécessité la V23).
+
+### Permissions
+
+- `SALE_APPROVE` créée (cohérence avec `PURCHASE_APPROVE`). Attribuée aux 4 rôles (VENDEUR inclus) : le vendeur qui crée la vente la valide lui-même au moment de l'encaissement.
+- Aucune autre modification (toutes `SALE_*` déjà en place).
+
+### Validations publiques (règle 27)
+
+- `ensureCommandeIsDraft(commande)` (throw si statut ≠ DRAFT).
+- `ensureLigneBelongsToCommande(ligne, commande)` (anti URL forgée).
+- `ensureNotLastLigne(commande)` (delete refusé si 1 seule ligne).
+- `ensurePrixUnitaireAboveFloor(prix, pf)` (factorisée — partagée entre `create` et `updateLigne`).
+
+### i18n
+
+4 nouvelles clés FR/EN : `commandeVente.notDraft` ({0}=statut), `commandeVente.cannotDeleteLastLigne`, `ligneCommandeVente.notFound`, `ligneCommandeVente.notMatchingCommande`.
+
+### Cleanup
+
+`VenteContext` record supprimé (n'était plus utilisé après refactor des méthodes internes vers `consumeStockForLigne` qui ne porte plus l'ancien batch state).
+
+### Tests
+
+`VenteServiceImplTest` réécrit (23 tests) : 4 create DRAFT (nominal sans stock/facture, dateVente=today, vendeur EMPLOYE obligatoire, prix plancher) + 5 validate (matérialisation, premier paiement, datePaiement, not draft, not owned) + 3 updateLigne (OK, prix below floor, not draft) + 3 deleteLigne (OK, last ligne 400, not draft) + 3 findDetails (DELIVERED, DRAFT facture null, not owned) + 5 cancel (préservés). `VenteControllerTest` (11 tests) : 201 DRAFT, 400 lignes vides, 200 validate, 400 validate dateEcheance manquante, 200 get details, 200 PUT, 400 PUT quantite 0, 204 DELETE, 200 cancel, 400 cancel motif invalide, 400 cancel motif blank. **739 / 739 verts** (+14 vs 725).
 
 ---
 

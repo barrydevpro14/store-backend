@@ -74,4 +74,10 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         commande.setDateAnnulation(LocalDateTime.now());
         return save(commande);
     }
+
+    /** Bascule la commande en statut DELIVERED lors de la validation (matérialisation stock + facture). */
+    public CommandeVente validate(CommandeVente commande) {
+        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        return save(commande);
+    }
 }

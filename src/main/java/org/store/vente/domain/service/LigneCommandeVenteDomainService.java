@@ -40,4 +40,12 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         return repository.findTopProduitsByMagasinAndDay(filter.magasinId(), entrepriseId,
                 filter.startOfDay(), filter.endOfDay(), filter.toPageable());
     }
+
+    /** Met à jour quantité et prix unitaire d'une ligne en DRAFT (recalcule montantTotal). */
+    public LigneCommandeVente update(LigneCommandeVente ligne, int quantite, BigDecimal prixUnitaire) {
+        ligne.setQuantite(quantite);
+        ligne.setPrixUnitaire(prixUnitaire);
+        ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
+        return save(ligne);
+    }
 }

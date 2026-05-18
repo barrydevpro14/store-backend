@@ -12,15 +12,21 @@ import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.dto.UserSummaryResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.achat.application.dto.FournisseurSummaryResponse;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
+import org.store.produit.application.dto.ProductSummaryResponse;
 import org.store.vente.application.dto.AnnulationVenteRequest;
 import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.dto.FactureClientResponse;
+import org.store.vente.application.dto.LigneCommandeVenteResponse;
 import org.store.vente.application.dto.LigneVenteRequest;
+import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
+import org.store.vente.application.dto.VenteDraftResponse;
 import org.store.vente.application.dto.VenteRequest;
 import org.store.vente.application.dto.VenteResponse;
+import org.store.vente.application.dto.VenteValidateRequest;
 import org.store.vente.application.service.IVenteService;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 import org.store.vente.domain.enums.MotifAnnulationVente;
@@ -33,9 +39,12 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,6 +56,8 @@ class VenteControllerTest {
 
     private UUID magasinId;
     private UUID productFournisseurId;
+    private UUID commandeId;
+    private UUID ligneId;
 
     @BeforeEach
     void setUp() {
@@ -63,53 +74,68 @@ class VenteControllerTest {
 
         magasinId = UUID.randomUUID();
         productFournisseurId = UUID.randomUUID();
+        commandeId = UUID.randomUUID();
+        ligneId = UUID.randomUUID();
     }
 
-    private VenteRequest validBody() {
+    private VenteRequest validDraftBody() {
         return new VenteRequest(
                 null,
-                LocalDate.now().plusDays(30),
-                List.of(new LigneVenteRequest(productFournisseurId, 10, new BigDecimal("15.00"))),
-                null
+                List.of(new LigneVenteRequest(productFournisseurId, 10, new BigDecimal("15.00")))
         );
     }
 
-    private VenteResponse sample() {
-        UUID commandeId = UUID.randomUUID();
-        CommandeVenteResponse cmd = new CommandeVenteResponse(
+    private VenteValidateRequest validValidateBody() {
+        return new VenteValidateRequest(LocalDate.now().plusDays(30), null);
+    }
+
+    private CommandeVenteResponse draftCommandeResponse() {
+        return new CommandeVenteResponse(
+                commandeId, "VTE-AUTO", CommandeVenteStatut.DRAFT,
+                null,
+                new MagasinSummaryResponse(magasinId, "Magasin Central"),
+                null,
+                LocalDate.of(2026, 5, 18),
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                "2026-05-18 10:00:00"
+        );
+    }
+
+    private CommandeVenteResponse deliveredCommandeResponse() {
+        return new CommandeVenteResponse(
                 commandeId, "VTE-AUTO", CommandeVenteStatut.DELIVERED,
                 null,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
-                LocalDate.of(2026, 5, 16),
-                new BigDecimal("150.00"),
-                BigDecimal.ZERO,
-                "2026-05-16 10:00:00"
+                LocalDate.of(2026, 5, 18),
+                new BigDecimal("150.00"), BigDecimal.ZERO,
+                "2026-05-18 10:00:00"
         );
-        FactureClientResponse fac = new FactureClientResponse(
+    }
+
+    private FactureClientResponse sampleFacture() {
+        return new FactureClientResponse(
                 UUID.randomUUID(), "FAC-VTE-AUTO", StatutFacture.NON_PAYEE,
                 new BigDecimal("150.00"), BigDecimal.ZERO, new BigDecimal("150.00"),
-                LocalDate.of(2026, 5, 16), null, commandeId
+                LocalDate.of(2026, 5, 18), null, commandeId
         );
-        return new VenteResponse(cmd, fac);
     }
 
     @Test
-    void should_return_201_when_sale_created() throws Exception {
-        when(venteService.create(any(VenteRequest.class))).thenReturn(sample());
+    void should_return_201_when_draft_created() throws Exception {
+        when(venteService.create(any(VenteRequest.class))).thenReturn(new VenteDraftResponse(draftCommandeResponse()));
 
         mockMvc.perform(post(VenteController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validBody())))
+                        .content(objectMapper.writeValueAsString(validDraftBody())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.commande.reference").value("VTE-AUTO"))
-                .andExpect(jsonPath("$.commande.user.nomComplet").value("Diop Awa"))
-                .andExpect(jsonPath("$.facture.numero").value("FAC-VTE-AUTO"));
+                .andExpect(jsonPath("$.commande.statut").value("DRAFT"));
     }
 
     @Test
     void should_return_400_when_lignes_empty() throws Exception {
-        VenteRequest body = new VenteRequest(null, LocalDate.of(2026, 5, 16), List.of(), null);
+        VenteRequest body = new VenteRequest(null, List.of());
 
         mockMvc.perform(post(VenteController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -118,38 +144,84 @@ class VenteControllerTest {
     }
 
     @Test
+    void should_return_200_when_validate_sale() throws Exception {
+        when(venteService.validate(eq(commandeId), any(VenteValidateRequest.class)))
+                .thenReturn(new VenteResponse(deliveredCommandeResponse(), sampleFacture()));
+
+        mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validValidateBody())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.commande.statut").value("DELIVERED"))
+                .andExpect(jsonPath("$.facture.numero").value("FAC-VTE-AUTO"));
+    }
+
+    @Test
+    void should_return_400_when_validate_dateEcheance_missing() throws Exception {
+        VenteValidateRequest body = new VenteValidateRequest(null, null);
+
+        mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void should_return_200_when_get_sale_details() throws Exception {
-        UUID commandeId = UUID.randomUUID();
-        CommandeVenteResponse cmd = new CommandeVenteResponse(
-                commandeId, "VTE-AUTO", CommandeVenteStatut.DELIVERED,
-                null,
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
-                LocalDate.of(2026, 5, 16),
-                new BigDecimal("150.00"),
-                BigDecimal.ZERO,
-                "2026-05-16 10:00:00"
+        VenteDetailsResponse details = new VenteDetailsResponse(
+                deliveredCommandeResponse(), sampleFacture(), List.of(), List.of()
         );
-        FactureClientResponse fac = new FactureClientResponse(
-                UUID.randomUUID(), "FAC-VTE-AUTO", StatutFacture.NON_PAYEE,
-                new BigDecimal("150.00"), BigDecimal.ZERO, new BigDecimal("150.00"),
-                LocalDate.of(2026, 5, 16), null, commandeId
-        );
-        VenteDetailsResponse details = new VenteDetailsResponse(cmd, fac, List.of(), List.of());
         when(venteService.findDetailsById(eq(commandeId))).thenReturn(details);
 
         mockMvc.perform(get(VenteController.BASE_PATH + "/" + commandeId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.commande.reference").value("VTE-AUTO"))
-                .andExpect(jsonPath("$.commande.user.nomComplet").value("Diop Awa"))
                 .andExpect(jsonPath("$.facture.numero").value("FAC-VTE-AUTO"))
-                .andExpect(jsonPath("$.lignes.length()").value(0))
-                .andExpect(jsonPath("$.paiements.length()").value(0));
+                .andExpect(jsonPath("$.lignes.length()").value(0));
+    }
+
+    @Test
+    void should_return_200_when_update_ligne() throws Exception {
+        LigneCommandeVenteResponse updated = new LigneCommandeVenteResponse(
+                ligneId,
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
+                new FournisseurSummaryResponse(UUID.randomUUID(), "F-1"),
+                null,
+                20, new BigDecimal("18.00"), new BigDecimal("360.00")
+        );
+        when(venteService.updateLigne(eq(commandeId), eq(ligneId), any(LigneVenteUpdateRequest.class)))
+                .thenReturn(updated);
+
+        LigneVenteUpdateRequest body = new LigneVenteUpdateRequest(20, new BigDecimal("18.00"));
+
+        mockMvc.perform(put(VenteController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantite").value(20))
+                .andExpect(jsonPath("$.prixUnitaire").value(18.00));
+    }
+
+    @Test
+    void should_return_400_when_update_ligne_quantite_zero() throws Exception {
+        LigneVenteUpdateRequest body = new LigneVenteUpdateRequest(0, new BigDecimal("18.00"));
+
+        mockMvc.perform(put(VenteController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_204_when_delete_ligne() throws Exception {
+        mockMvc.perform(delete(VenteController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId))
+                .andExpect(status().isNoContent());
+
+        verify(venteService).deleteLigne(commandeId, ligneId);
     }
 
     @Test
     void should_return_200_when_cancel_sale() throws Exception {
-        UUID commandeId = UUID.randomUUID();
         AnnulationVenteResponse cancelResponse = new AnnulationVenteResponse(
                 commandeId, "VTE-AUTO",
                 CommandeVenteStatut.ANNULEE,
@@ -175,7 +247,6 @@ class VenteControllerTest {
 
     @Test
     void should_return_400_when_cancel_motif_invalid() throws Exception {
-        UUID commandeId = UUID.randomUUID();
         AnnulationVenteRequest body = new AnnulationVenteRequest("MOTIF_INCONNU", null);
 
         mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/annuler")
@@ -186,7 +257,6 @@ class VenteControllerTest {
 
     @Test
     void should_return_400_when_cancel_motif_blank() throws Exception {
-        UUID commandeId = UUID.randomUUID();
         AnnulationVenteRequest body = new AnnulationVenteRequest("", null);
 
         mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/annuler")

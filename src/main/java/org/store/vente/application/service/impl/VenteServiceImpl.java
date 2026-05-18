@@ -7,7 +7,6 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
-import org.store.common.tools.NameHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -37,14 +36,16 @@ import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.LigneCommandeVenteCreate;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
 import org.store.vente.application.dto.LigneVenteRequest;
+import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.dto.ReinjectionStockResult;
-import org.store.vente.application.dto.VenteContext;
 import org.store.vente.application.dto.VenteDetailsResponse;
+import org.store.vente.application.dto.VenteDraftResponse;
 import org.store.vente.application.dto.VenteRequest;
 import org.store.vente.application.dto.VenteResponse;
+import org.store.vente.application.dto.VenteValidateRequest;
 import org.store.vente.application.service.IClientService;
 import org.store.vente.application.service.IVenteService;
 import org.store.vente.domain.enums.CommandeVenteStatut;
@@ -67,8 +68,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Orchestre la création atomique d'une vente : commande + lignes + sorties stock FIFO + facture + paiement initial.
- * Le vendeur (= user courant Employe) est tracé via `AuditableEntity.createdBy` (Forbidden si pas un Employe).
+ * Orchestre le cycle vente en 2 étapes :
+ * <ol>
+ *     <li>Création DRAFT (commande + lignes, validations prix + scoping PF) — visible et éditable avant encaissement.</li>
+ *     <li>Validation (consommation stock FIFO + facture + paiement initial éventuel + bascule DELIVERED).</li>
+ * </ol>
+ * Cancel : sur DELIVERED uniquement (workflow d'annulation = ré-injection stock + statut ANNULEE).
  */
 @Service
 @Transactional(readOnly = true)
@@ -125,10 +130,10 @@ public class VenteServiceImpl implements IVenteService {
         this.saleProperties = saleProperties;
     }
 
-    /** Valide, crée commande + lignes + sorties FIFO + facture, applique le paiement initial éventuel. */
+    /** Crée une commande de vente DRAFT + ses lignes (validations prix + scoping PF), sans toucher au stock. */
     @Override
     @Transactional
-    public VenteResponse create(VenteRequest venteRequest) {
+    public VenteDraftResponse create(VenteRequest venteRequest) {
         validatorService.validate(venteRequest);
 
         Employe user = employeService.findCurrentUser();
@@ -141,35 +146,90 @@ public class VenteServiceImpl implements IVenteService {
         CommandeVente commande = commandeVenteDomainService.create(new CommandeVenteCreate(
                 client, magasin, dateVente,
                 commandeVenteDomainService.generateReference(),
-                CommandeVenteStatut.DELIVERED
+                CommandeVenteStatut.DRAFT
         ));
 
-        VenteContext context = new VenteContext(venteRequest, commande, magasin, user, productFournisseurs);
-        BigDecimal montantTotal = createLignesAndProcessStock(context);
+        persistLignes(venteRequest, commande, productFournisseurs);
+
+        CommandeVente refreshed = commandeVenteDomainService.findById(commande.getId());
+        return new VenteDraftResponse(
+                new CommandeVenteResponse(refreshed, BigDecimal.ZERO, BigDecimal.ZERO)
+        );
+    }
+
+    /** Matérialise une commande DRAFT : consomme le stock FIFO par ligne, crée facture + paiement initial, bascule DELIVERED. */
+    @Override
+    @Transactional
+    public VenteResponse validate(UUID commandeId, VenteValidateRequest venteValidateRequest) {
+        validatorService.validate(venteValidateRequest);
+
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+
+        List<LigneCommandeVente> lignes = commande.getLignes();
+        Magasin magasin = commande.getMagasin();
+
+        lignes.forEach(ligne -> consumeStockForLigne(magasin, ligne));
+
+        BigDecimal montantTotal = lignes.stream()
+                .map(LigneCommandeVente::getMontantTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         FactureClient facture = factureClientDomainService.create(new FactureClientCreate(
                 commande, factureClientDomainService.generateNumero(),
-                dateVente, venteRequest.dateEcheance(), montantTotal
+                commande.getDate(), venteValidateRequest.dateEcheance(), montantTotal
         ));
 
-        FactureClient finalFacture = applyPremierPaiementIfPresent(venteRequest.premierPaiement(), facture);
+        FactureClient finalFacture = applyPremierPaiementIfPresent(venteValidateRequest.premierPaiement(), facture);
 
-        UserSummaryResponse userSummary = new UserSummaryResponse(user.getId(), NameHelper.formatNomComplet(user.getNom(), user.getPrenom()));
+        CommandeVente delivered = commandeVenteDomainService.validate(commande);
+
+        UserSummaryResponse userSummary = accountService.findUserSummaryByAccountId(delivered.getCreatedBy()).orElse(null);
+
         return new VenteResponse(
-                new CommandeVenteResponse(commande, userSummary, finalFacture),
+                new CommandeVenteResponse(delivered, userSummary, finalFacture),
                 new FactureClientResponse(finalFacture)
         );
     }
 
-    /** Retourne le détail d'une vente : commande + facture + lignes + paiements (user résolu via createdBy). */
+    /** Édite une ligne d'une commande DRAFT (quantité, prixUnitaire) après validations publiques. */
+    @Override
+    @Transactional
+    public LigneCommandeVenteResponse updateLigne(UUID commandeId, UUID ligneId, LigneVenteUpdateRequest ligneVenteUpdateRequest) {
+        validatorService.validate(ligneVenteUpdateRequest);
+
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+
+        LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
+        ensurePrixUnitaireAboveFloor(ligneVenteUpdateRequest.prixUnitaire(), ligne.getProductFournisseur());
+
+        LigneCommandeVente updated = ligneCommandeVenteDomainService.update(ligne, ligneVenteUpdateRequest.quantite(), ligneVenteUpdateRequest.prixUnitaire());
+
+        return new LigneCommandeVenteResponse(updated);
+    }
+
+    /** Supprime une ligne d'une commande DRAFT après validations (commande DRAFT + ligne in commande + pas la dernière). */
+    @Override
+    @Transactional
+    public void deleteLigne(UUID commandeId, UUID ligneId) {
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+
+        LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
+        ensureNotLastLigne(commande);
+
+        ligneCommandeVenteDomainService.delete(ligne);
+    }
+
+    /** Retourne le détail d'une vente : commande + facture (null si DRAFT) + lignes + paiements (user résolu via createdBy). */
     @Override
     public VenteDetailsResponse findDetailsById(UUID commandeId) {
         CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
 
-        FactureClient facture = factureClientDomainService.findByCommandeId(commande.getId())
-                .orElseThrow(() -> new EntityException("factureClient.notFoundForCommande", commande.getId()));
+        Optional<FactureClient> facture = factureClientDomainService.findByCommandeId(commande.getId());
 
-        List<PaiementVente> paiements = paiementVenteDomainService.findAllByFactureId(facture.getId());
+        List<PaiementVente> paiements = facture.map(f -> paiementVenteDomainService.findAllByFactureId(f.getId())).orElse(List.of());
         UserSummaryResponse user = accountService.findUserSummaryByAccountId(commande.getCreatedBy()).orElse(null);
 
         List<LigneCommandeVenteResponse> lignes = commande.getLignes().stream()
@@ -181,84 +241,11 @@ public class VenteServiceImpl implements IVenteService {
                 .toList();
 
         return new VenteDetailsResponse(
-                new CommandeVenteResponse(commande, user, facture),
-                new FactureClientResponse(facture),
+                new CommandeVenteResponse(commande, user, facture.orElse(null)),
+                facture.map(FactureClientResponse::new).orElse(null),
                 lignes,
                 paiementsResponse
         );
-    }
-
-    /** Lève `ForbiddenException` si la commande n'appartient pas à l'entreprise du caller (via magasin.entreprise). */
-    public CommandeVente ensureBelongsToCurrentEntreprise(CommandeVente commande) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!commande.getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("commandeVente.notOwned");
-        }
-        return commande;
-    }
-
-    /** Résout un Client par id (avec scoping double employé/propriétaire) ou retourne null si aucun id fourni (vente anonyme). */
-    public Client resolveClient(UUID clientId) {
-        if (clientId == null) {
-            return null;
-        }
-        return clientService.ensureAccessibleByCurrentUser(clientService.findById(clientId));
-    }
-
-    /** Résout chaque ProductFournisseur des lignes et valide prixUnitaire ≥ pf.prixVente. Throw BadArgument sinon. */
-    public List<ProductFournisseur> resolveAndValidateLignes(VenteRequest request) {
-        return request.lignes().stream()
-                .map(this::resolveAndValidateLine)
-                .toList();
-    }
-
-    /** Charge un ProductFournisseur scopé entreprise et valide que le prixUnitaire ne descend pas sous pf.prixVente. */
-    public ProductFournisseur resolveAndValidateLine(LigneVenteRequest ligne) {
-        ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
-                productFournisseurService.findById(ligne.productFournisseurId()));
-
-        if (ligne.prixUnitaire().compareTo(productFournisseur.getPrixVente()) < 0) {
-            throw new BadArgumentException("vente.prixUnitaire.belowFloor", productFournisseur.getPrixVente().toString());
-        }
-        return productFournisseur;
-    }
-
-    /** Persiste chaque ligne, déclenche la sortie stock FIFO du PF concerné et retourne le montant total cumulé. */
-    public BigDecimal createLignesAndProcessStock(VenteContext context) {
-        List<LigneVenteRequest> lignes = context.request().lignes();
-        Iterator<ProductFournisseur> productFournisseurIterator = context.productFournisseurs().iterator();
-
-        lignes.forEach(ligne -> processVenteLine(context, ligne, productFournisseurIterator.next()));
-
-        return lignes.stream()
-                .map(ligne -> ligne.prixUnitaire().multiply(BigDecimal.valueOf(ligne.quantite())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    /** Crée la ligne de vente puis consomme les lots FIFO du PF en liant chaque SortieStock à cette ligne. */
-    public void processVenteLine(VenteContext context, LigneVenteRequest ligneRequest, ProductFournisseur productFournisseur) {
-        LigneCommandeVente ligne = ligneCommandeVenteDomainService.create(new LigneCommandeVenteCreate(
-                context.commande(), productFournisseur, ligneRequest.quantite(), ligneRequest.prixUnitaire()
-        ));
-
-        sortieStockService.consumeForVente(new SortieStockForVente(
-                context.magasin(), productFournisseur,
-                ligneRequest.quantite(), ligneRequest.prixUnitaire(),
-                ligne
-        ));
-    }
-
-    /** Applique un éventuel premier paiement à la facture (création + mise à jour montantPaye/statut). Plus de propagation sur la commande : les montants vivent uniquement sur facture (F-V3-bis). */
-    public FactureClient applyPremierPaiementIfPresent(PaiementVenteRequest premierPaiement, FactureClient facture) {
-        if (premierPaiement == null) {
-            return facture;
-        }
-
-        LocalDate datePaiement = premierPaiement.datePaiement() != null ? premierPaiement.datePaiement() : LocalDate.now();
-        paiementVenteDomainService.create(new PaiementVenteCreate(
-                facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum(), datePaiement
-        ));
-        return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
     }
 
     /** Annule une vente DELIVERED dans la fenêtre autorisée, ré-injecte le stock et bascule commande + facture en ANNULEE. */
@@ -281,6 +268,100 @@ public class VenteServiceImpl implements IVenteService {
         facture.ifPresent(factureClientDomainService::cancel);
 
         return new AnnulationVenteResponse(cancelled, reinjection.totalQuantite(), reinjection.nombreMouvements());
+    }
+
+    /** Lève `ForbiddenException` si la commande n'appartient pas à l'entreprise du caller (via magasin.entreprise). */
+    public CommandeVente ensureBelongsToCurrentEntreprise(CommandeVente commande) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        if (!commande.getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
+            throw new ForbiddenException("commandeVente.notOwned");
+        }
+        return commande;
+    }
+
+    /** Lève BadArgument si la commande n'est pas en DRAFT (déjà validée ou annulée). */
+    public void ensureCommandeIsDraft(CommandeVente commande) {
+        if (commande.getStatut() != CommandeVenteStatut.DRAFT) {
+            throw new BadArgumentException("commandeVente.notDraft", commande.getStatut().name());
+        }
+    }
+
+    /** Lève BadArgument si la ligne n'appartient pas à la commande ciblée (anti URL forgée). */
+    public LigneCommandeVente ensureLigneBelongsToCommande(LigneCommandeVente ligne, CommandeVente commande) {
+        if (ligne.getCommande() == null || !ligne.getCommande().getId().equals(commande.getId())) {
+            throw new BadArgumentException("ligneCommandeVente.notMatchingCommande");
+        }
+        return ligne;
+    }
+
+    /** Lève BadArgument si la commande n'a qu'une seule ligne (suppression interdite, commande vide non autorisée). */
+    public void ensureNotLastLigne(CommandeVente commande) {
+        if (commande.getLignes() == null || commande.getLignes().size() <= 1) {
+            throw new BadArgumentException("commandeVente.cannotDeleteLastLigne");
+        }
+    }
+
+    /** Vérifie {@code prixUnitaire ≥ pf.prixVente} (plancher fournisseur). Lève BadArgument sinon. */
+    public void ensurePrixUnitaireAboveFloor(BigDecimal prixUnitaire, ProductFournisseur productFournisseur) {
+        if (prixUnitaire.compareTo(productFournisseur.getPrixVente()) < 0) {
+            throw new BadArgumentException("vente.prixUnitaire.belowFloor", productFournisseur.getPrixVente().toString());
+        }
+    }
+
+    /** Résout un Client par id (avec scoping double employé/propriétaire) ou retourne null si aucun id fourni (vente anonyme). */
+    public Client resolveClient(UUID clientId) {
+        if (clientId == null) {
+            return null;
+        }
+        return clientService.ensureAccessibleByCurrentUser(clientService.findById(clientId));
+    }
+
+    /** Résout chaque ProductFournisseur des lignes et valide prixUnitaire ≥ pf.prixVente. Throw BadArgument sinon. */
+    public List<ProductFournisseur> resolveAndValidateLignes(VenteRequest request) {
+        return request.lignes().stream()
+                .map(this::resolveAndValidateLine)
+                .toList();
+    }
+
+    /** Charge un ProductFournisseur scopé entreprise et valide que le prixUnitaire ne descend pas sous pf.prixVente. */
+    public ProductFournisseur resolveAndValidateLine(LigneVenteRequest ligne) {
+        ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
+                productFournisseurService.findById(ligne.productFournisseurId()));
+
+        ensurePrixUnitaireAboveFloor(ligne.prixUnitaire(), productFournisseur);
+        return productFournisseur;
+    }
+
+    /** Persiste chaque ligne de la commande DRAFT (snapshot prixUnitaire + montantTotal calculé). */
+    public void persistLignes(VenteRequest request, CommandeVente commande, List<ProductFournisseur> productFournisseurs) {
+        List<LigneVenteRequest> lignes = request.lignes();
+        Iterator<ProductFournisseur> productFournisseurIterator = productFournisseurs.iterator();
+
+        lignes.forEach(ligne -> ligneCommandeVenteDomainService.create(new LigneCommandeVenteCreate(
+                commande, productFournisseurIterator.next(), ligne.quantite(), ligne.prixUnitaire()
+        )));
+    }
+
+    /** Consomme les lots FIFO du PF d'une ligne validée (sorties stock + decrement Stock + journal SORTIE_VENTE). */
+    public void consumeStockForLigne(Magasin magasin, LigneCommandeVente ligne) {
+        sortieStockService.consumeForVente(new SortieStockForVente(
+                magasin, ligne.getProductFournisseur(),
+                ligne.getQuantite(), ligne.getPrixUnitaire(),
+                ligne
+        ));
+    }
+
+    /** Applique un éventuel premier paiement à la facture (création + mise à jour montantPaye/statut). */
+    public FactureClient applyPremierPaiementIfPresent(PaiementVenteRequest premierPaiement, FactureClient facture) {
+        if (premierPaiement == null) {
+            return facture;
+        }
+
+        LocalDate datePaiement = premierPaiement.datePaiement() != null ? premierPaiement.datePaiement() : LocalDate.now();
+        paiementVenteDomainService.create(new PaiementVenteCreate(
+                facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum(), datePaiement
+        ));
+        return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
     }
 
     /** Vérifie que la commande est dans un statut annulable (DELIVERED) — throw BadArgument sinon. */

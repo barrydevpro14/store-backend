@@ -7,7 +7,80 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-18 (refactor achat 2 étapes DRAFT → VALIDATE + édition/suppression ligne)
+**Date :** 2026-05-18 (refactor vente 2 étapes DRAFT → VALIDATE + édition/suppression ligne, miroir du refactor achat)
+**Sujet :** Refactor structurel du module vente, symétrique au refactor achat du matin. `POST /api/v1/ventes` crée désormais en `DRAFT` (lignes + validations PF/prix plancher, sans consommation stock ni facture). Nouveaux endpoints `PUT/DELETE /ventes/orders/{cmdId}/lignes/{ligneId}` et `POST /ventes/{cmdId}/validate` qui matérialise (consomme stock FIFO + facture + paiement initial + bascule DELIVERED). `VenteRequest` allégé (sans `dateEcheance` ni `premierPaiement` — déplacés dans `VenteValidateRequest`). Permission **`SALE_APPROVE`** créée (cohérence avec `PURCHASE_APPROVE`), attribuée à VENDEUR/MANAGER/PROPRIETAIRE/ADMIN. 6 queries Caisse passées de `<> ANNULEE` à `= DELIVERED` (exclut DRAFT + ANNULEE). **725 → 739 tests verts** (+14).
+
+**Décisions notables :**
+- **Pas de migration BDD** (la traçabilité lot ne s'applique pas à la vente — c'est la différence avec l'achat où la V23 a ajouté `numero_lot` + `date_expiration` à `ligne_commande_achat` pour persister la traçabilité entre DRAFT et VALIDATE).
+- **`SALE_APPROVE` attribuée aussi au VENDEUR** : le vendeur qui crée la vente la valide lui-même au moment de l'encaissement (pas de validation hiérarchique requise).
+- **Caisse queries passées à `= DELIVERED`** : sémantique tiroir-caisse stricte. Un brouillon non validé ne doit pas compter dans le CA du jour, et une vente annulée non plus (déjà exclue avant).
+- **Stock vérifié uniquement au validate** : la création DRAFT est rapide, pas de réservation de stock. Si stock insuffisant à la validation → erreur, le vendeur ajuste la quantité ou attend approvisionnement.
+- **PF immuable sur `updateLigne`** : pour changer de variante, supprimer + recréer (cohérent avec achat). Évite la complexité de re-valider le scoping + re-checker stock.
+- **`cancel` (livré matinée) reste sur DELIVERED uniquement** : un DRAFT n'a pas vocation à être "annulé" formellement (statut + motif + ré-injection). Pour abandonner un brouillon : supprimer les lignes une à une (sauf la dernière) ou laisser le DRAFT mourir.
+- **`VenteContext` record supprimé** (était orphelin après refactor — passait `request + commande + magasin + user + productFournisseurs` dans les méthodes internes ; remplacé par `consumeStockForLigne(Magasin, LigneCommandeVente)` qui lit `productFournisseur` depuis la ligne persistée).
+
+**Ce qui a été fait :**
+
+1. **Enum + Permission** : `CommandeVenteStatut +DRAFT` (en première position). YAML `roles-permissions.yml` : ajout `SALE_APPROVE` à la liste des permissions disponibles + attribution aux 4 rôles ayant accès à la vente.
+
+2. **DTOs**
+    - `VenteRequest` : retiré `dateEcheance` et `premierPaiement` (juste `clientId?`, `lignes[]`).
+    - `VenteDraftResponse(CommandeVenteResponse commande)` (HTTP 201 du POST /ventes).
+    - `VenteValidateRequest(@NotNull @FutureOrPresent dateEcheance, @Valid PaiementVenteRequest premierPaiement?)` (body du POST /validate).
+    - `LigneVenteUpdateRequest(@NotNull @Positive quantite, @NotNull @DecimalMin prixUnitaire)` (body PUT).
+
+3. **Domain services (règle 26)**
+    - `CommandeVenteDomainService.validate(commande)` : statut → DELIVERED + save.
+    - `LigneCommandeVenteDomainService.update(ligne, qty, prixUnitaire)` : setters + recalcul `montantTotal` + save.
+
+4. **App service `VenteServiceImpl` refactoré**
+    - `create(VenteRequest) → VenteDraftResponse` : crée DRAFT + lignes. **Plus** de `consumeForVente`, **plus** de facture, **plus** de paiement.
+    - `validate(commandeId, VenteValidateRequest) → VenteResponse` : nouvelle méthode. Consomme stock FIFO ligne par ligne via `consumeStockForLigne(magasin, ligne)`, recalcule `montantTotal` depuis lignes courantes, crée facture, applique paiement initial, bascule statut.
+    - `updateLigne(...) → LigneCommandeVenteResponse`.
+    - `deleteLigne(...)` 204.
+    - `findDetailsById` adapté : `factureClientDomainService.findByCommandeId` Optional, facture null possible si DRAFT.
+    - Validations publiques (règle 27) : `ensureCommandeIsDraft`, `ensureLigneBelongsToCommande`, `ensureNotLastLigne`, `ensurePrixUnitaireAboveFloor` (factorisée — partagée entre `create` et `updateLigne`).
+    - Méthodes obsolètes supprimées : `createLignesAndProcessStock`, `processVenteLine`. Remplacées par `persistLignes` (pour DRAFT create) + `consumeStockForLigne` (pour validate).
+    - `cancel` (livré matinée) préservé tel quel.
+
+5. **Endpoint `VenteController`** (BASE_PATH conservé `/api/v1/ventes`)
+    - `POST` (existant, signature de réponse changée → `VenteDraftResponse`).
+    - `POST /{cmdId}/validate` (perm `SALE_APPROVE`, body `VenteValidateRequest`).
+    - `PUT /orders/{cmdId}/lignes/{ligneId}` (perm `SALE_UPDATE`).
+    - `DELETE /orders/{cmdId}/lignes/{ligneId}` (perm `SALE_DELETE`).
+    - `POST /{cmdId}/annuler` préservé (perm `SALE_CANCEL`).
+
+6. **Queries Caisse/Reporting** (6 modifs)
+    - `CommandeVenteRepository` × 3 (countByMagasinAndDay, sumQuantiteLignes, ventilationParVendeur).
+    - `FactureClientRepository.sumMontantTotalByMagasinAndDay`.
+    - `PaiementVenteRepository` × 2 (sumMontantByMagasinAndDay, ventilationParMoyen).
+    - `LigneCommandeVenteRepository.findTopProduitsByMagasinAndDay`.
+    - Toutes : `commande.statut <> ANNULEE` → `commande.statut = DELIVERED` (sémantique tiroir-caisse stricte, exclut DRAFT et ANNULEE).
+
+7. **i18n** (4 nouvelles clés FR/EN)
+    - `commandeVente.notDraft` ({0} = statut courant), `commandeVente.cannotDeleteLastLigne`, `ligneCommandeVente.notFound`, `ligneCommandeVente.notMatchingCommande`.
+
+8. **Cleanup** : `VenteContext.java` supprimé (orphelin).
+
+9. **Tests**
+    - `VenteServiceImplTest` réécrit (23 tests) : 4 create DRAFT + 5 validate + 3 updateLigne + 3 deleteLigne + 3 findDetails (incluant le nouveau `findDetailsById_should_return_null_facture_when_draft`) + 5 cancel (préservés).
+    - `VenteControllerTest` réécrit (11 tests) : 201 DRAFT, 400 lignes vides, 200 validate, 400 validate dateEcheance manquante, 200 GET, 200 PUT, 400 PUT quantite 0, 204 DELETE, 200 cancel, 400 motif invalide, 400 motif blank.
+
+10. **Doc** : `FONCTIONNALITIES.md` section 48 ajoutée (4 sous-sections + queries caisse adaptées + cleanup + i18n + tests) + note en haut section 32 historique. `MODULES_OVERVIEW.md` : 3 nouveaux endpoints + total 16→19 + use cases mis à jour. `TODO.md` statut [x].
+
+**Migration BDD ajoutée :** aucune.
+
+**Permissions modifiées :** `SALE_APPROVE` ajoutée (création + attribution aux 4 rôles).
+
+**Prochaine étape recommandée :**
+
+1. **Annulation d'achat** — symétrique à l'annulation de vente (retire `EntreeStock`, marque `FactureAchat` ANNULEE, fenêtre temporelle `PurchaseProperties.cancelWindowHours`).
+2. **Réception partielle achat** — utiliser le statut `VALIDEE` intermédiaire inutilisé entre DRAFT et RECEPTIONNEE.
+3. **Démarrage `store-frontend`** : suivre Phase 0-1 de `FRONTEND_ARCHITECTURE.md`.
+
+---
+
+## Session du 2026-05-18 (refactor achat 2 étapes DRAFT → VALIDATE + édition/suppression ligne)
 **Sujet :** Refactor structurel du module achat. `POST /api/v1/achats` crée désormais une commande en **DRAFT** (lignes + traçabilité lot persistées, sans stock ni facture). Nouveaux endpoints `PUT/DELETE /achats/orders/{cmdId}/lignes/{ligneId}` pour éditer/supprimer une ligne tant que la commande est DRAFT, et `POST /achats/{cmdId}/validate` pour matérialiser (facture + entrées stock + journal + bascule RECEPTIONNEE). Le `pf.prixVente` n'est plus contaminé par un brouillon non validé — l'update est déplacé dans `validate`. Migration V23 : `ligne_commande_achat +numero_lot +date_expiration` (la traçabilité doit persister entre les 2 phases, plus juste un transit `LigneAchatRequest → EntreeStockCreate`). **711 → 725 tests verts** (+14).
 
 **Pourquoi ce refactor :** le backlog demandait l'édition/suppression de ligne avant validation, mais le flow existant créait tout en `RECEPTIONNEE` atomiquement (pas de phase brouillon réelle, malgré l'enum qui prévoyait DRAFT/VALIDEE/RECEPTIONNEE). L'utilisateur a explicitement choisi **Option 2 : refactor 2 étapes** pour permettre la visualisation avant engagement, plutôt qu'une édition rétroactive symétrique à l'annulation de vente.
