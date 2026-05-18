@@ -129,6 +129,7 @@
 - [ ] OpenAPI groupé par module + auth bearer dans Swagger UI
 - [ ] Dockerfile + docker-compose (app + Postgres)
 - [ ] Documentation API enrichie
+- [x] **Intégration SonarQube + JaCoCo** (2026-05-18) — Self-hosted via `docker-compose.sonar.yml` (SonarQube LTS Community + PostgreSQL 16). Config Sonar **externalisée** dans `sonar-project.properties` à la racine (format officiel Sonar, key=value — pas YAML car non supporté nativement). `pom.xml` contient uniquement les **versions** des plugins : `jacoco-maven-plugin` 0.8.13 (prepare-agent + report), `properties-maven-plugin` 1.2.1 (charge `sonar-project.properties` en phase `initialize`), `sonar-maven-plugin` 5.0.0.4389. Le fichier `.properties` est lu nativement par le scanner CLI ET par `mvn sonar:sonar` via `properties-maven-plugin`. Guide complet dans `docs/SONAR.md` : setup admin + token, scan `mvn clean verify sonar:sonar`, lecture rapport JaCoCo HTML local, Quality Gate, troubleshooting. Aucune modif de code ni de test ; coverage runtime via agent JVM.
 
 ### Frontend
 - [ ] Génération auto des types DTO depuis l'OpenAPI du backend (`openapi-typescript`)
