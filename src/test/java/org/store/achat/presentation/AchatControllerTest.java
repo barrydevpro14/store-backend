@@ -22,6 +22,9 @@ import org.store.achat.application.dto.FournisseurSummaryResponse;
 import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.LigneReceptionRequest;
+import org.store.achat.application.dto.ReceptionAchatRequest;
+import org.store.achat.application.dto.ReceptionAchatResponse;
 import org.store.achat.application.service.IAchatService;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
@@ -257,6 +260,48 @@ class AchatControllerTest {
         AnnulationAchatRequest body = new AnnulationAchatRequest("", null);
 
         mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_200_when_receive_purchase() throws Exception {
+        ReceptionAchatResponse response = new ReceptionAchatResponse(
+                commandeId, "CMD-AUTO", CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE,
+                60, 60, 100
+        );
+        when(achatService.receive(eq(commandeId), any(ReceptionAchatRequest.class))).thenReturn(response);
+
+        ReceptionAchatRequest body = new ReceptionAchatRequest(List.of(
+                new LigneReceptionRequest(ligneId, 60, "LOT-RECEIVED", null)));
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receptions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("PARTIELLEMENT_RECEPTIONNEE"))
+                .andExpect(jsonPath("$.totalQuantiteRecueDansCetteReception").value(60))
+                .andExpect(jsonPath("$.totalQuantiteRecueGlobale").value(60))
+                .andExpect(jsonPath("$.totalQuantiteCommandee").value(100));
+    }
+
+    @Test
+    void should_return_400_when_receive_empty_lignes() throws Exception {
+        ReceptionAchatRequest body = new ReceptionAchatRequest(List.of());
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receptions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_400_when_receive_quantite_zero() throws Exception {
+        ReceptionAchatRequest body = new ReceptionAchatRequest(List.of(
+                new LigneReceptionRequest(ligneId, 0, null, null)));
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());

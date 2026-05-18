@@ -1227,9 +1227,11 @@ Repos concernés : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLi
 
 ## 49. Annulation d'achat (achat, workflow critique multi-modules) — `AchatServiceImpl.cancel`
 
+> **Note (refactor 50)** : depuis l'introduction de la réception partielle, l'annulation est autorisée sur **VALIDEE**, **PARTIELLEMENT_RECEPTIONNEE** et **RECEPTIONNEE** (pas uniquement RECEPTIONNEE comme à l'origine). Si VALIDEE : aucun lot à retirer (boucle stock no-op). Si PARTIELLEMENT_RECEPTIONNEE : seuls les lots déjà créés sont retirés, mêmes garde-fous. Le message i18n est passé de `commandeAchat.cancel.notReceptionnee` à `commandeAchat.cancel.notCancellable`.
+
 **Endpoint** : `POST /api/v1/achats/{commandeId}/annuler` (permission `PURCHASE_CANCEL` — ADMIN/PROPRIETAIRE/MANAGER, **pas VENDEUR**).
 
-**Cas d'usage métier** : un achat RECEPTIONNEE est annulé (erreur de saisie, refus du fournisseur, article défectueux livré). Le stock alimenté par cet achat doit être retiré ; la facture fournisseur est invalidée ; les paiements existants sont conservés pour audit (remboursement hors-app). L'annulation n'est autorisée que dans une fenêtre temporelle configurable (défaut 24 h après création) **et uniquement si aucun lot n'a déjà été partiellement ou totalement consommé par une vente** — sinon l'annulation symétrique stock + facture n'est plus possible et il faut passer par un autre flow (retour fournisseur partiel, hors-scope).
+**Cas d'usage métier** : une commande d'achat est annulée (erreur de saisie, refus du fournisseur, article défectueux livré). Le stock alimenté par cet achat doit être retiré ; la facture fournisseur est invalidée ; les paiements existants sont conservés pour audit (remboursement hors-app). L'annulation n'est autorisée que dans une fenêtre temporelle configurable (défaut 24 h après création) **et uniquement si aucun lot n'a déjà été partiellement ou totalement consommé par une vente** — sinon l'annulation symétrique stock + facture n'est plus possible et il faut passer par un autre flow (retour fournisseur partiel, hors-scope).
 
 **Entrée** : `AnnulationAchatRequest{ motif (enum `MotifAnnulationAchat` : ERREUR_SAISIE, REFUS_FOURNISSEUR, ARTICLE_DEFECTUEUX, AUTRE) + commentaire optional ≤ 1000 chars }`.
 
@@ -1265,6 +1267,60 @@ Repos concernés : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLi
 **i18n** : 4 clés FR/EN — `commandeAchat.cancel.alreadyCancelled`, `commandeAchat.cancel.notReceptionnee` ({0}=statut courant), `commandeAchat.cancel.windowExpired` ({0}=max hours), `commandeAchat.cancel.lotAlreadyConsumed`.
 
 **Tests** : 6 service (nominal retrait + journalize RETOUR_FOURNISSEUR + statut ANNULEE / déjà annulée 400 / pas RECEPTIONNEE 400 / fenêtre dépassée 400 / cross-entreprise 403 / lot déjà consommé 400) + 3 controller (200 OK / 400 motif invalide / 400 motif blank). **750 / 750 verts** (+9 vs 741).
+
+---
+
+## 50. Réception partielle d'achat — `AchatServiceImpl.validate` (refactor) + `AchatServiceImpl.receive`
+
+**Endpoints** :
+- `POST /api/v1/achats/{commandeId}/validate` (permission `PURCHASE_APPROVE`) — refactoré
+- `POST /api/v1/achats/{commandeId}/receptions` (permission `PURCHASE_APPROVE`) — nouveau
+
+**Cas d'usage métier** : un fournisseur livre une commande en plusieurs fois (rupture, transport fractionné, lots conditionnés différemment, etc.). La validation comptable (création de la facture avec montant gelé) doit pouvoir précéder la réception physique, et plusieurs livraisons partielles doivent pouvoir alimenter le stock au fur et à mesure jusqu'à complétion.
+
+**Changement de contrat — `validate` (DRAFT → VALIDEE, plus RECEPTIONNEE)** :
+- Avant : `validate` matérialisait tout en une transaction (facture + entrées stock + journal + update `pf.prixVente` + bascule RECEPTIONNEE).
+- Après : `validate` ne crée plus que la facture, calcule `montantTotal` depuis les lignes courantes, et bascule en `VALIDEE`. **Aucun `EntreeStock`, aucun `MouvementStock`, aucun update `pf.prixVente` à cette étape.** La validation devient purement comptable.
+
+**Flux atomique `receive`** (1 transaction `@Transactional`) :
+1. `validatorService.validate(receptionAchatRequest)` (`@NotEmpty @Valid lignes`).
+2. Charge commande + `ensureBelongsToCurrentEntreprise` (`commandeAchat.notOwned` 403).
+3. `ensureReceivable(commande)` : refuse si statut ≠ `VALIDEE` et ≠ `PARTIELLEMENT_RECEPTIONNEE` (`commandeAchat.receive.notValidee`).
+4. `ensureLignesDistinctes(lignes)` : refuse si une même `ligneId` apparaît plusieurs fois dans la requête (`commandeAchat.receive.duplicateLine`).
+5. Charge la facture éventuelle pour la référence dans le mouvement (`factureAchatDomainService.findByCommandeId`).
+6. Pour chaque `LigneReceptionRequest` → `receiveOneLine(commande, facture, ligneReception)` :
+   - `ensureLigneBelongsToCommande` (`ligneCommandeAchat.notMatchingCommande` 400).
+   - `ensureQuantiteRecueNotExceeded(ligne, quantite)` : refuse si `quantite > ligne.quantite - ligne.quantiteRecue` (`commandeAchat.receive.lineQuantityExceeded`).
+   - Calcule `numeroLot` (request si fourni, sinon snapshot ligne) et `dateExpiration` (idem).
+   - `entreeStockDomainService.create(EntreeStockCreate(magasin, produit, pf, quantite, prixAchatLigne, numeroLot, dateExpiration, commande))` — crée 1 lot par ligne reçue (lots distincts possibles pour 1 même ligne sur plusieurs réceptions).
+   - `stockDomainService.createOrUpdateEntry(magasin, produit, quantite, prixAchatLigne)` — upsert Stock agrégé (prix d'achat moyen recalculé pondéré).
+   - `mouvementStockDomainService.journalize(stock, MouvementJournalize(ENTREE_ACHAT, quantite, stockAvant, stockApres, facture?.numero, null))`.
+   - `productFournisseurService.applyPrixVenteFromPurchase(pf, ligne.prixVente)` — re-applique le prix de vente snapshot à chaque réception (mirror de l'ancien comportement de `validate`).
+   - `ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, quantite)` — somme cumulative.
+7. Bascule statut : si `Σ ligne.quantiteRecue == Σ ligne.quantite` sur toutes les lignes → `markReceptionnee`, sinon → `markPartiallyReceived`.
+
+**Entrée** : `ReceptionAchatRequest{ lignes: List<LigneReceptionRequest{ ligneId, quantite (@Positive), numeroLot? (@Size max=100), dateExpiration? }> } (@NotEmpty @Valid)`.
+
+**Sortie** : `ReceptionAchatResponse{ commandeId, reference, statut (PARTIELLEMENT_RECEPTIONNEE ou RECEPTIONNEE), totalQuantiteRecueDansCetteReception, totalQuantiteRecueGlobale, totalQuantiteCommandee }`. HTTP 200.
+
+**Plusieurs lots pour une même ligne** : chaque réception crée un `EntreeStock` séparé. Si la 1ère livraison apporte 60 unités sur une ligne de 100, et la 2ème les 40 restantes, il y aura 2 lots distincts dans le stock (avec lots/dates d'expiration potentiellement différents). C'est la traçabilité FIFO voulue.
+
+**Décisions notables** :
+- **`pf.prixVente` re-appliqué à chaque réception** : symétrie avec l'ancien `validate`. Si plusieurs réceptions du même PF, le dernier l'emporte. Pour un changement de tarif fournisseur en cours de réception, c'est cohérent.
+- **`prixAchat` snapshot ligne** : chaque `EntreeStock` créé utilise `ligne.prixAchat` (snapshot commande), pas saisi à la réception. Le prix d'achat est verrouillé dès la commande.
+- **`numeroLot` / `dateExpiration` overridables à la réception** : le fournisseur peut livrer un autre lot que prévu en commande. Le `LigneReceptionRequest` accepte ces 2 champs, fallback sur les valeurs commande si absent.
+- **`ensureLignesDistinctes`** : une même `ligneId` ne peut pas apparaître 2 fois dans **une seule** `ReceptionAchatRequest` (anti double-comptage par étourderie). En revanche elle peut être présente dans plusieurs `receive` successifs (c'est tout l'intérêt de la fonctionnalité).
+- **Statut VALIDEE auparavant inutilisé** : prend enfin son sens métier (facture créée, montant gelé, stock pas encore reçu).
+
+**Impact annulation** : `cancel` accepte désormais 3 statuts (VALIDEE, PARTIELLEMENT_RECEPTIONNEE, RECEPTIONNEE). Cf. section 49 (note de tête).
+
+**Migration BDD** : V25 — `ligne_commande_achat +quantite_recue INTEGER NOT NULL DEFAULT 0`.
+
+**Validations publiques** (règle 27) : `ensureReceivable`, `ensureLignesDistinctes`, `ensureQuantiteRecueNotExceeded`, `receiveOneLine`, plus réutilisation de `ensureLigneBelongsToCommande`.
+
+**i18n** : 4 clés FR/EN — `commandeAchat.receive.notValidee` ({0}=statut), `commandeAchat.receive.lineQuantityExceeded` ({0}=qty demandée, {1}=qty restante), `commandeAchat.receive.duplicateLine`, `commandeAchat.receive.ligneNotInCommande`.
+
+**Tests** : 10 service receive (complet → RECEPTIONNEE / partiel → PARTIELLEMENT_RECEPTIONNEE / pas VALIDEE / déjà RECEPTIONNEE / duplicate / qty exceeded / ligne autre commande / cross-entreprise 403 / lot override request / 2e réception qui complète) + 2 service cancel additionnels (VALIDEE = pas de retrait stock, PARTIELLEMENT_RECEPTIONNEE = retrait partiel) + 3 controller (200 / 400 lignes vides / 400 quantite 0) + 2 tests validate adaptés (plus de matérialisation stock vérifiée). **765 / 765 verts** (+15 vs 750).
 
 ---
 

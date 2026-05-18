@@ -226,8 +226,9 @@
 - Création d'une commande d'achat en DRAFT (lignes + traçabilité lot persistées, pas de stock ni facture)
 - Édition d'une ligne d'une commande DRAFT (quantité, prix, lot)
 - Suppression d'une ligne d'une commande DRAFT (refus si dernière ligne)
-- Validation d'une commande DRAFT (matérialisation : facture + entrées stock + journal + update prixVente PF + bascule RECEPTIONNEE)
-- Annulation d'une commande RECEPTIONNEE avec retrait stock (flag `EntreeStock.annulee=true`, mouvement `RETOUR_FOURNISSEUR`, fenêtre temporelle configurable, refus si un lot a déjà été consommé par une vente)
+- Validation comptable d'une commande DRAFT (création facture, montants gelés, bascule VALIDEE — sans matérialisation stock)
+- Réception physique en une ou plusieurs étapes (`POST /receptions`) : crée les `EntreeStock` au fur et à mesure, incrémente `quantiteRecue` par ligne, bascule en `PARTIELLEMENT_RECEPTIONNEE` ou `RECEPTIONNEE` selon avancement
+- Annulation d'une commande VALIDEE / PARTIELLEMENT_RECEPTIONNEE / RECEPTIONNEE avec retrait stock (flag `EntreeStock.annulee=true`, mouvement `RETOUR_FOURNISSEUR`, fenêtre temporelle configurable, refus si un lot a déjà été consommé par une vente)
 - Listing commandes d'achat paginé filtré
 - Listing factures d'achat paginé filtré
 - Échéances factures (factures non payées)
@@ -249,6 +250,7 @@
 | PUT | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_UPDATE` | PROPRIETAIRE/MANAGER |
 | DELETE | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_DELETE` | PROPRIETAIRE/MANAGER |
 | POST | `/api/v1/achats/{commandeId}/validate` | `PURCHASE_APPROVE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/achats/{commandeId}/receptions` | `PURCHASE_APPROVE` | PROPRIETAIRE/MANAGER |
 | POST | `/api/v1/achats/{commandeId}/annuler` | `PURCHASE_CANCEL` | ADMIN/PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-achat?magasinId=&fournisseurId=&statut=&page=&size=` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-achat/{id}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
@@ -258,7 +260,7 @@
 | POST | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_PAY` | PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
 
-**Total endpoints** : 18
+**Total endpoints** : 19
 
 ---
 
@@ -421,7 +423,7 @@
 | produit | 29 | `PRODUCT_*`, `CATEGORY_PRODUCT_*`, `QUALITY_*`, `SUPPLIER_*` |
 | stock | 10 | `STOCK_READ`, `STOCK_ENTRY`, `STOCK_ADJUSTMENT`, `REPORT_STOCK` |
 | inventaire | 11 | `STOCK_INVENTORY`, `STOCK_READ` |
-| achat | 18 | `SUPPLIER_*`, `PURCHASE_*` |
+| achat | 19 | `SUPPLIER_*`, `PURCHASE_*` |
 | vente | 15 | `CLIENT_*`, `SALE_*` |
 | depense | 11 | `EXPENSE_*`, `EXPENSE_CATEGORY_*` |
 | abonnement | 40 | `PLAN_*`, `SUBSCRIPTION_TYPE_*`, `COUPON_*`, `PROMOTION_*`, `SUBSCRIPTION_*` |

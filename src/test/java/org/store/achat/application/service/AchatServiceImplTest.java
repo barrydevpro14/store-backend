@@ -20,6 +20,9 @@ import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.LigneReceptionRequest;
+import org.store.achat.application.dto.ReceptionAchatRequest;
+import org.store.achat.application.dto.ReceptionAchatResponse;
 import org.store.achat.application.service.impl.AchatServiceImpl;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
@@ -582,5 +585,318 @@ class AchatServiceImplTest {
         verify(stockDomainService, never()).decrement(any(), any(int.class));
         verify(entreeStockDomainService, never()).markAsAnnulee(any());
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void cancel_should_allow_validee_status_without_stock_withdrawal() {
+        commande.setStatut(CommandeAchatStatut.VALIDEE);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(purchaseProperties.cancelWindowHours()).thenReturn(24);
+        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of());
+        when(commandeAchatDomainService.cancel(eq(commande), any(), any())).thenAnswer(inv -> {
+            commande.setStatut(CommandeAchatStatut.ANNULEE);
+            commande.setDateAnnulation(LocalDateTime.now());
+            return commande;
+        });
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
+
+        AnnulationAchatResponse response = service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null));
+
+        assertThat(response.statut()).isEqualTo(CommandeAchatStatut.ANNULEE);
+        assertThat(response.totalQuantiteRetiree()).isZero();
+        assertThat(response.nombreMouvementsCrees()).isZero();
+
+        verify(stockDomainService, never()).decrement(any(), any(int.class));
+        verify(entreeStockDomainService, never()).markAsAnnulee(any());
+        verify(mouvementStockDomainService, never()).journalize(any(), any());
+        verify(factureAchatDomainService).cancel(facture);
+    }
+
+    @Test
+    void cancel_should_allow_partiellement_receptionnee_with_partial_stock_withdrawal() {
+        commande.setStatut(CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+        EntreeStock lotIntact = sampleLot(60, 60);
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(60);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(purchaseProperties.cancelWindowHours()).thenReturn(24);
+        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lotIntact));
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.of(stock));
+        when(stockDomainService.decrement(stock, 60)).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(0);
+            return stock;
+        });
+        when(commandeAchatDomainService.cancel(eq(commande), any(), any())).thenAnswer(inv -> {
+            commande.setStatut(CommandeAchatStatut.ANNULEE);
+            commande.setDateAnnulation(LocalDateTime.now());
+            return commande;
+        });
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
+
+        AnnulationAchatResponse response = service.cancel(commandeId, new AnnulationAchatRequest("REFUS_FOURNISSEUR", null));
+
+        assertThat(response.statut()).isEqualTo(CommandeAchatStatut.ANNULEE);
+        assertThat(response.totalQuantiteRetiree()).isEqualTo(60);
+        assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
+
+        verify(entreeStockDomainService).markAsAnnulee(lotIntact);
+        verify(mouvementStockDomainService).journalize(eq(stock), any());
+        verify(factureAchatDomainService).cancel(facture);
+    }
+
+    private LigneCommandeAchat sampleLigneWithReception(int quantite, int quantiteRecue) {
+        LigneCommandeAchat ligne = new LigneCommandeAchat();
+        ligne.setId(UUID.randomUUID());
+        ligne.setCommande(commande);
+        ligne.setProductFournisseur(productFournisseur);
+        ligne.setQuantite(quantite);
+        ligne.setQuantiteRecue(quantiteRecue);
+        ligne.setPrixAchat(new BigDecimal("10.00"));
+        ligne.setPrixVente(new BigDecimal("15.00"));
+        ligne.setNumeroLot("LOT-A");
+        return ligne;
+    }
+
+    private void prepareValideeCommandeAvecLignes(LigneCommandeAchat... lignes) {
+        commande.setStatut(CommandeAchatStatut.VALIDEE);
+        commande.setLignes(new ArrayList<>(List.of(lignes)));
+    }
+
+    @Test
+    void receive_should_create_stock_and_switch_to_receptionnee_when_full() {
+        LigneCommandeAchat ligne = sampleLigneWithReception(100, 0);
+        prepareValideeCommandeAvecLignes(ligne);
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(100);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
+        when(ligneCommandeAchatDomainService.findById(ligne.getId())).thenReturn(ligne);
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockDomainService.createOrUpdateEntry(eq(magasin), eq(produit), eq(100), eq(new BigDecimal("10.00")))).thenReturn(stock);
+        when(ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, 100)).thenAnswer(inv -> {
+            ligne.setQuantiteRecue(100);
+            return ligne;
+        });
+        when(commandeAchatDomainService.markReceptionnee(commande)).thenAnswer(inv -> {
+            commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+            return commande;
+        });
+
+        ReceptionAchatResponse response = service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(ligne.getId(), 100, null, null))));
+
+        assertThat(response.statut()).isEqualTo(CommandeAchatStatut.RECEPTIONNEE);
+        assertThat(response.totalQuantiteRecueDansCetteReception()).isEqualTo(100);
+        assertThat(response.totalQuantiteRecueGlobale()).isEqualTo(100);
+        assertThat(response.totalQuantiteCommandee()).isEqualTo(100);
+
+        verify(entreeStockDomainService).create(any(EntreeStockCreate.class));
+        verify(mouvementStockDomainService).journalize(eq(stock), any(MouvementJournalize.class));
+        verify(productFournisseurService).applyPrixVenteFromPurchase(productFournisseur, new BigDecimal("15.00"));
+        verify(commandeAchatDomainService, never()).markPartiallyReceived(any());
+    }
+
+    @Test
+    void receive_should_switch_to_partial_when_some_quantity_remains() {
+        LigneCommandeAchat ligne = sampleLigneWithReception(100, 0);
+        prepareValideeCommandeAvecLignes(ligne);
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(60);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
+        when(ligneCommandeAchatDomainService.findById(ligne.getId())).thenReturn(ligne);
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockDomainService.createOrUpdateEntry(eq(magasin), eq(produit), eq(60), eq(new BigDecimal("10.00")))).thenReturn(stock);
+        when(ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, 60)).thenAnswer(inv -> {
+            ligne.setQuantiteRecue(60);
+            return ligne;
+        });
+        when(commandeAchatDomainService.markPartiallyReceived(commande)).thenAnswer(inv -> {
+            commande.setStatut(CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE);
+            return commande;
+        });
+
+        ReceptionAchatResponse response = service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(ligne.getId(), 60, null, null))));
+
+        assertThat(response.statut()).isEqualTo(CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE);
+        assertThat(response.totalQuantiteRecueDansCetteReception()).isEqualTo(60);
+        assertThat(response.totalQuantiteRecueGlobale()).isEqualTo(60);
+        assertThat(response.totalQuantiteCommandee()).isEqualTo(100);
+
+        verify(commandeAchatDomainService, never()).markReceptionnee(any());
+    }
+
+    @Test
+    void receive_should_throw_when_commande_not_validee() {
+        commande.setStatut(CommandeAchatStatut.DRAFT);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        assertThatThrownBy(() -> service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(UUID.randomUUID(), 10, null, null)))))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("notValidee");
+
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+    }
+
+    @Test
+    void receive_should_throw_when_commande_already_receptionnee() {
+        commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        assertThatThrownBy(() -> service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(UUID.randomUUID(), 10, null, null)))))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("notValidee");
+    }
+
+    @Test
+    void receive_should_throw_when_duplicate_line() {
+        LigneCommandeAchat ligne = sampleLigneWithReception(100, 0);
+        prepareValideeCommandeAvecLignes(ligne);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        ReceptionAchatRequest req = new ReceptionAchatRequest(List.of(
+                new LigneReceptionRequest(ligne.getId(), 30, null, null),
+                new LigneReceptionRequest(ligne.getId(), 20, null, null)));
+
+        assertThatThrownBy(() -> service.receive(commandeId, req))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("duplicateLine");
+
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+    }
+
+    @Test
+    void receive_should_throw_when_quantite_exceeds_remaining() {
+        LigneCommandeAchat ligne = sampleLigneWithReception(100, 70);
+        prepareValideeCommandeAvecLignes(ligne);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.empty());
+        when(ligneCommandeAchatDomainService.findById(ligne.getId())).thenReturn(ligne);
+
+        assertThatThrownBy(() -> service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(ligne.getId(), 50, null, null)))))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("lineQuantityExceeded");
+
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+    }
+
+    @Test
+    void receive_should_throw_when_ligne_not_in_commande() {
+        LigneCommandeAchat ligneOwnedByCommande = sampleLigneWithReception(100, 0);
+        prepareValideeCommandeAvecLignes(ligneOwnedByCommande);
+
+        CommandeAchat autreCommande = new CommandeAchat();
+        autreCommande.setId(UUID.randomUUID());
+        LigneCommandeAchat ligneAutreCommande = sampleLigneWithReception(50, 0);
+        ligneAutreCommande.setCommande(autreCommande);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.empty());
+        when(ligneCommandeAchatDomainService.findById(ligneAutreCommande.getId())).thenReturn(ligneAutreCommande);
+
+        assertThatThrownBy(() -> service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(ligneAutreCommande.getId(), 10, null, null)))))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+    }
+
+    @Test
+    void receive_should_propagate_forbidden_when_not_owned() {
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande))
+                .thenThrow(new ForbiddenException("commandeAchat.notOwned"));
+
+        assertThatThrownBy(() -> service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(UUID.randomUUID(), 10, null, null)))))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+    }
+
+    @Test
+    void receive_should_use_request_lot_when_provided_overriding_ligne_lot() {
+        LigneCommandeAchat ligne = sampleLigneWithReception(100, 0);
+        ligne.setNumeroLot("LOT-FROM-COMMANDE");
+        prepareValideeCommandeAvecLignes(ligne);
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(100);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.empty());
+        when(ligneCommandeAchatDomainService.findById(ligne.getId())).thenReturn(ligne);
+        when(stockDomainService.findByMagasinIdAndProduitId(any(), any())).thenReturn(Optional.empty());
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockDomainService.createOrUpdateEntry(any(), any(), any(int.class), any())).thenReturn(stock);
+        when(ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, 100)).thenAnswer(inv -> {
+            ligne.setQuantiteRecue(100);
+            return ligne;
+        });
+        when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
+
+        service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(ligne.getId(), 100, "LOT-FROM-REQUEST", null))));
+
+        ArgumentCaptor<EntreeStockCreate> captor = ArgumentCaptor.forClass(EntreeStockCreate.class);
+        verify(entreeStockDomainService).create(captor.capture());
+        assertThat(captor.getValue().numeroLot()).isEqualTo("LOT-FROM-REQUEST");
+    }
+
+    @Test
+    void receive_should_allow_second_reception_to_complete_order() {
+        LigneCommandeAchat ligne = sampleLigneWithReception(100, 60);
+        commande.setStatut(CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE);
+        commande.setLignes(new ArrayList<>(List.of(ligne)));
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(100);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+        when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
+        when(ligneCommandeAchatDomainService.findById(ligne.getId())).thenReturn(ligne);
+        when(stockDomainService.findByMagasinIdAndProduitId(any(), any())).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockDomainService.createOrUpdateEntry(any(), any(), any(int.class), any())).thenReturn(stock);
+        when(ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, 40)).thenAnswer(inv -> {
+            ligne.setQuantiteRecue(100);
+            return ligne;
+        });
+        when(commandeAchatDomainService.markReceptionnee(commande)).thenAnswer(inv -> {
+            commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+            return commande;
+        });
+
+        ReceptionAchatResponse response = service.receive(commandeId, new ReceptionAchatRequest(
+                List.of(new LigneReceptionRequest(ligne.getId(), 40, null, null))));
+
+        assertThat(response.statut()).isEqualTo(CommandeAchatStatut.RECEPTIONNEE);
+        assertThat(response.totalQuantiteRecueDansCetteReception()).isEqualTo(40);
+        assertThat(response.totalQuantiteRecueGlobale()).isEqualTo(100);
     }
 }
