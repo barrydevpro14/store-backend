@@ -4,8 +4,6 @@ server:
 spring:
   application:
     name: store
-  config:
-    import: classpath:redis.yml
   servlet:
     multipart:
       enabled: true

@@ -1,6 +1,5 @@
 package org.store.abonnement.application.service.impl;
 
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.PromotionResponse;
@@ -11,7 +10,6 @@ import org.store.abonnement.application.service.IPublicCatalogService;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.PromotionDomainService;
 import org.store.abonnement.domain.service.TypeAbonnementDomainService;
-import org.store.config.RedisCacheConfig;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,10 +39,8 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
     /**
      * Charge en 4 queries projetées : plans visibles+actifs, types actifs, promotions globales actives (plan IS NULL),
      * promotions scopées actives (plan IS NOT NULL). Groupe les scopées par planId et les attache au plan via `withPromotions`.
-     * <p>Résultat mis en cache (TTL 5 min) — invalidé à chaque CUD admin sur Plan, Promotion, SubscriptionType.
      */
     @Override
-    @Cacheable(RedisCacheConfig.PUBLIC_CATALOG)
     public PublicCatalogResponse findCatalog() {
         LocalDate today = LocalDate.now();
 

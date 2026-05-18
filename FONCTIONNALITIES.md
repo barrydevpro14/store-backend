@@ -961,8 +961,6 @@ Limit via `Pageable` (= `PageRequest.of(0, nombre)`). Le repo retourne `List<Top
 
 **Tests** : 3 service `PublicCatalogServiceImplTest` (happy avec plans+types+promos, vide, multiples promos sur 1 plan) + 2 controller `PublicCatalogControllerTest` (catalogue complet, catalogue vide).
 
-**Cache Redis** (intégré dans une session ultérieure) : `findCatalog` est annoté `@Cacheable(RedisCacheConfig.PUBLIC_CATALOG)`, TTL 5 min, sérialisation JSON. À chaque mutation admin (`@CacheEvict(allEntries=true)`) sur `PlanAbonnementServiceImpl.{create,update,activate,deactivate,delete}`, `PromotionServiceImpl.{create,update,activate,deactivate,delete}` ou `SubscriptionTypeServiceImpl.{create,update,activate,deactivate,delete}` — 15 méthodes au total — le cache est invalidé. Désactivé en test (`spring.cache.type=none` via surefire system property).
-
 ---
 
 ## 38. Souscription propriétaire — `AbonnementServiceImpl.subscribe`

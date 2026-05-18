@@ -446,9 +446,8 @@
 ## 🗂️ Modules transverses (non métier)
 
 - **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `LocalizedRuntimeException` + 12 custom exceptions, `IMessageSourceService`, `PieceJointe`, validators custom (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper`/`EnumHelper`/`UuidHelper`/`SubscriptionRules`/`NameHelper`/`ReferenceHelper`/`LotConsumptionContext`.
-- **`config/`** — `StoreApplication`, `I18nConfig`, `AuditorAwareImpl`, `DataInitializer`, `HttpRequestLoggingFilter`, `RedisCacheConfig` (cache applicatif Redis, `@ConditionalOnProperty(spring.cache.type=redis)`, named cache `public-catalog` TTL 5 min).
+- **`config/`** — `StoreApplication`, `I18nConfig`, `AuditorAwareImpl`, `DataInitializer`, `HttpRequestLoggingFilter`.
 - **`property/`** — `JwtProperties`, `RbacProperties` (records `@ConfigurationProperties`).
-- **Infrastructure** — `docker-compose.yml` racine (postgres:15-alpine + redis:7-alpine avec healthchecks). Config Redis externalisée dans `src/main/resources/redis.yml` (importée via `spring.config.import`). En test, le cache est désactivé via surefire system property `spring.cache.type=none`.
 
 ---
 
