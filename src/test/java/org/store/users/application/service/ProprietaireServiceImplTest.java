@@ -27,7 +27,7 @@ class ProprietaireServiceImplTest {
     @Test
     void create_should_delegate_to_domain_service() {
         UtilisateurRequest request = new UtilisateurRequest(
-                "Doe", "John", "john@example.com", "770000000", "Dakar"
+                "Doe", "John", "john@example.com", "+221770000000", "Dakar"
         );
         Account account = new Account();
         Proprietaire expected = new Proprietaire();

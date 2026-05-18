@@ -58,7 +58,7 @@ class UserProfileControllerTest {
 
     private UserProfileResponse sample() {
         return new UserProfileResponse(userId, "Doe", "John", "john@example.com",
-                "770000000", "Dakar", "john.emp", "VENDEUR", "EMPLOYE", magasinId, null);
+                "+221770000000", "Dakar", "john.emp", "VENDEUR", "EMPLOYE", magasinId, null);
     }
 
     @Test
@@ -76,7 +76,7 @@ class UserProfileControllerTest {
     @Test
     void should_return_200_when_update_profile() throws Exception {
         UserProfileUpdateRequest body = new UserProfileUpdateRequest(
-                "Doe", "Jane", "jane@example.com", "770000001", "Dakar");
+                "Doe", "Jane", "jane@example.com", "+221770000001", "Dakar");
         when(userProfileService.updateCurrentProfile(any(UserProfileUpdateRequest.class))).thenReturn(sample());
 
         mockMvc.perform(put(UserProfileController.BASE_PATH)
@@ -88,7 +88,7 @@ class UserProfileControllerTest {
     @Test
     void should_return_400_when_update_email_invalid() throws Exception {
         String invalidBody = """
-                { "nom":"Doe","prenom":"Jane","email":"not-an-email","telephone":"770000001","adresse":"Dakar" }
+                { "nom":"Doe","prenom":"Jane","email":"not-an-email","telephone":"+221770000001","adresse":"Dakar" }
                 """;
 
         mockMvc.perform(put(UserProfileController.BASE_PATH)

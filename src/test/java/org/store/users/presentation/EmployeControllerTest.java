@@ -62,7 +62,7 @@ class EmployeControllerTest {
     private EmployeRequest validBody(UUID magasinId, String role) {
         return new EmployeRequest(
                 new AccountRequest("john.emp", "S3cretPwd!"),
-                new UtilisateurRequest("Doe", "John", "john@example.com", "770000000", "Dakar"),
+                new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
                 role,
                 magasinId
         );
@@ -73,7 +73,7 @@ class EmployeControllerTest {
         UUID magasinId = UUID.randomUUID();
         UUID createdId = UUID.randomUUID();
         EmployeResponse response = new EmployeResponse(createdId, "Doe", "John",
-                "john@example.com", "770000000", "Dakar", "john.emp", "MANAGER", magasinId, true);
+                "john@example.com", "+221770000000", "Dakar", "john.emp", "MANAGER", magasinId, true);
 
         when(employeService.create(any(EmployeRequest.class))).thenReturn(response);
 
@@ -91,7 +91,7 @@ class EmployeControllerTest {
         String invalidBody = """
                 {
                   "account": {"username": "john.emp", "password": "S3cretPwd!"},
-                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "+221770000000", "adresse": "Dakar"},
+                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "770000000", "adresse": "Dakar"},
                   "role": "MANAGER",
                   "magasinId": "%s"
                 }
@@ -104,7 +104,7 @@ class EmployeControllerTest {
     }
 
     private EmployeResponse sampleResponse(UUID id, UUID magasinId) {
-        return new EmployeResponse(id, "Doe", "John", "john@example.com", "770000000", "Dakar",
+        return new EmployeResponse(id, "Doe", "John", "john@example.com", "+221770000000", "Dakar",
                 "john.emp", "VENDEUR", magasinId, true);
     }
 
@@ -137,7 +137,7 @@ class EmployeControllerTest {
         UUID id = UUID.randomUUID();
         UUID magasinId = UUID.randomUUID();
         EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "770000001", "Dakar", "VENDEUR", magasinId);
+                "+221770000001", "Dakar", "VENDEUR", magasinId);
         when(employeService.update(eq(id), any(EmployeUpdateRequest.class)))
                 .thenReturn(sampleResponse(id, magasinId));
 
@@ -155,7 +155,7 @@ class EmployeControllerTest {
                   "nom": "Doe",
                   "prenom": "Jane",
                   "email": "not-an-email",
-                  "telephone": "770000001",
+                  "telephone": "+221770000001",
                   "adresse": "Dakar",
                   "role": "VENDEUR",
                   "magasinId": "%s"
@@ -217,7 +217,7 @@ class EmployeControllerTest {
         String invalidBody = """
                 {
                   "account": {"username": "john.emp", "password": "S3cretPwd!"},
-                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "770000000", "adresse": "Dakar"},
+                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "+221770000000", "adresse": "Dakar"},
                   "role": "",
                   "magasinId": "%s"
                 }

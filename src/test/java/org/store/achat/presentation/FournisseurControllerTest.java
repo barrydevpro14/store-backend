@@ -62,13 +62,13 @@ class FournisseurControllerTest {
 
     private FournisseurResponse sample() {
         return new FournisseurResponse(fournisseurId, "Pneus Maroc SARL", null,
-                "contact@pneus-maroc.ma", "770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
+                "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
     }
 
     @Test
     void should_return_201_when_created() throws Exception {
         FournisseurRequest body = new FournisseurRequest(
-                "Pneus Maroc SARL", null, "contact@pneus-maroc.ma", "770000000",
+                "Pneus Maroc SARL", null, "contact@pneus-maroc.ma", "+221770000000",
                 "Casablanca", "FRN-001", "Maroc"
         );
         when(fournisseurService.create(any(FournisseurRequest.class))).thenReturn(sample());

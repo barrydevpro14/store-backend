@@ -81,7 +81,7 @@ class ClientServiceImplTest {
         client.setNom("Diallo");
         client.setPrenom("Mamadou");
         client.setEmail("mamadou@example.com");
-        client.setTelephone("770000001");
+        client.setTelephone("+221770000001");
         client.setAdresse("Dakar");
         client.setMagasin(attachedMagasin);
         return client;
@@ -90,7 +90,7 @@ class ClientServiceImplTest {
     @Test
     void create_should_persist_after_magasin_access_check() {
         ClientRequest request = new ClientRequest("Diallo", "Mamadou", "mamadou@example.com",
-                "770000001", "Dakar", magasinId);
+                "+221770000001", "Dakar", magasinId);
         Client created = sample(magasin);
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -175,7 +175,7 @@ class ClientServiceImplTest {
     @Test
     void findAllForCurrentUser_should_scope_to_magasin_for_employe() {
         ClientFilter filter = new ClientFilter(null, null, 0, 10);
-        ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "770000001", null);
+        ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(vendeur());
@@ -190,7 +190,7 @@ class ClientServiceImplTest {
     @Test
     void findAllForCurrentUser_should_scope_to_entreprise_for_proprietaire() {
         ClientFilter filter = new ClientFilter(null, null, 0, 10);
-        ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "770000001", null);
+        ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());

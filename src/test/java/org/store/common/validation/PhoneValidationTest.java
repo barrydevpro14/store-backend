@@ -31,27 +31,29 @@ class PhoneValidationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "770000000",
-            "751234567",
-            "761234567",
-            "771234567",
-            "781234567",
-            "331234567",
-            "77123456789"
+            "+221770000000",
+            "+221751234567",
+            "+33612345678",
+            "+14155551234",
+            "+447911123456",
+            "+861234567890",
+            "+12"
     })
-    void should_accept_valid_senegal_numbers(String value) {
+    void should_accept_valid_e164_numbers(String value) {
         assertThat(validator.isValid(value, context)).isTrue();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "771234",
-            "12345678",
-            "8012345678",
-            "77ABCD123",
-            "+221770000000",
-            "77 1234567",
-            "771234567890123"
+            "770000000",
+            "0612345678",
+            "+0221770000000",
+            "+",
+            "+1",
+            "+1234567890123456",
+            "+221 770000000",
+            "+221-770000000",
+            "+221ABC0000000"
     })
     void should_reject_invalid_numbers(String value) {
         assertThat(validator.isValid(value, context)).isFalse();

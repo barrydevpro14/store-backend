@@ -72,7 +72,7 @@ class UserProfileServiceImplTest {
         employe.setNom("Doe");
         employe.setPrenom("John");
         employe.setEmail("john@example.com");
-        employe.setTelephone("770000000");
+        employe.setTelephone("+221770000000");
         employe.setAdresse("Dakar");
         employe.setMagasin(magasin);
         employe.setAccount(account);
@@ -100,7 +100,7 @@ class UserProfileServiceImplTest {
     @Test
     void updateCurrentProfile_should_apply_changes_via_domain_service() {
         UserProfileUpdateRequest request = new UserProfileUpdateRequest(
-                "NewNom", "NewPrenom", "new@example.com", "770000001", "Saint-Louis");
+                "NewNom", "NewPrenom", "new@example.com", "+221770000001", "Saint-Louis");
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(utilisateurDomainService.findById(userId)).thenReturn(employe);

@@ -28,7 +28,7 @@ class ProprietaireDomainServiceTest {
     @Test
     void create_should_construct_proprietaire_with_account_and_personal_info() {
         UtilisateurRequest request = new UtilisateurRequest(
-                "Doe", "John", "john@example.com", "770000000", "Dakar"
+                "Doe", "John", "john@example.com", "+221770000000", "Dakar"
         );
         Account account = new Account();
         when(repository.save(any(Proprietaire.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -42,7 +42,7 @@ class ProprietaireDomainServiceTest {
         assertThat(saved.getNom()).isEqualTo("Doe");
         assertThat(saved.getPrenom()).isEqualTo("John");
         assertThat(saved.getEmail()).isEqualTo("john@example.com");
-        assertThat(saved.getTelephone()).isEqualTo("770000000");
+        assertThat(saved.getTelephone()).isEqualTo("+221770000000");
         assertThat(saved.getAdresse()).isEqualTo("Dakar");
         assertThat(result).isSameAs(saved);
     }

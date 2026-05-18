@@ -88,7 +88,7 @@ class AuthControllerTest {
         String bodyBadTelephone = """
                 {
                   "account": {"username": "john.doe", "password": "S3cretPwd!"},
-                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "+221770000000", "adresse": "Dakar"},
+                  "utilisateur": {"nom": "Doe", "prenom": "John", "email": "john@example.com", "telephone": "770000000", "adresse": "Dakar"},
                   "entreprise": {"sigle": "ACME", "raisonSociale": "ACME SARL", "ninea": "NINEA-123", "rccm": "RCCM-456", "adresse": "Dakar"},
                   "magasin": {"nom": "Magasin Centre", "adresse": "Dakar Centre"}
                 }
@@ -196,7 +196,7 @@ class AuthControllerTest {
     private RegisterPropertyRequest validRegisterBody() {
         return new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
-                new UtilisateurRequest("Doe", "John", "john@example.com", "770000000", "Dakar"),
+                new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
                 new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"),
                 new MagasinRequest("Magasin Centre", "Dakar Centre")
         );

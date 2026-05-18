@@ -77,7 +77,7 @@
   - `validate(obj, groups…)` lève `ConstraintViolationException`.
   - `check(obj, groups…)` retourne le set de violations.
 - **Validateurs custom** dans `org.store.common.validation/` :
-  - `@Phone` / `PhoneValidation` — regex SN (`^(70|75|76|77|78|33)\d{7,9}$`).
+  - `@Phone` / `PhoneValidation` — format **E.164** international (`^\+[1-9]\d{1,14}$`) : `+` + code pays + numéro abonné, max 15 chiffres après le `+`. Ex. `+221770000000`, `+33612345678`, `+14155551234`.
   - `@EnumValue(enumClass, ignoreCase)` / `EnumValidator` — la String reçue doit matcher un `enum.name()`.
   - `@DatePattern(pattern)` / `DatePatternValidation` — `LocalDate.parse(value, formatter)` ; pattern par défaut `"yyyy-MM-dd"`.
   - `@Uuid` / `UuidValidator` — `UUID.fromString(value)`.

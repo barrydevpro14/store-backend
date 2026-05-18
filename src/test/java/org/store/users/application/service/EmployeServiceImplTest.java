@@ -76,7 +76,7 @@ class EmployeServiceImplTest {
         magasin.setId(magasinId);
         magasin.setEntreprise(entreprise);
 
-        validUtilisateur = new UtilisateurRequest("Doe", "John", "john@example.com", "770000000", "Dakar");
+        validUtilisateur = new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar");
         validAccount = new AccountRequest("john.emp", "S3cretPwd!");
     }
 
@@ -96,7 +96,7 @@ class EmployeServiceImplTest {
 
     private EmployeResponse sampleResponse(String role) {
         return new EmployeResponse(UUID.randomUUID(), "Doe", "John",
-                "john@example.com", "770000000", "Dakar", "john.emp", role, magasinId, true);
+                "john@example.com", "+221770000000", "Dakar", "john.emp", role, magasinId, true);
     }
 
     private Role roleWithId() {
@@ -387,7 +387,7 @@ class EmployeServiceImplTest {
         employe.setAccount(account);
         Role newRole = roleWithId();
         EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "770000001", "Dakar", "VENDEUR", magasinId);
+                "+221770000001", "Dakar", "VENDEUR", magasinId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));

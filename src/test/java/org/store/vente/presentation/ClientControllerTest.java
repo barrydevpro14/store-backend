@@ -60,13 +60,13 @@ class ClientControllerTest {
 
     private ClientResponse sample() {
         return new ClientResponse(clientId, "Diallo", "Mamadou", "mamadou@example.com",
-                "770000001", "Dakar");
+                "+221770000001", "Dakar");
     }
 
     @Test
     void should_return_201_when_created() throws Exception {
         ClientRequest body = new ClientRequest("Diallo", "Mamadou", "mamadou@example.com",
-                "770000001", "Dakar", magasinId);
+                "+221770000001", "Dakar", magasinId);
         when(clientService.create(any(ClientRequest.class))).thenReturn(sample());
 
         mockMvc.perform(post(ClientController.BASE_PATH)

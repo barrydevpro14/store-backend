@@ -72,7 +72,7 @@ class EntrepriseControllerTest {
     private RegisterPropertyRequest validRegisterBody() {
         return new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
-                new UtilisateurRequest("Doe", "John", "john@example.com", "770000000", "Dakar"),
+                new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
                 new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"),
                 new MagasinRequest("Magasin Centre", "Dakar Centre")
         );

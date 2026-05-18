@@ -65,7 +65,7 @@ class FournisseurServiceImplTest {
         f.setId(fournisseurId);
         f.setNom("Pneus Maroc SARL");
         f.setEmail("contact@pneus-maroc.ma");
-        f.setTelephone("770000000");
+        f.setTelephone("+221770000000");
         f.setReference("FRN-001");
         f.setOrigine("Maroc");
         f.setEntreprise(ent);
@@ -75,7 +75,7 @@ class FournisseurServiceImplTest {
     @Test
     void create_should_persist_and_scope_to_current_entreprise() {
         FournisseurRequest request = new FournisseurRequest(
-                "Pneus Maroc SARL", null, "contact@pneus-maroc.ma", "770000000",
+                "Pneus Maroc SARL", null, "contact@pneus-maroc.ma", "+221770000000",
                 "Casablanca", "FRN-001", "Maroc"
         );
         Fournisseur created = sample(entreprise);
@@ -154,7 +154,7 @@ class FournisseurServiceImplTest {
     void findAllByCurrentEntreprise_should_paginate() {
         Pageable pageable = PageRequest.of(0, 10);
         FournisseurResponse item = new FournisseurResponse(fournisseurId, "Pneus Maroc SARL",
-                null, "contact@pneus-maroc.ma", "770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
+                null, "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
         Page<FournisseurResponse> page = new PageImpl<>(List.of(item), pageable, 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -169,7 +169,7 @@ class FournisseurServiceImplTest {
     void update_should_change_fields() {
         Fournisseur fournisseur = sample(entreprise);
         FournisseurRequest request = new FournisseurRequest(
-                "Pneus Maroc Updated", null, "new@pneus-maroc.ma", "770000000",
+                "Pneus Maroc Updated", null, "new@pneus-maroc.ma", "+221770000000",
                 "Rabat", "FRN-001", "Maroc"
         );
 
