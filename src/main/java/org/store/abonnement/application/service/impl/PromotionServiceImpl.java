@@ -1,5 +1,6 @@
 package org.store.abonnement.application.service.impl;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import org.store.abonnement.domain.model.Promotion;
 import org.store.abonnement.domain.service.PromotionDomainService;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.SubscriptionRules;
+import org.store.config.RedisCacheConfig;
 
 import java.util.UUID;
 
@@ -35,9 +37,10 @@ public class PromotionServiceImpl implements IPromotionService {
         this.validatorService = validatorService;
     }
 
-    /** Crée une promotion après validation période + cohérence réduction et résolution du plan optionnel. */
+    /** Crée une promotion après validation période + cohérence réduction et résolution du plan optionnel. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public PromotionResponse create(PromotionRequest promotionRequest) {
         SubscriptionRules.ensurePeriodValid(
                 promotionRequest.dateDebut(), promotionRequest.dateFin(), "promotion.invalidPeriod");
@@ -69,9 +72,10 @@ public class PromotionServiceImpl implements IPromotionService {
         return promotionDomainService.findResponses(filter);
     }
 
-    /** Met à jour ; revérifie période et cohérence. */
+    /** Met à jour ; revérifie période et cohérence. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public PromotionResponse update(UUID id, PromotionRequest promotionRequest) {
         Promotion promotion = promotionDomainService.findById(id);
 
@@ -87,25 +91,28 @@ public class PromotionServiceImpl implements IPromotionService {
         return new PromotionResponse(promotionDomainService.save(promotion));
     }
 
-    /** Force `actif=true`. */
+    /** Force `actif=true`. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public PromotionResponse activate(UUID id) {
         Promotion promotion = promotionDomainService.findById(id);
         return new PromotionResponse(promotionDomainService.setActive(promotion, true));
     }
 
-    /** Force `actif=false`. */
+    /** Force `actif=false`. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public PromotionResponse deactivate(UUID id) {
         Promotion promotion = promotionDomainService.findById(id);
         return new PromotionResponse(promotionDomainService.setActive(promotion, false));
     }
 
-    /** Supprime la promotion. */
+    /** Supprime la promotion. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public void delete(UUID id) {
         Promotion promotion = promotionDomainService.findById(id);
         promotionDomainService.delete(promotion);

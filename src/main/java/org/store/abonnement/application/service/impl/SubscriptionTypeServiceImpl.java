@@ -1,5 +1,6 @@
 package org.store.abonnement.application.service.impl;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +13,7 @@ import org.store.abonnement.domain.model.TypeAbonnement;
 import org.store.abonnement.domain.service.TypeAbonnementDomainService;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.ValidatorService;
+import org.store.config.RedisCacheConfig;
 
 import java.util.UUID;
 
@@ -31,9 +33,10 @@ public class SubscriptionTypeServiceImpl implements ISubscriptionTypeService {
         this.validatorService = validatorService;
     }
 
-    /** Crée un type après vérification d'unicité du nom et cohérence type/valeur de réduction. */
+    /** Crée un type après vérification d'unicité du nom et cohérence type/valeur de réduction. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public SubscriptionTypeResponse create(SubscriptionTypeRequest subscriptionTypeRequest) {
         ensureNomAvailable(subscriptionTypeRequest.nom());
         SubscriptionRules.ensureReductionConsistent(
@@ -62,9 +65,10 @@ public class SubscriptionTypeServiceImpl implements ISubscriptionTypeService {
         return typeAbonnementDomainService.findResponses(filter);
     }
 
-    /** Met à jour ; revérifie l'unicité du nom (si changé) et la cohérence de la réduction. */
+    /** Met à jour ; revérifie l'unicité du nom (si changé) et la cohérence de la réduction. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public SubscriptionTypeResponse update(UUID id, SubscriptionTypeRequest subscriptionTypeRequest) {
         TypeAbonnement type = typeAbonnementDomainService.findById(id);
 
@@ -81,25 +85,28 @@ public class SubscriptionTypeServiceImpl implements ISubscriptionTypeService {
         return new SubscriptionTypeResponse(typeAbonnementDomainService.save(type));
     }
 
-    /** Force `actif=true`. */
+    /** Force `actif=true`. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public SubscriptionTypeResponse activate(UUID id) {
         TypeAbonnement type = typeAbonnementDomainService.findById(id);
         return new SubscriptionTypeResponse(typeAbonnementDomainService.setActive(type, true));
     }
 
-    /** Force `actif=false`. */
+    /** Force `actif=false`. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public SubscriptionTypeResponse deactivate(UUID id) {
         TypeAbonnement type = typeAbonnementDomainService.findById(id);
         return new SubscriptionTypeResponse(typeAbonnementDomainService.setActive(type, false));
     }
 
-    /** Supprime le type. */
+    /** Supprime le type. Invalide le cache du catalogue public. */
     @Override
     @Transactional
+    @CacheEvict(value = RedisCacheConfig.PUBLIC_CATALOG, allEntries = true)
     public void delete(UUID id) {
         TypeAbonnement type = typeAbonnementDomainService.findById(id);
         typeAbonnementDomainService.delete(type);
