@@ -4,10 +4,12 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.achat.domain.enums.CommandeAchatStatut;
+import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -33,4 +35,14 @@ public class CommandeAchat extends AuditableEntity {
     private List<LigneCommandeAchat> lignes;
 
     private LocalDate date;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "motif_annulation", length = 30)
+    private MotifAnnulationAchat motifAnnulation;
+
+    @Column(name = "commentaire_annulation", columnDefinition = "TEXT")
+    private String commentaireAnnulation;
+
+    @Column(name = "date_annulation")
+    private LocalDateTime dateAnnulation;
 }

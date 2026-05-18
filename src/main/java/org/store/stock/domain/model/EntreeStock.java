@@ -41,4 +41,7 @@ public class EntreeStock extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private CommandeAchat commandeAchat;
+
+    @Column(nullable = false)
+    private boolean annulee = false;
 }

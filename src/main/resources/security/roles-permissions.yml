@@ -90,6 +90,7 @@ permissions:
   - PURCHASE_READ
   - PURCHASE_APPROVE
   - PURCHASE_PAY
+  - PURCHASE_CANCEL
 
   # SALE
   - SALE_CREATE
@@ -235,6 +236,7 @@ roles:
       - PURCHASE_READ
       - PURCHASE_APPROVE
       - PURCHASE_PAY
+      - PURCHASE_CANCEL
       - SALE_CREATE
       - SALE_UPDATE
       - SALE_DELETE
@@ -351,6 +353,7 @@ roles:
       - PURCHASE_READ
       - PURCHASE_APPROVE
       - PURCHASE_PAY
+      - PURCHASE_CANCEL
       - SALE_CREATE
       - SALE_UPDATE
       - SALE_DELETE
@@ -446,6 +449,7 @@ roles:
       - PURCHASE_READ
       - PURCHASE_APPROVE
       - PURCHASE_PAY
+      - PURCHASE_CANCEL
       - SALE_CREATE
       - SALE_UPDATE
       - SALE_DELETE
