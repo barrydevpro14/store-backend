@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.vente.application.dto.AnnulationVenteRequest;
+import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.VenteDetailsResponse;
 import org.store.vente.application.dto.VenteRequest;
 import org.store.vente.application.dto.VenteResponse;
@@ -39,5 +41,12 @@ public class VenteController {
     @PreAuthorize("hasAuthority('SALE_READ')")
     public ResponseEntity<VenteDetailsResponse> findDetailsById(@PathVariable UUID commandeId) {
         return ResponseEntity.ok(venteService.findDetailsById(commandeId));
+    }
+
+    @PostMapping("/{commandeId}/annuler")
+    @PreAuthorize("hasAuthority('SALE_CANCEL')")
+    public ResponseEntity<AnnulationVenteResponse> cancel(@PathVariable UUID commandeId,
+                                                          @Valid @RequestBody AnnulationVenteRequest annulationVenteRequest) {
+        return ResponseEntity.ok(venteService.cancel(commandeId, annulationVenteRequest));
     }
 }

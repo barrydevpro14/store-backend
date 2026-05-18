@@ -266,6 +266,7 @@
 - Paiement échelonné sur facture client (recalcul statut)
 - Résumé caisse journalier (nombre commandes/produits, totaux commandes/paiements)
 - Top N produits les plus vendus par jour (tri par quantité vendue)
+- Annulation de vente avec ré-injection stock FIFO (compensation `MouvementStock(RETOUR_CLIENT)`, fenêtre temporelle configurable)
 
 | Méthode | Path | Permission | Acteur |
 |---------|------|------------|--------|
@@ -278,6 +279,7 @@
 | **Ventes** | | | |
 | POST | `/api/v1/ventes` | `SALE_CREATE` | VENDEUR/MANAGER |
 | GET | `/api/v1/ventes/{commandeId}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
+| POST | `/api/v1/ventes/{commandeId}/annuler` | `SALE_CANCEL` | ADMIN/PROPRIETAIRE/MANAGER |
 | GET | `/api/v1/commandes-vente?magasinId=&clientId=&vendeurId=&statut=&reference=&montantMin=&montantMax=&startDate=&endDate=&page=&size=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/commandes-vente/{id}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/factures-client?statut=&clientId=&startDate=&endDate=&page=&size=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
@@ -288,7 +290,7 @@
 | GET | `/api/v1/ventes/caisse/resume?magasinId=&date=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 | GET | `/api/v1/ventes/caisse/top-produits?magasinId=&date=&nombre=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
 
-**Total endpoints** : 15
+**Total endpoints** : 16
 
 ---
 

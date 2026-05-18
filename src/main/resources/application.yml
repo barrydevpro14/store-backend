@@ -56,3 +56,6 @@ upload:
 
 subscription:
   trial-days: ${SUBSCRIPTION_TRIAL_DAYS:30}
+
+sale:
+  cancel-window-hours: ${SALE_CANCEL_WINDOW_HOURS:24}

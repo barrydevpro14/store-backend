@@ -488,6 +488,5 @@ roles:
       - SALE_DELETE
       - SALE_READ
       - SALE_PAY
-      - SALE_CANCEL
       - PAYMENT_CREATE
       - PAYMENT_READ

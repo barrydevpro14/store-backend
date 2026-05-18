@@ -6,8 +6,10 @@ import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
 import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.enums.MotifAnnulationVente;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -36,4 +38,13 @@ public class CommandeVente extends AuditableEntity {
     private FactureClient facture;
 
     private LocalDate date;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private MotifAnnulationVente motifAnnulation;
+
+    @Column(columnDefinition = "TEXT")
+    private String commentaireAnnulation;
+
+    private LocalDateTime dateAnnulation;
 }

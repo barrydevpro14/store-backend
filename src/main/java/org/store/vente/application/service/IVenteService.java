@@ -1,5 +1,7 @@
 package org.store.vente.application.service;
 
+import org.store.vente.application.dto.AnnulationVenteRequest;
+import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.VenteDetailsResponse;
 import org.store.vente.application.dto.VenteRequest;
 import org.store.vente.application.dto.VenteResponse;
@@ -20,4 +22,11 @@ public interface IVenteService {
      * Scoping entreprise du caller via le magasin de la commande.
      */
     VenteDetailsResponse findDetailsById(UUID commandeId);
+
+    /**
+     * Annule une vente DELIVERED dans la fenêtre temporelle autorisée :
+     * ré-injecte le stock FIFO consommé (crédit lots + flag annulee sur SortieStock + journalise RETOUR_CLIENT),
+     * bascule commande et facture en statut ANNULEE. Les paiements existants sont conservés (audit).
+     */
+    AnnulationVenteResponse cancel(UUID commandeId, AnnulationVenteRequest annulationVenteRequest);
 }

@@ -9,9 +9,12 @@ import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.dto.VenteParVendeurResponse;
+import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.enums.MotifAnnulationVente;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.repository.CommandeVenteRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,5 +64,14 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
     /** Ventilation des commandes par vendeur (Account.createdBy -> Utilisateur via CAST + JOIN), agrégée par UUID utilisateur. */
     public List<VenteParVendeurResponse> ventilationParVendeurForCaisse(CaisseResumeFilter range, UUID entrepriseId) {
         return repository.ventilationParVendeurByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
+    }
+
+    /** Bascule la commande en statut ANNULEE avec motif, commentaire et timestamp d'annulation. */
+    public CommandeVente cancel(CommandeVente commande, MotifAnnulationVente motif, String commentaire) {
+        commande.setStatut(CommandeVenteStatut.ANNULEE);
+        commande.setMotifAnnulation(motif);
+        commande.setCommentaireAnnulation(commentaire);
+        commande.setDateAnnulation(LocalDateTime.now());
+        return save(commande);
     }
 }

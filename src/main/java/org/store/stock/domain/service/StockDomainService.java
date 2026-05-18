@@ -53,6 +53,15 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
     }
 
     /**
+     * Recrédite la quantité disponible du stock (ne touche pas au prix d'achat moyen).
+     * Utilisé lors d'une annulation de vente pour compenser un {@code decrement} antérieur.
+     */
+    public Stock creditQuantite(Stock stock, int quantite) {
+        stock.setQuantiteDisponible(stock.getQuantiteDisponible() + quantite);
+        return save(stock);
+    }
+
+    /**
      * Crée ou met à jour le stock agrégé d'un (magasin, produit) lors d'une entrée :
      * incrémente la quantité disponible et recalcule le prix d'achat moyen pondéré
      * via la formule {@code (qtyAvant × prixMoyenAvant + quantite × prixAchat) / qtyApres}

@@ -20,13 +20,25 @@ import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.produit.domain.model.Quality;
+import org.store.property.SaleProperties;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.IAccountService;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.service.ISortieStockService;
+import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.domain.model.EntreeStock;
+import org.store.stock.domain.model.SortieStock;
+import org.store.stock.domain.model.Stock;
+import org.store.stock.domain.service.EntreeStockDomainService;
+import org.store.stock.domain.service.MouvementStockDomainService;
+import org.store.stock.domain.service.SortieStockDomainService;
+import org.store.stock.domain.service.StockDomainService;
 import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
+import org.store.vente.application.dto.AnnulationVenteRequest;
+import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.PaiementVenteCreate;
@@ -36,6 +48,7 @@ import org.store.vente.application.dto.VenteRequest;
 import org.store.vente.application.dto.VenteResponse;
 import org.store.vente.application.service.impl.VenteServiceImpl;
 import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.enums.MotifAnnulationVente;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
@@ -46,6 +59,7 @@ import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +67,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -71,6 +87,11 @@ class VenteServiceImplTest {
     @Mock private IAccountService accountService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private EntreeStockDomainService entreeStockDomainService;
+    @Mock private SortieStockDomainService sortieStockDomainService;
+    @Mock private StockDomainService stockDomainService;
+    @Mock private MouvementStockDomainService mouvementStockDomainService;
+    @Mock private SaleProperties saleProperties;
 
     @InjectMocks
     private VenteServiceImpl service;
@@ -348,5 +369,149 @@ class VenteServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(factureClientDomainService, never()).findByCommandeId(any());
+    }
+
+    private CommandeVente deliveredCommandeWithOneLigne(int quantiteSortie) {
+        UUID ligneId = UUID.randomUUID();
+        LigneCommandeVente ligne = new LigneCommandeVente();
+        ligne.setId(ligneId);
+        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+        commande.setLignes(List.of(ligne));
+        return commande;
+    }
+
+    @Test
+    void cancel_should_reinject_stock_and_mark_cancelled() {
+        CommandeVente delivered = deliveredCommandeWithOneLigne(8);
+        UUID ligneId = delivered.getLignes().get(0).getId();
+
+        EntreeStock lot = new EntreeStock();
+        lot.setId(UUID.randomUUID());
+        lot.setMagasin(magasin);
+        lot.setProduit(produit);
+        lot.setQuantiteRestante(0);
+
+        SortieStock sortie = new SortieStock();
+        sortie.setEntreeStock(lot);
+        sortie.setQuantiteSortie(8);
+        sortie.setAnnulee(false);
+
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(2);
+
+        when(commandeVenteDomainService.findById(delivered.getId())).thenReturn(delivered);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(saleProperties.cancelWindowHours()).thenReturn(24);
+        when(sortieStockDomainService.findActiveByLigneVenteId(ligneId)).thenReturn(List.of(sortie));
+        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.of(stock));
+        when(stockDomainService.creditQuantite(eq(stock), eq(8))).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(stock.getQuantiteDisponible() + 8);
+            return stock;
+        });
+        when(commandeVenteDomainService.cancel(any(), any(), any())).thenAnswer(inv -> {
+            CommandeVente arg = inv.getArgument(0);
+            arg.setStatut(CommandeVenteStatut.ANNULEE);
+            arg.setMotifAnnulation(inv.getArgument(1));
+            arg.setCommentaireAnnulation(inv.getArgument(2));
+            arg.setDateAnnulation(LocalDateTime.now());
+            return arg;
+        });
+        when(factureClientDomainService.findByCommandeId(delivered.getId())).thenReturn(Optional.of(facture));
+
+        AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", "Saisie incorrecte");
+        AnnulationVenteResponse response = service.cancel(delivered.getId(), req);
+
+        assertThat(response.totalQuantiteReinjectee()).isEqualTo(8);
+        assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
+        assertThat(response.statut()).isEqualTo(CommandeVenteStatut.ANNULEE);
+        assertThat(response.motif()).isEqualTo(MotifAnnulationVente.ERREUR_SAISIE);
+
+        verify(entreeStockDomainService).creditQuantiteRestante(lot, 8);
+        verify(sortieStockDomainService).markAsAnnulee(sortie);
+        verify(stockDomainService).creditQuantite(stock, 8);
+
+        ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
+        verify(mouvementStockDomainService).journalize(eq(stock), mouvementCaptor.capture());
+        assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.RETOUR_CLIENT);
+        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(8);
+        assertThat(mouvementCaptor.getValue().stockAvant()).isEqualTo(2);
+        assertThat(mouvementCaptor.getValue().stockApres()).isEqualTo(10);
+
+        verify(factureClientDomainService).cancel(facture);
+    }
+
+    @Test
+    void cancel_should_throw_when_already_cancelled() {
+        commande.setStatut(CommandeVenteStatut.ANNULEE);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+
+        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+
+        AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
+        verify(stockDomainService, never()).creditQuantite(any(), anyInt());
+    }
+
+    @Test
+    void cancel_should_throw_when_not_delivered() {
+        commande.setStatut(CommandeVenteStatut.NOT_DELIVERED);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+
+        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+
+        AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void cancel_should_throw_when_window_expired() {
+        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(48));
+
+        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(saleProperties.cancelWindowHours()).thenReturn(24);
+
+        AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
+    }
+
+    @Test
+    void cancel_should_throw_when_cross_entreprise() {
+        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setCreatedAt(LocalDateTime.now().minusHours(1));
+
+        UUID otherEntrepriseId = UUID.randomUUID();
+        Entreprise other = new Entreprise();
+        other.setId(otherEntrepriseId);
+        Magasin foreignMagasin = new Magasin();
+        foreignMagasin.setId(UUID.randomUUID());
+        foreignMagasin.setEntreprise(other);
+        commande.setMagasin(foreignMagasin);
+
+        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+
+        AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
     }
 }

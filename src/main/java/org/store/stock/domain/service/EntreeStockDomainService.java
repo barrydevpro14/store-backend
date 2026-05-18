@@ -48,6 +48,12 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         ));
     }
 
+    /** Recrédite la quantité restante d'un lot lors d'une annulation de vente (compense les SortieStock annulées). */
+    public EntreeStock creditQuantiteRestante(EntreeStock lot, int quantite) {
+        lot.setQuantiteRestante(lot.getQuantiteRestante() + quantite);
+        return save(lot);
+    }
+
     /** Création d'une entrée stock à partir d'un record groupé (peut être liée à une CommandeAchat). */
     public EntreeStock create(EntreeStockCreate entreeStockCreate) {
         EntreeStock entreeStock = new EntreeStock();

@@ -31,4 +31,7 @@ public class SortieStock extends AuditableEntity {
 
     @Column(precision = 19, scale = 2)
     private BigDecimal marge;
+
+    @Column(nullable = false)
+    private boolean annulee;
 }

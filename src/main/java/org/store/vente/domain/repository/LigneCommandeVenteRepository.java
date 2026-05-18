@@ -24,6 +24,7 @@ public interface LigneCommandeVenteRepository extends BaseRepository<LigneComman
             JOIN ligne.commande commande
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :magasinId
+              AND commande.statut <> org.store.vente.domain.enums.CommandeVenteStatut.ANNULEE
               AND commande.createdAt >= :startOfDay
               AND commande.createdAt <= :endOfDay
             GROUP BY produit.id, produit.nom, produit.reference

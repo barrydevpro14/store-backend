@@ -7,6 +7,7 @@ import org.store.stock.application.dto.MarginReportFilter;
 import org.store.stock.application.dto.MarginReportResponse;
 import org.store.stock.domain.model.SortieStock;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface SortieStockRepository extends BaseRepository<SortieStock> {
@@ -21,6 +22,7 @@ public interface SortieStockRepository extends BaseRepository<SortieStock> {
             JOIN sortie.entreeStock entree
             WHERE entree.magasin.entreprise.id = :entrepriseId
               AND entree.magasin.id = :#{#filter.magasinId}
+              AND sortie.annulee = false
               AND (:#{#filter.productId} IS NULL OR entree.produit.id = :#{#filter.productId})
               AND (:#{#filter.fournisseurId} IS NULL OR entree.productFournisseur.fournisseur.id = :#{#filter.fournisseurId})
               AND (:#{#filter.fromDateTime()} IS NULL OR sortie.createdAt >= :#{#filter.fromDateTime()})
@@ -28,4 +30,6 @@ public interface SortieStockRepository extends BaseRepository<SortieStock> {
             """)
     MarginReportResponse computeMargin(@Param("filter") MarginReportFilter filter,
                                        @Param("entrepriseId") UUID entrepriseId);
+
+    List<SortieStock> findAllByLigneVenteIdAndAnnuleeFalse(UUID ligneVenteId);
 }

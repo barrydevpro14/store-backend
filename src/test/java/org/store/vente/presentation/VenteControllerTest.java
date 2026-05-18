@@ -13,6 +13,8 @@ import org.store.common.dto.UserSummaryResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
+import org.store.vente.application.dto.AnnulationVenteRequest;
+import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.LigneVenteRequest;
@@ -21,6 +23,7 @@ import org.store.vente.application.dto.VenteRequest;
 import org.store.vente.application.dto.VenteResponse;
 import org.store.vente.application.service.IVenteService;
 import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.enums.MotifAnnulationVente;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -142,5 +145,53 @@ class VenteControllerTest {
                 .andExpect(jsonPath("$.facture.numero").value("FAC-VTE-AUTO"))
                 .andExpect(jsonPath("$.lignes.length()").value(0))
                 .andExpect(jsonPath("$.paiements.length()").value(0));
+    }
+
+    @Test
+    void should_return_200_when_cancel_sale() throws Exception {
+        UUID commandeId = UUID.randomUUID();
+        AnnulationVenteResponse cancelResponse = new AnnulationVenteResponse(
+                commandeId, "VTE-AUTO",
+                CommandeVenteStatut.ANNULEE,
+                MotifAnnulationVente.ERREUR_SAISIE,
+                "Saisie incorrecte",
+                "2026-05-18 14:30:00",
+                8, 1
+        );
+        when(venteService.cancel(eq(commandeId), any(AnnulationVenteRequest.class))).thenReturn(cancelResponse);
+
+        AnnulationVenteRequest body = new AnnulationVenteRequest("ERREUR_SAISIE", "Saisie incorrecte");
+
+        mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.commandeId").value(commandeId.toString()))
+                .andExpect(jsonPath("$.statut").value("ANNULEE"))
+                .andExpect(jsonPath("$.motif").value("ERREUR_SAISIE"))
+                .andExpect(jsonPath("$.totalQuantiteReinjectee").value(8))
+                .andExpect(jsonPath("$.nombreMouvementsCrees").value(1));
+    }
+
+    @Test
+    void should_return_400_when_cancel_motif_invalid() throws Exception {
+        UUID commandeId = UUID.randomUUID();
+        AnnulationVenteRequest body = new AnnulationVenteRequest("MOTIF_INCONNU", null);
+
+        mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_400_when_cancel_motif_blank() throws Exception {
+        UUID commandeId = UUID.randomUUID();
+        AnnulationVenteRequest body = new AnnulationVenteRequest("", null);
+
+        mockMvc.perform(post(VenteController.BASE_PATH + "/" + commandeId + "/annuler")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
     }
 }

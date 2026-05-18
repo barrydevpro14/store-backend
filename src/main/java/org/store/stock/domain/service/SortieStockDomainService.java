@@ -10,6 +10,7 @@ import org.store.stock.domain.model.SortieStock;
 import org.store.stock.domain.repository.SortieStockRepository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -45,5 +46,16 @@ public class SortieStockDomainService extends GlobalService<SortieStock, SortieS
 
     public MarginReportResponse computeMargin(MarginReportFilter filter, UUID entrepriseId) {
         return repository.computeMargin(filter, entrepriseId);
+    }
+
+    /** Sorties actives (non annulées) liées à une ligne de vente — utilisé pour la ré-injection à l'annulation. */
+    public List<SortieStock> findActiveByLigneVenteId(UUID ligneVenteId) {
+        return repository.findAllByLigneVenteIdAndAnnuleeFalse(ligneVenteId);
+    }
+
+    /** Marque la sortie comme annulée (préserve l'audit, exclut la sortie des reports de marges). */
+    public SortieStock markAsAnnulee(SortieStock sortie) {
+        sortie.setAnnulee(true);
+        return save(sortie);
     }
 }

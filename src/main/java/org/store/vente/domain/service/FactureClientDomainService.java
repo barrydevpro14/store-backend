@@ -59,6 +59,12 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
         return repository.sumMontantTotalByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
+    /** Bascule la facture en statut ANNULEE (paiements conservés tels quels pour audit). */
+    public FactureClient cancel(FactureClient facture) {
+        facture.setStatut(StatutFacture.ANNULEE);
+        return save(facture);
+    }
+
     /** Incrémente montantPaye et recalcule le statut selon le rapport montantPaye/montantTotal. */
     public FactureClient applyPaiement(FactureClient facture, BigDecimal montant) {
         BigDecimal montantPayeActuel = facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO;

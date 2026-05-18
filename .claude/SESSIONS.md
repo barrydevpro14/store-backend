@@ -7,7 +7,83 @@
 
 ## 📌 Dernière session
 
-**Date :** 2026-05-17 (session module abonnement — 9 use cases livrés sur 10 + refactor conventions R1-R7 + règle 38 externalisation + doc global)
+**Date :** 2026-05-18 (annulation de vente — workflow critique multi-modules livré bout en bout)
+**Sujet :** Endpoint `POST /api/v1/ventes/{id}/annuler` complet : ré-injection stock FIFO (recrédite EntreeStock, flag `annulee` sur SortieStock pour préserver l'audit marges, mouvement compensatoire RETOUR_CLIENT par lot), bascule CommandeVente + FactureClient en ANNULEE, motif enum typé + commentaire libre, fenêtre temporelle configurable via `SaleProperties.cancelWindowHours` (défaut 24h, règle 38). Permission `SALE_CANCEL` retirée du VENDEUR pour rester ADMIN/PROPRIETAIRE/MANAGER (sécurité fraude). 6 queries Caisse + Margin adaptées pour exclure les ventes annulées. **703 → 711 tests verts** (+8).
+
+**Décisions clés validées en début de session :**
+- **Motif** : enum typé `MotifAnnulationVente{ERREUR_SAISIE, REFUS_CLIENT, ARTICLE_DEFECTUEUX, AUTRE}` + commentaire libre optionnel (catégorisable pour reporting futur).
+- **Fenêtre temporelle** : `@ConfigurationProperties` `sale.cancel-window-hours` (défaut 24h, env `SALE_CANCEL_WINDOW_HOURS`). Calculée sur `commande.createdAt` (timestamp précis AuditableEntity), pas `commande.date` LocalDate.
+- **Permission** : ADMIN+PROPRIETAIRE+MANAGER seulement. `SALE_CANCEL` était déjà dans le YAML, et **était attribué au VENDEUR par erreur** — retiré du YAML pour sécurité (le vendeur signale, le manager annule, traçabilité via `createdBy`).
+- **Stratégie stock** : recrédit lots d'origine + flag `annulee=true` sur SortieStock (audit préservé, marges et caisse filtrent les annulées) + 1 mouvement RETOUR_CLIENT par lot recrédité. Préféré à `DELETE SortieStock` (perte audit) ou nouveau lot retour FIFO (impact valorisation moyenne).
+- **Paiements existants** : conservés tels quels après annulation (audit). Remboursement hors-app, pas de statut ANNULEE sur PaiementVente.
+
+**Ce qui a été fait :**
+
+1. **Migration V22** (`V22__add_cancel_sale.sql`) : `commande_vente` +3 colonnes (`motif_annulation VARCHAR(30)`, `commentaire_annulation TEXT`, `date_annulation TIMESTAMP`), `sortie_stock` +`annulee BOOLEAN NOT NULL DEFAULT FALSE` + `idx_sortie_stock_annulee`.
+
+2. **Enums + entités** :
+   - Nouveau `MotifAnnulationVente` (4 valeurs).
+   - `CommandeVenteStatut +ANNULEE`, `StatutFacture +ANNULEE`.
+   - `CommandeVente` enrichie de 3 champs (`@Enumerated(STRING) motifAnnulation`, `@Column(columnDefinition="TEXT") commentaireAnnulation`, `LocalDateTime dateAnnulation`).
+   - `SortieStock +annulee` boolean.
+
+3. **Properties + i18n + YAML** :
+   - Record `org.store.property.SaleProperties(int cancelWindowHours)` + `application.yml` section `sale.cancel-window-hours`.
+   - 3 clés FR/EN (`commandeVente.cancel.alreadyCancelled`, `commandeVente.cancel.windowExpired`, `commandeVente.cancel.notDelivered`).
+   - `roles-permissions.yml` : `SALE_CANCEL` retiré du VENDEUR (lignes 486-491 nettoyées).
+
+4. **Domain services (règle 26 — setters dans DomainService)** :
+   - `CommandeVenteDomainService.cancel(commande, motif, commentaire)` (statut + 3 champs + save).
+   - `FactureClientDomainService.cancel(facture)` (statut ANNULEE + save).
+   - `SortieStockDomainService.markAsAnnulee(sortie)` + `findActiveByLigneVenteId(ligneId)` (new repo method `findAllByLigneVenteIdAndAnnuleeFalse` dérivée Spring Data).
+   - `EntreeStockDomainService.creditQuantiteRestante(lot, qty)` (incrément + save).
+   - `StockDomainService.creditQuantite(stock, qty)` (symétrique à `decrement`).
+
+5. **DTOs** :
+   - `AnnulationVenteRequest(@NotBlank @EnumValue motif, @Size(max=1000) commentaire?)` + `motifAsEnum()`.
+   - `AnnulationVenteResponse(commandeId, reference, statut, motif, commentaire, dateAnnulation, totalQuantiteReinjectee, nombreMouvementsCrees)` + constructeur secondaire `(CommandeVente, int, int)`.
+   - `ReinjectionStockResult` record (cumul `merge` + `empty()`) pour agréger les compteurs via stream `reduce`.
+
+6. **App service `VenteServiceImpl.cancel`** :
+   - 5 nouvelles dépendances injectées (EntreeStockDomainService, SortieStockDomainService, StockDomainService, MouvementStockDomainService, SaleProperties).
+   - Validations publiques (règle 27) : `ensureCancellable` (alreadyCancelled / notDelivered), `ensureWithinCancelWindow` (createdAt + cancelWindowHours).
+   - `reinjectStockForLigne(ligne)` : charge sorties actives + Stock unique par ligne, fold les compteurs via `mapToInt(...).sum()`.
+   - `reinjectOneSortie(sortie, stock)` : 1 mouvement RETOUR_CLIENT avec stockAvant/stockApres précis par lot (audit séquentiel lisible).
+   - Bascule commande + facture en ANNULEE via méthodes domain.
+
+7. **Endpoint `VenteController.cancel`** : `POST /{commandeId}/annuler` + `@PreAuthorize("hasAuthority('SALE_CANCEL')")`, retourne 200 OK avec `AnnulationVenteResponse`.
+
+8. **Ajustements reporting/caisse** (cohérence sémantique tiroir-caisse) :
+   - `SortieStockRepository.computeMargin` : `+AND sortie.annulee = false`.
+   - `CommandeVenteRepository` (3 queries Caisse) : `+AND commande.statut <> ANNULEE`.
+   - `FactureClientRepository.sumMontantTotalByMagasinAndDay` : idem.
+   - `PaiementVenteRepository` (2 queries) : `+AND paiement.facture.commande.statut <> ANNULEE`.
+   - `LigneCommandeVenteRepository.findTopProduitsByMagasinAndDay` : idem.
+
+9. **Tests** : 5 service `cancel*` (nominal + déjà annulée + pas DELIVERED + fenêtre dépassée + cross-entreprise) + 3 controller (200 / 400 motif invalide / 400 motif blank). ArgumentCaptor sur `MouvementJournalize` pour vérifier RETOUR_CLIENT + stockAvant/Apres + quantité.
+
+10. **Doc** : `FONCTIONNALITIES.md` section 47 ajoutée (entrée/flux/conservation audit/i18n/tests), `MODULES_OVERVIEW.md` ligne endpoint + total VENTE 15→16, `TODO.md` statut [x].
+
+**Migration BDD ajoutée :** V22 (cancel_sale — 4 colonnes + index).
+
+**Permissions modifiées :** `SALE_CANCEL` retirée du VENDEUR uniquement (présente sur ADMIN/PROPRIETAIRE/MANAGER avant). Pas de permission créée.
+
+**Décisions notables (mémoire utilisateur) :**
+- Stratégie audit "flag `annulee=true`" préférée à `DELETE SortieStock` ou nouveau lot — préserve l'historique de marges + permet retracer chronologiquement.
+- Caisse résumé exclut désormais les ventes ANNULEE (sémantique tiroir-caisse réel du jour, pas inventaire des commandes).
+- Paiements après annulation : conservés, remboursement hors-app sans statut technique sur `PaiementVente`.
+- 1 `MouvementStock(RETOUR_CLIENT)` par lot recrédité (granularité maximale pour audit lot-par-lot vs 1 par ligne).
+
+**Prochaine étape recommandée :**
+
+1. **Édition/suppression ligne d'achat** (`PUT/DELETE /api/v1/purchases/orders/{cmdId}/lignes/{ligneId}` avant validation commande — symétrique aux annulations).
+2. **Réception partielle commande achat** (entité `ReceptionAchat` ou statut par ligne + endpoint `POST /receptions`).
+3. **Démarrage `store-frontend`** : suivre Phase 0-1 de `FRONTEND_ARCHITECTURE.md`.
+4. **Intégrateur paiement automatique** (débloque étape 9 abonnement renouvellement auto).
+
+---
+
+## Session du 2026-05-17 (module abonnement — 9 use cases livrés sur 10 + refactor conventions R1-R7 + règle 38 externalisation + doc global)
 **Sujet :** Module SaaS **abonnement** complet sauf renouvellement automatique (étape 9 **différée**, dépend de l'intégration paiement auto). 9 use cases livrés. Refactor en 7 blocs (R1-R7) pour aligner sur les conventions de codage. Règle 38 inscrite (externalisation valeurs fixes). Doc global `MODULES_OVERVIEW.md` créé. **567 → 703 tests verts** (+136). Commits poussés : `e840020`, `e38ca38`, `205e4c0`, `7452787`.
 
 **Ce qui a été fait :**

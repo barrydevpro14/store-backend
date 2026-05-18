@@ -1061,6 +1061,48 @@ Limit via `Pageable` (= `PageRequest.of(0, nombre)`). Le repo retourne `List<Top
 
 ---
 
+## 47. Annulation de vente (vente, workflow critique multi-modules) — `VenteServiceImpl.cancel`
+
+**Endpoint** : `POST /api/v1/ventes/{commandeId}/annuler` (permission `SALE_CANCEL` — ADMIN/PROPRIETAIRE/MANAGER, **pas VENDEUR**).
+
+**Cas d'usage métier** : une vente DELIVERED est annulée (erreur de saisie, refus client, article défectueux). Le stock FIFO consommé doit être ré-injecté pour rendre les pièces à nouveau vendables ; la facture client est invalidée ; les paiements existants sont conservés pour audit (remboursement hors-app). L'annulation n'est autorisée que dans une fenêtre temporelle configurable (défaut 24 h après création).
+
+**Entrée** : `AnnulationVenteRequest{ motif (enum `MotifAnnulationVente` : ERREUR_SAISIE, REFUS_CLIENT, ARTICLE_DEFECTUEUX, AUTRE) + commentaire optional ≤ 1000 chars }`.
+
+**Flux atomique** (1 transaction `@Transactional`) :
+1. `validatorService.validate(request)`.
+2. Charge commande + `ensureBelongsToCurrentEntreprise` (`commandeVente.notOwned` 403).
+3. `ensureCancellable(commande)` :
+   - Si statut = `ANNULEE` → `BadArgumentException("commandeVente.cancel.alreadyCancelled")`.
+   - Si statut ≠ `DELIVERED` → `BadArgumentException("commandeVente.cancel.notDelivered", statut)`.
+4. `ensureWithinCancelWindow(commande)` :
+   - `commande.createdAt + saleProperties.cancelWindowHours` doit être ≥ `now()`, sinon `BadArgumentException("commandeVente.cancel.windowExpired", maxHours)`.
+5. Pour chaque `LigneCommandeVente` :
+   - Charge les `SortieStock(annulee=false)` via `sortieStockDomainService.findActiveByLigneVenteId(ligneId)`.
+   - Charge le `Stock` agrégé du (magasin, produit) une seule fois par ligne.
+   - Pour chaque sortie : `entreeStockDomainService.creditQuantiteRestante(lot, qty)` + `sortieStockDomainService.markAsAnnulee(sortie)` + `stockDomainService.creditQuantite(stock, qty)` + `mouvementStockDomainService.journalize(stock, MouvementJournalize(RETOUR_CLIENT, qty, stockAvant, stockApres, null, null))`.
+6. Bascule commande → `ANNULEE` + remplit `motifAnnulation`, `commentaireAnnulation`, `dateAnnulation` (méthode `commandeVenteDomainService.cancel`, règle 26).
+7. Bascule facture → `ANNULEE` si présente (méthode `factureClientDomainService.cancel`, règle 26). Paiements `PaiementVente` conservés tels quels.
+
+**Sortie** : `AnnulationVenteResponse{ commandeId, reference, statut=ANNULEE, motif, commentaire, dateAnnulation (yyyy-MM-dd HH:mm:ss), totalQuantiteReinjectee, nombreMouvementsCrees }`. HTTP 200.
+
+**Conservation audit** :
+- `SortieStock.annulee = true` permet à `MarginReportRepository.computeMargin` d'exclure les marges des ventes annulées via `WHERE sortie.annulee = false`.
+- 6 queries Caisse adaptées (sumQuantite / countCommandes / ventilationVendeur / sumMontantTotal / sumMontantPaiement / topProduits) : `WHERE commande.statut <> ANNULEE`. Sémantique tiroir-caisse : pas de "fantôme" sur des ventes invalidées.
+- Les `MouvementStock(SORTIE_VENTE)` initiaux ne sont pas supprimés — chaque RETOUR_CLIENT compensatoire est journalisé en pendant, l'historique reste lisible chronologiquement.
+
+**Configuration** : `sale.cancel-window-hours: ${SALE_CANCEL_WINDOW_HOURS:24}` (record `SaleProperties` dans `org.store.property`, règle 38).
+
+**Migration BDD** : V22 — `commande_vente +motif_annulation VARCHAR(30) / +commentaire_annulation TEXT / +date_annulation TIMESTAMP`, `sortie_stock +annulee BOOLEAN NOT NULL DEFAULT FALSE` + index.
+
+**Validations publiques** (règle 27) : `ensureBelongsToCurrentEntreprise`, `ensureCancellable`, `ensureWithinCancelWindow`, `reinjectStockForLigne`, `reinjectOneSortie`. Toutes accessibles individuellement, testables isolément.
+
+**i18n** : 3 clés FR/EN — `commandeVente.cancel.alreadyCancelled`, `commandeVente.cancel.windowExpired` ({0}=max hours), `commandeVente.cancel.notDelivered` ({0}=statut courant).
+
+**Tests** : 5 service (nominal recrédit + journalize RETOUR_CLIENT + statut ANNULEE / déjà annulée 400 / pas DELIVERED 400 / fenêtre dépassée 400 / cross-entreprise 403) + 3 controller (200 OK / 400 motif invalide / 400 motif blank). **711 / 711 verts** (+8 vs 703).
+
+---
+
 ## Conventions transverses
 
 - **i18n** : tous les messages d'erreur passent par `IMessageSourceService` (clés dans `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

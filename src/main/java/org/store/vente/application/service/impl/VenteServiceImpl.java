@@ -11,13 +11,25 @@ import org.store.common.tools.NameHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.property.SaleProperties;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.IAccountService;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.service.ISortieStockService;
+import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.domain.model.EntreeStock;
+import org.store.stock.domain.model.SortieStock;
+import org.store.stock.domain.model.Stock;
+import org.store.stock.domain.service.EntreeStockDomainService;
+import org.store.stock.domain.service.MouvementStockDomainService;
+import org.store.stock.domain.service.SortieStockDomainService;
+import org.store.stock.domain.service.StockDomainService;
 import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
+import org.store.vente.application.dto.AnnulationVenteRequest;
+import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.dto.FactureClientCreate;
@@ -28,6 +40,7 @@ import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
+import org.store.vente.application.dto.ReinjectionStockResult;
 import org.store.vente.application.dto.VenteContext;
 import org.store.vente.application.dto.VenteDetailsResponse;
 import org.store.vente.application.dto.VenteRequest;
@@ -47,8 +60,10 @@ import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -70,6 +85,11 @@ public class VenteServiceImpl implements IVenteService {
     private final IAccountService accountService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final EntreeStockDomainService entreeStockDomainService;
+    private final SortieStockDomainService sortieStockDomainService;
+    private final StockDomainService stockDomainService;
+    private final MouvementStockDomainService mouvementStockDomainService;
+    private final SaleProperties saleProperties;
 
     public VenteServiceImpl(CommandeVenteDomainService commandeVenteDomainService,
                             LigneCommandeVenteDomainService ligneCommandeVenteDomainService,
@@ -81,7 +101,12 @@ public class VenteServiceImpl implements IVenteService {
                             ISortieStockService sortieStockService,
                             IAccountService accountService,
                             ICurrentUserService currentUserService,
-                            ValidatorService validatorService) {
+                            ValidatorService validatorService,
+                            EntreeStockDomainService entreeStockDomainService,
+                            SortieStockDomainService sortieStockDomainService,
+                            StockDomainService stockDomainService,
+                            MouvementStockDomainService mouvementStockDomainService,
+                            SaleProperties saleProperties) {
         this.commandeVenteDomainService = commandeVenteDomainService;
         this.ligneCommandeVenteDomainService = ligneCommandeVenteDomainService;
         this.factureClientDomainService = factureClientDomainService;
@@ -93,6 +118,11 @@ public class VenteServiceImpl implements IVenteService {
         this.accountService = accountService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.entreeStockDomainService = entreeStockDomainService;
+        this.sortieStockDomainService = sortieStockDomainService;
+        this.stockDomainService = stockDomainService;
+        this.mouvementStockDomainService = mouvementStockDomainService;
+        this.saleProperties = saleProperties;
     }
 
     /** Valide, crée commande + lignes + sorties FIFO + facture, applique le paiement initial éventuel. */
@@ -229,6 +259,88 @@ public class VenteServiceImpl implements IVenteService {
                 facture, premierPaiement.montant(), premierPaiement.modePaiementAsEnum(), datePaiement
         ));
         return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
+    }
+
+    /** Annule une vente DELIVERED dans la fenêtre autorisée, ré-injecte le stock et bascule commande + facture en ANNULEE. */
+    @Override
+    @Transactional
+    public AnnulationVenteResponse cancel(UUID commandeId, AnnulationVenteRequest annulationVenteRequest) {
+        validatorService.validate(annulationVenteRequest);
+
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCancellable(commande);
+        ensureWithinCancelWindow(commande);
+
+        ReinjectionStockResult reinjection = commande.getLignes().stream()
+                .map(this::reinjectStockForLigne)
+                .reduce(ReinjectionStockResult.empty(), ReinjectionStockResult::merge);
+
+        CommandeVente cancelled = commandeVenteDomainService.cancel(commande, annulationVenteRequest.motifAsEnum(), annulationVenteRequest.commentaire());
+
+        Optional<FactureClient> facture = factureClientDomainService.findByCommandeId(cancelled.getId());
+        facture.ifPresent(factureClientDomainService::cancel);
+
+        return new AnnulationVenteResponse(cancelled, reinjection.totalQuantite(), reinjection.nombreMouvements());
+    }
+
+    /** Vérifie que la commande est dans un statut annulable (DELIVERED) — throw BadArgument sinon. */
+    public void ensureCancellable(CommandeVente commande) {
+        CommandeVenteStatut statut = commande.getStatut();
+        if (statut == CommandeVenteStatut.ANNULEE) {
+            throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
+        }
+        if (statut != CommandeVenteStatut.DELIVERED) {
+            throw new BadArgumentException("commandeVente.cancel.notDelivered", statut.name());
+        }
+    }
+
+    /** Vérifie que la commande est encore dans la fenêtre d'annulation autorisée (configurable via SaleProperties). */
+    public void ensureWithinCancelWindow(CommandeVente commande) {
+        int maxHours = saleProperties.cancelWindowHours();
+        LocalDateTime deadline = commande.getCreatedAt().plusHours(maxHours);
+        if (deadline.isBefore(LocalDateTime.now())) {
+            throw new BadArgumentException("commandeVente.cancel.windowExpired", maxHours);
+        }
+    }
+
+    /** Récupère les sorties actives d'une ligne et les ré-injecte une par une (1 mouvement RETOUR_CLIENT par lot). */
+    public ReinjectionStockResult reinjectStockForLigne(LigneCommandeVente ligne) {
+        List<SortieStock> sorties = sortieStockDomainService.findActiveByLigneVenteId(ligne.getId());
+
+        if (sorties.isEmpty()) {
+            return ReinjectionStockResult.empty();
+        }
+
+        EntreeStock firstLot = sorties.get(0).getEntreeStock();
+        Stock stock = stockDomainService.findByMagasinIdAndProduitId(firstLot.getMagasin().getId(), firstLot.getProduit().getId())
+                .orElseThrow(() -> new EntityException("stock.notFound"));
+
+        int totalQuantite = sorties.stream()
+                .mapToInt(sortie -> reinjectOneSortie(sortie, stock))
+                .sum();
+
+        return new ReinjectionStockResult(totalQuantite, sorties.size());
+    }
+
+    /** Recrédit le lot d'origine, marque la sortie comme annulée, incrémente le stock agrégé et journalise un RETOUR_CLIENT. */
+    public int reinjectOneSortie(SortieStock sortie, Stock stock) {
+        EntreeStock lot = sortie.getEntreeStock();
+        int quantite = sortie.getQuantiteSortie();
+        int stockAvant = stock.getQuantiteDisponible();
+
+        entreeStockDomainService.creditQuantiteRestante(lot, quantite);
+        sortieStockDomainService.markAsAnnulee(sortie);
+        Stock updated = stockDomainService.creditQuantite(stock, quantite);
+
+        mouvementStockDomainService.journalize(updated, new MouvementJournalize(
+                MouvementStockType.RETOUR_CLIENT,
+                quantite,
+                stockAvant,
+                updated.getQuantiteDisponible(),
+                null,
+                null
+        ));
+        return quantite;
     }
 
 }
