@@ -10,7 +10,6 @@ import org.store.abonnement.domain.model.TypeAbonnement;
 import org.store.common.repository.BaseRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface TypeAbonnementRepository extends BaseRepository<TypeAbonnement> {
 

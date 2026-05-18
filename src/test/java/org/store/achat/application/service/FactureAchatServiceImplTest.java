@@ -10,7 +10,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.store.achat.application.dto.FactureAchatEcheanceFilter;
-import org.store.achat.application.dto.FactureAchatFilter;
 import org.store.achat.application.dto.FactureAchatResponse;
 import org.store.achat.application.service.impl.FactureAchatServiceImpl;
 import org.store.achat.domain.enums.StatutFacture;

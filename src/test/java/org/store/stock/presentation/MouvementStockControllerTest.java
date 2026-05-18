@@ -1,6 +1,5 @@
 package org.store.stock.presentation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +20,6 @@ import org.store.stock.application.service.IMouvementStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,7 +36,6 @@ class MouvementStockControllerTest {
 
     private MockMvc mockMvc;
     private IMouvementStockService mouvementStockService;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID mouvementId;
     private UUID stockId;

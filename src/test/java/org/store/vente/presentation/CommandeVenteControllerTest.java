@@ -1,6 +1,5 @@
 package org.store.vente.presentation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +38,6 @@ class CommandeVenteControllerTest {
 
     private MockMvc mockMvc;
     private ICommandeVenteService commandeVenteService;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID magasinId;
 

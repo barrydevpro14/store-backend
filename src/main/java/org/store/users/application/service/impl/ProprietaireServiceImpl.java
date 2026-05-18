@@ -1,6 +1,6 @@
 package org.store.users.application.service.impl;
 
-import org.store.users.application.service.*;
+import org.store.users.application.service.IProprietaireService;
 
 import org.springframework.stereotype.Service;
 import org.store.security.domain.model.Account;

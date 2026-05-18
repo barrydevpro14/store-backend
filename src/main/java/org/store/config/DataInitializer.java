@@ -6,8 +6,8 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.repository.PlanAbonnementRepository;
+import org.store.abonnement.application.dto.PlanAbonnementRequest;
+import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.property.RbacProperties;
 import org.store.security.application.service.IRolesPermissionsSyncService;
 
@@ -22,14 +22,14 @@ public class DataInitializer implements ApplicationRunner {
 
     private final RbacProperties rbacProperties;
     private final IRolesPermissionsSyncService rolesPermissionsSyncService;
-    private final PlanAbonnementRepository planAbonnementRepository;
+    private final PlanAbonnementDomainService planAbonnementDomainService;
 
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
-                           PlanAbonnementRepository planAbonnementRepository) {
+                           PlanAbonnementDomainService planAbonnementDomainService) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
-        this.planAbonnementRepository = planAbonnementRepository;
+        this.planAbonnementDomainService = planAbonnementDomainService;
     }
 
     @Override
@@ -44,23 +44,25 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void ensureTrialPlan() {
-        planAbonnementRepository.findFirstByTrialTrueAndActifTrue().orElseGet(() -> {
-            PlanAbonnement plan = new PlanAbonnement();
-            plan.setNom(PLAN_TRIAL_NOM);
-            plan.setDescription("Plan d'essai gratuit");
-            plan.setPrix(BigDecimal.ZERO);
-            plan.setNombreMagasinsMax(1);
-            plan.setNombreEmployesMax(3);
-            plan.setGestionStock(true);
-            plan.setGestionVente(true);
-            plan.setGestionAchat(true);
-            plan.setGestionComptabilite(false);
-            plan.setActif(true);
-            plan.setVisible(true);
-            plan.setTrial(true);
-            plan.setOrdre(0);
-            log.info("DataInitializer: création plan d'essai '{}'", PLAN_TRIAL_NOM);
-            return planAbonnementRepository.save(plan);
-        });
+        if (planAbonnementDomainService.findFirstTrialActif().isPresent()) {
+            return;
+        }
+
+        planAbonnementDomainService.create(new PlanAbonnementRequest(
+                PLAN_TRIAL_NOM,
+                "Plan d'essai gratuit",
+                BigDecimal.ZERO,
+                1,
+                3,
+                true,
+                true,
+                true,
+                false,
+                true,
+                true,
+                true,
+                0
+        ));
+        log.info("DataInitializer: création plan d'essai '{}'", PLAN_TRIAL_NOM);
     }
 }

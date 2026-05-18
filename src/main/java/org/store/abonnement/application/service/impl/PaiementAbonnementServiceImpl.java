@@ -16,7 +16,6 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.Promotion;
-import org.store.abonnement.domain.model.UtilisationCoupon;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;

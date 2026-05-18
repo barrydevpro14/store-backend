@@ -1,6 +1,6 @@
 package org.store.entreprise.application.service.impl;
 
-import org.store.entreprise.application.service.*;
+import org.store.entreprise.application.service.IEntrepriseService;
 
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;

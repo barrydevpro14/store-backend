@@ -1,6 +1,5 @@
 package org.store.stock.presentation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +42,6 @@ class StockControllerTest {
     private MockMvc mockMvc;
     private IStockService stockService;
     private IExpiringLotsService expiringLotsService;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID stockId;
     private UUID magasinId;
