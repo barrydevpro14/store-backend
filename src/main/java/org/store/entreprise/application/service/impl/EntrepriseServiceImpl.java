@@ -121,6 +121,7 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ImageDownloadResponse getCurrentUserLogo() {
         PieceJointe logo = findCurrentEntreprise().getLogo();
         if (logo == null) {

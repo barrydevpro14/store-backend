@@ -122,6 +122,7 @@ public class MagasinServiceImpl implements IMagasinService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ImageDownloadResponse getLogo(UUID id) {
         Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
         PieceJointe logo = magasin.getLogo();
