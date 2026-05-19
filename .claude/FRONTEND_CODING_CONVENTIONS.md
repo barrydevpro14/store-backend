@@ -239,7 +239,7 @@ A blank line before and after each `useQuery`, `useMutation`, `useMemo`, `useCal
 
 - **Business functions**: happy path test + at least one error or fallback case.
 - **Business UI components**: minimal render test + critical interaction tests (clicks, submit, open/close).
-- **Justified exclusions** (already configured in `vitest.config.ts`): `src/app/**` (Next.js routing), `src/common/presentation/ui/**` (copied shadcn), `src/common/domain/types.ts` (types-only without executable logic), `*.d.ts` files.
+- **Justified exclusions** (already configured in `vitest.config.ts`): `src/app/**` (Next.js routing), `src/common/presentation/ui/**` (copied shadcn), `src/**/dtos/**` (DTO files are type-only with no executable logic — see rule 41), `*.d.ts` files.
 - **Defense branches impossible to test in jsdom** (e.g. SSR early return in a browser-only file): prefer **removing the branch** and documenting the contract ("browser-only") rather than using `/* v8 ignore next */`. The ignore is tolerated occasionally but must be justified in a comment.
 
 ### 40. Tests in `src/test/`, mirroring the source tree
@@ -289,6 +289,24 @@ export const authToken = {
 ```
 
 Applies to **object literals**, **classes**, **interfaces**, and **types** as soon as they contain at least 2 methods or multi-line properties. Single-line properties (constants, simple types) stay grouped without a blank line between them.
+
+### 41. DTOs in a `dtos/` package, one file per DTO
+
+Every DTO (`<X>Request`, `<X>Response`, `<X>Summary`, `<X>Filter`, plus the principal types of the domain like `UserPrincipal`, `PageResponse`, …) lives under a `dtos/` folder, **one type per file**, in the relevant module's `domain/` layer.
+
+| Source | Path |
+|---|---|
+| `LoginRequest` | `src/features/security/domain/dtos/login-request.ts` |
+| `AuthResponse` | `src/features/security/domain/dtos/auth-response.ts` |
+| `PublicPlan` | `src/features/abonnement/domain/dtos/public-plan.ts` |
+| `PageResponse<T>` | `src/common/domain/dtos/page-response.ts` |
+
+- **Aligned with the backend** convention `org.store.<module>.application.dto.<X>Request` — one file per record/DTO, one class per file.
+- **File naming**: kebab-case mirror of the type name (`UserPrincipal` → `user-principal.ts`, `RegisterPropertyRequest` → `register-property-request.ts`).
+- **Composite DTOs** (e.g. `RegisterPropertyRequest` aggregates `AccountRequest` + `UtilisateurRequest` + `EntrepriseRequest` + `MagasinRequest`) import the sub-DTOs via `import type { ... } from './<sub-dto>'`.
+- **No `index.ts` barrel**: each consumer imports the explicit DTO file it needs. Keeps refactor diffs minimal and IDE jumps direct.
+- **`domain/types.ts` is forbidden** as a catch-all for several DTOs. Concise helper enums or branded types that are NOT proper DTOs (e.g. local utility unions) may still live in `domain/` but outside `dtos/`.
+- **No runtime code** inside a DTO file — `type` (or `interface`) only. Zod schemas associated with a DTO live next to the form that uses them (`presentation/<X>Form.tsx`) or in `domain/schemas/` if shared.
 
 ---
 
