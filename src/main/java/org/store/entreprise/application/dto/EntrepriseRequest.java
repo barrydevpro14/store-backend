@@ -7,6 +7,6 @@ public record EntrepriseRequest(
         @NotBlank String raisonSociale,
         String ninea,
         String rccm,
-        String adresse
+        @NotBlank String adresse
 ) {
 }
