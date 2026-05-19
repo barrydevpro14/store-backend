@@ -159,11 +159,34 @@ Every function or component that chains several steps (init, transformation, fet
 
 ### 32. Explicit names for variables, parameters AND aliases
 
-- Ban single-letter names (`q`, `c`, `m`) and cryptic abbreviations (`dto`, `obj`, `data`).
-- **Parameters**: full business name (`searchTerm` instead of `q`, `client` instead of `c`).
-- **Local variables**: same rule.
+**Mandatory rule.** Every variable, parameter, function, callback arg,
+and destructured field must carry a name that describes **what it is**,
+not just its type or "the result of the previous line". Reviewers should
+not need surrounding context to guess the role.
+
+- **Banned**: single-letter names (`q`, `c`, `m`, `u`), generic
+  abbreviations (`dto`, `obj`, `data`, `res`, `tmp`, `val`, `cfg`,
+  `evt`), and "result of an operation" placeholders (`ok`, `result`,
+  `output`, `value` on its own). Use the business meaning:
+  `isStepValid`, `apiResponse`, `nextLocale`, `submittedValues`.
+- **Setter callback args** (`setState((prev) => …)`) — name them after
+  the value, not generic `prev` / `current`: `setStepIndex((previousIndex) => previousIndex + 1)`.
+- **Parameters**: full business name (`searchTerm` instead of `q`,
+  `client` instead of `c`, `apiError` instead of `e`).
+- **Local variables**: same rule. `const ok = await trigger(...)` →
+  `const isStepValid = await trigger(...)`.
 - **Refs / state**: `const userRef = useRef(...)`, not `const r = useRef(...)`.
-- **Trivial Stream lambdas**, loop index `i`, and `e` for `Event` or `Exception` in a catch remain tolerated.
+- **Tolerated exceptions** (limited, library-idiom rationale):
+  - trivial inline stream lambdas (`items.map(item => item.id)`)
+  - loop index `i`
+  - `error` for the caught error in a `catch (error)` block
+  - `t` for the next-intl translator returned by `useTranslations(...)`
+    / `getTranslations(...)` — canonical name across the i18n
+    ecosystem, kept for grep-affinity with library docs
+  - `state` as the **selector argument** of Zustand stores
+    (`useStore((state) => state.x)`) — canonical Zustand idiom. The
+    *binding* on the consumer side still gets a business name
+    (`const currentUser = useAuthStore((state) => state.user)`).
 
 ### 33. `<X>Filter` type from 2 criteria
 

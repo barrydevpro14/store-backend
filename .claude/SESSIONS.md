@@ -9,60 +9,72 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-18 (evening — documentation translation + first frontend feature)
+**Date:** 2026-05-19 (long session — backlog clearing, auth feature, API contract fix, locale switcher, full frontend i18n, StepMagasin UX fix, coding-rule reinforcement)
 
-**Subject:** Two-part session. First part: full FR→EN translation of the project's `.md` files (foundation rules, conventions, architecture, learning guide, modules overview, features doc, TODO, SONAR, sessions journal) + rename of three files (`CONVENTION_CODAGE_BACKEND.md` → `BACKEND_CODING_CONVENTIONS.md`, `CONVENTION_CODAGE_FRONTEND.md` → `FRONTEND_CODING_CONVENTIONS.md`, `FONCTIONNALITIES.md` → `FEATURES.md`) + archive of the existing FR `SESSIONS.md` as `SESSIONS_FR_ARCHIVE.md` with a fresh EN journal taking over. 8 atomic commits pushed to `origin/dev` on `store-backend`. Second part: first frontend feature shipped — public home page consuming the live pricing catalog endpoint (`features/abonnement/` DDD slice + `app/(public)/` route group with shared layout, 6 marketing sections including FR copy targeting the Senegalese market). 1 commit pushed to `origin/dev` on `store-frontend`. Local user-memory (17 files + `MEMORY.md` index) also translated and slug-renamed; no repo impact.
+**Subject:** Shipped most of the unaccompagned frontend backlog as a series of atomic phases, then built and translated the entire public-facing UI. Five logical chunks landed: (1) auth feature + API error contract realignment + locale switcher + next-intl infrastructure bundled as a single catch-up commit, (2) Phase 2 i18n public marketing, (3) Phase 3 i18n auth surfaces, (4) Phase 4 i18n dashboard, (5) Phase 5 i18n shared sweep. Backend got a one-line security fix for the `/api/v1/catalog/public` 401, plus the new frontend i18n rules registered in `FRONTEND_CODING_CONVENTIONS.md`. Wizard StepMagasin UX bug fixed (ghost errors + Suivant gate). Naming rule 32 reinforced with explicit banned list. Local user-memory updated with a new feedback rule (resume-and-announce) earlier in the session.
 
 **Notable decisions:**
 
-### Documentation switch FR → EN
-- **Scope B (everything but commits)**: project docs + memory translated, file slugs renamed (e.g., `feedback_branche_dev_uniquement` → `feedback_dev_branch_only`, `project_client_anonyme` → `project_anonymous_client`). Commit messages from now on are in English (Conventional Commits, no `Co-Authored-By: Claude`).
-- **Code identifiers stay untouched**: entity names, JPA fields, i18n keys, permission codes, JPQL aliases, package names all kept in French. Only narrative prose, Javadocs, and human-readable copy are translated.
-- **`FONCTIONNALITIES.md` → `FEATURES.md`** rename done via `git rm` + new file (similarity below git's rename threshold after full translation). History stays git-followable via the deletion + add pair.
-- **`SESSIONS.md` archival**: original 1666-line FR journal moved to `SESSIONS_FR_ARCHIVE.md` via `git mv` to preserve history (file rename detected by git). A fresh EN `SESSIONS.md` takes over, pointing to the archive for the FR-era log.
+### Frontend Phase 1.3 — Auth feature
+- **DDD slice** `features/security/` with `IAuthRepository` port, `auth-api` axios adapter, `auth-store` Zustand wrapping localStorage + cookie mirror, `useLogin` / `useRegister` / `useLogout` mutation hooks, plus `LoginForm` + `RegisterWizard` (4-step Compte → Vous → Entreprise → Magasin).
+- **JWT decoded client-side** via `decodeJwtPayload` (no dependency, base64url+JSON.parse, exception-free). Claim shape verified live against backend `JwtServiceImpl`: `sub` / `userId` / `username` / `role` / `entrepriseId` / `magasinId` / `permissions`.
+- **401 refresh-and-retry** interceptor on `apiClient` with single in-flight refresh promise. Auth endpoints excluded from retry (a 401 on `/auth/login` = wrong password, not an expired session).
+- **Frontend Zod schemas mirror the backend Bean Validation contract** strictly: `account.username` 3-50 chars, `account.password` 8-100 chars, `utilisateur.prenom` required, `utilisateur.telephone` matches the E.164 regex `^\+[1-9]\d{1,14}$`, `entreprise.adresse` required (frontend-stricter than backend by user choice).
 
-### Public home page design (frontend)
-- **Multi-public-route plan accepted**: route group `app/(public)/` with shared `Navbar` + `Footer` layout, ready to grow toward `/features`, `/contact`, `/about` without rework. `/` (home) and `/pricing` (deep-link) shipped today.
-- **DDD applies only to the pricing data slice** (`features/abonnement/`, 4 layers, justified by API integration). Static marketing sections (Hero, FeaturesSection, FaqSection, FinalCtaSection, Navbar, Footer) live as route-private components in `app/(public)/_components/`. Reasoning: forcing 4-layer DDD on static copy with no domain logic adds ceremony with no payoff.
-- **FR marketing copy** chosen for the target market (Senegal). Backend i18n is FR-default. Bilingual switcher deferred until the user base demands it.
-- **shadcn Button is `@base-ui/react`, not Radix**, so it does not expose `asChild`. Links are styled via `buttonVariants({ size, variant })` from the same module instead of wrapping `<Link>` inside `<Button asChild>`. Pattern applied in Navbar, HeroSection, FinalCtaSection.
-- **`src/app/page.tsx` deleted** — replaced by `app/(public)/page.tsx` through Next.js's route-group routing. The route group does not appear in the URL, so `/` resolves to `(public)/page.tsx`.
+### API error contract realignment
+- Backend really returns `{statusCode, message, errors: [{title, description}]}` — my old parser was reading `errors[i].message` (which doesn't exist), so everything fell back to `errors.unknown`. Verified by reproducing live (POST /auth/register with a bad payload).
+- New shape `ApiError = { status, message, fieldErrors: { field, description }[] }` propagates the top-level message + per-field errors faithfully.
+- Auth forms now **no banner**: global `message` → `toast.error(...)`, per-field `fieldErrors` → `form.setError(field, ...)` (inline under the matching input). Choice driven by the user during the session.
 
-### Git workflow
-- **Atomic commits per logical unit**: backend translation work was split into 8 commits (C1 foundation → C8 SONAR). Frontend public-home shipped as 1 commit (single cohesive feature). Both repos pushed to `dev`. `main` untouched (per `feedback_dev_branch_only`).
-- **Commit/push remains explicit-only** (`feedback_commit_push_explicit_authorization`): each push happened after a separate user instruction, not implicit from "the code looks good".
+### Locale switcher
+- **User-toggleable FR / EN** via a shadcn Select dropdown in the Navbar and the Dashboard header. Default FR (cible Sénégal).
+- Choice persisted in **both** localStorage (read by `apiClient` for `Accept-Language`) and a `store-locale` cookie (read by `next-intl/getRequestConfig` at SSR — same value source of truth, two storage backings for SSR/CSR access).
+- `setLocale` triggers `router.refresh()` so Server Components re-render with the new locale without a hard reload.
 
-**Work shipped:**
+### Full frontend i18n with next-intl (5 phases)
+- Library choice: **next-intl** (canonical Next.js choice). Standard Provider + `useTranslations` (CC) and `getTranslations` (SC).
+- Dictionaries live at `src/messages/{fr,en}.json` — moved here from project-root after the initial setup hit a `@/messages/` path resolution issue.
+- **22+ surfaces migrated** across phases 2-5: Hero, Features, Faq, FinalCta, Navbar, Footer, Pricing slice (PricingSection, PlanCard, SubscriptionTypesTable, GlobalPromoBanner), About, Contact, LoginForm, RegisterWizard, DashboardShell, DashboardWelcome, ErrorBanner, Pagination, ConfirmDialog.
+- Server components became `async function … { const t = await getTranslations('namespace') }`. Client components use `const t = useTranslations('namespace')`.
+- Zod schemas in CC re-build via `useMemo(t)` so validation messages stay locale-aware when the user flips languages.
+- Shared test helper `src/test/intl-wrapper.tsx` (`renderWithIntl`) wraps tests in `NextIntlClientProvider` with FR messages, passed via the `wrapper` option so `rerender(...)` preserves the intl context.
 
-### Backend (`store/`, 6 commits, pushed)
-- `24ac691` C1 — Translate foundation docs (CLAUDE/PROJECT/ARCHITECTURE/README)
-- `6b465bb` C2 — Rename + translate coding conventions
-- `b5780a0` C3 — Translate frontend architecture + learning docs
-- `0451862` C4 — Translate MODULES_OVERVIEW.md
-- `b578acc` C5 — Rename FONCTIONNALITIES.md → FEATURES.md + translate
-- `c0fd4ac` C6 — Translate TODO.md (history + all `[x]` entries preserved)
-- `b45b7a8` C7 — Archive French SESSIONS.md + start fresh English journal
-- `82543ef` C8 — Translate SONAR.md
+### Backend `/api/v1/catalog/public` 401 fix
+- `SecurityConfig` matcher was `"/api/v1/catalog/public/**"` — that only matches **children** of `/public/`, not the exact `/api/v1/catalog/public` path the controller exposes. So the supposedly-public endpoint was 401-ing.
+- One-line fix: `requestMatchers("/api/v1/catalog/public", "/api/v1/catalog/public/**").permitAll()`.
+- 765 / 765 backend tests still green after the change.
 
-### Frontend (`store-frontend/`, 1 commit, pushed)
-- `6cba287` feat(public): home page + live pricing catalog (DDD abonnement slice)
-  - 17 new files: `features/abonnement/{domain,application,infrastructure,presentation}/` + `app/(public)/{layout,page,pricing/page,_components/*}`
-  - 6 new test files (26 new tests)
-  - Replaces default `src/app/page.tsx`
+### StepMagasin wizard UX fix + rule 32 reinforcement
+- **Bug**: on a fresh wizard step, inline Zod errors appeared on fields the user hadn't touched yet. Root cause: `FormField` rendered `fieldState.error.message` unconditionally — even though the form is in `mode: 'onTouched'`, the error map was already populated (most likely from a previous `form.trigger(...)` on Suivant click of an earlier step).
+- **Fix A (FormField)**: only render inline error if `fieldState.error && (fieldState.isTouched || formState.isSubmitted)`. Submit-attempt path still surfaces backend `setError` calls because `isSubmitted` becomes true after `handleSubmit` calls `onSubmit`.
+- **Fix B (RegisterWizard)**: `Suivant` / `Créer mon compte` button disabled when any required field of the current step is empty. Implemented via `form.watch()` + a per-step `STEP_REQUIRED_FIELDS` map. Full Zod validation still runs on click as a backstop.
+- **Rule 32 (explicit variable names)** reinforced: explicit banned list (`ok`, `result`, `tmp`, `res`, `val`, `data`, `dto`, `obj`, `cfg`, `evt`, single letters), explicit "name setter callback args after the value not generically as `prev`/`current`" (`previousIndex` for `setStepIndex`). Tolerated library idioms ring-fenced: `t` for next-intl translator, `state` for Zustand selector arg, `error` in catch, `i` for loop index. Concrete applications: `const ok` → `const isStepValid` in `goNext`, `const data` → `const errorPayload` in `parseApiError`.
 
-### Local memory (`~/.claude/projects/.../memory/`, no commit, no repo impact)
-- 17 memory files translated and slug-renamed (e.g., `feedback_branche_dev_uniquement.md` → `feedback_dev_branch_only.md`, `feedback_doc_service_applicatif.md` → `feedback_doc_application_service.md`, `project_client_anonyme.md` → `project_anonymous_client.md`)
-- `MEMORY.md` index rewritten with new entries + English descriptions
+### New durable feedback memory
+- [[feedback_resume_and_announce]] — every new turn / chunk: short recap of the last task, then `📋 NEXT ACTION` overview, then stop and wait for "go". Saved earlier in the session.
+
+**Work shipped (commits since `65c92b8` baseline on the frontend):**
+
+### Frontend (`store-frontend/`)
+- `2c3a63e` feat(security,i18n): auth feature + API error contract + locale switcher + next-intl
+- `a30396d` feat(i18n): translate public marketing surfaces (Phase 2)
+- `0b9065d` feat(i18n): translate auth surfaces (Phase 3)
+- `5a1354b` feat(i18n): translate dashboard shell + welcome (Phase 4)
+- `93dd814` feat(i18n): translate shared components (Phase 5 — final sweep)
+- (pending this commit) chore + StepMagasin fix + rule 32 refactor
+
+### Backend (`store/`)
+- (pending this commit) `SecurityConfig` `/catalog/public` matcher fix + rule 32 update in `FRONTEND_CODING_CONVENTIONS.md` + TODO + this SESSIONS entry
 
 **Verifications:**
-- Backend `./mvnw clean verify`: **765 / 765 tests green** (53 s build + JaCoCo report regenerated). No regression from the doc-only commits. JaCoCo summary: 78 % instructions / 68 % branches / 67 % lines / 19 untested classes (mostly Lombok-generated DTOs and infrastructure).
-- Frontend `vitest run --coverage`: **115 / 115 tests green** (89 existing + 26 new). Coverage **97.5 % stmts / 98.07 % branches / 94.33 % funcs / 97.32 % lines** — well above the project's 90 % threshold.
-- Frontend `tsc --noEmit`: clean (1 pre-existing error in `FormField.test.tsx` unrelated to this work — RHF `Resolver<{age: unknown}>` mismatch, predates the session).
-- Frontend `eslint`: clean on new files.
-- Browser smoke check: `GET /` → HTTP 200, all marketing copy present (hero, features cards, pricing skeleton, FAQ, footer), 0 JS errors in SSR HTML. `GET /pricing` → HTTP 200, metadata `Tarifs — Store` present.
-- Live backend check: `GET /api/v1/catalog/public` → 200 with 1 seeded "Essai" trial plan, no subscriptionTypes, no globalPromotions (catalog content driven by future admin CRUD).
+- Backend `./mvnw test`: **765 / 765 green** (BUILD SUCCESS) after the SecurityConfig change.
+- Frontend `npx vitest run`: **179 / 179 green** at every commit point throughout the session.
+- Frontend `tsc --noEmit`: clean modulo the pre-existing `FormField.test.tsx` RHF resolver type mismatch (predates this session, untouched).
+- Live e2e against the running backend confirmed: register → login → /entreprises/me → refresh → logout → refresh-revoked-401 chain works end-to-end.
+- Live locale flip via `Accept-Language: fr / en` confirmed: backend i18n keys translate, frontend dictionary toggles, `router.refresh()` re-renders SC without a full page reload.
 
-**Open follow-ups (not done this session):**
-- Hero CTA and Navbar link to `/register` and `/login` — those routes don't exist yet. Next chunk should ship `features/security/` (4 layers) + `app/(auth)/{login,register}/page.tsx` + `app/(dashboard)/layout.tsx` with JWT guard, finishing Phase 1 of the frontend bootstrap checklist.
-- Pre-existing `FormField.test.tsx` TS error (RHF generic resolver) to triage when we revisit forms.
-- TODO.md frontend items "Check the TanStack React Query install", "Customize src/app/layout.tsx", "Create src/lib/api/client.ts", "Wire QueryClientProvider" are arguably done by P1.1 but left unchecked pending explicit validation (per CLAUDE.md rule: only the user marks `[ ]` → `[x]`).
+**Open follow-ups:**
+- Backend was stopped during the session (Ctrl-C requested). Restart via `./mvnw spring-boot:run` to pick up the SecurityConfig fix.
+- Phases 2-5 frontend commits are local-only — need an explicit push.
+- Pre-existing `FormField.test.tsx` TS error (RHF generic resolver) still untriaged.
+- Auth flow doesn't yet hit a real protected feature page (no Magasin / Produit / Vente CRUD yet on the frontend). Natural next chunk: Phase 2 of the bootstrap checklist (Employe CRUD or Magasin CRUD as the first feature dashboard page).
