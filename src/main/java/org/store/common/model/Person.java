@@ -1,5 +1,6 @@
 package org.store.common.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
@@ -17,7 +18,9 @@ public abstract class Person extends AuditableEntity {
     public final static String TABLE_NAME = "person";
     private String nom;
     private String prenom;
+    @Column(unique = true)
     private String email;
+    @Column(unique = true)
     private String telephone;
     private String adresse;
 }
