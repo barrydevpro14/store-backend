@@ -25,6 +25,7 @@ import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.service.EmployeDomainService;
+import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +46,7 @@ import java.util.UUID;
 public class EmployeServiceImpl implements IEmployeService {
 
     private final EmployeDomainService employeDomainService;
+    private final UtilisateurDomainService utilisateurDomainService;
     private final IAccountService accountService;
     private final IRoleService roleService;
     private final IPermissionsService permissionsService;
@@ -53,6 +55,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final ValidatorService validatorService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
+                              UtilisateurDomainService utilisateurDomainService,
                               IAccountService accountService,
                               IRoleService roleService,
                               IPermissionsService permissionsService,
@@ -60,6 +63,7 @@ public class EmployeServiceImpl implements IEmployeService {
                               ICurrentUserService currentUserService,
                               ValidatorService validatorService) {
         this.employeDomainService = employeDomainService;
+        this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
         this.roleService = roleService;
         this.permissionsService = permissionsService;
@@ -85,6 +89,11 @@ public class EmployeServiceImpl implements IEmployeService {
         );
 
         ensureMagasinDoesNotAlreadyHaveManager(magasin.getId(), rolePermissions);
+
+        utilisateurDomainService.ensureContactsAvailable(
+                employeRequest.utilisateur().email(),
+                employeRequest.utilisateur().telephone()
+        );
 
         Account account = accountService.create(employeRequest.account(), role);
 
@@ -135,6 +144,8 @@ public class EmployeServiceImpl implements IEmployeService {
         if (estMontageVersManagerSurAutreMagasin(employe, newRole, newMagasin)) {
             ensureMagasinDoesNotAlreadyHaveManager(newMagasin.getId(), newRolePermissions);
         }
+
+        utilisateurDomainService.ensureContactsAvailableForUpdate(request.email(), request.telephone(), employe.getId());
 
         employeDomainService.update(employe, new EmployeUpdateCommand(
                 request.nom(), request.prenom(), request.email(), request.telephone(), request.adresse()

@@ -32,6 +32,7 @@ import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.service.EmployeDomainService;
+import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +50,7 @@ import static org.mockito.Mockito.when;
 class EmployeServiceImplTest {
 
     @Mock private EmployeDomainService employeDomainService;
+    @Mock private UtilisateurDomainService utilisateurDomainService;
     @Mock private IAccountService accountService;
     @Mock private IRoleService roleService;
     @Mock private IPermissionsService permissionsService;

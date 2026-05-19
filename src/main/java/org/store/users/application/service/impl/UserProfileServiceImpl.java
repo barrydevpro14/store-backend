@@ -55,7 +55,9 @@ public class UserProfileServiceImpl implements IUserProfileService {
     @Transactional
     public UserProfileResponse updateCurrentProfile(UserProfileUpdateRequest request) {
         validatorService.validate(request);
-        Utilisateur updated = utilisateurDomainService.update(findCurrentUser(), request);
+        Utilisateur currentUtilisateur = findCurrentUser();
+        utilisateurDomainService.ensureContactsAvailableForUpdate(request.email(), request.telephone(), currentUtilisateur.getId());
+        Utilisateur updated = utilisateurDomainService.update(currentUtilisateur, request);
         return new UserProfileResponse(updated);
     }
 
