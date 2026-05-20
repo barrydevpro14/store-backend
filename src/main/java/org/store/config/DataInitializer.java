@@ -4,12 +4,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.PlanAbonnementRequest;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.property.RbacProperties;
 import org.store.security.application.service.IRolesPermissionsSyncService;
+import org.store.security.domain.model.Role;
+import org.store.security.domain.service.AccountDomainService;
+import org.store.security.domain.service.RoleDomainService;
 
 import java.math.BigDecimal;
 
@@ -20,16 +24,36 @@ public class DataInitializer implements ApplicationRunner {
 
     private static final String PLAN_TRIAL_NOM = "Essai";
 
+    /**
+     * Identité de seed du compte ADMIN SaaS — uniquement créé quand
+     * `security.rbac.sync=true` (env dev). En prod ce flag reste off
+     * par défaut et le compte doit être bootstrappé via un autre flux.
+     * À sortir en property dédiée le jour où la prod aura besoin d'un
+     * super-admin seedé.
+     */
+    private static final String ADMIN_USERNAME = "admin";
+    private static final String ADMIN_PASSWORD = "passer123";
+    private static final String ADMIN_ROLE = "ADMIN";
+
     private final RbacProperties rbacProperties;
     private final IRolesPermissionsSyncService rolesPermissionsSyncService;
     private final PlanAbonnementDomainService planAbonnementDomainService;
+    private final AccountDomainService accountDomainService;
+    private final RoleDomainService roleDomainService;
+    private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
-                           PlanAbonnementDomainService planAbonnementDomainService) {
+                           PlanAbonnementDomainService planAbonnementDomainService,
+                           AccountDomainService accountDomainService,
+                           RoleDomainService roleDomainService,
+                           PasswordEncoder passwordEncoder) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
+        this.accountDomainService = accountDomainService;
+        this.roleDomainService = roleDomainService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -37,10 +61,28 @@ public class DataInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (rbacProperties.sync()) {
             rolesPermissionsSyncService.sync();
+            ensureAdminAccount();
         } else {
             log.info("DataInitializer: RBAC sync skipped (security.rbac.sync=false)");
         }
         ensureTrialPlan();
+    }
+
+    /**
+     * Idempotent : si un account `admin` existe déjà (peu importe son
+     * mot de passe), on le laisse intact. Seule la 1ère initialisation
+     * pose les credentials seedés. Pour rotater le mot de passe ensuite,
+     * passer par l'API de change-password.
+     */
+    private void ensureAdminAccount() {
+        if (accountDomainService.findByUsername(ADMIN_USERNAME).isPresent()) {
+            return;
+        }
+        Role adminRole = roleDomainService.findByLibelle(ADMIN_ROLE)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Rôle ADMIN absent en base — la sync RBAC doit s'exécuter avant ensureAdminAccount."));
+        accountDomainService.create(ADMIN_USERNAME, passwordEncoder.encode(ADMIN_PASSWORD), adminRole);
+        log.info("DataInitializer: compte ADMIN seedé (username={})", ADMIN_USERNAME);
     }
 
     private void ensureTrialPlan() {
