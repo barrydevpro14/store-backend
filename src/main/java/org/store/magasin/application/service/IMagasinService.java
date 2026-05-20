@@ -19,7 +19,7 @@ public interface IMagasinService {
     Magasin create(MagasinRequest magasinRequest, Entreprise entreprise);
 
     /**
-     * Création publique : magasin créé dans l'entreprise du caller (PROPRIETAIRE_ACCESS requis).
+     * Création publique : magasin créé dans l'entreprise du caller (OWNER_ACCESS requis).
      */
     MagasinResponse create(MagasinRequest magasinRequest);
 

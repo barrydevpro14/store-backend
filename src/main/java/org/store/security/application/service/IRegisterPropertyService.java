@@ -29,7 +29,7 @@ public interface IRegisterPropertyService {
     /**
      * Orchestration commune : crée le compte + le proprietaire + l'entreprise + le premier magasin
      * + l'abonnement trial. Le {@code roleName} est le libellé du rôle à attribuer au compte
-     * (ex. "PROPRIETAIRE"). Retourne le compte créé (avec sa chaîne d'entités liées).
+     * (ex. "OWNER"). Retourne le compte créé (avec sa chaîne d'entités liées).
      */
     Account createAccount(RegisterPropertyRequest request, String roleName);
 }

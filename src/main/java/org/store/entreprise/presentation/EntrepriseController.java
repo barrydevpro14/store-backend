@@ -88,25 +88,25 @@ public class EntrepriseController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    @PreAuthorize("hasAuthority('OWNER_ACCESS')")
     public ResponseEntity<EntrepriseResponse> getMine() {
         return ResponseEntity.ok(entrepriseService.findCurrentUserEntreprise());
     }
 
     @PutMapping("/me")
-    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    @PreAuthorize("hasAuthority('OWNER_ACCESS')")
     public ResponseEntity<EntrepriseResponse> updateMine(@Valid @RequestBody EntrepriseRequest entrepriseRequest) {
         return ResponseEntity.ok(entrepriseService.updateCurrentUserEntreprise(entrepriseRequest));
     }
 
     @PutMapping(value = "/me/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    @PreAuthorize("hasAuthority('OWNER_ACCESS')")
     public ResponseEntity<EntrepriseResponse> uploadLogo(@RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(entrepriseService.uploadCurrentUserLogo(file));
     }
 
     @GetMapping("/me/logo")
-    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    @PreAuthorize("hasAuthority('OWNER_ACCESS')")
     public ResponseEntity<byte[]> getLogo() {
         ImageDownloadResponse download = entrepriseService.getCurrentUserLogo();
         return ResponseEntity.ok()
@@ -115,7 +115,7 @@ public class EntrepriseController {
     }
 
     @DeleteMapping("/me/logo")
-    @PreAuthorize("hasAuthority('PROPRIETAIRE_ACCESS')")
+    @PreAuthorize("hasAuthority('OWNER_ACCESS')")
     public ResponseEntity<Void> deleteLogo() {
         entrepriseService.deleteCurrentUserLogo();
         return ResponseEntity.noContent().build();

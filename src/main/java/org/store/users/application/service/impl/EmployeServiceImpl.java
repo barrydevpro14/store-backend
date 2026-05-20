@@ -38,7 +38,7 @@ import java.util.UUID;
  * re-validation des regles de hierarchie), desactivation/reactivation via
  * account.enabled.
  *
- * <p>Scoping : PROPRIETAIRE/ADMIN voient toute l'entreprise. MANAGER est force
+ * <p>Scoping : OWNER/ADMIN voient toute l'entreprise. MANAGER est force
  * sur son propre magasin (filter.magasinId remplace par currentUser.magasinId).
  */
 @Service
@@ -100,7 +100,7 @@ public class EmployeServiceImpl implements IEmployeService {
         return employeDomainService.create(employeRequest.utilisateur(), account, magasin);
     }
 
-    /** Retourne l'Employe correspondant au user courant. Throw ForbiddenException si l'utilisateur connecte n'est pas un Employe (ex : un PROPRIETAIRE). */
+    /** Retourne l'Employe correspondant au user courant. Throw ForbiddenException si l'utilisateur connecte n'est pas un Employe (ex : un OWNER). */
     @Override
     public Employe findCurrentUser() {
         UserPrincipal currentUser = currentUserService.getCurrent();
@@ -202,7 +202,7 @@ public class EmployeServiceImpl implements IEmployeService {
 
     /** Bloque le MANAGER qui tente d'acceder a un employe d'un autre magasin. */
     public void ensureAccessibleByManager(Employe employe, UserPrincipal currentUser) {
-        if (currentUser.hasPermission(PermissionCode.PROPRIETAIRE_ACCESS) || currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
+        if (currentUser.hasPermission(PermissionCode.OWNER_ACCESS) || currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
             return;
         }
         if (currentUser.magasinId() != null && !currentUser.magasinId().equals(employe.getMagasin().getId())) {
@@ -212,7 +212,7 @@ public class EmployeServiceImpl implements IEmployeService {
 
     /** Force le filtre magasinId sur le magasin du MANAGER (proprietaire/admin gardent le filtre fourni). */
     public EmployeFilter scopeFilterForManager(EmployeFilter filter, UserPrincipal currentUser) {
-        if (currentUser.hasPermission(PermissionCode.PROPRIETAIRE_ACCESS) || currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
+        if (currentUser.hasPermission(PermissionCode.OWNER_ACCESS) || currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
             return filter;
         }
         return new EmployeFilter(filter.nom(), filter.prenom(), filter.role(),
@@ -221,7 +221,7 @@ public class EmployeServiceImpl implements IEmployeService {
 
     /**
      * Vérifie que le rôle cible est explicitement marqué `assignableToEmploye`
-     * en base — empêche l'assignation de PROPRIETAIRE / ADMIN à un employé,
+     * en base — empêche l'assignation de OWNER / ADMIN à un employé,
      * même si ces rôles portent par ailleurs `EMPLOYE_ACCESS` (cas ADMIN
      * vendor-super-admin).
      */
@@ -231,10 +231,10 @@ public class EmployeServiceImpl implements IEmployeService {
         }
     }
 
-    /** Verifie que le caller a l'autorite pour assigner un role "eleve" (qui inclut EMPLOYE_CREATE) — reserve PROPRIETAIRE. */
+    /** Verifie que le caller a l'autorite pour assigner un role "eleve" (qui inclut EMPLOYE_CREATE) — reserve OWNER. */
     public void ensureCallerCanAssignRole(UserPrincipal currentUser, List<String> rolePermissions) {
         boolean elevatedRole = rolePermissions.contains(PermissionCode.EMPLOYE_CREATE.name());
-        if (elevatedRole && !currentUser.hasPermission(PermissionCode.PROPRIETAIRE_ACCESS)) {
+        if (elevatedRole && !currentUser.hasPermission(PermissionCode.OWNER_ACCESS)) {
             throw new ForbiddenException("employe.create.elevatedRole.forbidden");
         }
     }

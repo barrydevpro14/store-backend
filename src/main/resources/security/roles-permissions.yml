@@ -4,7 +4,7 @@
 
 permissions:
   # Legacy (kept for backwards compatibility with current @PreAuthorize annotations)
-  - PROPRIETAIRE_ACCESS
+  - OWNER_ACCESS
   - EMPLOYE_ACCESS
   - EMPLOYE_CREATE
   - EMPLOYE_READ
@@ -40,6 +40,7 @@ permissions:
   - STORE_UPDATE
   - STORE_DELETE
   - STORE_READ
+  - STORE_READ_ONE
   - STORE_ASSIGN_MANAGER
 
   # CATEGORY_PRODUCT
@@ -172,7 +173,7 @@ roles:
   - libelle: ADMIN
     description: Administrateur SaaS
     permissions:
-      - PROPRIETAIRE_ACCESS
+      - OWNER_ACCESS
       - EMPLOYE_ACCESS
       - EMPLOYE_CREATE
       - EMPLOYE_READ
@@ -200,6 +201,7 @@ roles:
       - STORE_UPDATE
       - STORE_DELETE
       - STORE_READ
+      - STORE_READ_ONE
       - STORE_ASSIGN_MANAGER
       - CATEGORY_PRODUCT_CREATE
       - CATEGORY_PRODUCT_READ
@@ -290,10 +292,10 @@ roles:
       - AUDIT_READ
       - AUDIT_EXPORT
 
-  - libelle: PROPRIETAIRE
+  - libelle: OWNER
     description: Propriétaire d'une entreprise
     permissions:
-      - PROPRIETAIRE_ACCESS
+      - OWNER_ACCESS
       - EMPLOYE_CREATE
       - EMPLOYE_READ
       - EMPLOYE_UPDATE
@@ -317,6 +319,7 @@ roles:
       - STORE_UPDATE
       - STORE_DELETE
       - STORE_READ
+      - STORE_READ_ONE
       - STORE_ASSIGN_MANAGER
       - CATEGORY_PRODUCT_CREATE
       - CATEGORY_PRODUCT_READ
@@ -413,7 +416,7 @@ roles:
       - USER_CREATE
       - USER_UPDATE
       - COMPANY_READ
-      - STORE_READ
+      - STORE_READ_ONE
       - STORE_UPDATE
       - CATEGORY_PRODUCT_CREATE
       - CATEGORY_PRODUCT_READ
@@ -476,7 +479,7 @@ roles:
       - REPORT_SALES
       - REPORT_FINANCIAL
 
-  - libelle: VENDEUR
+  - libelle: SELLER
     description: Vendeur d'un magasin
     assignableToEmploye: true
     permissions:
@@ -486,6 +489,7 @@ roles:
       - AUTH_REFRESH_TOKEN
       - AUTH_RESET_PASSWORD
       - AUTH_CHANGE_PASSWORD
+      - STORE_READ_ONE
       - CATEGORY_PRODUCT_READ
       - QUALITY_READ
       - PRODUCT_READ

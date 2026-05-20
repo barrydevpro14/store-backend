@@ -38,7 +38,7 @@ class RolesPermissionsSyncServiceImplTest {
               - SALE_CREATE
               - EMPLOYE_ACCESS
             roles:
-              - libelle: VENDEUR
+              - libelle: SELLER
                 description: Vendeur d'un magasin
                 permissions:
                   - AUTH_LOGIN
@@ -75,7 +75,7 @@ class RolesPermissionsSyncServiceImplTest {
             return p;
         });
         when(permissionsDomainService.findAll()).thenReturn(List.of());
-        when(roleDomainService.findByLibelle("VENDEUR")).thenReturn(Optional.empty());
+        when(roleDomainService.findByLibelle("SELLER")).thenReturn(Optional.empty());
         when(roleDomainService.create(any(), any(), anyBoolean())).thenAnswer(inv -> {
             Role r = new Role();
             r.setId(UUID.randomUUID());
@@ -91,7 +91,7 @@ class RolesPermissionsSyncServiceImplTest {
 
         assertThat(report.addedPermissions())
                 .containsExactly("AUTH_LOGIN", "SALE_CREATE", "EMPLOYE_ACCESS");
-        assertThat(report.addedRoles()).containsExactly("VENDEUR");
+        assertThat(report.addedRoles()).containsExactly("SELLER");
         assertThat(report.updatedRoles()).isEmpty();
         assertThat(report.orphanPermissions()).isEmpty();
         assertThat(report.orphanRoles()).isEmpty();
@@ -111,8 +111,8 @@ class RolesPermissionsSyncServiceImplTest {
         when(permissionsDomainService.findByCode("EMPLOYE_ACCESS")).thenReturn(Optional.of(employeAccess));
         when(permissionsDomainService.findAll()).thenReturn(List.of(login, saleCreate, employeAccess));
 
-        Role vendeur = role("VENDEUR", login, saleCreate, employeAccess);
-        when(roleDomainService.findByLibelle("VENDEUR")).thenReturn(Optional.of(vendeur));
+        Role vendeur = role("SELLER", login, saleCreate, employeAccess);
+        when(roleDomainService.findByLibelle("SELLER")).thenReturn(Optional.of(vendeur));
         when(roleDomainService.findAll()).thenReturn(List.of(vendeur));
 
         RbacSyncReport report = service.sync();
@@ -137,8 +137,8 @@ class RolesPermissionsSyncServiceImplTest {
         when(permissionsDomainService.findByCode("EMPLOYE_ACCESS")).thenReturn(Optional.of(employeAccess));
         when(permissionsDomainService.findAll()).thenReturn(List.of(login, saleCreate, employeAccess));
 
-        Role vendeur = role("VENDEUR", login);
-        when(roleDomainService.findByLibelle("VENDEUR")).thenReturn(Optional.of(vendeur));
+        Role vendeur = role("SELLER", login);
+        when(roleDomainService.findByLibelle("SELLER")).thenReturn(Optional.of(vendeur));
         when(roleDomainService.findAll()).thenReturn(List.of(vendeur));
         AtomicReference<Role> savedRole = new AtomicReference<>();
         when(roleDomainService.save(any())).thenAnswer(inv -> {
@@ -149,7 +149,7 @@ class RolesPermissionsSyncServiceImplTest {
         RbacSyncReport report = service.sync();
 
         assertThat(report.addedRoles()).isEmpty();
-        assertThat(report.updatedRoles()).containsExactly("VENDEUR");
+        assertThat(report.updatedRoles()).containsExactly("SELLER");
         assertThat(savedRole.get().getPermissions())
                 .extracting(Permissions::getCode)
                 .containsExactly("AUTH_LOGIN", "SALE_CREATE", "EMPLOYE_ACCESS");
@@ -168,9 +168,9 @@ class RolesPermissionsSyncServiceImplTest {
         when(permissionsDomainService.findAll())
                 .thenReturn(List.of(login, saleCreate, employeAccess, orphanPerm));
 
-        Role vendeur = role("VENDEUR", login, saleCreate, employeAccess);
+        Role vendeur = role("SELLER", login, saleCreate, employeAccess);
         Role orphanRole = role("LEGACY_ROLE");
-        when(roleDomainService.findByLibelle("VENDEUR")).thenReturn(Optional.of(vendeur));
+        when(roleDomainService.findByLibelle("SELLER")).thenReturn(Optional.of(vendeur));
         when(roleDomainService.findAll()).thenReturn(List.of(vendeur, orphanRole));
 
         RbacSyncReport report = service.sync();

@@ -75,7 +75,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     /**
-     * PROPRIETAIRE enregistre son paiement : vérifie abonnement EN_ATTENTE + pas de paiement pendant déjà,
+     * OWNER enregistre son paiement : vérifie abonnement EN_ATTENTE + pas de paiement pendant déjà,
      * recalcule le breakdown (plan + type + promotion active + coupon réservé) puis crée PaiementAbonnement EN_ATTENTE_VALIDATION.
      */
     @Override

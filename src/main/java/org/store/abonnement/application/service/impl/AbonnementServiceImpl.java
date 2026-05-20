@@ -84,7 +84,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
     }
 
     /**
-     * Souscription PROPRIETAIRE.
+     * Souscription OWNER.
      *
      * Étapes :
      * 1. Résout l'entreprise du caller.

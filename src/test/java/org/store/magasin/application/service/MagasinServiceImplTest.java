@@ -58,8 +58,8 @@ class MagasinServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "PROPRIETAIRE",
-                List.of("PROPRIETAIRE_ACCESS"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "OWNER",
+                List.of("OWNER_ACCESS"));
     }
 
     private Magasin magasinIn(Entreprise ent) {

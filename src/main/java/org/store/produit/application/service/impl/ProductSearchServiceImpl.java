@@ -68,7 +68,7 @@ public class ProductSearchServiceImpl implements IProductSearchService {
         return productsPage.map(product -> buildSearchResponse(product, lotsByProductId.getOrDefault(product.getId(), List.of())));
     }
 
-    /** Résout le magasinId pour la recherche : pour un EMPLOYE absence de paramètre = son magasin ; pour un PROPRIETAIRE le paramètre est obligatoire. */
+    /** Résout le magasinId pour la recherche : pour un EMPLOYE absence de paramètre = son magasin ; pour un OWNER le paramètre est obligatoire. */
     private UUID resolveSearchMagasinId(UserPrincipal currentUser, UUID requestedMagasinId) {
         if (requestedMagasinId != null) {
             return requestedMagasinId;

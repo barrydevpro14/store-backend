@@ -105,7 +105,7 @@ class EmployeControllerTest {
 
     private EmployeResponse sampleResponse(UUID id, UUID magasinId) {
         return new EmployeResponse(id, "Doe", "John", "john@example.com", "+221770000000", "Dakar",
-                "john.emp", "VENDEUR", magasinId, true);
+                "john.emp", "SELLER", magasinId, true);
     }
 
     @Test
@@ -117,7 +117,7 @@ class EmployeControllerTest {
 
         mockMvc.perform(get(EmployeController.BASE_PATH))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].role").value("VENDEUR"))
+                .andExpect(jsonPath("$.content[0].role").value("SELLER"))
                 .andExpect(jsonPath("$.content[0].actif").value(true))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
@@ -137,7 +137,7 @@ class EmployeControllerTest {
         UUID id = UUID.randomUUID();
         UUID magasinId = UUID.randomUUID();
         EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "+221770000001", "Dakar", "VENDEUR", magasinId);
+                "+221770000001", "Dakar", "SELLER", magasinId);
         when(employeService.update(eq(id), any(EmployeUpdateRequest.class)))
                 .thenReturn(sampleResponse(id, magasinId));
 
@@ -157,7 +157,7 @@ class EmployeControllerTest {
                   "email": "not-an-email",
                   "telephone": "+221770000001",
                   "adresse": "Dakar",
-                  "role": "VENDEUR",
+                  "role": "SELLER",
                   "magasinId": "%s"
                 }
                 """.formatted(UUID.randomUUID());

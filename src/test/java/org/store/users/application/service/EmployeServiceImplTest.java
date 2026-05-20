@@ -83,8 +83,8 @@ class EmployeServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "PROPRIETAIRE",
-                List.of("PROPRIETAIRE_ACCESS", "EMPLOYE_CREATE"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "OWNER",
+                List.of("OWNER_ACCESS", "EMPLOYE_CREATE"));
     }
 
     private UserPrincipal manager() {
@@ -105,7 +105,7 @@ class EmployeServiceImplTest {
         Role r = new Role();
         r.setId(UUID.randomUUID());
         // Tous les rôles dans ces tests sont des rôles employé (MANAGER /
-        // VENDEUR) — sinon `ensureRoleAllowed` les rejetterait.
+        // SELLER) — sinon `ensureRoleAllowed` les rejetterait.
         r.setAssignableToEmploye(true);
         return r;
     }
@@ -139,17 +139,17 @@ class EmployeServiceImplTest {
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("john.emp");
-        EmployeResponse expected = sampleResponse("VENDEUR");
+        EmployeResponse expected = sampleResponse("SELLER");
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
+        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(accountService.create(eq(validAccount), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
-        EmployeResponse response = service.create(request("VENDEUR", magasinId));
+        EmployeResponse response = service.create(request("SELLER", magasinId));
 
         assertThat(response).isSameAs(expected);
     }
@@ -160,17 +160,17 @@ class EmployeServiceImplTest {
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("john.emp");
-        EmployeResponse expected = sampleResponse("VENDEUR");
+        EmployeResponse expected = sampleResponse("SELLER");
 
         when(currentUserService.getCurrent()).thenReturn(manager());
-        when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
+        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(accountService.create(eq(validAccount), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
-        EmployeResponse response = service.create(request("VENDEUR", magasinId));
+        EmployeResponse response = service.create(request("SELLER", magasinId));
 
         assertThat(response).isSameAs(expected);
     }
@@ -178,14 +178,14 @@ class EmployeServiceImplTest {
     @Test
     void should_be_forbidden_when_role_is_not_assignable_to_employe() {
         Role propRole = roleWithId();
-        // Marque explicite : PROPRIETAIRE / ADMIN ne sont jamais
+        // Marque explicite : OWNER / ADMIN ne sont jamais
         // `assignableToEmploye` en base — le helper par défaut force `true`
         // pour la grande majorité des tests employé, on l'inverse ici.
         propRole.setAssignableToEmploye(false);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(propRole);
+        when(roleService.findByLibelle("OWNER")).thenReturn(propRole);
 
-        assertThatThrownBy(() -> service.create(request("PROPRIETAIRE", magasinId)))
+        assertThatThrownBy(() -> service.create(request("OWNER", magasinId)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(magasinService, never()).findById(any());
@@ -238,13 +238,13 @@ class EmployeServiceImplTest {
         foreignMagasin.setEntreprise(otherEntreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
+        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(foreignMagasinId)).thenReturn(foreignMagasin);
         when(magasinService.ensureAccessibleByCurrentUser(foreignMagasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
 
-        assertThatThrownBy(() -> service.create(request("VENDEUR", foreignMagasinId)))
+        assertThatThrownBy(() -> service.create(request("SELLER", foreignMagasinId)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());
@@ -260,7 +260,7 @@ class EmployeServiceImplTest {
                 .thenAnswer(invocation -> {
                     EmployeFilter scoped = invocation.getArgument(0);
                     assertThat(scoped.magasinId()).isEqualTo(magasinId);
-                    return new PageImpl<>(List.of(sampleResponse("VENDEUR")), PageRequest.of(0, 10), 1);
+                    return new PageImpl<>(List.of(sampleResponse("SELLER")), PageRequest.of(0, 10), 1);
                 });
 
         assertThat(service.findAllByCurrentEntreprise(requested).getContent()).hasSize(1);
@@ -273,7 +273,7 @@ class EmployeServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findResponsesByFilter(eq(requested), eq(entrepriseId)))
-                .thenReturn(new PageImpl<>(List.of(sampleResponse("VENDEUR")), PageRequest.of(0, 10), 1));
+                .thenReturn(new PageImpl<>(List.of(sampleResponse("SELLER")), PageRequest.of(0, 10), 1));
 
         assertThat(service.findAllByCurrentEntreprise(requested).getContent()).hasSize(1);
     }
@@ -395,11 +395,11 @@ class EmployeServiceImplTest {
         employe.setAccount(account);
         Role newRole = roleWithId();
         EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "+221770000001", "Dakar", "VENDEUR", magasinId);
+                "+221770000001", "Dakar", "SELLER", magasinId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));
-        when(roleService.findByLibelle("VENDEUR")).thenReturn(newRole);
+        when(roleService.findByLibelle("SELLER")).thenReturn(newRole);
         when(permissionsService.findAllByRoleId(newRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
@@ -419,13 +419,13 @@ class EmployeServiceImplTest {
         otherMagasin.setId(otherMagasinId);
 
         when(currentUserService.getCurrent()).thenReturn(manager());
-        when(roleService.findByLibelle("VENDEUR")).thenReturn(vendeurRole);
+        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(otherMagasinId)).thenReturn(otherMagasin);
         when(magasinService.ensureAccessibleByCurrentUser(otherMagasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
 
-        assertThatThrownBy(() -> service.create(request("VENDEUR", otherMagasinId)))
+        assertThatThrownBy(() -> service.create(request("SELLER", otherMagasinId)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());

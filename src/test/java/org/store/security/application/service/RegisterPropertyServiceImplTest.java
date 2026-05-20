@@ -77,9 +77,9 @@ class RegisterPropertyServiceImplTest {
         Proprietaire proprietaire = new Proprietaire();
         Entreprise entreprise = entrepriseWithId();
         Magasin magasin = magasinWithId();
-        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entreprise.getId(), magasin.getId(), "john.doe", "PROPRIETAIRE", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entreprise.getId(), magasin.getId(), "john.doe", "OWNER", List.of());
 
-        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(role);
+        when(roleService.findByLibelle("OWNER")).thenReturn(role);
         when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);
         when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
         when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
@@ -107,7 +107,7 @@ class RegisterPropertyServiceImplTest {
         Magasin magasin = magasinWithId();
         proprietaire.setEntreprise(entreprise);
 
-        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(role);
+        when(roleService.findByLibelle("OWNER")).thenReturn(role);
         when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);
         when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
         when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
@@ -123,8 +123,8 @@ class RegisterPropertyServiceImplTest {
 
     @Test
     void should_propagate_entity_exception_when_role_proprietaire_not_found() {
-        when(roleService.findByLibelle("PROPRIETAIRE"))
-                .thenThrow(new EntityException("role.notFound", "PROPRIETAIRE"));
+        when(roleService.findByLibelle("OWNER"))
+                .thenThrow(new EntityException("role.notFound", "OWNER"));
 
         assertThatThrownBy(() -> service.register(validRequest))
                 .isInstanceOf(EntityException.class);
@@ -134,7 +134,7 @@ class RegisterPropertyServiceImplTest {
 
     @Test
     void should_propagate_entity_exception_when_trial_plan_not_found() {
-        when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(new Role());
+        when(roleService.findByLibelle("OWNER")).thenReturn(new Role());
         when(planAbonnementService.findFirstTrialActif())
                 .thenThrow(new EntityException("plan.trial.notFound"));
 

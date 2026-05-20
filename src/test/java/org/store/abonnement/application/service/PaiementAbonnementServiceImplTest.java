@@ -107,7 +107,7 @@ class PaiementAbonnementServiceImplTest {
 
     private UserPrincipal proprietaire() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null,
-                "owner", "PROPRIETAIRE", List.of("SUBSCRIPTION_PAY", "SUBSCRIPTION_READ"));
+                "owner", "OWNER", List.of("SUBSCRIPTION_PAY", "SUBSCRIPTION_READ"));
     }
 
     private UserPrincipal admin() {

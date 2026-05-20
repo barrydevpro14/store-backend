@@ -13,7 +13,7 @@ import java.util.UUID;
 public interface IPaiementAbonnementService {
 
     /**
-     * PROPRIETAIRE enregistre son paiement (paiement manuel, hors-app) avec preuve image obligatoire.
+     * OWNER enregistre son paiement (paiement manuel, hors-app) avec preuve image obligatoire.
      * Crée un PaiementAbonnement en EN_ATTENTE_VALIDATION. L'abonnement reste EN_ATTENTE jusqu'à la validation admin.
      */
     PaiementAbonnementResponse create(UUID abonnementId, PaiementAbonnementRequest paiementAbonnementRequest, MultipartFile preuve);
@@ -31,7 +31,7 @@ public interface IPaiementAbonnementService {
     PaiementAbonnementResponse reject(UUID paiementId, RejectPaiementRequest rejectPaiementRequest);
 
     /**
-     * Listing paginé filtré (ADMIN voit tout, PROPRIETAIRE auto-scopé sur son entreprise).
+     * Listing paginé filtré (ADMIN voit tout, OWNER auto-scopé sur son entreprise).
      */
     Page<PaiementAbonnementResponse> findAll(PaiementAbonnementFilter filter);
 

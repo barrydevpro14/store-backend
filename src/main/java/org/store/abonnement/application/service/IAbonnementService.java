@@ -21,7 +21,7 @@ public interface IAbonnementService {
     Abonnement createTrial(Entreprise entreprise, PlanAbonnement plan);
 
     /**
-     * Souscription PROPRIETAIRE : crée un Abonnement EN_ATTENTE pour l'entreprise du caller.
+     * Souscription OWNER : crée un Abonnement EN_ATTENTE pour l'entreprise du caller.
      */
     SubscribeResponse subscribe(SubscribeRequest subscribeRequest);
 
@@ -41,12 +41,12 @@ public interface IAbonnementService {
     Page<AbonnementResponse> findAll(AbonnementFilter filter);
 
     /**
-     * Historique paginé du PROPRIETAIRE : ses abonnements (auto-scopé entreprise du caller).
+     * Historique paginé du OWNER : ses abonnements (auto-scopé entreprise du caller).
      */
     Page<AbonnementResponse> findMyHistory(AbonnementFilter filter);
 
     /**
-     * Abonnement courant ACTIF du PROPRIETAIRE + jours restants + flag trial + fonctionnalités du plan.
+     * Abonnement courant ACTIF du OWNER + jours restants + flag trial + fonctionnalités du plan.
      * Throw `EntityException("abonnement.noActive")` si aucun abonnement actif.
      */
     CurrentAbonnementResponse findMyCurrent();

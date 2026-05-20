@@ -56,7 +56,7 @@ class FournisseurServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "OWNER",
                 List.of("SUPPLIER_CREATE", "SUPPLIER_READ"));
     }
 

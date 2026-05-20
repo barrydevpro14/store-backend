@@ -122,6 +122,19 @@ public class GlobalException {
         return buildError(resolve(ex), HttpStatus.FORBIDDEN.value());
     }
 
+    /**
+     * Capture les refus levés par Spring Security en niveau méthode
+     * (`@PreAuthorize`) — `AuthorizationDeniedException` (Spring 6.1+)
+     * étend `AccessDeniedException`. Ces refus arrivent par AOP depuis
+     * l'intérieur du contrôleur et ne passent pas par le
+     * `CustomAccessDeniedHandler` de la filter chain — sans ce handler,
+     * ils tombaient dans le catch-all `Exception` et renvoyaient 500.
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> accessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        return buildError(messageSourceService.getMessage("access.denied"), HttpStatus.FORBIDDEN.value());
+    }
+
     @ExceptionHandler(UnauthorisedException.class)
     public ResponseEntity<ErrorResponse> unauthorisedException(UnauthorisedException ex) {
         return buildError(resolve(ex), HttpStatus.UNAUTHORIZED.value());

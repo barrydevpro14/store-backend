@@ -175,7 +175,7 @@ class VenteServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("SALE_READ"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("SALE_READ"));
     }
 
     private VenteRequest sampleRequest() {

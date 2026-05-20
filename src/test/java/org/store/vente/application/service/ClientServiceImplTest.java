@@ -66,12 +66,12 @@ class ClientServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER",
                 List.of("CLIENT_CREATE", "CLIENT_READ", "CLIENT_UPDATE", "CLIENT_DELETE"));
     }
 
     private UserPrincipal vendeur() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "seller", "VENDEUR",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "seller", "SELLER",
                 List.of("CLIENT_CREATE", "CLIENT_READ"));
     }
 

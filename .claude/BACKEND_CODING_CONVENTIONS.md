@@ -363,6 +363,19 @@ The summary (input, flow, rules, exceptions, output) of every business applicati
     - **`@ConfigurationPropertiesScan`**: already enabled on `StoreApplication` for the `org.store.property` package. New records are auto-discovered.
     - **Reference**: `JwtProperties`, `RbacProperties`, `UploadProperties`, `SubscriptionProperties`.
 
+### Code smells — always extract into a shared function
+
+39. **Code smells are mandatory to address. Any duplicated logic — whether the IDE flags it, a reviewer spots it, or you notice it yourself — must be extracted into a shared external function.** No "I'll dedupe later", no "it's only twice so it's fine". The fix is always: pull the pattern out, name it, call it from both sides. **No exception.**
+    - **What counts as duplication**: same statement sequence in two methods (even with different types, if a generic / parameter would cover it); identical `onSuccess`/`onError` boilerplate across mutation handlers; repeated entity-mapping snippets; copy-pasted validation, formatting, or guard blocks.
+    - **Where the extracted function lives**:
+      - Inside the same aggregate → public method on the owning `<X>DomainService` or `<X>ServiceImpl` (cf. rule 4).
+      - Cross-aggregate / cross-module utility → `org.store.common.service/` (e.g. `MutationToastService` analogue, `IdResolver`, etc.).
+      - Pure value object / converter without side effects → `org.store.common.util/`.
+    - **Naming**: explicit business name (cf. rule 32). Never `helper`, `util`, `doStuff`. The function name must describe *what the duplication did*, not where it was copied from.
+    - **Tests**: the new function is itself unit-tested (cf. rule 16). The call sites stop testing the extracted logic — they only assert the wiring.
+    - **Reason**: duplication is the #1 source of bugs that only show up after a partial fix lands on one copy. Extraction makes the next change land in one place.
+    - **Mirror rule frontend**: `FRONTEND_CODING_CONVENTIONS.md` rule 45 — same meta-rule, applied to React/TS code (handlers, hooks, util modules).
+
 ### i18n messages — never interpolate raw IDs
 
 User-facing i18n messages (`messages.properties` + EN counterpart) must never include a UUID or DB id in the placeholder. If the message takes `{0}`, fill it with a human label (`nom`, `libelle`, `username`, …) at the call site — never `entity.getId()`.

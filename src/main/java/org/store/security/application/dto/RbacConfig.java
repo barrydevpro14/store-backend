@@ -9,7 +9,7 @@ public record RbacConfig(
     /**
      * Définition d'un rôle dans le YAML RBAC. `assignableToEmploye` est
      * absent par défaut (interprété comme `false`) — seuls MANAGER et
-     * VENDEUR doivent le passer à `true`. Le sync DB applique strictement
+     * SELLER doivent le passer à `true`. Le sync DB applique strictement
      * la valeur du YAML.
      */
     public record RoleDef(

@@ -67,7 +67,7 @@ public class MagasinServiceImpl implements IMagasinService {
 
     @Override
     public MagasinResponse findResponseById(UUID id) {
-        Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
+        Magasin magasin = ensureAccessibleByCurrentUser(magasinDomainService.findById(id));
         return new MagasinResponse(magasin);
     }
 
@@ -124,7 +124,7 @@ public class MagasinServiceImpl implements IMagasinService {
     @Override
     @Transactional(readOnly = true)
     public ImageDownloadResponse getLogo(UUID id) {
-        Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
+        Magasin magasin = ensureAccessibleByCurrentUser(magasinDomainService.findById(id));
         PieceJointe logo = magasin.getLogo();
         if (logo == null) {
             throw new EntityException("magasin.logo.notFound");
@@ -144,7 +144,7 @@ public class MagasinServiceImpl implements IMagasinService {
     @Override
     public Magasin ensureAccessibleByCurrentUser(Magasin magasin) {
         UserPrincipal currentUser = currentUserService.getCurrent();
-        if (currentUser.hasPermission(PermissionCode.PROPRIETAIRE_ACCESS)) {
+        if (currentUser.hasPermission(PermissionCode.OWNER_ACCESS)) {
             return ensureBelongsToCurrentEntreprise(magasin);
         }
         if (!magasin.getId().equals(currentUser.magasinId())) {

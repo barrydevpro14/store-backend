@@ -61,7 +61,7 @@ class UserProfileServiceImplTest {
         magasin.setEntreprise(entreprise);
 
         Role role = new Role();
-        role.setLibelle("VENDEUR");
+        role.setLibelle("SELLER");
         account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("john.emp");
@@ -80,7 +80,7 @@ class UserProfileServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(account.getId(), userId, UUID.randomUUID(), magasinId,
-                "john.emp", "VENDEUR", List.of("AUTH_CHANGE_PASSWORD"));
+                "john.emp", "SELLER", List.of("AUTH_CHANGE_PASSWORD"));
     }
 
     @Test
@@ -92,7 +92,7 @@ class UserProfileServiceImplTest {
 
         assertThat(response.userId()).isEqualTo(userId);
         assertThat(response.username()).isEqualTo("john.emp");
-        assertThat(response.role()).isEqualTo("VENDEUR");
+        assertThat(response.role()).isEqualTo("SELLER");
         assertThat(response.type()).isEqualTo("EMPLOYE");
         assertThat(response.magasinId()).isEqualTo(magasinId);
     }

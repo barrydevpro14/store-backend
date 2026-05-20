@@ -35,9 +35,9 @@ class RoleServiceImplTest {
     @Test
     void should_return_role_when_libelle_exists() {
         Role role = new Role();
-        when(roleDomainService.findByLibelle("PROPRIETAIRE")).thenReturn(Optional.of(role));
+        when(roleDomainService.findByLibelle("OWNER")).thenReturn(Optional.of(role));
 
-        Role result = service.findByLibelle("PROPRIETAIRE");
+        Role result = service.findByLibelle("OWNER");
 
         assertThat(result).isSameAs(role);
     }
@@ -54,14 +54,14 @@ class RoleServiceImplTest {
     void findAll_should_project_each_role_with_permissions_sorted_by_code() {
         Permissions saleCreate = buildPermission("SALE_CREATE");
         Permissions employeRead = buildPermission("EMPLOYE_READ");
-        Role vendeur = buildRole("VENDEUR", "Vendeur de magasin", Set.of(saleCreate, employeRead));
+        Role vendeur = buildRole("SELLER", "Vendeur de magasin", Set.of(saleCreate, employeRead));
         when(roleDomainService.findAll()).thenReturn(List.of(vendeur));
 
         List<RoleResponse> result = service.findAll();
 
         assertThat(result).hasSize(1);
         RoleResponse projected = result.get(0);
-        assertThat(projected.libelle()).isEqualTo("VENDEUR");
+        assertThat(projected.libelle()).isEqualTo("SELLER");
         assertThat(projected.description()).isEqualTo("Vendeur de magasin");
         assertThat(projected.permissions()).containsExactly("EMPLOYE_READ", "SALE_CREATE");
     }

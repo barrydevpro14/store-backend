@@ -28,7 +28,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping(MagasinController.BASE_PATH)
-@PreAuthorize("hasAnyAuthority('PROPRIETAIRE_ACCESS', 'ADMIN_ACCESS')")
 public class MagasinController {
 
     public static final String BASE_PATH = "/api/v1/magasins";
@@ -40,12 +39,14 @@ public class MagasinController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('STORE_CREATE')")
     public ResponseEntity<MagasinResponse> create(@Valid @RequestBody MagasinRequest magasinRequest) {
         MagasinResponse response = magasinService.create(magasinRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('STORE_READ')")
     public ResponseEntity<Page<MagasinResponse>> list(@RequestParam(required = false) String nom,
                                                       @RequestParam(required = false) Boolean actif,
                                                       @RequestParam(defaultValue = "0") int page,
@@ -54,33 +55,39 @@ public class MagasinController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<MagasinResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(magasinService.findResponseById(id));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('STORE_UPDATE')")
     public ResponseEntity<MagasinResponse> update(@PathVariable UUID id,
                                                   @Valid @RequestBody MagasinRequest magasinRequest) {
         return ResponseEntity.ok(magasinService.update(id, magasinRequest));
     }
 
     @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('STORE_UPDATE')")
     public ResponseEntity<MagasinResponse> activate(@PathVariable UUID id) {
         return ResponseEntity.ok(magasinService.activate(id));
     }
 
     @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasAuthority('STORE_UPDATE')")
     public ResponseEntity<MagasinResponse> deactivate(@PathVariable UUID id) {
         return ResponseEntity.ok(magasinService.deactivate(id));
     }
 
     @PutMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('STORE_UPDATE')")
     public ResponseEntity<MagasinResponse> uploadLogo(@PathVariable UUID id,
                                                      @RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(magasinService.uploadLogo(id, file));
     }
 
     @GetMapping("/{id}/logo")
+    @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<byte[]> getLogo(@PathVariable UUID id) {
         ImageDownloadResponse download = magasinService.getLogo(id);
         return ResponseEntity.ok()
@@ -89,6 +96,7 @@ public class MagasinController {
     }
 
     @DeleteMapping("/{id}/logo")
+    @PreAuthorize("hasAuthority('STORE_UPDATE')")
     public ResponseEntity<Void> deleteLogo(@PathVariable UUID id) {
         magasinService.deleteLogo(id);
         return ResponseEntity.noContent().build();

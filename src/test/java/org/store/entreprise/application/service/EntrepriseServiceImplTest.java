@@ -54,8 +54,8 @@ class EntrepriseServiceImplTest {
     }
 
     private UserPrincipal proprietaire(UUID entId) {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entId, UUID.randomUUID(), "owner", "PROPRIETAIRE",
-                List.of("PROPRIETAIRE_ACCESS"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entId, UUID.randomUUID(), "owner", "OWNER",
+                List.of("OWNER_ACCESS"));
     }
 
     @Test

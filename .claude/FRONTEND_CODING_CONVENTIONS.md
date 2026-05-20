@@ -434,6 +434,32 @@ If you really need an uncontrolled `<Select>`, pass `defaultValue` explicitly �
 
 ---
 
+### 45. Code smells are mandatory to fix — always extract into a shared external function
+
+**Any duplicated logic** — flagged by the IDE, spotted in review, or noticed while writing — **must be extracted into a shared external function. No exception.** No "I'll dedupe later", no "it only repeats twice so it's fine".
+
+**What counts as duplication:**
+- Same statement sequence in two functions (even across files / pages).
+- Identical `onSuccess` / `onError` boilerplate across TanStack mutation handlers — extract via `runMutationWithToast` (`common/application/mutation-toast.ts`) or a similar wrapper.
+- Repeated mapping / transformation / formatting helpers in two components — promote to `common/application/<name>.ts`.
+- Copy-pasted guard / validation / permission-check blocks — promote to a hook (`use<Name>`) or a pure function (`common/application/<name>.ts`).
+- Repeated JSX shape spanning more than a handful of lines — extract a sub-component (cf. rule 36).
+
+**Where the extracted function lives:**
+- Single feature → `features/<feature>/application/<name>.ts` (hook) or `features/<feature>/domain/<name>.ts` (pure).
+- Cross-feature, side-effecting → `common/application/<name>.ts`.
+- Cross-feature, pure / converters → `common/domain/<name>.ts` or `common/infrastructure/<name>.ts`.
+
+**Naming:** explicit business name (rule 32). Never `helper`, `util`, `doStuff`. The function name describes *what the duplication did*, not where it came from. (Example: `runMutationWithToast`, `toastApiError`, `navGuard.canSee`.)
+
+**Tests:** the new function gets its own unit test (rule 39 — every business function is tested). Call sites stop testing the extracted logic; they only assert the wiring.
+
+**Reason:** duplication is the #1 source of bugs that only surface after a partial fix lands on one copy. Extraction makes the next change land in one place.
+
+**Mirror rule backend:** `BACKEND_CODING_CONVENTIONS.md` rule 39 — same meta-rule, applied to Java services.
+
+---
+
 ## Logs / debug
 
 - **No `console.log` in production**. Temporarily acceptable in dev, remove before committing.

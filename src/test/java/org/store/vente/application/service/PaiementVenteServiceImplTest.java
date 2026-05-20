@@ -83,7 +83,7 @@ class PaiementVenteServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(),
-                "vendeur1", "VENDEUR", List.of("SALE_READ", "SALE_PAY"));
+                "vendeur1", "SELLER", List.of("SALE_READ", "SALE_PAY"));
     }
 
     @Test

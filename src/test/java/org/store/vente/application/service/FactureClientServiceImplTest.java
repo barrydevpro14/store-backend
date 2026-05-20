@@ -63,7 +63,7 @@ class FactureClientServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "vendeur1", "VENDEUR", List.of("SALE_READ"));
+                "vendeur1", "SELLER", List.of("SALE_READ"));
     }
 
     private FactureClientResponse sampleFacture(UUID id) {

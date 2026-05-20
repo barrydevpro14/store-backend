@@ -102,7 +102,7 @@ class AbonnementServiceImplTest {
 
     private UserPrincipal proprietaire() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null,
-                "owner", "PROPRIETAIRE", List.of("SUBSCRIPTION_CREATE"));
+                "owner", "OWNER", List.of("SUBSCRIPTION_CREATE"));
     }
 
     private SubscriptionAmountBreakdown sampleBreakdown(String montant) {

@@ -58,7 +58,7 @@ class UserProfileControllerTest {
 
     private UserProfileResponse sample() {
         return new UserProfileResponse(userId, "Doe", "John", "john@example.com",
-                "+221770000000", "Dakar", "john.emp", "VENDEUR", "EMPLOYE", magasinId, null);
+                "+221770000000", "Dakar", "john.emp", "SELLER", "EMPLOYE", magasinId, null);
     }
 
     @Test
@@ -69,7 +69,7 @@ class UserProfileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.username").value("john.emp"))
-                .andExpect(jsonPath("$.role").value("VENDEUR"))
+                .andExpect(jsonPath("$.role").value("SELLER"))
                 .andExpect(jsonPath("$.type").value("EMPLOYE"));
     }
 

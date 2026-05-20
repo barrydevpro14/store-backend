@@ -26,5 +26,9 @@ management:
 
 security:
   rbac:
-    sync: ${RBAC_SYNC:false}
+    # En dev on synchronise systématiquement le YAML à chaque boot — sinon
+    # les permissions/rôles ajoutés au YAML restent invisibles tant qu'on
+    # ne pense pas à exporter RBAC_SYNC=true. En prod on garde un opt-in
+    # explicite (cf. application-prod.yml).
+    sync: ${RBAC_SYNC:true}
     file: ${RBAC_FILE:classpath:security/roles-permissions.yml}

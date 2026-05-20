@@ -26,7 +26,7 @@ import java.util.List;
 @Service
 public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
 
-    private static final String ROLE_PROPRIETAIRE = "PROPRIETAIRE";
+    private static final String ROLE_OWNER = "OWNER";
 
     private final IAccountService accountService;
     private final IProprietaireService proprietaireService;
@@ -64,7 +64,7 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
     @Override
     @Transactional
     public AuthResponse register(RegisterPropertyRequest request) {
-        Account account = createAccount(request, ROLE_PROPRIETAIRE);
+        Account account = createAccount(request, ROLE_OWNER);
         UserPrincipal principal = userPrincipalFactory.build(account);
         String accessToken = jwtService.generateToken(principal);
         String refreshToken = refreshTokenService.create(account);
@@ -74,13 +74,13 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
     @Override
     @Transactional
     public AccountResponse registerOwnerByAdmin(RegisterPropertyRequest request) {
-        return new AccountResponse(createAccount(request, ROLE_PROPRIETAIRE));
+        return new AccountResponse(createAccount(request, ROLE_OWNER));
     }
 
     @Override
     @Transactional
     public EntrepriseResponse registerEntrepriseByAdmin(RegisterPropertyRequest request) {
-        Account account = createAccount(request, ROLE_PROPRIETAIRE);
+        Account account = createAccount(request, ROLE_OWNER);
         Proprietaire proprietaire = (Proprietaire) account.getUser();
         return new EntrepriseResponse(proprietaire.getEntreprise());
     }

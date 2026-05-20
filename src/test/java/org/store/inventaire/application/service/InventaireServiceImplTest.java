@@ -123,7 +123,7 @@ class InventaireServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "owner", "PROPRIETAIRE", List.of("STOCK_INVENTORY"));
+                "owner", "OWNER", List.of("STOCK_INVENTORY"));
     }
 
     private EntreeStock lot(int quantiteRestante) {

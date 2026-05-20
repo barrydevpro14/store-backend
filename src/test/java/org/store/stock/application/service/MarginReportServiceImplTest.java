@@ -58,7 +58,7 @@ class MarginReportServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "PROPRIETAIRE", List.of("REPORT_STOCK"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("REPORT_STOCK"));
     }
 
     @Test

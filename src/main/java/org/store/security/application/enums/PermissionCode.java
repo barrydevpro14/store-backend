@@ -1,7 +1,7 @@
 package org.store.security.application.enums;
 
 public enum PermissionCode {
-    PROPRIETAIRE_ACCESS,
+    OWNER_ACCESS,
     EMPLOYE_ACCESS,
     EMPLOYE_CREATE,
     EMPLOYE_READ,

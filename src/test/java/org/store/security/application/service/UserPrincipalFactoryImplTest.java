@@ -57,11 +57,11 @@ class UserPrincipalFactoryImplTest {
         UUID entrepriseId = UUID.randomUUID();
         UUID magasinId = UUID.randomUUID();
         Proprietaire proprietaire = new Proprietaire();
-        Role role = roleWith("PROPRIETAIRE");
+        Role role = roleWith("OWNER");
         Account account = accountWith("john.doe", proprietaire, role);
         when(proprietaireStrategy.resolve(any(Utilisateur.class)))
                 .thenReturn(new UserPrincipalContext(entrepriseId, magasinId));
-        when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of("PROPRIETAIRE_ACCESS"));
+        when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of("OWNER_ACCESS"));
 
         UserPrincipal principal = factory.build(account);
 
@@ -69,8 +69,8 @@ class UserPrincipalFactoryImplTest {
         assertThat(principal.entrepriseId()).isEqualTo(entrepriseId);
         assertThat(principal.magasinId()).isEqualTo(magasinId);
         assertThat(principal.username()).isEqualTo("john.doe");
-        assertThat(principal.role()).isEqualTo("PROPRIETAIRE");
-        assertThat(principal.permissions()).containsExactly("PROPRIETAIRE_ACCESS");
+        assertThat(principal.role()).isEqualTo("OWNER");
+        assertThat(principal.permissions()).containsExactly("OWNER_ACCESS");
     }
 
     @Test
