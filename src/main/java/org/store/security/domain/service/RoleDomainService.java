@@ -18,11 +18,12 @@ public class RoleDomainService extends GlobalService<Role, RoleRepository> {
         return repository.findByLibelle(libelle);
     }
 
-    /** Crée et persiste un nouveau Role avec libellé + description et un set de permissions vide. */
-    public Role create(String libelle, String description) {
+    /** Crée et persiste un nouveau Role avec libellé + description + flag `assignableToEmploye`, set de permissions vide. */
+    public Role create(String libelle, String description, boolean assignableToEmploye) {
         Role role = new Role();
         role.setLibelle(libelle);
         role.setDescription(description);
+        role.setAssignableToEmploye(assignableToEmploye);
         role.setPermissions(new LinkedHashSet<>());
         return save(role);
     }

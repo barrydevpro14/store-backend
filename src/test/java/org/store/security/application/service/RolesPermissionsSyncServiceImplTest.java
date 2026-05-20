@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -75,11 +76,12 @@ class RolesPermissionsSyncServiceImplTest {
         });
         when(permissionsDomainService.findAll()).thenReturn(List.of());
         when(roleDomainService.findByLibelle("VENDEUR")).thenReturn(Optional.empty());
-        when(roleDomainService.create(any(), any())).thenAnswer(inv -> {
+        when(roleDomainService.create(any(), any(), anyBoolean())).thenAnswer(inv -> {
             Role r = new Role();
             r.setId(UUID.randomUUID());
             r.setLibelle(inv.getArgument(0));
             r.setDescription(inv.getArgument(1));
+            r.setAssignableToEmploye(inv.getArgument(2));
             r.setPermissions(new LinkedHashSet<>());
             return r;
         });
@@ -95,7 +97,7 @@ class RolesPermissionsSyncServiceImplTest {
         assertThat(report.orphanRoles()).isEmpty();
 
         verify(permissionsDomainService, times(3)).create(any());
-        verify(roleDomainService, times(1)).create(any(), any());
+        verify(roleDomainService, times(1)).create(any(), any(), anyBoolean());
     }
 
     @Test

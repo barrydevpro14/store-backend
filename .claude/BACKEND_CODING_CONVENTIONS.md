@@ -363,6 +363,33 @@ The summary (input, flow, rules, exceptions, output) of every business applicati
     - **`@ConfigurationPropertiesScan`**: already enabled on `StoreApplication` for the `org.store.property` package. New records are auto-discovered.
     - **Reference**: `JwtProperties`, `RbacProperties`, `UploadProperties`, `SubscriptionProperties`.
 
+### i18n messages — never interpolate raw IDs
+
+User-facing i18n messages (`messages.properties` + EN counterpart) must never include a UUID or DB id in the placeholder. If the message takes `{0}`, fill it with a human label (`nom`, `libelle`, `username`, …) at the call site — never `entity.getId()`.
+
+❌ Bad:
+```java
+// message: magasin.notFound = Magasin "{0}" introuvable
+.orElseThrow(() -> new EntityException("magasin.notFound", id));   // {0} = UUID
+```
+
+✅ Good (two options):
+```java
+// Option A — drop the placeholder, rephrase:
+// message: magasin.notFound = Magasin introuvable
+.orElseThrow(() -> new EntityException("magasin.notFound"));
+
+// Option B — keep the placeholder but pass a name. Only possible when
+// you already have the entity loaded (e.g. you re-throw after a sanity check):
+throw new EntityException("magasin.notFound", magasin.getNom());
+```
+
+**Why:** an end-user (the merchant) seeing `Magasin "1e35bbba-…" introuvable` in a toast is bad UX and a trust killer. The mirror rule lives in `FRONTEND_CODING_CONVENTIONS.md` (rule 43).
+
+**Scope:** every `Localized*Exception` constructor call across the codebase. When in doubt: read the corresponding `messages.properties` line and ask "what does the merchant see?" — if any arg is an id, fix it.
+
+**Already-correct precedents:** `utilisateur.email.alreadyExists` is called with the email string (user input → safe). `fournisseur.reference.alreadyExists` is called with the reference (business code → safe). It's specifically `xxx.notFound`-style messages on `findById(...).orElseThrow(...)` chains that tend to leak ids.
+
 ---
 
 ## Commit conventions

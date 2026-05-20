@@ -104,6 +104,9 @@ class EmployeServiceImplTest {
     private Role roleWithId() {
         Role r = new Role();
         r.setId(UUID.randomUUID());
+        // Tous les rôles dans ces tests sont des rôles employé (MANAGER /
+        // VENDEUR) — sinon `ensureRoleAllowed` les rejetterait.
+        r.setAssignableToEmploye(true);
         return r;
     }
 
@@ -173,11 +176,14 @@ class EmployeServiceImplTest {
     }
 
     @Test
-    void should_be_forbidden_when_role_does_not_grant_employe_access() {
+    void should_be_forbidden_when_role_is_not_assignable_to_employe() {
         Role propRole = roleWithId();
+        // Marque explicite : PROPRIETAIRE / ADMIN ne sont jamais
+        // `assignableToEmploye` en base — le helper par défaut force `true`
+        // pour la grande majorité des tests employé, on l'inverse ici.
+        propRole.setAssignableToEmploye(false);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(roleService.findByLibelle("PROPRIETAIRE")).thenReturn(propRole);
-        when(permissionsService.findAllByRoleId(propRole.getId())).thenReturn(List.of("PROPRIETAIRE_ACCESS"));
 
         assertThatThrownBy(() -> service.create(request("PROPRIETAIRE", magasinId)))
                 .isInstanceOf(ForbiddenException.class);

@@ -17,6 +17,15 @@ public class Role extends BaseEntity {
     private String libelle;
     private String description;
 
+    /**
+     * Marqueur explicite : ce rôle peut-il être attribué à un employé via
+     * `EmployeServiceImpl.create` ? `true` pour MANAGER, VENDEUR ; `false`
+     * pour PROPRIETAIRE (créé par l'inscription) et ADMIN (super-admin SaaS).
+     * Mappé sur la colonne `assignable_to_employe` (DEFAULT FALSE).
+     */
+    @Column(name = "assignable_to_employe", nullable = false)
+    private boolean assignableToEmploye;
+
     @ManyToMany
     @JoinTable(
             name = "role_permission",

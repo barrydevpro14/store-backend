@@ -99,23 +99,41 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
         boolean wasCreated = (existing == null);
         Role role = wasCreated ? createRole(roleDef, context) : existing;
 
+        boolean flagChanged = syncAssignableToEmployeFromYaml(roleDef, role);
         initRolePermissionsIfNeeded(role);
         boolean associationsChanged = attachPermissionsFromYaml(roleDef, role, context);
         logOrphanRolePermissions(roleDef, role);
 
-        if (associationsChanged && !wasCreated) {
+        if ((associationsChanged || flagChanged) && !wasCreated) {
             roleDomainService.save(role);
             context.updatedRoles().add(roleDef.libelle());
-            log.info("RBAC sync: updated permissions of role '{}'", roleDef.libelle());
+            log.info("RBAC sync: updated role '{}'", roleDef.libelle());
         }
     }
 
     /** Persiste un nouveau Role via le domain service et le trace dans `context.addedRoles`. */
     public Role createRole(RoleDef roleDef, RbacSyncContext context) {
-        Role saved = roleDomainService.create(roleDef.libelle(), roleDef.description());
+        Role saved = roleDomainService.create(
+                roleDef.libelle(),
+                roleDef.description(),
+                roleDef.assignableToEmployeOrFalse()
+        );
         context.addedRoles().add(roleDef.libelle());
         log.info("RBAC sync: created role '{}'", roleDef.libelle());
         return saved;
+    }
+
+    /**
+     * Aligne le flag `assignableToEmploye` du rôle existant sur la valeur du
+     * YAML (source de vérité). Retourne `true` si la valeur a changé — ce qui
+     * déclenche un save dans `ensureRole`. Reste idempotent en l'absence de
+     * diff.
+     */
+    public boolean syncAssignableToEmployeFromYaml(RoleDef roleDef, Role role) {
+        boolean expected = roleDef.assignableToEmployeOrFalse();
+        if (role.isAssignableToEmploye() == expected) return false;
+        role.setAssignableToEmploye(expected);
+        return true;
     }
 
     /** Initialise le set de permissions du rôle si null (évite NPE lors de l'association). */
@@ -253,12 +271,13 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
                 .toList();
     }
 
-    /** Convertit une entrée YAML brute (Map SnakeYAML) en RoleDef typé. */
+    /** Convertit une entrée YAML brute (Map SnakeYAML) en RoleDef typé. `assignableToEmploye` est absent par défaut (= false). */
     @SuppressWarnings("unchecked")
     public RoleDef toRoleDef(Map<String, Object> entry) {
         return new RoleDef(
                 (String) entry.get("libelle"),
                 (String) entry.get("description"),
+                (Boolean) entry.get("assignableToEmploye"),
                 (List<String>) entry.getOrDefault("permissions", List.of())
         );
     }

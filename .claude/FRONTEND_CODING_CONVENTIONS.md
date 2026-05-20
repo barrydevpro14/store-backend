@@ -331,6 +331,107 @@ Every DTO (`<X>Request`, `<X>Response`, `<X>Summary`, `<X>Filter`, plus the prin
 - **`domain/types.ts` is forbidden** as a catch-all for several DTOs. Concise helper enums or branded types that are NOT proper DTOs (e.g. local utility unions) may still live in `domain/` but outside `dtos/`.
 - **No runtime code** inside a DTO file — `type` (or `interface`) only. Zod schemas associated with a DTO live next to the form that uses them (`presentation/<X>Form.tsx`) or in `domain/schemas/` if shared.
 
+### 42. No inline arrow handlers in JSX — extract into named functions
+
+Any `(args) => { ... }` (especially multi-line, but also one-liners with body logic) passed as a JSX prop must be declared as a **named function above the `return`** of the component, then referenced by name.
+
+❌ Bad:
+```tsx
+<ResetPasswordDialog
+  open={resetOpen}
+  onOpenChange={(open) => {
+    setResetOpen(open)
+    if (!open) setResetTarget(undefined)
+  }}
+  target={resetTarget}
+/>
+```
+
+✅ Good:
+```tsx
+function handleResetOpenChange(open: boolean) {
+  setResetOpen(open)
+  if (!open) setResetTarget(undefined)
+}
+
+return (
+  <ResetPasswordDialog
+    open={resetOpen}
+    onOpenChange={handleResetOpenChange}
+    target={resetTarget}
+  />
+)
+```
+
+**Why** — inline lambdas in JSX:
+- get re-created on every render (memoization useless),
+- hurt readability: at the call-site you only see `(args) => { ... }`, no name documents intent,
+- block `useCallback`-able patterns and reduce-as-a-block diffs,
+- obscure what the handler does when the prop is `onSomething` — the function name is the documentation.
+
+**Tolerated narrow exceptions** (don't over-extract):
+- Trivial one-line setter calls inside `.map(...)` callbacks where you need to bind a row to the handler:
+  `<DropdownMenuItem onClick={() => onSelect(row)}>…</DropdownMenuItem>`.
+  Even here, a curried handler factory or a row-aware sub-handler outside JSX is preferred when possible.
+- `<Controller render={({ field }) => <Component ... />}>` — RHF's API forces the lambda. Keep the lambda short and pass the field's handlers through cleanly.
+
+Applies to all React/Next/TSX code in this repo. Reinforces rule 32 (explicit names).
+
+### 43. Never render technical IDs in user-facing UI
+
+Never display UUIDs, DB ints, or any raw primary key in user-facing UI — table cells, badges, breadcrumbs, dialog descriptions, toast messages. Always resolve the ID to a human label first (`nom`, `libelle`, `username`, …).
+
+❌ Bad:
+```tsx
+<TableCell>{employe.magasinId}</TableCell>
+toast.error(`Magasin ${magasinId} introuvable`)
+```
+
+✅ Good:
+```tsx
+<TableCell>{magasinNames.get(employe.magasinId) ?? '—'}</TableCell>
+toast.error(t('magasin.notFound')) // i18n message must not interpolate the id
+```
+
+**Why:** UUIDs are noise to a merchant. They erode trust ("system is showing me database internals") and make support harder (no one reads `1e35bbba-…` aloud).
+
+**Concrete patterns already in repo:**
+- `EmployeTable` resolves `magasinId → nom` via a `Map<string, string>` built from `useMagasinList`. The id stays internal.
+- `MagasinTable` shows `magasin.nom`, never `magasin.id`.
+
+**Acceptable uses** (id doesn't reach text content):
+- `key={item.id}` on a React list.
+- `value={item.id}` on a `<SelectItem>`.
+- `href="/dashboard/magasins/${id}"` — URL bar is not user-facing text content.
+- Logs / dev console.
+
+**If you can't resolve to a name** (no query handy), prefer a generic phrasing ("le magasin sélectionné", "cet employé") over leaking the id.
+
+The mirror rule lives in `BACKEND_CODING_CONVENTIONS.md` — backend i18n messages that take a `{0}` must not be called with an id; pass the entity name, or drop the placeholder and rephrase.
+
+---
+
+### 44. Always controlled `<Select>` — never the `value || undefined` pattern
+
+The shared `Select` (`common/presentation/ui/select.tsx`) wraps base-ui's `SelectPrimitive.Root` and **coerces `undefined` to `''`** when no `defaultValue` is provided. Forms get controlled mode for free.
+
+**Do**: pass the raw form-state value, even if empty:
+
+```tsx
+<Select value={field.value} onValueChange={(value) => field.onChange(value ?? '')}>
+```
+
+**Don't**: short-circuit to `undefined` — the wrapper protects you, but the pattern is misleading and harder to read:
+
+```tsx
+// ❌ misleading, even though the wrapper still keeps it controlled
+<Select value={field.value || undefined} ...>
+```
+
+**Reason**: the `state || undefined` pattern flipped between uncontrolled (first render, empty state) and controlled (after first selection), triggering the base-ui warning *"A component is changing the uncontrolled value state of Select to be controlled"*. The wrapper neutralizes the bug globally, but the explicit form-state value reads better and is the only style we use in this codebase.
+
+If you really need an uncontrolled `<Select>`, pass `defaultValue` explicitly — the wrapper detects it and skips the coercion.
+
 ---
 
 ## Logs / debug

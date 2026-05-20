@@ -81,7 +81,7 @@ public class EmployeServiceImpl implements IEmployeService {
         Role role = roleService.findByLibelle(employeRequest.role());
         List<String> rolePermissions = permissionsService.findAllByRoleId(role.getId());
 
-        ensureRoleAllowed(rolePermissions, employeRequest.role());
+        ensureRoleAllowed(role);
         ensureCallerCanAssignRole(currentUser, rolePermissions);
 
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(
@@ -136,7 +136,7 @@ public class EmployeServiceImpl implements IEmployeService {
 
         Role newRole = roleService.findByLibelle(request.role());
         List<String> newRolePermissions = permissionsService.findAllByRoleId(newRole.getId());
-        ensureRoleAllowed(newRolePermissions, request.role());
+        ensureRoleAllowed(newRole);
         ensureCallerCanAssignRole(currentUser, newRolePermissions);
 
         Magasin newMagasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(request.magasinId()));
@@ -219,10 +219,15 @@ public class EmployeServiceImpl implements IEmployeService {
                 currentUser.magasinId(), filter.actif(), filter.page(), filter.size());
     }
 
-    /** Verifie que le role cible donne acces a la zone employe (EMPLOYE_ACCESS) — protege contre l'assignation de roles non-employe. */
-    public void ensureRoleAllowed(List<String> rolePermissions, String roleLibelle) {
-        if (!rolePermissions.contains(PermissionCode.EMPLOYE_ACCESS.name())) {
-            throw new ForbiddenException("employe.create.role.notAllowed", roleLibelle);
+    /**
+     * Vérifie que le rôle cible est explicitement marqué `assignableToEmploye`
+     * en base — empêche l'assignation de PROPRIETAIRE / ADMIN à un employé,
+     * même si ces rôles portent par ailleurs `EMPLOYE_ACCESS` (cas ADMIN
+     * vendor-super-admin).
+     */
+    public void ensureRoleAllowed(Role role) {
+        if (!role.isAssignableToEmploye()) {
+            throw new ForbiddenException("employe.create.role.notAllowed", role.getLibelle());
         }
     }
 

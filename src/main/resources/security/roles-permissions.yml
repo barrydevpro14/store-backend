@@ -396,6 +396,7 @@ roles:
 
   - libelle: MANAGER
     description: Manager d'un magasin
+    assignableToEmploye: true
     permissions:
       - EMPLOYE_ACCESS
       - EMPLOYE_CREATE
@@ -477,6 +478,7 @@ roles:
 
   - libelle: VENDEUR
     description: Vendeur d'un magasin
+    assignableToEmploye: true
     permissions:
       - EMPLOYE_ACCESS
       - AUTH_LOGIN
