@@ -3,6 +3,7 @@ package org.store.vente.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.vente.application.dto.ClientFilter;
 import org.store.vente.application.dto.ClientRequest;
@@ -31,10 +32,18 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
     }
 
     public Page<ClientResponse> findResponsesByMagasinId(UUID magasinId, ClientFilter filter) {
-        return repository.findResponsesByMagasinId(magasinId, filter.nom(), filter.prenom(), filter.toPageable());
+        return repository.findResponsesByMagasinId(
+                magasinId,
+                LikePatternHelper.toLikePattern(filter.nom()),
+                LikePatternHelper.toLikePattern(filter.prenom()),
+                filter.toPageable());
     }
 
     public Page<ClientResponse> findResponsesByEntrepriseId(UUID entrepriseId, ClientFilter filter) {
-        return repository.findResponsesByEntrepriseId(entrepriseId, filter.nom(), filter.prenom(), filter.toPageable());
+        return repository.findResponsesByEntrepriseId(
+                entrepriseId,
+                LikePatternHelper.toLikePattern(filter.nom()),
+                LikePatternHelper.toLikePattern(filter.prenom()),
+                filter.toPageable());
     }
 }

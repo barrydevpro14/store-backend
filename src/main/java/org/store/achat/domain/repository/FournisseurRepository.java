@@ -13,10 +13,18 @@ import java.util.UUID;
 
 public interface FournisseurRepository extends BaseRepository<Fournisseur> {
 
+    /**
+     * Listing entreprise-scope. ORDER BY createdAt DESC pour que les
+     * nouveaux fournisseurs apparaissent en haut de page 1 — sans cet
+     * ordre, l'insertion ne garantit pas la position et un user qui
+     * vient de créer peut croire qu'aucun save n'a eu lieu (la ligne
+     * a juste été poussée en page 2 / 3).
+     */
     @Query("""
             SELECT new org.store.achat.application.dto.FournisseurResponse(fournisseur)
             FROM Fournisseur fournisseur
             WHERE fournisseur.entreprise.id = :entrepriseId
+            ORDER BY fournisseur.createdAt DESC
             """)
     Page<FournisseurResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
 

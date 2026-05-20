@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
@@ -45,7 +46,11 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
     }
 
     public Page<Product> searchByEntrepriseWithActiveLots(String searchTerm, UUID magasinId, UUID entrepriseId, Pageable pageable) {
-        return repository.searchByEntrepriseWithActiveLots(searchTerm, magasinId, entrepriseId, pageable);
+        return repository.searchByEntrepriseWithActiveLots(
+                LikePatternHelper.toLikePattern(searchTerm),
+                magasinId,
+                entrepriseId,
+                pageable);
     }
 
     public Product setImagePrincipal(Product product, PieceJointe imagePrincipal) {

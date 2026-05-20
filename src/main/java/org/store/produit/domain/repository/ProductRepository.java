@@ -24,12 +24,21 @@ public interface ProductRepository extends BaseRepository<Product> {
 
     boolean existsByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 
+    /**
+     * Recherche produits par nom OU référence avec lots actifs dans
+     * le magasin scopé. Le pattern LIKE est PRÉ-CONSTRUIT côté domain
+     * service via {@link org.store.common.tools.LikePatternHelper} —
+     * raison : Hibernate 7 sur PostgreSQL inférait parfois le type
+     * d'un `:searchTerm` bare en bytea (utilisé deux fois avec
+     * contextes ambigus), déclenchant `lower(bytea) does not exist`.
+     * Bind un String pré-formé verrouille le type sur varchar.
+     */
     @Query("""
             SELECT DISTINCT produit FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (:searchTerm IS NULL
-                   OR LOWER(produit.nom) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
-                   OR LOWER(produit.reference) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+              AND (:searchPattern IS NULL
+                   OR LOWER(produit.nom) LIKE :searchPattern
+                   OR LOWER(produit.reference) LIKE :searchPattern)
               AND EXISTS (
                   SELECT 1 FROM EntreeStock entree
                   WHERE entree.produit = produit
@@ -38,7 +47,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                     AND entree.annulee = false
               )
             """)
-    Page<Product> searchByEntrepriseWithActiveLots(@Param("searchTerm") String searchTerm,
+    Page<Product> searchByEntrepriseWithActiveLots(@Param("searchPattern") String searchPattern,
                                                    @Param("magasinId") UUID magasinId,
                                                    @Param("entrepriseId") UUID entrepriseId,
                                                    Pageable pageable);
