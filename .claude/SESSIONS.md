@@ -9,7 +9,67 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-19 — evening continuation (Magasin CRUD vertical slice, logo UX, backend bugfixes, dev-DB reset, V1 baseline rewrite, auth design pass, phone country selector)
+**Date:** 2026-05-20 — heavy session : RBAC tightening + role rename FR→EN + 3 new modules (Settings + Administration + Entreprise) + data-layer hardening + ADMIN seed + cross-session cache fix + several smell extractions
+
+**Subject:** Massive consolidation day spanning RBAC, UI permission gating, and new modules. Backend got tightened: per-method @PreAuthorize on `MagasinController`, role rename to English (PROPRIETAIRE → OWNER, VENDEUR → SELLER), a `STORE_READ_ONE` permission split, a proper `AccessDeniedException` handler, an ADMIN account seed in `DataInitializer`, a partial-unique-index migration on `person.email/telephone`, and a workaround for a Hibernate 7 `lower(bytea)` inference bug. Frontend got the full permission gating layer (`navGuard` service + `usePermission` hooks), three new modules (Settings, Administration, Entreprise) consolidating multiple CRUD slices each, a cross-session cache leak fix, and several helper extractions per rule 45.
+
+**Notable decisions:**
+
+### Backend — RBAC + per-method authorization
+
+- **Role rename FR → EN** : PROPRIETAIRE → OWNER, VENDEUR → SELLER. The matching access permission code follows : PROPRIETAIRE_ACCESS → OWNER_ACCESS. Case-sensitive sed across all Java + YAML + properties + tests + JPQL. The mixed-case `Proprietaire` entity (User profile sub-type) intentionally untouched — domain noun separate from role identifier. **V3 Flyway migration** renames the existing DB rows in-place via UPDATE — required because the RBAC sync is additive only (creating new role rows would leave orphans + break existing user_role assignments).
+- **STORE_READ_ONE split** : new permission declared in the YAML + assigned to all 4 roles. `STORE_READ` stays "list every magasin in your entreprise" (OWNER / ADMIN). `STORE_READ_ONE` = "read the magasin you can access" (every employee). Used by the new profile Affectation card to resolve `magasinId` → name without listing the whole entreprise. `MagasinController` per-method `@PreAuthorize` rewired. `MagasinServiceImpl.findResponseById` + `getLogo` switched from `ensureBelongsToCurrentEntreprise` → `ensureAccessibleByCurrentUser` so an employee can't read a foreign magasin id in the same entreprise.
+- **AccessDenied → 403** : new `@ExceptionHandler(AccessDeniedException)` in `GlobalException` returning 403 + `access.denied` i18n key. Without it, Spring 6.1+ method-level @PreAuthorize denials (thrown as `AuthorizationDeniedException` from AOP advice, outside the filter chain) fell through to the catch-all `Exception` handler → 500 "error.unexpected".
+- **Dev RBAC_SYNC flipped to true** : `application-dev.yml` default false → true. New permissions / roles in the YAML now land in DB on each dev boot without an env-var dance. Prod stays opt-in explicit.
+
+### Backend — Data layer hardening
+
+- **ADMIN seed** : `DataInitializer.ensureAdminAccount()` creates the SaaS super-admin (`admin` / `passer123` bcrypt) when `security.rbac.sync=true`. Idempotent. Doc note : prod will need `@ConfigurationProperties` exposure when the time comes.
+- **person.email / telephone partial unique** (V4 migration) : `@Column(unique = true)` generated strict UNIQUE constraints. PostgreSQL accepts multiple NULLs but rejects multiple `""`, so two clients / suppliers without coordinates collided. V4 drops both constraints + rebuilds as partial unique indexes `WHERE col IS NOT NULL AND col <> ''`. Existing blank values normalized to NULL beforehand.
+- **lower(bytea) workaround on Client + Product search** : both repos used bare `:term` parameters in two contexts (`:term IS NULL` + `LIKE LOWER(CONCAT('%', :term, '%'))`). Hibernate 7 inferred the type from the union of contexts and bound bytea → PostgreSQL refused `lower(bytea)`. New `LikePatternHelper.toLikePattern(String)` builds `%term%` lowercase in Java. Repos bind a single pre-formed String (`LIKE :pattern`). Type locked to varchar.
+- **ORDER BY createdAt DESC** added to `ClientRepository` (both queries) + `FournisseurRepository`. Without it new rows landed in undefined positions and users believed the save had failed.
+
+### Frontend — Permission UI gating
+
+- **navGuard service** (`common/application/nav-guard.ts`) : `canSee(item, subject)` + `filterVisible(items, subject)`. Single decision point. Decoupled from Zustand → testable without provider. 8 unit tests.
+- **usePermission / useHasAnyPermission / useHasAllPermissions** hooks reading the JWT `permissions` claim. Stable Zustand selector (returns `user` whole, not a derived array). 7 unit tests.
+- **Mass gating sweep** : sidebar nav + DashboardWelcome QUICK_LINKS + onboarding checklist + magasin MetricCard + MagasinTable row actions all routed through navGuard. Mass case-sensitive rename PROPRIETAIRE → OWNER, VENDEUR → SELLER across auth-store JWT claims, all i18n FR/EN, test fixtures, DTOs.
+- **`useMagasinList` `enabled` option** : caller can opt-out of fetch when lacking STORE_READ. Used by DashboardWelcome to avoid 403s for employees.
+- **Cross-session cache leak fix** : both `useLogin` AND `useLogout` now call `queryClient.clear()`. Previous symptom : re-login as a different user displayed the previous user's data until manual refresh.
+- **Shared Select wrapper** coerces undefined → '' when no `defaultValue`. Kills the base-ui "uncontrolled → controlled" warning globally (rule 44).
+- **Rule 45** (smells → extract function) added to conventions. Applied : `runMutationWithToast` + `toastApiError` (10 mutation sites incl. RegisterWizard / LoginForm via the new `onError` extension), `LikePatternHelper`, `blankOptionalsToUndefined`.
+
+### Frontend — Three new modules
+
+- **Settings** (`/dashboard/settings/`) : shell with sub-nav layout + permission-aware index redirect (`_tabs.ts` shared between layout + index). 5 CRUD vertical slices : CategoryProduct, Quality, Product (+ Category Select), Client (+ Magasin Select), Fournisseur (+ reference/origine). Existing `/dashboard/magasins` + `/dashboard/employees` routes relocated under Settings (top-level sidebar entries removed, breadcrumbs updated, DashboardWelcome quick links re-pointed). ~50 new files.
+- **Administration** (`/dashboard/administration/`, gated ADMIN_ACCESS) : sub-nav with 4 tabs (entreprises functional + abonnements / coupons / promotions placeholders). Entreprise admin slice : list with 5 text filters + statut + edit + activate/deactivate. No create button — backend `RegisterPropertyRequest` is a wizard, deferred. ~17 new files.
+- **Entreprise** (`/dashboard/entreprise/`, gated OWNER_ACCESS) : OWNER self-service with sub-nav 3 tabs (mon-entreprise functional + abonnement / paiements placeholders). Mon entreprise : view + edit identité légale + logo upload/preview/delete via dedicated `my-entreprise-api.ts` and `MyEntrepriseLogoSection`. ~14 new files.
+
+### Frontend — Profile Affectation card
+
+- New section on the profile page's left column showing the user's magasin label. Resolved via `useMagasin(user.magasinId)` (uses `STORE_READ_ONE`). Rule 43 compliance : label only, never the UUID. Hidden for OWNER / ADMIN. Side-by-side label / value layout.
+
+### Frontend — Auth + API normalization fixes
+
+- **UserPrincipal.userId nullable** : backend `UserPrincipalFactory` emits `userId: null` for ADMIN accounts (no `Utilisateur` métier attached). The strict frontend check rejected admin JWTs and bounced them to /login ("connected but no dashboard"). `auth-store.buildUserFromToken` now requires only `accountId / username / role`.
+- **blank-to-undefined helper** (`common/infrastructure/blank-to-undefined.ts`) : strips empty optional strings to `undefined` (omitted from JSON → backend reads NULL). Applied to `fournisseurApi` + `clientApi` before POST/PUT. Defense in depth alongside the backend V4 partial index.
+
+### Docs
+
+- `MODULES_OVERVIEW.md` updated : MAGASIN section rewritten with new per-method permissions + STORE_READ_ONE; header bumped to mention the rename (OWNER/SELLER) + new permission count + 2026-05-20 last-updated date.
+- `FEATURES.md` : appended use cases 51 (RBAC tightening) + 52 (Data-layer hardening).
+- `TODO.md` : 6 done entries under 2026-05-20 (2 backend + 4 frontend).
+- Conventions : rule 39 backend / rule 44 + 45 frontend.
+
+### Verification
+
+- Backend `mvn test` : **774 / 774 green** through every commit.
+- Frontend `vitest run` : **290 / 290 green** through every commit. `tsc --noEmit` clean (only the pre-existing `FormField.test.tsx` Resolver-typing error remains — unrelated).
+- 7 commits pushed to `origin/dev` across both repos.
+
+---
+
+## 2026-05-19 — evening continuation (Magasin CRUD vertical slice, logo UX, backend bugfixes, dev-DB reset, V1 baseline rewrite, auth design pass, phone country selector)
 
 **Subject:** Day 2 of 2026-05-19 — much heavier session than the morning. Shipped the Magasin CRUD as a full vertical slice (data layer + UI layer + logo dialog), and hit + fixed a chain of underlying bugs along the way (lazy-init 500 on logo GET, multipart Content-Type without boundary, route-group URL mismatch, delete-logo cache-race 500). Refactored V1 to be a clean entity-derived baseline and deleted V2..V26 (resolved an inconsistency between V1 snapshot and V17/V18). Bumped Node default to 20.19.5 via the user's .bashrc. Promoted the auth forms to a senior-designer pass (per-page widths, heavier inputs, rhythm, headings). Bumped root font-size 16→17px globally. Added a country-code phone selector backed by libphonenumber-js. Added a unique-email + unique-telephone constraint on Person + a friendly UniqueResourceException pre-check across Proprietaire / Employe / UserProfile services.
 

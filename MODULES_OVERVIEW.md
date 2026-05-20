@@ -4,11 +4,11 @@
 > For per-use-case detail (input/flow/rules/output), see `FEATURES.md`.
 > For package architecture, see `.claude/ARCHITECTURE.md`.
 
-**Last updated**: 2026-05-17
+**Last updated**: 2026-05-20
 **Total modules**: 11 business modules delivered + 1 skeleton (notification)
 **Total REST endpoints**: ~167
-**Total YAML permissions**: 70+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`)
-**Roles**: ADMIN, PROPRIETAIRE, MANAGER, VENDEUR
+**Total YAML permissions**: 71+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`). Note: 2026-05-20 split `STORE_READ` into `STORE_READ` (list, OWNER/ADMIN) + `STORE_READ_ONE` (single magasin, employees too).
+**Roles**: ADMIN, OWNER (was PROPRIETAIRE), MANAGER, SELLER (was VENDEUR). Renamed FR → EN via V3 Flyway migration on 2026-05-20 — DB rows updated in place, all `PROPRIETAIRE_ACCESS` references renamed to `OWNER_ACCESS`.
 
 ---
 
@@ -46,11 +46,11 @@
 | PUT | `/api/v1/entreprises/{id}` | `ADMIN_ACCESS` | ADMIN |
 | PATCH | `/api/v1/entreprises/{id}/activate` | `ADMIN_ACCESS` | ADMIN |
 | PATCH | `/api/v1/entreprises/{id}/deactivate` | `ADMIN_ACCESS` | ADMIN |
-| GET | `/api/v1/entreprises/me` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
-| PUT | `/api/v1/entreprises/me` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
-| PUT (multipart) | `/api/v1/entreprises/me/logo` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
-| GET | `/api/v1/entreprises/me/logo` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
-| DELETE | `/api/v1/entreprises/me/logo` | `PROPRIETAIRE_ACCESS` | PROPRIETAIRE |
+| GET | `/api/v1/entreprises/me` | `OWNER_ACCESS` | OWNER |
+| PUT | `/api/v1/entreprises/me` | `OWNER_ACCESS` | OWNER |
+| PUT (multipart) | `/api/v1/entreprises/me/logo` | `OWNER_ACCESS` | OWNER |
+| GET | `/api/v1/entreprises/me/logo` | `OWNER_ACCESS` | OWNER |
+| DELETE | `/api/v1/entreprises/me/logo` | `OWNER_ACCESS` | OWNER |
 
 **Total endpoints**: 11
 
@@ -59,22 +59,24 @@
 ## 3. MAGASIN module
 
 **Delivered use cases:**
-- Store CRUD (company scoping, ADMIN access alongside PROPRIETAIRE)
+- Store CRUD (company scoping, ADMIN access alongside OWNER)
 - Paginated filtered listing (`nom`, `actif`)
 - Activate/deactivate
 - Store logo (upload, download bytes, delete)
 
+Authorization changed from class-level coarse to per-method granular (2026-05-20). Split of read into `STORE_READ` (list entreprise-wide, OWNER/ADMIN only) vs `STORE_READ_ONE` (single magasin, every employee). Service-level `ensureAccessibleByCurrentUser` ensures an employee can only read/edit their own magasin id even with `STORE_READ_ONE`.
+
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| POST | `/api/v1/magasins` | `PROPRIETAIRE_ACCESS` OR `ADMIN_ACCESS` | PROPRIETAIRE/ADMIN |
-| GET | `/api/v1/magasins?nom=&actif=&page=&size=` | same | PROPRIETAIRE/ADMIN |
-| GET | `/api/v1/magasins/{id}` | same | PROPRIETAIRE/ADMIN |
-| PUT | `/api/v1/magasins/{id}` | same | PROPRIETAIRE/ADMIN |
-| PATCH | `/api/v1/magasins/{id}/activate` | same | PROPRIETAIRE/ADMIN |
-| PATCH | `/api/v1/magasins/{id}/deactivate` | same | PROPRIETAIRE/ADMIN |
-| PUT (multipart) | `/api/v1/magasins/{id}/logo` | same | PROPRIETAIRE/ADMIN |
-| GET | `/api/v1/magasins/{id}/logo` | same | PROPRIETAIRE/ADMIN |
-| DELETE | `/api/v1/magasins/{id}/logo` | same | PROPRIETAIRE/ADMIN |
+| POST | `/api/v1/magasins` | `STORE_CREATE` | OWNER/ADMIN |
+| GET | `/api/v1/magasins?nom=&actif=&page=&size=` | `STORE_READ` | OWNER/ADMIN |
+| GET | `/api/v1/magasins/{id}` | `STORE_READ_ONE` | OWNER/ADMIN/MANAGER/SELLER (scoped to own magasin for employees) |
+| PUT | `/api/v1/magasins/{id}` | `STORE_UPDATE` | OWNER/ADMIN/MANAGER (own magasin only for MANAGER) |
+| PATCH | `/api/v1/magasins/{id}/activate` | `STORE_UPDATE` | same |
+| PATCH | `/api/v1/magasins/{id}/deactivate` | `STORE_UPDATE` | same |
+| PUT (multipart) | `/api/v1/magasins/{id}/logo` | `STORE_UPDATE` | same |
+| GET | `/api/v1/magasins/{id}/logo` | `STORE_READ_ONE` | OWNER/ADMIN/MANAGER/SELLER |
+| DELETE | `/api/v1/magasins/{id}/logo` | `STORE_UPDATE` | OWNER/ADMIN/MANAGER |
 
 **Total endpoints**: 9
 
@@ -90,19 +92,19 @@
 
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| GET | `/api/v1/users/me` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
-| PUT | `/api/v1/users/me` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
-| POST | `/api/v1/users/me/change-password` | `AUTH_CHANGE_PASSWORD` | EMPLOYE/PROPRIETAIRE |
-| PUT (multipart) | `/api/v1/users/me/photo` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
-| GET | `/api/v1/users/me/photo` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
-| DELETE | `/api/v1/users/me/photo` | `isAuthenticated` | EMPLOYE/PROPRIETAIRE |
-| POST | `/api/v1/employees` | `EMPLOYE_CREATE` | PROPRIETAIRE/ADMIN/MANAGER |
-| GET | `/api/v1/employees?nom=&prenom=&magasinId=&actif=&page=&size=` | `EMPLOYE_READ` | PROPRIETAIRE/ADMIN/MANAGER |
-| GET | `/api/v1/employees/{id}` | `EMPLOYE_READ` | PROPRIETAIRE/ADMIN/MANAGER |
-| PUT | `/api/v1/employees/{id}` | `EMPLOYE_UPDATE` | PROPRIETAIRE/ADMIN/MANAGER |
-| DELETE | `/api/v1/employees/{id}` | `EMPLOYE_DELETE` | PROPRIETAIRE/ADMIN/MANAGER |
-| PATCH | `/api/v1/employees/{id}/activate` | `EMPLOYE_DELETE` | PROPRIETAIRE/ADMIN/MANAGER |
-| POST | `/api/v1/employees/{id}/reset-password` | `EMPLOYE_RESET_PASSWORD` | PROPRIETAIRE/ADMIN/MANAGER |
+| GET | `/api/v1/users/me` | `isAuthenticated` | EMPLOYE/OWNER |
+| PUT | `/api/v1/users/me` | `isAuthenticated` | EMPLOYE/OWNER |
+| POST | `/api/v1/users/me/change-password` | `AUTH_CHANGE_PASSWORD` | EMPLOYE/OWNER |
+| PUT (multipart) | `/api/v1/users/me/photo` | `isAuthenticated` | EMPLOYE/OWNER |
+| GET | `/api/v1/users/me/photo` | `isAuthenticated` | EMPLOYE/OWNER |
+| DELETE | `/api/v1/users/me/photo` | `isAuthenticated` | EMPLOYE/OWNER |
+| POST | `/api/v1/employees` | `EMPLOYE_CREATE` | OWNER/ADMIN/MANAGER |
+| GET | `/api/v1/employees?nom=&prenom=&magasinId=&actif=&page=&size=` | `EMPLOYE_READ` | OWNER/ADMIN/MANAGER |
+| GET | `/api/v1/employees/{id}` | `EMPLOYE_READ` | OWNER/ADMIN/MANAGER |
+| PUT | `/api/v1/employees/{id}` | `EMPLOYE_UPDATE` | OWNER/ADMIN/MANAGER |
+| DELETE | `/api/v1/employees/{id}` | `EMPLOYE_DELETE` | OWNER/ADMIN/MANAGER |
+| PATCH | `/api/v1/employees/{id}/activate` | `EMPLOYE_DELETE` | OWNER/ADMIN/MANAGER |
+| POST | `/api/v1/employees/{id}/reset-password` | `EMPLOYE_RESET_PASSWORD` | OWNER/ADMIN/MANAGER |
 
 **Total endpoints**: 13
 
@@ -123,38 +125,38 @@
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | **Categories** | | | |
-| POST | `/api/v1/category-products` | `CATEGORY_PRODUCT_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/category-products` | `CATEGORY_PRODUCT_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/category-products` | `CATEGORY_PRODUCT_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/category-products` | `CATEGORY_PRODUCT_READ` | OWNER/MANAGER |
+| GET | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/category-products/{id}` | `CATEGORY_PRODUCT_DELETE` | OWNER/MANAGER |
 | **Qualities** | | | |
-| POST | `/api/v1/qualities` | `QUALITY_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/qualities` | `QUALITY_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/qualities/{id}` | `QUALITY_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/qualities/{id}` | `QUALITY_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/qualities/{id}` | `QUALITY_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/qualities` | `QUALITY_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/qualities` | `QUALITY_READ` | OWNER/MANAGER |
+| GET | `/api/v1/qualities/{id}` | `QUALITY_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/qualities/{id}` | `QUALITY_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/qualities/{id}` | `QUALITY_DELETE` | OWNER/MANAGER |
 | **Products** | | | |
-| POST | `/api/v1/products` | `PRODUCT_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/products` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/products/search?q=&magasinId=&page=&size=` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/products/{id}` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| PUT | `/api/v1/products/{id}` | `PRODUCT_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/products/{id}` | `PRODUCT_DELETE` | PROPRIETAIRE/MANAGER |
-| PUT (multipart) | `/api/v1/products/{id}/image` | `PRODUCT_UPLOAD_IMAGE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/products/{id}/image` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| DELETE | `/api/v1/products/{id}/image` | `PRODUCT_UPLOAD_IMAGE` | PROPRIETAIRE/MANAGER |
-| POST (multipart) | `/api/v1/products/{id}/images` | `PRODUCT_UPLOAD_IMAGE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/products/{id}/images` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| DELETE | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_UPLOAD_IMAGE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/products` | `PRODUCT_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/products` | `PRODUCT_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/products/search?q=&magasinId=&page=&size=` | `PRODUCT_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/products/{id}` | `PRODUCT_READ` | OWNER/MANAGER/SELLER |
+| PUT | `/api/v1/products/{id}` | `PRODUCT_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/products/{id}` | `PRODUCT_DELETE` | OWNER/MANAGER |
+| PUT (multipart) | `/api/v1/products/{id}/image` | `PRODUCT_UPLOAD_IMAGE` | OWNER/MANAGER |
+| GET | `/api/v1/products/{id}/image` | `PRODUCT_READ` | OWNER/MANAGER/SELLER |
+| DELETE | `/api/v1/products/{id}/image` | `PRODUCT_UPLOAD_IMAGE` | OWNER/MANAGER |
+| POST (multipart) | `/api/v1/products/{id}/images` | `PRODUCT_UPLOAD_IMAGE` | OWNER/MANAGER |
+| GET | `/api/v1/products/{id}/images` | `PRODUCT_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_READ` | OWNER/MANAGER/SELLER |
+| DELETE | `/api/v1/products/{id}/images/{imageId}` | `PRODUCT_UPLOAD_IMAGE` | OWNER/MANAGER |
 | **ProductFournisseur (variants)** | | | |
-| POST | `/api/v1/product-suppliers` | `SUPPLIER_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/product-suppliers?productId=&page=&size=` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/product-suppliers/{id}` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| PUT | `/api/v1/product-suppliers/{id}` | `SUPPLIER_UPDATE` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/product-suppliers/{id}/prix-vente` | `SUPPLIER_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/product-suppliers/{id}` | `SUPPLIER_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/product-suppliers` | `SUPPLIER_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/product-suppliers?productId=&page=&size=` | `SUPPLIER_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/product-suppliers/{id}` | `SUPPLIER_READ` | OWNER/MANAGER/SELLER |
+| PUT | `/api/v1/product-suppliers/{id}` | `SUPPLIER_UPDATE` | OWNER/MANAGER |
+| PUT | `/api/v1/product-suppliers/{id}/prix-vente` | `SUPPLIER_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/product-suppliers/{id}` | `SUPPLIER_DELETE` | OWNER/MANAGER |
 
 **Total endpoints**: 29
 
@@ -175,16 +177,16 @@
 
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| GET | `/api/v1/stocks?magasinId=&productId=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/stocks/below-threshold?magasinId=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/stocks/valuation?magasinId=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/stocks/expiring-lots?magasinId=&productId=&daysAhead=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/stocks/{id}` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| PATCH | `/api/v1/stocks/{id}/threshold` | `STOCK_ADJUSTMENT` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/stocks/entries` | `STOCK_ENTRY` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/stocks/adjustments` | `STOCK_ADJUSTMENT` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/stock-movements?magasinId=&stockId=&productId=&type=&startDate=&endDate=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/reports/margins?magasinId=&productId=&fournisseurId=&startDate=&endDate=` | `REPORT_STOCK` | PROPRIETAIRE/MANAGER |
+| GET | `/api/v1/stocks?magasinId=&productId=&page=&size=` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/stocks/below-threshold?magasinId=` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/stocks/valuation?magasinId=` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/stocks/expiring-lots?magasinId=&productId=&daysAhead=&page=&size=` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/stocks/{id}` | `STOCK_READ` | OWNER/MANAGER |
+| PATCH | `/api/v1/stocks/{id}/threshold` | `STOCK_ADJUSTMENT` | OWNER/MANAGER |
+| POST | `/api/v1/stocks/entries` | `STOCK_ENTRY` | OWNER/MANAGER |
+| POST | `/api/v1/stocks/adjustments` | `STOCK_ADJUSTMENT` | OWNER/MANAGER |
+| GET | `/api/v1/stock-movements?magasinId=&stockId=&productId=&type=&startDate=&endDate=&page=&size=` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/reports/margins?magasinId=&productId=&fournisseurId=&startDate=&endDate=` | `REPORT_STOCK` | OWNER/MANAGER |
 
 **Total endpoints**: 10
 
@@ -203,17 +205,17 @@
 
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| POST | `/api/v1/inventaires` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/inventaires?magasinId=&statut=&page=&size=` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/inventaires/{id}` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/inventaires/{id}/lignes` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/inventaires/{id}/lignes` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/inventaires/{id}/lignes/{ligneId}` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/inventaires/{id}/lignes/{ligneId}` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/inventaires/{id}/bilan` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/inventaires/{id}/cloturer` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/inventaires/{id}/annuler` | `STOCK_INVENTORY` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/inventaires/{id}/rapport` | `STOCK_READ` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/inventaires` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| GET | `/api/v1/inventaires?magasinId=&statut=&page=&size=` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/inventaires/{id}` | `STOCK_READ` | OWNER/MANAGER |
+| POST | `/api/v1/inventaires/{id}/lignes` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| GET | `/api/v1/inventaires/{id}/lignes` | `STOCK_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/inventaires/{id}/lignes/{ligneId}` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| DELETE | `/api/v1/inventaires/{id}/lignes/{ligneId}` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| POST | `/api/v1/inventaires/{id}/bilan` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| POST | `/api/v1/inventaires/{id}/cloturer` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| POST | `/api/v1/inventaires/{id}/annuler` | `STOCK_INVENTORY` | OWNER/MANAGER |
+| GET | `/api/v1/inventaires/{id}/rapport` | `STOCK_READ` | OWNER/MANAGER |
 
 **Total endpoints**: 11
 
@@ -239,26 +241,26 @@
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | **Suppliers** | | | |
-| POST | `/api/v1/suppliers` | `SUPPLIER_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/suppliers` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/suppliers/{id}` | `SUPPLIER_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/suppliers/{id}` | `SUPPLIER_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/suppliers/{id}` | `SUPPLIER_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/suppliers` | `SUPPLIER_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/suppliers` | `SUPPLIER_READ` | OWNER/MANAGER |
+| GET | `/api/v1/suppliers/{id}` | `SUPPLIER_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/suppliers/{id}` | `SUPPLIER_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/suppliers/{id}` | `SUPPLIER_DELETE` | OWNER/MANAGER |
 | **Purchases** | | | |
-| POST | `/api/v1/achats` | `PURCHASE_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/achats/{commandeId}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_DELETE` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/achats/{commandeId}/validate` | `PURCHASE_APPROVE` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/achats/{commandeId}/receptions` | `PURCHASE_APPROVE` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/achats/{commandeId}/annuler` | `PURCHASE_CANCEL` | ADMIN/PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/commandes-achat?magasinId=&fournisseurId=&statut=&page=&size=` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/commandes-achat/{id}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/factures-achat?...` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/factures-achat/echeances` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/factures-achat/{id}` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_PAY` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_READ` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/achats` | `PURCHASE_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/achats/{commandeId}` | `PURCHASE_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/achats/orders/{commandeId}/lignes/{ligneId}` | `PURCHASE_DELETE` | OWNER/MANAGER |
+| POST | `/api/v1/achats/{commandeId}/validate` | `PURCHASE_APPROVE` | OWNER/MANAGER |
+| POST | `/api/v1/achats/{commandeId}/receptions` | `PURCHASE_APPROVE` | OWNER/MANAGER |
+| POST | `/api/v1/achats/{commandeId}/annuler` | `PURCHASE_CANCEL` | ADMIN/OWNER/MANAGER |
+| GET | `/api/v1/commandes-achat?magasinId=&fournisseurId=&statut=&page=&size=` | `PURCHASE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/commandes-achat/{id}` | `PURCHASE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/factures-achat?...` | `PURCHASE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/factures-achat/echeances` | `PURCHASE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/factures-achat/{id}` | `PURCHASE_READ` | OWNER/MANAGER |
+| POST | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_PAY` | OWNER/MANAGER |
+| GET | `/api/v1/factures-achat/{id}/paiements` | `PURCHASE_READ` | OWNER/MANAGER |
 
 **Total endpoints**: 19
 
@@ -273,7 +275,7 @@
 - Delete a DRAFT sale line (refused if last line)
 - Validate a DRAFT sale (consumes FIFO stock + creates FactureClient + optional initial payment + switches to DELIVERED)
 - Validation `prixUnitaire ≥ pf.prixVente` (PF floor)
-- EMPLOYE seller required (PROPRIETAIRE → 403), client nullable (anonymous sale)
+- EMPLOYE seller required (OWNER → 403), client nullable (anonymous sale)
 - Paginated filtered sale order listing (magasinId, clientId, vendeurId, statut, montant, reference, dates)
 - Client invoices + payments per invoice listing
 - Installment payment on a client invoice (status recompute)
@@ -284,27 +286,27 @@
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
 | **Clients** | | | |
-| POST | `/api/v1/clients` | `CLIENT_CREATE` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/clients?nom=&prenom=&page=&size=` | `CLIENT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/clients/{id}` | `CLIENT_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| PUT | `/api/v1/clients/{id}` | `CLIENT_UPDATE` | PROPRIETAIRE/MANAGER/VENDEUR |
-| DELETE | `/api/v1/clients/{id}` | `CLIENT_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/clients` | `CLIENT_CREATE` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/clients?nom=&prenom=&page=&size=` | `CLIENT_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/clients/{id}` | `CLIENT_READ` | OWNER/MANAGER/SELLER |
+| PUT | `/api/v1/clients/{id}` | `CLIENT_UPDATE` | OWNER/MANAGER/SELLER |
+| DELETE | `/api/v1/clients/{id}` | `CLIENT_DELETE` | OWNER/MANAGER |
 | **Sales** | | | |
-| POST | `/api/v1/ventes` | `SALE_CREATE` | VENDEUR/MANAGER |
-| GET | `/api/v1/ventes/{commandeId}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| PUT | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_UPDATE` | VENDEUR/MANAGER |
-| DELETE | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_DELETE` | VENDEUR/MANAGER |
-| POST | `/api/v1/ventes/{commandeId}/validate` | `SALE_APPROVE` | VENDEUR/MANAGER |
-| POST | `/api/v1/ventes/{commandeId}/annuler` | `SALE_CANCEL` | ADMIN/PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/commandes-vente?magasinId=&clientId=&vendeurId=&statut=&reference=&montantMin=&montantMax=&startDate=&endDate=&page=&size=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/commandes-vente/{id}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/factures-client?statut=&clientId=&startDate=&endDate=&page=&size=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/factures-client/{id}` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/factures-client/{id}/paiements` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| POST | `/api/v1/factures-client/{id}/paiements` | `SALE_PAY` | PROPRIETAIRE/MANAGER/VENDEUR |
+| POST | `/api/v1/ventes` | `SALE_CREATE` | SELLER/MANAGER |
+| GET | `/api/v1/ventes/{commandeId}` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| PUT | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_UPDATE` | SELLER/MANAGER |
+| DELETE | `/api/v1/ventes/orders/{commandeId}/lignes/{ligneId}` | `SALE_DELETE` | SELLER/MANAGER |
+| POST | `/api/v1/ventes/{commandeId}/validate` | `SALE_APPROVE` | SELLER/MANAGER |
+| POST | `/api/v1/ventes/{commandeId}/annuler` | `SALE_CANCEL` | ADMIN/OWNER/MANAGER |
+| GET | `/api/v1/commandes-vente?magasinId=&clientId=&vendeurId=&statut=&reference=&montantMin=&montantMax=&startDate=&endDate=&page=&size=` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/commandes-vente/{id}` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/factures-client?statut=&clientId=&startDate=&endDate=&page=&size=` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/factures-client/{id}` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/factures-client/{id}/paiements` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| POST | `/api/v1/factures-client/{id}/paiements` | `SALE_PAY` | OWNER/MANAGER/SELLER |
 | **Cash register** | | | |
-| GET | `/api/v1/ventes/caisse/resume?magasinId=&date=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
-| GET | `/api/v1/ventes/caisse/top-produits?magasinId=&date=&nombre=` | `SALE_READ` | PROPRIETAIRE/MANAGER/VENDEUR |
+| GET | `/api/v1/ventes/caisse/resume?magasinId=&date=` | `SALE_READ` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/ventes/caisse/top-produits?magasinId=&date=&nombre=` | `SALE_READ` | OWNER/MANAGER/SELLER |
 
 **Total endpoints**: 19
 
@@ -320,17 +322,17 @@
 
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
-| POST | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_DELETE` | PROPRIETAIRE/MANAGER |
-| POST | `/api/v1/depenses` | `EXPENSE_CREATE` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/depenses?magasinId=&categoryId=&modePaiement=&startDate=&endDate=&page=&size=` | `EXPENSE_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/depenses/total?magasinId=&categoryId=&modePaiement=&startDate=&endDate=` | `EXPENSE_READ` | PROPRIETAIRE/MANAGER |
-| GET | `/api/v1/depenses/{id}` | `EXPENSE_READ` | PROPRIETAIRE/MANAGER |
-| PUT | `/api/v1/depenses/{id}` | `EXPENSE_UPDATE` | PROPRIETAIRE/MANAGER |
-| DELETE | `/api/v1/depenses/{id}` | `EXPENSE_DELETE` | PROPRIETAIRE/MANAGER |
+| POST | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/expense-categories` | `EXPENSE_CATEGORY_READ` | OWNER/MANAGER |
+| GET | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_DELETE` | OWNER/MANAGER |
+| POST | `/api/v1/depenses` | `EXPENSE_CREATE` | OWNER/MANAGER |
+| GET | `/api/v1/depenses?magasinId=&categoryId=&modePaiement=&startDate=&endDate=&page=&size=` | `EXPENSE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/depenses/total?magasinId=&categoryId=&modePaiement=&startDate=&endDate=` | `EXPENSE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/depenses/{id}` | `EXPENSE_READ` | OWNER/MANAGER |
+| PUT | `/api/v1/depenses/{id}` | `EXPENSE_UPDATE` | OWNER/MANAGER |
+| DELETE | `/api/v1/depenses/{id}` | `EXPENSE_DELETE` | OWNER/MANAGER |
 
 **Total endpoints**: 11
 
@@ -343,9 +345,9 @@
 - Public catalog (no auth, aggregated: plans + types + promotions with per-plan nested promotions)
 - Owner subscription (create EN_ATTENTE + sequential discount-calc breakdown type → promotion → coupon)
 - Auto-renewal toggle
-- Manual payment (PROPRIETAIRE uploads mandatory proof image)
+- Manual payment (OWNER uploads mandatory proof image)
 - Admin validation/rejection (activates the subscription with "replacement at dateFin" strategy, coupon rollback on rejection)
-- ADMIN listing of all subscriptions + PROPRIETAIRE history + current status (days left, trial, features)
+- ADMIN listing of all subscriptions + OWNER history + current status (days left, trial, features)
 
 > **Step 9 DEFERRED**: automatic renewal. Depends on integrating an automatic payment provider (Wave / Orange Money / Stripe / PayPal). Today the payment is manual, so the concept "auto-debit at `dateFin`" has no technical support. The flag `Abonnement.renouvellementAuto`, permission `SUBSCRIPTION_RENEW` and endpoint `PATCH /{id}/renouvellement-auto` remain in place (reusable as-is).
 
@@ -386,16 +388,16 @@
 | **Public catalog** | | | |
 | GET | `/api/v1/catalog/public` | permitAll | public |
 | **Subscription / Status** | | | |
-| POST | `/api/v1/abonnements/subscribe` | `SUBSCRIPTION_CREATE` | PROPRIETAIRE |
-| PATCH | `/api/v1/abonnements/{id}/renouvellement-auto` | `SUBSCRIPTION_UPDATE` | PROPRIETAIRE |
+| POST | `/api/v1/abonnements/subscribe` | `SUBSCRIPTION_CREATE` | OWNER |
+| PATCH | `/api/v1/abonnements/{id}/renouvellement-auto` | `SUBSCRIPTION_UPDATE` | OWNER |
 | GET | `/api/v1/abonnements?entrepriseId=&statut=&planId=&page=&size=` | `ADMIN_ACCESS` | ADMIN |
-| GET | `/api/v1/abonnements/me?statut=&planId=&page=&size=` | `SUBSCRIPTION_READ` | PROPRIETAIRE |
-| GET | `/api/v1/abonnements/me/current` | `SUBSCRIPTION_READ` | PROPRIETAIRE |
+| GET | `/api/v1/abonnements/me?statut=&planId=&page=&size=` | `SUBSCRIPTION_READ` | OWNER |
+| GET | `/api/v1/abonnements/me/current` | `SUBSCRIPTION_READ` | OWNER |
 | **Subscription payments** | | | |
-| POST (multipart) | `/api/v1/paiements-abonnement/abonnements/{abonnementId}` | `SUBSCRIPTION_PAY` | PROPRIETAIRE |
-| GET | `/api/v1/paiements-abonnement?statut=&abonnementId=&entrepriseId=&page=&size=` | `SUBSCRIPTION_READ` | ADMIN/PROPRIETAIRE |
-| GET | `/api/v1/paiements-abonnement/{id}` | `SUBSCRIPTION_READ` | ADMIN/PROPRIETAIRE |
-| GET | `/api/v1/paiements-abonnement/{id}/preuve` | `SUBSCRIPTION_READ` | ADMIN/PROPRIETAIRE |
+| POST (multipart) | `/api/v1/paiements-abonnement/abonnements/{abonnementId}` | `SUBSCRIPTION_PAY` | OWNER |
+| GET | `/api/v1/paiements-abonnement?statut=&abonnementId=&entrepriseId=&page=&size=` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
+| GET | `/api/v1/paiements-abonnement/{id}` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
+| GET | `/api/v1/paiements-abonnement/{id}/preuve` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
 | PATCH | `/api/v1/paiements-abonnement/{id}/validate` | `SUBSCRIPTION_VALIDATE` | ADMIN |
 | PATCH | `/api/v1/paiements-abonnement/{id}/reject` | `SUBSCRIPTION_VALIDATE` | ADMIN |
 
@@ -417,8 +419,8 @@
 | Module | Endpoints | Key permissions |
 |--------|-----------|------------------|
 | security (auth) | 4 | (public) |
-| entreprise | 11 | `ADMIN_ACCESS`, `PROPRIETAIRE_ACCESS` |
-| magasin | 9 | `PROPRIETAIRE_ACCESS`, `ADMIN_ACCESS` |
+| entreprise | 11 | `ADMIN_ACCESS`, `OWNER_ACCESS` |
+| magasin | 9 | `OWNER_ACCESS`, `ADMIN_ACCESS` |
 | users | 13 | `EMPLOYE_*`, `AUTH_CHANGE_PASSWORD` |
 | produit | 29 | `PRODUCT_*`, `CATEGORY_PRODUCT_*`, `QUALITY_*`, `SUPPLIER_*` |
 | stock | 10 | `STOCK_READ`, `STOCK_ENTRY`, `STOCK_ADJUSTMENT`, `REPORT_STOCK` |
@@ -437,9 +439,9 @@
 | Role | Main capabilities |
 |------|----------------------|
 | **ADMIN** | CRUD on companies (other than their own), CRUD on subscription plans/types/coupons/promotions, validation/rejection of subscription payments, global subscription listing |
-| **PROPRIETAIRE** | Everything on their own company (stores, employees, products, stock, sales, purchases, expenses), subscription, subscription payment, current status |
-| **MANAGER** | Same as PROPRIETAIRE but scoped to their store (employees, stock, sales, purchases, expenses, inventories) |
-| **VENDEUR** | Products read + search, client management, sales (create/read/pay), cash register |
+| **OWNER** | Everything on their own company (stores, employees, products, stock, sales, purchases, expenses), subscription, subscription payment, current status |
+| **MANAGER** | Same as OWNER but scoped to their store (employees, stock, sales, purchases, expenses, inventories) |
+| **SELLER** | Products read + search, client management, sales (create/read/pay), cash register |
 
 ---
 

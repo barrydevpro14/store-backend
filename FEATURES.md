@@ -1324,6 +1324,40 @@ Repos involved : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLign
 
 ---
 
+## 51. RBAC tightening + role rename FR→EN + Magasin permission split (2026-05-20)
+
+**Goal** : harden the per-method authorization, align role libellés with the English code base, and split Magasin read into list-wide vs single-resource.
+
+**Role rename** : PROPRIETAIRE → OWNER, VENDEUR → SELLER. The matching access permission code follows suite : PROPRIETAIRE_ACCESS → OWNER_ACCESS. Applied case-sensitive across all Java string literals, JPQL, YAML role/permission seeds, FR/EN properties files, tests, comments. The mixed-case `Proprietaire` entity (User profile sub-type) intentionally untouched — domain noun separate from the role identifier.
+
+**V3 Flyway migration** : renames the existing DB rows in-place via `UPDATE role SET libelle = 'OWNER' WHERE libelle = 'PROPRIETAIRE'` (idem SELLER + permission code). Required because the RBAC sync is additive only — creating new role rows would have left orphans.
+
+**STORE_READ_ONE split** : new permission code declared in the YAML and assigned to ADMIN / OWNER / MANAGER / SELLER. `STORE_READ` stays "list every magasin in your entreprise" (OWNER / ADMIN only). `STORE_READ_ONE` = "read the magasin you're allowed to access" (all employees, used by the profile Affectation card to resolve `magasinId` → name without needing list-level access). `MagasinController` per-method `@PreAuthorize` updated. `MagasinServiceImpl.findResponseById` + `getLogo` switched from `ensureBelongsToCurrentEntreprise` to `ensureAccessibleByCurrentUser` — employees can only read their own magasin id, not a foreign one in the same entreprise.
+
+**AccessDenied → 403** : new `@ExceptionHandler(org.springframework.security.access.AccessDeniedException)` in `GlobalException` returning HTTP 403 + i18n key `access.denied` (FR/EN). Without it, Spring 6.1+ method-level `@PreAuthorize` denials (thrown as `AuthorizationDeniedException` from the AOP advice, outside the security filter chain) fell through to the catch-all `Exception` handler → 500 "error.unexpected". The dedicated filter-chain `CustomAccessDeniedHandler` only catches things thrown DURING the filter chain, not by AOP from inside the controller.
+
+**Dev seed flag default flipped** : `application-dev.yml` `RBAC_SYNC` default switched from `false` → `true`. New permissions / roles in the YAML now land in DB on each dev boot without needing an env-var dance. Prod (`application-prod.yml`) still opt-in explicit.
+
+**Tests** : full suite **774 / 774 green** through the rename. Existing role-name string literals in tests were swept by the same sed pass.
+
+---
+
+## 52. Data-layer hardening : ADMIN seed + partial unique on person + lower(bytea) workaround (2026-05-20)
+
+**Goal** : three operational fixes that don't introduce new endpoints but keep the existing ones reliable.
+
+**ADMIN seed** : `DataInitializer.ensureAdminAccount()` creates the SaaS super-admin (`admin` / `passer123` bcrypt) when `security.rbac.sync=true`. Idempotent : skips if a user `admin` already exists. The ADMIN Role must already be in DB (the sync runs just before in the same `run(args)` call). In prod the sync flag stays off by default so the known-credential admin is **not** seeded — bootstrapping the super-admin in prod is left as a follow-up (`@ConfigurationProperties` exposure).
+
+**Person partial unique** (V4 migration) : `Person.email` and `Person.telephone` carried `@Column(unique = true)` which generated strict `person_email_key` / `person_telephone_key` UNIQUE constraints. PostgreSQL accepts multiple NULLs under UNIQUE but rejects multiple `""` — so saving two suppliers / clients / employees without a phone or email collided on the 2nd insert. V4 drops both constraints and rebuilds them as partial unique indexes : `CREATE UNIQUE INDEX person_email_unique ON person(email) WHERE email IS NOT NULL AND email <> ''` (idem telephone). Existing blank values are normalized to NULL beforehand. The `@Column(unique = true)` annotation stays as metadata-only documentation — Flyway is the authoritative DDL source. Frontend also strips empty optional strings to `undefined` before POST/PUT (`blankOptionalsToUndefined` in `clientApi` / `fournisseurApi`) as defense in depth.
+
+**lower(bytea) workaround** (Client + Product search) : `ClientRepository.findResponsesBy{Magasin,Entreprise}Id` and `ProductRepository.searchByEntrepriseWithActiveLots` used bare `:nom` / `:prenom` / `:searchTerm` parameters in two contexts (`:term IS NULL` ambiguous + `LIKE LOWER(CONCAT('%', :term, '%'))`). Hibernate 7 on PostgreSQL infers parameter type from the union of usage contexts ; this specific shape ended up binding the parameter as `bytea`, and PostgreSQL refused `lower(bytea)` because the function only exists for text. Fix : new `org.store.common.tools.LikePatternHelper.toLikePattern(String)` builds the `%term%` lowercase pattern in Java (returns null for blank input). The repositories now bind a single pre-formed String (`LIKE :pattern`) — single-context bind locks the JDBC type to varchar. `ClientDomainService` and `ProductDomainService` call the helper before forwarding to the repo. Behavior preserved : null pattern = filter disabled, non-null = case-insensitive partial match.
+
+**Listing ordering** (bonus) : added `ORDER BY createdAt DESC` on `ClientRepository` (both list queries) and `FournisseurRepository`. Without an explicit ORDER BY, PostgreSQL returned rows in undefined order — newly-created records landed on page 2 / 3 by accident and users believed the save had failed.
+
+**Tests** : full backend suite **774 / 774 green**.
+
+---
+
 ## Cross-cutting conventions
 
 - **i18n** : all error messages go through `IMessageSourceService` (keys in `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).
