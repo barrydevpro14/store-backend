@@ -9,7 +9,45 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-20 — heavy session : RBAC tightening + role rename FR→EN + 3 new modules (Settings + Administration + Entreprise) + data-layer hardening + ADMIN seed + cross-session cache fix + several smell extractions
+**Date:** 2026-05-21 — route-level PermissionGuard on Entreprise + Administration modules + ADMIN loses OWNER_ACCESS
+
+**Subject:** Short, focused session. Two related changes — one frontend, one backend — both around making the module isolation between SaaS-admin (Administration) and tenant-owner (Entreprise) airtight.
+
+**Notable decisions:**
+
+### Frontend — PermissionGuard on module layouts
+
+- New `PermissionGuard` client component in `common/presentation/shared/PermissionGuard.tsx`. Single prop `requiredPermission`. Returns `null` while `useAuthStore.isHydrated === false` (prevents SSR/CSR mismatch flashes). Delegates the check to the existing `navGuard.canSee({ requiredPermission }, user)` — single decision point for "can this user access this surface", same code path as sidebar / quick-links / row-actions gating.
+- Denied path: renders a localized `ForbiddenCard` (ShieldAlert icon + title + description + "Back to dashboard" Link). New i18n keys `common.permissionGuard.{title, description, backToDashboard}` (FR + EN).
+- Wraps the two module layouts:
+  - `app/(dashboard)/dashboard/entreprise/layout.tsx` with `requiredPermission="OWNER_ACCESS"`
+  - `app/(dashboard)/dashboard/administration/layout.tsx` with `requiredPermission="ADMIN_ACCESS"`
+- Belt-and-suspenders with the sidebar nav filtering: even if a user pastes a direct URL or has a stale bookmark, the guard intercepts before the page renders.
+- 3 new tests (`test/common/presentation/shared/PermissionGuard.test.tsx`): not-hydrated → empty render, permission OK → children, permission KO → ForbiddenCard with Back link.
+
+### Backend — Retire OWNER_ACCESS from ADMIN role
+
+- ADMIN was carrying `OWNER_ACCESS` in `roles-permissions.yml`, which made the Entreprise module visible to SaaS super-admins (sidebar entry + sub-nav). OWNER_ACCESS is meant for company self-service (single OWNER managing their own Entreprise) — granting it to the SaaS super-admin had no functional value and polluted the admin UI.
+- Removed `OWNER_ACCESS` from the ADMIN block in YAML.
+- Ran `DELETE FROM role_permission WHERE role.libelle='ADMIN' AND permission.code='OWNER_ACCESS'` on the dev DB to flush the existing assignment — `security.rbac.sync` is **additive only** by design (`IRolesPermissionsSyncService.sync` never deletes; logs orphans only), so the seed-time cleanup must be done by hand.
+- Live login verified: ADMIN sidebar no longer surfaces the Entreprise module. Direct URL access would be blocked by the new `PermissionGuard` anyway.
+
+### Verification
+
+- Frontend `vitest run` : **293 / 293 green** (+3 vs 290).
+- Backend `mvn test` : **774 / 774 green**.
+- 2 commits pushed to `origin/dev` (one per repo).
+
+### Open follow-ups (parked)
+
+- Administration sub-tabs Abonnements / Coupons / Promotions still placeholders.
+- Entreprise sub-tabs Abonnement / Paiements still placeholders.
+- Product image upload + product search wired to frontend.
+- Prod ADMIN bootstrap via `@ConfigurationProperties`.
+
+---
+
+## 2026-05-20 — heavy session : RBAC tightening + role rename FR→EN + 3 new modules (Settings + Administration + Entreprise) + data-layer hardening + ADMIN seed + cross-session cache fix + several smell extractions
 
 **Subject:** Massive consolidation day spanning RBAC, UI permission gating, and new modules. Backend got tightened: per-method @PreAuthorize on `MagasinController`, role rename to English (PROPRIETAIRE → OWNER, VENDEUR → SELLER), a `STORE_READ_ONE` permission split, a proper `AccessDeniedException` handler, an ADMIN account seed in `DataInitializer`, a partial-unique-index migration on `person.email/telephone`, and a workaround for a Hibernate 7 `lower(bytea)` inference bug. Frontend got the full permission gating layer (`navGuard` service + `usePermission` hooks), three new modules (Settings, Administration, Entreprise) consolidating multiple CRUD slices each, a cross-session cache leak fix, and several helper extractions per rule 45.
 

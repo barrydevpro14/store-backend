@@ -4,11 +4,11 @@
 > For per-use-case detail (input/flow/rules/output), see `FEATURES.md`.
 > For package architecture, see `.claude/ARCHITECTURE.md`.
 
-**Last updated**: 2026-05-20
+**Last updated**: 2026-05-21
 **Total modules**: 11 business modules delivered + 1 skeleton (notification)
 **Total REST endpoints**: ~167
 **Total YAML permissions**: 71+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`). Note: 2026-05-20 split `STORE_READ` into `STORE_READ` (list, OWNER/ADMIN) + `STORE_READ_ONE` (single magasin, employees too).
-**Roles**: ADMIN, OWNER (was PROPRIETAIRE), MANAGER, SELLER (was VENDEUR). Renamed FR → EN via V3 Flyway migration on 2026-05-20 — DB rows updated in place, all `PROPRIETAIRE_ACCESS` references renamed to `OWNER_ACCESS`.
+**Roles**: ADMIN, OWNER (was PROPRIETAIRE), MANAGER, SELLER (was VENDEUR). Renamed FR → EN via V3 Flyway migration on 2026-05-20 — DB rows updated in place, all `PROPRIETAIRE_ACCESS` references renamed to `OWNER_ACCESS`. **2026-05-21**: `OWNER_ACCESS` retired from ADMIN — SaaS super-admin no longer carries the tenant-owner module marker (Entreprise module hidden in ADMIN UI; OWNER_ACCESS is strictly for company self-service).
 
 ---
 
