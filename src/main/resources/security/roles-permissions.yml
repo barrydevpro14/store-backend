@@ -173,7 +173,6 @@ roles:
   - libelle: ADMIN
     description: Administrateur SaaS
     permissions:
-      - OWNER_ACCESS
       - EMPLOYE_ACCESS
       - EMPLOYE_CREATE
       - EMPLOYE_READ
