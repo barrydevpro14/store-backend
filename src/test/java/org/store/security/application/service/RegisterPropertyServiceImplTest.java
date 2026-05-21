@@ -9,8 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.abonnement.application.service.IAbonnementService;
-import org.store.abonnement.application.service.IPlanAbonnementService;
-import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.abonnement.domain.model.Abonnement;
 import org.store.common.exceptions.EntityException;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -47,9 +46,8 @@ class RegisterPropertyServiceImplTest {
     @Mock private IProprietaireService proprietaireService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private IMagasinService magasinService;
-    @Mock private IAbonnementService abonnementService;
     @Mock private IRoleService roleService;
-    @Mock private IPlanAbonnementService planAbonnementService;
+    @Mock private IAbonnementService abonnementService;
     @Mock private IJwtService jwtService;
     @Mock private IUserPrincipalFactory userPrincipalFactory;
     @Mock private IRefreshTokenService refreshTokenService;
@@ -72,7 +70,6 @@ class RegisterPropertyServiceImplTest {
     @Test
     void should_return_auth_response_with_both_tokens_when_register_succeeds() {
         Role role = new Role();
-        PlanAbonnement plan = new PlanAbonnement();
         Account account = accountWithId();
         Proprietaire proprietaire = new Proprietaire();
         Entreprise entreprise = entrepriseWithId();
@@ -80,11 +77,11 @@ class RegisterPropertyServiceImplTest {
         UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entreprise.getId(), magasin.getId(), "john.doe", "OWNER", List.of());
 
         when(roleService.findByLibelle("OWNER")).thenReturn(role);
-        when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);
         when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
         when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
         when(entrepriseService.create(eq(validRequest.entreprise()), eq(proprietaire))).thenReturn(entreprise);
         when(magasinService.create(eq(validRequest.magasin()), eq(entreprise))).thenReturn(magasin);
+        when(abonnementService.createTrialForSignup(entreprise)).thenReturn(new Abonnement());
         when(userPrincipalFactory.build(account)).thenReturn(principal);
         when(jwtService.generateToken(principal)).thenReturn("access.token");
         when(refreshTokenService.create(account)).thenReturn("refresh-uuid");
@@ -93,13 +90,12 @@ class RegisterPropertyServiceImplTest {
 
         assertThat(response.accessToken()).isEqualTo("access.token");
         assertThat(response.refreshToken()).isEqualTo("refresh-uuid");
-        verify(abonnementService).createTrial(entreprise, plan);
+        verify(abonnementService).createTrialForSignup(entreprise);
     }
 
     @Test
     void registerEntrepriseByAdmin_should_return_entreprise_response() {
         Role role = new Role();
-        PlanAbonnement plan = new PlanAbonnement();
         Account account = accountWithId();
         Proprietaire proprietaire = new Proprietaire();
         Entreprise entreprise = entrepriseWithId();
@@ -108,17 +104,17 @@ class RegisterPropertyServiceImplTest {
         proprietaire.setEntreprise(entreprise);
 
         when(roleService.findByLibelle("OWNER")).thenReturn(role);
-        when(planAbonnementService.findFirstTrialActif()).thenReturn(plan);
         when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
         when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
         when(entrepriseService.create(eq(validRequest.entreprise()), eq(proprietaire))).thenReturn(entreprise);
         when(magasinService.create(eq(validRequest.magasin()), eq(entreprise))).thenReturn(magasin);
+        when(abonnementService.createTrialForSignup(entreprise)).thenReturn(new Abonnement());
 
         EntrepriseResponse response = service.registerEntrepriseByAdmin(validRequest);
 
         assertThat(response.id()).isEqualTo(entreprise.getId());
         assertThat(response.sigle()).isEqualTo("ACME");
-        verify(abonnementService).createTrial(entreprise, plan);
+        verify(abonnementService).createTrialForSignup(entreprise);
     }
 
     @Test
@@ -133,15 +129,23 @@ class RegisterPropertyServiceImplTest {
     }
 
     @Test
-    void should_propagate_entity_exception_when_trial_plan_not_found() {
-        when(roleService.findByLibelle("OWNER")).thenReturn(new Role());
-        when(planAbonnementService.findFirstTrialActif())
+    void should_propagate_entity_exception_when_trial_type_not_found() {
+        Role role = new Role();
+        Account account = accountWithId();
+        Proprietaire proprietaire = new Proprietaire();
+        Entreprise entreprise = entrepriseWithId();
+        Magasin magasin = magasinWithId();
+
+        when(roleService.findByLibelle("OWNER")).thenReturn(role);
+        when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);
+        when(proprietaireService.create(eq(validRequest.utilisateur()), eq(account))).thenReturn(proprietaire);
+        when(entrepriseService.create(eq(validRequest.entreprise()), eq(proprietaire))).thenReturn(entreprise);
+        when(magasinService.create(eq(validRequest.magasin()), eq(entreprise))).thenReturn(magasin);
+        when(abonnementService.createTrialForSignup(entreprise))
                 .thenThrow(new EntityException("plan.trial.notFound"));
 
         assertThatThrownBy(() -> service.register(validRequest))
                 .isInstanceOf(EntityException.class);
-
-        verify(accountService, never()).create(any(), any());
     }
 
     private Account accountWithId() {

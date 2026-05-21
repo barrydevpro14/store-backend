@@ -4,54 +4,42 @@ import org.springframework.data.domain.Page;
 import org.store.abonnement.application.dto.SubscriptionTypeFilter;
 import org.store.abonnement.application.dto.SubscriptionTypeRequest;
 import org.store.abonnement.application.dto.SubscriptionTypeResponse;
-import org.store.abonnement.domain.model.TypeAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 
 import java.util.UUID;
 
 public interface ISubscriptionTypeService {
 
-    /**
-     * Création d'un type d'abonnement (durée + réduction intégrée). Unicité du nom contrôlée.
-     */
-    SubscriptionTypeResponse create(SubscriptionTypeRequest subscriptionTypeRequest);
+    /** Creates a type scoped to the given plan; enforces uniqueness on (planId, nom). */
+    SubscriptionTypeResponse create(UUID planId, SubscriptionTypeRequest subscriptionTypeRequest);
 
-    /**
-     * Lecture interne par id (utilisée par Abonnement / Paiement).
-     */
-    TypeAbonnement findById(UUID id);
+    /** Internal lookup by id (used by Abonnement / Paiement). */
+    TypePlanAbonnement findById(UUID id);
 
-    /**
-     * Lecture par id en `Response`. Throw `EntityException("subscriptionType.notFound")` si introuvable.
-     */
-    SubscriptionTypeResponse findResponseById(UUID id);
+    /** Reads a type by id as Response; throws on missing or plan mismatch. */
+    SubscriptionTypeResponse findResponseById(UUID planId, UUID id);
 
-    /**
-     * Listing paginé filtré.
-     */
-    Page<SubscriptionTypeResponse> findAll(SubscriptionTypeFilter filter);
+    /** Paginated listing filtered to the given plan. */
+    Page<SubscriptionTypeResponse> findAll(UUID planId, SubscriptionTypeFilter filter);
 
-    /**
-     * Mise à jour. Unicité du nom revérifiée si changement.
-     */
-    SubscriptionTypeResponse update(UUID id, SubscriptionTypeRequest subscriptionTypeRequest);
+    /** Updates the type; re-checks (planId, nom) uniqueness on rename. */
+    SubscriptionTypeResponse update(UUID planId, UUID id, SubscriptionTypeRequest subscriptionTypeRequest);
 
-    /**
-     * Activation du type.
-     */
-    SubscriptionTypeResponse activate(UUID id);
+    /** Marks the type active. */
+    SubscriptionTypeResponse activate(UUID planId, UUID id);
 
-    /**
-     * Désactivation du type.
-     */
-    SubscriptionTypeResponse deactivate(UUID id);
+    /** Marks the type inactive. */
+    SubscriptionTypeResponse deactivate(UUID planId, UUID id);
 
-    /**
-     * Suppression.
-     */
-    void delete(UUID id);
+    /** Deletes the type. */
+    void delete(UUID planId, UUID id);
 
-    /**
-     * Throw `UniqueResourceException("subscriptionType.nom.alreadyExists")` si un type porte déjà ce nom.
-     */
-    void ensureNomAvailable(String nom);
+    /** Throws {@code UniqueResourceException} if another type already carries this name in the same plan. */
+    void ensureNomAvailable(UUID planId, String nom);
+
+    /** Update variant: tolerates the same name on the entity itself, rejects collisions on any other row. */
+    void ensureNomAvailableForUpdate(UUID planId, String nom, UUID id);
+
+    /** Throws {@code BadArgumentException} if the type does not belong to the expected plan. */
+    void ensureBelongsToPlan(TypePlanAbonnement type, UUID planId);
 }

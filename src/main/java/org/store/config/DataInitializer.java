@@ -8,7 +8,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.PlanAbonnementRequest;
+import org.store.abonnement.application.dto.SubscriptionTypeRequest;
+import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
+import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
 import org.store.property.RbacProperties;
 import org.store.security.application.service.IRolesPermissionsSyncService;
 import org.store.security.domain.model.Role;
@@ -23,6 +26,7 @@ public class DataInitializer implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private static final String PLAN_TRIAL_NOM = "Essai";
+    private static final String TYPE_TRIAL_NOM = "Essai";
 
     /**
      * Identité de seed du compte ADMIN SaaS — uniquement créé quand
@@ -38,6 +42,7 @@ public class DataInitializer implements ApplicationRunner {
     private final RbacProperties rbacProperties;
     private final IRolesPermissionsSyncService rolesPermissionsSyncService;
     private final PlanAbonnementDomainService planAbonnementDomainService;
+    private final TypePlanAbonnementDomainService typePlanAbonnementDomainService;
     private final AccountDomainService accountDomainService;
     private final RoleDomainService roleDomainService;
     private final PasswordEncoder passwordEncoder;
@@ -45,12 +50,14 @@ public class DataInitializer implements ApplicationRunner {
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
                            PlanAbonnementDomainService planAbonnementDomainService,
+                           TypePlanAbonnementDomainService typePlanAbonnementDomainService,
                            AccountDomainService accountDomainService,
                            RoleDomainService roleDomainService,
                            PasswordEncoder passwordEncoder) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
+        this.typePlanAbonnementDomainService = typePlanAbonnementDomainService;
         this.accountDomainService = accountDomainService;
         this.roleDomainService = roleDomainService;
         this.passwordEncoder = passwordEncoder;
@@ -86,25 +93,49 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void ensureTrialPlan() {
-        if (planAbonnementDomainService.findFirstTrialActif().isPresent()) {
-            return;
+        PlanAbonnement trialPlan = planAbonnementDomainService.findFirstTrialActif().orElse(null);
+
+        if (trialPlan == null) {
+            trialPlan = planAbonnementDomainService.create(new PlanAbonnementRequest(
+                    PLAN_TRIAL_NOM,
+                    "Plan d'essai gratuit",
+                    BigDecimal.ZERO,
+                    1,
+                    3,
+                    true,
+                    true,
+                    true,
+                    false,
+                    true,
+                    true,
+                    true,
+                    0
+            ));
+            log.info("DataInitializer: création plan d'essai '{}'", PLAN_TRIAL_NOM);
         }
 
-        planAbonnementDomainService.create(new PlanAbonnementRequest(
-                PLAN_TRIAL_NOM,
-                "Plan d'essai gratuit",
-                BigDecimal.ZERO,
+        ensureTrialPlanHasDefaultType(trialPlan);
+    }
+
+    /**
+     * Seeds the default {@code TypePlanAbonnement} that the signup flow binds the TRIAL Abonnement to.
+     * Marked {@code trial=true} so {@code TypePlanAbonnementDomainService.findFirstActifTrial()} picks it up.
+     */
+    private void ensureTrialPlanHasDefaultType(PlanAbonnement trialPlan) {
+        if (typePlanAbonnementDomainService.existsByPlanIdAndNom(trialPlan.getId(), TYPE_TRIAL_NOM)) {
+            return;
+        }
+        var trialType = typePlanAbonnementDomainService.create(trialPlan, new SubscriptionTypeRequest(
+                TYPE_TRIAL_NOM,
                 1,
-                3,
-                true,
-                true,
-                true,
+                null,
+                null,
                 false,
-                true,
-                true,
                 true,
                 0
         ));
-        log.info("DataInitializer: création plan d'essai '{}'", PLAN_TRIAL_NOM);
+        trialType.setTrial(true);
+        typePlanAbonnementDomainService.save(trialType);
+        log.info("DataInitializer: création type d'essai '{}' sur le plan '{}'", TYPE_TRIAL_NOM, trialPlan.getNom());
     }
 }

@@ -41,7 +41,9 @@ class SubscriptionTypeControllerTest {
     private ISubscriptionTypeService subscriptionTypeService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private UUID planId;
     private UUID typeId;
+    private String basePath;
 
     @BeforeEach
     void setUp() {
@@ -56,7 +58,9 @@ class SubscriptionTypeControllerTest {
                 .setValidator(validator)
                 .build();
 
+        planId = UUID.randomUUID();
         typeId = UUID.randomUUID();
+        basePath = "/api/v1/plans/" + planId + "/types";
     }
 
     private SubscriptionTypeRequest validBody() {
@@ -66,20 +70,22 @@ class SubscriptionTypeControllerTest {
     }
 
     private SubscriptionTypeResponse sample() {
-        return new SubscriptionTypeResponse(typeId, "Mensuel", 1,
+        return new SubscriptionTypeResponse(typeId, planId, "Pro", "Mensuel", 1,
                 ReductionType.POURCENTAGE, new BigDecimal("0"),
                 false, true, 10);
     }
 
     @Test
     void should_return_201_when_created() throws Exception {
-        when(subscriptionTypeService.create(any(SubscriptionTypeRequest.class))).thenReturn(sample());
+        when(subscriptionTypeService.create(eq(planId), any(SubscriptionTypeRequest.class)))
+                .thenReturn(sample());
 
-        mockMvc.perform(post(SubscriptionTypeController.BASE_PATH)
+        mockMvc.perform(post(basePath)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validBody())))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.nom").value("Mensuel"));
+                .andExpect(jsonPath("$.nom").value("Mensuel"))
+                .andExpect(jsonPath("$.planId").value(planId.toString()));
     }
 
     @Test
@@ -87,7 +93,7 @@ class SubscriptionTypeControllerTest {
         SubscriptionTypeRequest body = new SubscriptionTypeRequest(
                 "", 1, "POURCENTAGE", new BigDecimal("0"), false, true, 0);
 
-        mockMvc.perform(post(SubscriptionTypeController.BASE_PATH)
+        mockMvc.perform(post(basePath)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
@@ -98,7 +104,7 @@ class SubscriptionTypeControllerTest {
         SubscriptionTypeRequest body = new SubscriptionTypeRequest(
                 "Mensuel", 1, "INVALID", new BigDecimal("0"), false, true, 0);
 
-        mockMvc.perform(post(SubscriptionTypeController.BASE_PATH)
+        mockMvc.perform(post(basePath)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
@@ -107,26 +113,28 @@ class SubscriptionTypeControllerTest {
     @Test
     void should_return_200_with_page_when_list() throws Exception {
         Page<SubscriptionTypeResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(subscriptionTypeService.findAll(any(SubscriptionTypeFilter.class))).thenReturn(page);
+        when(subscriptionTypeService.findAll(eq(planId), any(SubscriptionTypeFilter.class)))
+                .thenReturn(page);
 
-        mockMvc.perform(get(SubscriptionTypeController.BASE_PATH))
+        mockMvc.perform(get(basePath))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
     void should_return_200_when_get_by_id() throws Exception {
-        when(subscriptionTypeService.findResponseById(eq(typeId))).thenReturn(sample());
+        when(subscriptionTypeService.findResponseById(eq(planId), eq(typeId))).thenReturn(sample());
 
-        mockMvc.perform(get(SubscriptionTypeController.BASE_PATH + "/" + typeId))
+        mockMvc.perform(get(basePath + "/" + typeId))
                 .andExpect(status().isOk());
     }
 
     @Test
     void should_return_200_when_updated() throws Exception {
-        when(subscriptionTypeService.update(eq(typeId), any(SubscriptionTypeRequest.class))).thenReturn(sample());
+        when(subscriptionTypeService.update(eq(planId), eq(typeId), any(SubscriptionTypeRequest.class)))
+                .thenReturn(sample());
 
-        mockMvc.perform(put(SubscriptionTypeController.BASE_PATH + "/" + typeId)
+        mockMvc.perform(put(basePath + "/" + typeId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validBody())))
                 .andExpect(status().isOk());
@@ -134,17 +142,17 @@ class SubscriptionTypeControllerTest {
 
     @Test
     void should_return_200_when_activated() throws Exception {
-        when(subscriptionTypeService.activate(eq(typeId))).thenReturn(sample());
+        when(subscriptionTypeService.activate(eq(planId), eq(typeId))).thenReturn(sample());
 
-        mockMvc.perform(patch(SubscriptionTypeController.BASE_PATH + "/" + typeId + "/activate"))
+        mockMvc.perform(patch(basePath + "/" + typeId + "/activate"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void should_return_204_when_deleted() throws Exception {
-        mockMvc.perform(delete(SubscriptionTypeController.BASE_PATH + "/" + typeId))
+        mockMvc.perform(delete(basePath + "/" + typeId))
                 .andExpect(status().isNoContent());
 
-        verify(subscriptionTypeService).delete(typeId);
+        verify(subscriptionTypeService).delete(planId, typeId);
     }
 }

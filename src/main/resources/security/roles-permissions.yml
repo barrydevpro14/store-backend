@@ -121,11 +121,11 @@ permissions:
   - PLAN_UPDATE
   - PLAN_DELETE
 
-  # SUBSCRIPTION_TYPE (durations + integrated discounts — managed by ADMIN)
-  - SUBSCRIPTION_TYPE_CREATE
-  - SUBSCRIPTION_TYPE_READ
-  - SUBSCRIPTION_TYPE_UPDATE
-  - SUBSCRIPTION_TYPE_DELETE
+  # TYPE_PLAN (per-plan durations + integrated discounts — managed by ADMIN)
+  - TYPE_PLAN_CREATE
+  - TYPE_PLAN_READ
+  - TYPE_PLAN_UPDATE
+  - TYPE_PLAN_DELETE
 
   # COUPON (promo codes — managed by ADMIN)
   - COUPON_CREATE
@@ -258,10 +258,10 @@ roles:
       - PLAN_READ
       - PLAN_UPDATE
       - PLAN_DELETE
-      - SUBSCRIPTION_TYPE_CREATE
-      - SUBSCRIPTION_TYPE_READ
-      - SUBSCRIPTION_TYPE_UPDATE
-      - SUBSCRIPTION_TYPE_DELETE
+      - TYPE_PLAN_CREATE
+      - TYPE_PLAN_READ
+      - TYPE_PLAN_UPDATE
+      - TYPE_PLAN_DELETE
       - COUPON_CREATE
       - COUPON_READ
       - COUPON_UPDATE
@@ -373,7 +373,7 @@ roles:
       - PAYMENT_CANCEL
       - PAYMENT_REFUND
       - PLAN_READ
-      - SUBSCRIPTION_TYPE_READ
+      - TYPE_PLAN_READ
       - COUPON_READ
       - PROMOTION_READ
       - SUBSCRIPTION_CREATE

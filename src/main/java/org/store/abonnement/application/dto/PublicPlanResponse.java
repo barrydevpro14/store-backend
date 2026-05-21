@@ -17,11 +17,12 @@ public record PublicPlanResponse(
         boolean gestionComptabilite,
         boolean trial,
         int ordre,
-        List<PromotionResponse> promotions
+        List<PromotionResponse> promotions,
+        List<SubscriptionTypeResponse> subscriptionTypes
 ) {
     /**
      * Constructeur secondaire utilisé par la projection JPQL `SELECT new PublicPlanResponse(plan.id, plan.nom, ...)`.
-     * Les promotions sont initialisées à une liste vide et attachées ensuite via `withPromotions(...)`.
+     * `promotions` et `subscriptionTypes` sont initialisés à des listes vides et attachés ensuite via les wither.
      */
     public PublicPlanResponse(UUID id,
                               String nom,
@@ -38,7 +39,7 @@ public record PublicPlanResponse(
         this(id, nom, description, prix,
                 nombreMagasinsMax, nombreEmployesMax,
                 gestionStock, gestionVente, gestionAchat, gestionComptabilite,
-                trial, ordre, List.of());
+                trial, ordre, List.of(), List.of());
     }
 
     /**
@@ -48,6 +49,16 @@ public record PublicPlanResponse(
         return new PublicPlanResponse(id, nom, description, prix,
                 nombreMagasinsMax, nombreEmployesMax,
                 gestionStock, gestionVente, gestionAchat, gestionComptabilite,
-                trial, ordre, newPromotions);
+                trial, ordre, newPromotions, subscriptionTypes);
+    }
+
+    /**
+     * Retourne une nouvelle instance avec la liste de types (durées) remplie.
+     */
+    public PublicPlanResponse withSubscriptionTypes(List<SubscriptionTypeResponse> newTypes) {
+        return new PublicPlanResponse(id, nom, description, prix,
+                nombreMagasinsMax, nombreEmployesMax,
+                gestionStock, gestionVente, gestionAchat, gestionComptabilite,
+                trial, ordre, promotions, newTypes);
     }
 }

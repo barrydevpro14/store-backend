@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
@@ -25,7 +26,7 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.model.TypeAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
@@ -60,6 +61,7 @@ class PaiementAbonnementServiceImplTest {
 
     @Mock private PaiementAbonnementDomainService paiementAbonnementDomainService;
     @Mock private AbonnementDomainService abonnementDomainService;
+    @Mock private IAbonnementService abonnementService;
     @Mock private PromotionDomainService promotionDomainService;
     @Mock private CouponDomainService couponDomainService;
     @Mock private UtilisationCouponDomainService utilisationCouponDomainService;
@@ -76,7 +78,7 @@ class PaiementAbonnementServiceImplTest {
     private UUID paiementId;
     private Entreprise entreprise;
     private PlanAbonnement plan;
-    private TypeAbonnement type;
+    private TypePlanAbonnement type;
     private Abonnement abonnement;
 
     @BeforeEach
@@ -92,15 +94,15 @@ class PaiementAbonnementServiceImplTest {
         plan.setId(UUID.randomUUID());
         plan.setPrix(new BigDecimal("19900"));
 
-        type = new TypeAbonnement();
+        type = new TypePlanAbonnement();
         type.setId(UUID.randomUUID());
+        type.setPlan(plan);
         type.setDureeMois(12);
 
         abonnement = new Abonnement();
         abonnement.setId(abonnementId);
         abonnement.setEntreprise(entreprise);
-        abonnement.setPlan(plan);
-        abonnement.setTypeAbonnement(type);
+        abonnement.setTypePlanAbonnement(type);
         abonnement.setStatut(AbonnementStatut.EN_ATTENTE);
         abonnement.setActif(false);
     }
@@ -139,8 +141,8 @@ class PaiementAbonnementServiceImplTest {
 
     @Test
     void create_should_persist_pending_payment() {
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
+        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
         when(paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId)).thenReturn(false);
         when(promotionDomainService.findFirstActivePromotionForPlan(eq(plan.getId()), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
@@ -158,12 +160,9 @@ class PaiementAbonnementServiceImplTest {
 
     @Test
     void create_should_throw_when_abonnement_other_entreprise() {
-        Entreprise other = new Entreprise();
-        other.setId(UUID.randomUUID());
-        abonnement.setEntreprise(other);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
+        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement))
+                .thenThrow(new ForbiddenException("abonnement.notOwned"));
 
         assertThatThrownBy(() -> service.create(abonnementId, sampleRequest(), validFile()))
                 .isInstanceOf(ForbiddenException.class);
@@ -173,8 +172,8 @@ class PaiementAbonnementServiceImplTest {
     void create_should_throw_when_abonnement_not_pending() {
         abonnement.setStatut(AbonnementStatut.ACTIF);
 
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
+        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
 
         assertThatThrownBy(() -> service.create(abonnementId, sampleRequest(), validFile()))
                 .isInstanceOf(BadArgumentException.class);
@@ -182,8 +181,8 @@ class PaiementAbonnementServiceImplTest {
 
     @Test
     void create_should_throw_when_already_pending_payment() {
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
+        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
         when(paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId))
                 .thenReturn(true);
 

@@ -6,70 +6,85 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.SubscriptionTypeFilter;
 import org.store.abonnement.application.dto.SubscriptionTypeRequest;
 import org.store.abonnement.application.dto.SubscriptionTypeResponse;
+import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.abonnement.application.service.ISubscriptionTypeService;
-import org.store.common.tools.SubscriptionRules;
-import org.store.abonnement.domain.model.TypeAbonnement;
-import org.store.abonnement.domain.service.TypeAbonnementDomainService;
+import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
+import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.SubscriptionRules;
 
 import java.util.UUID;
 
 /**
- * Gère le catalogue des types d'abonnement (durées + réductions intégrées), ADMIN-only.
+ * Manages the catalog of subscription durations attached to a plan (ADMIN-only).
+ * Every operation is plan-scoped via the {@code planId} carried by the nested REST path.
  */
 @Service
 @Transactional(readOnly = true)
 public class SubscriptionTypeServiceImpl implements ISubscriptionTypeService {
 
-    private final TypeAbonnementDomainService typeAbonnementDomainService;
+    private final TypePlanAbonnementDomainService typePlanAbonnementDomainService;
+    private final IPlanAbonnementService planAbonnementService;
     private final ValidatorService validatorService;
 
-    public SubscriptionTypeServiceImpl(TypeAbonnementDomainService typeAbonnementDomainService,
+    public SubscriptionTypeServiceImpl(TypePlanAbonnementDomainService typePlanAbonnementDomainService,
+                                       IPlanAbonnementService planAbonnementService,
                                        ValidatorService validatorService) {
-        this.typeAbonnementDomainService = typeAbonnementDomainService;
+        this.typePlanAbonnementDomainService = typePlanAbonnementDomainService;
+        this.planAbonnementService = planAbonnementService;
         this.validatorService = validatorService;
     }
 
-    /** Crée un type après vérification d'unicité du nom et cohérence type/valeur de réduction. */
+    /** Creates a type attached to the given plan after enforcing (planId, nom) uniqueness and reduction consistency. */
     @Override
     @Transactional
-    public SubscriptionTypeResponse create(SubscriptionTypeRequest subscriptionTypeRequest) {
-        ensureNomAvailable(subscriptionTypeRequest.nom());
+    public SubscriptionTypeResponse create(UUID planId, SubscriptionTypeRequest subscriptionTypeRequest) {
+        PlanAbonnement plan = planAbonnementService.findById(planId);
+
+        ensureNomAvailable(planId, subscriptionTypeRequest.nom());
         SubscriptionRules.ensureReductionConsistent(
                 subscriptionTypeRequest.reductionTypeAsEnum(),
                 subscriptionTypeRequest.valeurReduction(),
                 "subscriptionType.reduction.invalid");
-        return new SubscriptionTypeResponse(typeAbonnementDomainService.create(subscriptionTypeRequest));
+
+        return new SubscriptionTypeResponse(
+                typePlanAbonnementDomainService.create(plan, subscriptionTypeRequest));
     }
 
-    /** Délégué au domain service ; lève `EntityException` si introuvable. */
+    /** Delegates to the domain service; throws {@code EntityException} when missing. */
     @Override
-    public TypeAbonnement findById(UUID id) {
-        return typeAbonnementDomainService.findById(id);
+    public TypePlanAbonnement findById(UUID id) {
+        return typePlanAbonnementDomainService.findById(id);
     }
 
-    /** Retourne le type en `Response`. */
+    /** Loads a type, validates it belongs to the given plan, and projects it as a Response. */
     @Override
-    public SubscriptionTypeResponse findResponseById(UUID id) {
-        return new SubscriptionTypeResponse(typeAbonnementDomainService.findById(id));
+    public SubscriptionTypeResponse findResponseById(UUID planId, UUID id) {
+        TypePlanAbonnement type = typePlanAbonnementDomainService.findById(id);
+        ensureBelongsToPlan(type, planId);
+        return new SubscriptionTypeResponse(type);
     }
 
-    /** Liste paginée filtrée triée par ordre puis nom. */
+    /** Paginated listing scoped to the plan, sorted by ordre then nom. */
     @Override
-    public Page<SubscriptionTypeResponse> findAll(SubscriptionTypeFilter filter) {
+    public Page<SubscriptionTypeResponse> findAll(UUID planId, SubscriptionTypeFilter filter) {
         validatorService.validate(filter);
-        return typeAbonnementDomainService.findResponses(filter);
+        planAbonnementService.findById(planId);
+        return typePlanAbonnementDomainService.findResponses(planId, filter);
     }
 
-    /** Met à jour ; revérifie l'unicité du nom (si changé) et la cohérence de la réduction. */
+    /** Updates an existing type; re-checks (planId, nom) uniqueness on rename and reduction consistency. */
     @Override
     @Transactional
-    public SubscriptionTypeResponse update(UUID id, SubscriptionTypeRequest subscriptionTypeRequest) {
-        TypeAbonnement type = typeAbonnementDomainService.findById(id);
+    public SubscriptionTypeResponse update(UUID planId, UUID id, SubscriptionTypeRequest subscriptionTypeRequest) {
+        TypePlanAbonnement type = typePlanAbonnementDomainService.findById(id);
+        ensureBelongsToPlan(type, planId);
 
         if (!type.getNom().equals(subscriptionTypeRequest.nom())) {
-            ensureNomAvailable(subscriptionTypeRequest.nom());
+            ensureNomAvailableForUpdate(planId, subscriptionTypeRequest.nom(), id);
         }
 
         SubscriptionRules.ensureReductionConsistent(
@@ -77,39 +92,58 @@ public class SubscriptionTypeServiceImpl implements ISubscriptionTypeService {
                 subscriptionTypeRequest.valeurReduction(),
                 "subscriptionType.reduction.invalid");
 
-        typeAbonnementDomainService.applyRequest(type, subscriptionTypeRequest);
-        return new SubscriptionTypeResponse(typeAbonnementDomainService.save(type));
+        typePlanAbonnementDomainService.applyRequest(type, subscriptionTypeRequest);
+        return new SubscriptionTypeResponse(typePlanAbonnementDomainService.save(type));
     }
 
-    /** Force `actif=true`. */
+    /** Forces {@code actif=true}. */
     @Override
     @Transactional
-    public SubscriptionTypeResponse activate(UUID id) {
-        TypeAbonnement type = typeAbonnementDomainService.findById(id);
-        return new SubscriptionTypeResponse(typeAbonnementDomainService.setActive(type, true));
+    public SubscriptionTypeResponse activate(UUID planId, UUID id) {
+        TypePlanAbonnement type = typePlanAbonnementDomainService.findById(id);
+        ensureBelongsToPlan(type, planId);
+        return new SubscriptionTypeResponse(typePlanAbonnementDomainService.setActive(type, true));
     }
 
-    /** Force `actif=false`. */
+    /** Forces {@code actif=false}. */
     @Override
     @Transactional
-    public SubscriptionTypeResponse deactivate(UUID id) {
-        TypeAbonnement type = typeAbonnementDomainService.findById(id);
-        return new SubscriptionTypeResponse(typeAbonnementDomainService.setActive(type, false));
+    public SubscriptionTypeResponse deactivate(UUID planId, UUID id) {
+        TypePlanAbonnement type = typePlanAbonnementDomainService.findById(id);
+        ensureBelongsToPlan(type, planId);
+        return new SubscriptionTypeResponse(typePlanAbonnementDomainService.setActive(type, false));
     }
 
-    /** Supprime le type. */
+    /** Deletes the type. */
     @Override
     @Transactional
-    public void delete(UUID id) {
-        TypeAbonnement type = typeAbonnementDomainService.findById(id);
-        typeAbonnementDomainService.delete(type);
+    public void delete(UUID planId, UUID id) {
+        TypePlanAbonnement type = typePlanAbonnementDomainService.findById(id);
+        ensureBelongsToPlan(type, planId);
+        typePlanAbonnementDomainService.delete(type);
     }
 
-    /** Lève `UniqueResourceException` si un type porte déjà ce nom. */
+    /** Throws {@code UniqueResourceException} if another type already carries this name in the same plan. */
     @Override
-    public void ensureNomAvailable(String nom) {
-        if (typeAbonnementDomainService.existsByNom(nom)) {
+    public void ensureNomAvailable(UUID planId, String nom) {
+        if (typePlanAbonnementDomainService.existsByPlanIdAndNom(planId, nom)) {
             throw new UniqueResourceException("subscriptionType.nom.alreadyExists", nom);
+        }
+    }
+
+    /** Update variant: tolerates the same name on the entity itself, rejects collisions on any other row. */
+    @Override
+    public void ensureNomAvailableForUpdate(UUID planId, String nom, UUID id) {
+        if (typePlanAbonnementDomainService.existsByPlanIdAndNomAndIdNot(planId, nom, id)) {
+            throw new UniqueResourceException("subscriptionType.nom.alreadyExists", nom);
+        }
+    }
+
+    /** Throws {@code BadArgumentException} if the type does not belong to the expected plan. */
+    @Override
+    public void ensureBelongsToPlan(TypePlanAbonnement type, UUID planId) {
+        if (!type.getPlan().getId().equals(planId)) {
+            throw new BadArgumentException("subscriptionType.planMismatch");
         }
     }
 }

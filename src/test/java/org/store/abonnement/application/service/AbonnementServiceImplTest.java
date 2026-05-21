@@ -24,7 +24,7 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.Promotion;
-import org.store.abonnement.domain.model.TypeAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.abonnement.domain.service.PromotionDomainService;
@@ -56,7 +56,6 @@ import static org.mockito.Mockito.when;
 class AbonnementServiceImplTest {
 
     @Mock private AbonnementDomainService abonnementDomainService;
-    @Mock private IPlanAbonnementService planAbonnementService;
     @Mock private ISubscriptionTypeService subscriptionTypeService;
     @Mock private CouponDomainService couponDomainService;
     @Mock private PromotionDomainService promotionDomainService;
@@ -74,7 +73,7 @@ class AbonnementServiceImplTest {
     private UUID typeId;
     private Entreprise entreprise;
     private PlanAbonnement plan;
-    private TypeAbonnement type;
+    private TypePlanAbonnement type;
 
     @BeforeEach
     void setUp() {
@@ -93,8 +92,9 @@ class AbonnementServiceImplTest {
         plan.setVisible(true);
         plan.setTrial(false);
 
-        type = new TypeAbonnement();
+        type = new TypePlanAbonnement();
         type.setId(typeId);
+        type.setPlan(plan);
         type.setNom("Annuel");
         type.setDureeMois(12);
         type.setActif(true);
@@ -112,15 +112,6 @@ class AbonnementServiceImplTest {
     }
 
     @Test
-    void createTrial_should_delegate_to_domain_service() {
-        PlanAbonnement trialPlan = new PlanAbonnement();
-        Abonnement expected = new Abonnement();
-        when(abonnementDomainService.createTrial(entreprise, trialPlan)).thenReturn(expected);
-
-        assertThat(service.createTrial(entreprise, trialPlan)).isSameAs(expected);
-    }
-
-    @Test
     void subscribe_should_create_pending_abonnement_without_coupon() {
         SubscribeRequest request = new SubscribeRequest(planId, typeId, null, false);
         Abonnement pending = pendingAbonnement();
@@ -128,12 +119,11 @@ class AbonnementServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(promotionDomainService.findFirstActivePromotionForPlan(eq(planId), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
         when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(breakdown);
-        when(abonnementDomainService.createPending(entreprise, plan, type)).thenReturn(pending);
+        when(abonnementDomainService.createPending(entreprise, type)).thenReturn(pending);
         when(abonnementDomainService.setRenouvellementAuto(pending, false)).thenReturn(pending);
 
         SubscribeResponse response = service.subscribe(request);
@@ -156,13 +146,12 @@ class AbonnementServiceImplTest {
         Abonnement pending = pendingAbonnement();
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(couponDomainService.findByCode("PROMO10")).thenReturn(Optional.of(coupon));
         when(promotionDomainService.findFirstActivePromotionForPlan(eq(planId), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
         when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(sampleBreakdown("210000.00"));
-        when(abonnementDomainService.createPending(entreprise, plan, type)).thenReturn(pending);
+        when(abonnementDomainService.createPending(entreprise, type)).thenReturn(pending);
         when(abonnementDomainService.setRenouvellementAuto(pending, true)).thenReturn(pending);
 
         SubscribeResponse response = service.subscribe(request);
@@ -181,12 +170,11 @@ class AbonnementServiceImplTest {
         Abonnement pending = pendingAbonnement();
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(promotionDomainService.findFirstActivePromotionForPlan(eq(planId), any(LocalDate.class)))
                 .thenReturn(Optional.of(promotion));
         when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(sampleBreakdown("190000.00"));
-        when(abonnementDomainService.createPending(entreprise, plan, type)).thenReturn(pending);
+        when(abonnementDomainService.createPending(entreprise, type)).thenReturn(pending);
         when(abonnementDomainService.setRenouvellementAuto(pending, false)).thenReturn(pending);
 
         SubscribeResponse response = service.subscribe(request);
@@ -195,31 +183,24 @@ class AbonnementServiceImplTest {
     }
 
     @Test
-    void subscribe_should_throw_when_plan_inactive() {
-        plan.setActif(false);
+    void subscribe_should_mark_entreprise_trial_used_when_subscribing() {
         SubscribeRequest request = new SubscribeRequest(planId, typeId, null, false);
+        Abonnement pending = pendingAbonnement();
+        entreprise.setTrialUsed(false);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
+        when(subscriptionTypeService.findById(typeId)).thenReturn(type);
+        when(promotionDomainService.findFirstActivePromotionForPlan(eq(planId), any(LocalDate.class)))
+                .thenReturn(Optional.empty());
+        when(amountCalculator.calculate(any(SubscriptionAmountInputs.class)))
+                .thenReturn(sampleBreakdown("238800.00"));
+        when(abonnementDomainService.createPending(entreprise, type)).thenReturn(pending);
+        when(abonnementDomainService.setRenouvellementAuto(pending, false)).thenReturn(pending);
 
-        assertThatThrownBy(() -> service.subscribe(request))
-                .isInstanceOf(BadArgumentException.class);
+        service.subscribe(request);
 
-        verify(abonnementDomainService, never()).createPending(any(), any(), any());
-    }
-
-    @Test
-    void subscribe_should_throw_when_plan_is_trial() {
-        plan.setTrial(true);
-        SubscribeRequest request = new SubscribeRequest(planId, typeId, null, false);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
-
-        assertThatThrownBy(() -> service.subscribe(request))
-                .isInstanceOf(BadArgumentException.class);
+        assertThat(entreprise.isTrialUsed()).isTrue();
     }
 
     @Test
@@ -229,7 +210,36 @@ class AbonnementServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
+        when(subscriptionTypeService.findById(typeId)).thenReturn(type);
+
+        assertThatThrownBy(() -> service.subscribe(request))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(abonnementDomainService, never()).createPending(any(), any());
+    }
+
+    @Test
+    void subscribe_should_throw_when_plan_inactive() {
+        plan.setActif(false);
+        SubscribeRequest request = new SubscribeRequest(planId, typeId, null, false);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
+        when(subscriptionTypeService.findById(typeId)).thenReturn(type);
+
+        assertThatThrownBy(() -> service.subscribe(request))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(abonnementDomainService, never()).createPending(any(), any());
+    }
+
+    @Test
+    void subscribe_should_throw_when_plan_is_trial() {
+        plan.setTrial(true);
+        SubscribeRequest request = new SubscribeRequest(planId, typeId, null, false);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
 
         assertThatThrownBy(() -> service.subscribe(request))
@@ -242,7 +252,6 @@ class AbonnementServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(couponDomainService.findByCode("GHOST")).thenReturn(Optional.empty());
 
@@ -258,7 +267,6 @@ class AbonnementServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(couponDomainService.findByCode("EXPIRED")).thenReturn(Optional.of(coupon));
 
@@ -275,7 +283,6 @@ class AbonnementServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(couponDomainService.findByCode("FULL")).thenReturn(Optional.of(coupon));
 
@@ -294,7 +301,6 @@ class AbonnementServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(subscriptionTypeService.findById(typeId)).thenReturn(type);
         when(couponDomainService.findByCode("OTHER_PLAN")).thenReturn(Optional.of(coupon));
 
@@ -363,7 +369,7 @@ class AbonnementServiceImplTest {
     }
 
     @Test
-    void findMyCurrent_should_return_response_with_days_left() {
+    void findMyCurrent_should_return_paid_abonnement_when_active() {
         Abonnement abonnement = pendingAbonnement();
         abonnement.setStatut(AbonnementStatut.ACTIF);
         abonnement.setActif(true);
@@ -371,31 +377,62 @@ class AbonnementServiceImplTest {
         abonnement.setDateFin(LocalDate.now().plusDays(20));
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(abonnementDomainService.findCurrentActif(entrepriseId)).thenReturn(java.util.Optional.of(abonnement));
+        when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(abonnement));
 
         CurrentAbonnementResponse response = service.findMyCurrent();
 
         assertThat(response.joursRestants()).isEqualTo(20);
-        assertThat(response.isTrial()).isFalse();
-        assertThat(response.fonctionnalites()).isNotNull();
         assertThat(response.abonnement().id()).isEqualTo(abonnement.getId());
+        assertThat(response.abonnement().statut()).isEqualTo(AbonnementStatut.ACTIF);
+        assertThat(response.fonctionnalites()).isNotNull();
     }
 
     @Test
-    void findMyCurrent_should_throw_when_no_active_subscription() {
+    void findMyCurrent_should_return_trial_abonnement_when_running() {
+        Abonnement trial = pendingAbonnement();
+        trial.setStatut(AbonnementStatut.TRIAL);
+        trial.setActif(true);
+        trial.setDateDebut(LocalDate.now().minusDays(15));
+        trial.setDateFin(LocalDate.now().plusDays(15));
+
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(abonnementDomainService.findCurrentActif(entrepriseId)).thenReturn(java.util.Optional.empty());
+        when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(trial));
+
+        CurrentAbonnementResponse response = service.findMyCurrent();
+
+        assertThat(response.abonnement().statut()).isEqualTo(AbonnementStatut.TRIAL);
+        assertThat(response.joursRestants()).isEqualTo(15);
+        assertThat(response.fonctionnalites()).isNotNull();
+    }
+
+    @Test
+    void findMyCurrent_should_throw_when_no_active_and_no_trial() {
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findMyCurrent())
                 .isInstanceOf(EntityException.class);
+    }
+
+    @Test
+    void hasActiveSubscription_should_return_true_when_current_exists() {
+        when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(pendingAbonnement()));
+
+        assertThat(service.hasActiveSubscription(entrepriseId)).isTrue();
+    }
+
+    @Test
+    void hasActiveSubscription_should_return_false_when_no_current() {
+        when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.empty());
+
+        assertThat(service.hasActiveSubscription(entrepriseId)).isFalse();
     }
 
     private Abonnement pendingAbonnement() {
         Abonnement a = new Abonnement();
         a.setId(UUID.randomUUID());
         a.setEntreprise(entreprise);
-        a.setPlan(plan);
-        a.setTypeAbonnement(type);
+        a.setTypePlanAbonnement(type);
         a.setStatut(AbonnementStatut.EN_ATTENTE);
         a.setActif(false);
         return a;

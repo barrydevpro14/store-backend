@@ -1,6 +1,6 @@
 package org.store.abonnement.application.dto;
 
-import org.store.abonnement.domain.model.TypeAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 
 import java.util.UUID;
 
@@ -9,7 +9,7 @@ public record SubscriptionTypeSummaryResponse(
         String nom,
         int dureeMois
 ) {
-    public SubscriptionTypeSummaryResponse(TypeAbonnement type) {
+    public SubscriptionTypeSummaryResponse(TypePlanAbonnement type) {
         this(type.getId(), type.getNom(), type.getDureeMois());
     }
 }

@@ -72,7 +72,7 @@ class AbonnementControllerTest {
 
     private SubscribeResponse sampleResponse() {
         AbonnementResponse abonnement = new AbonnementResponse(
-                abonnementId, entrepriseId,
+                abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
                 new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
                 null, null, false, false, AbonnementStatut.EN_ATTENTE);
@@ -123,7 +123,7 @@ class AbonnementControllerTest {
     @Test
     void should_return_200_when_admin_lists_all() throws Exception {
         AbonnementResponse a = new AbonnementResponse(
-                abonnementId, entrepriseId,
+                abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
                 new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
                 null, null, false, false, AbonnementStatut.EN_ATTENTE);
@@ -149,12 +149,12 @@ class AbonnementControllerTest {
     @Test
     void should_return_200_with_current_subscription() throws Exception {
         AbonnementResponse abonnement = new AbonnementResponse(
-                abonnementId, entrepriseId,
+                abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
                 new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
                 null, null, true, false, AbonnementStatut.ACTIF);
         CurrentAbonnementResponse current = new CurrentAbonnementResponse(
-                abonnement, 25L, false,
+                abonnement, 25L,
                 new PlanFeaturesResponse(true, true, true, false, 1, 3));
 
         when(abonnementService.findMyCurrent()).thenReturn(current);
@@ -162,14 +162,14 @@ class AbonnementControllerTest {
         mockMvc.perform(get(AbonnementController.BASE_PATH + "/me/current"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.joursRestants").value(25))
-                .andExpect(jsonPath("$.isTrial").value(false))
+                .andExpect(jsonPath("$.abonnement.statut").value("ACTIF"))
                 .andExpect(jsonPath("$.fonctionnalites.nombreMagasinsMax").value(1));
     }
 
     @Test
     void should_return_200_when_toggling_renouvellement_auto() throws Exception {
         AbonnementResponse abonnement = new AbonnementResponse(
-                abonnementId, entrepriseId,
+                abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
                 new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
                 null, null, true, true, AbonnementStatut.ACTIF);

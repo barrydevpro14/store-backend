@@ -22,11 +22,16 @@ import org.store.abonnement.application.service.ISubscriptionTypeService;
 
 import java.util.UUID;
 
+/**
+ * Endpoints nested sous Plan : `/api/v1/plans/{planId}/types`. Les types
+ * (durées) sont scopés par plan ; le planId vient du path et n'est
+ * pas passé dans le body.
+ */
 @RestController
 @RequestMapping(SubscriptionTypeController.BASE_PATH)
 public class SubscriptionTypeController {
 
-    public static final String BASE_PATH = "/api/v1/subscription-types";
+    public static final String BASE_PATH = "/api/v1/plans/{planId}/types";
 
     private final ISubscriptionTypeService subscriptionTypeService;
 
@@ -35,51 +40,55 @@ public class SubscriptionTypeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_CREATE')")
-    public ResponseEntity<SubscriptionTypeResponse> create(@Valid @RequestBody SubscriptionTypeRequest subscriptionTypeRequest) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(subscriptionTypeService.create(subscriptionTypeRequest));
+    @PreAuthorize("hasAuthority('TYPE_PLAN_CREATE')")
+    public ResponseEntity<SubscriptionTypeResponse> create(@PathVariable UUID planId,
+                                                           @Valid @RequestBody SubscriptionTypeRequest subscriptionTypeRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(subscriptionTypeService.create(planId, subscriptionTypeRequest));
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_READ')")
-    public ResponseEntity<Page<SubscriptionTypeResponse>> list(@RequestParam(required = false) String nom,
+    @PreAuthorize("hasAuthority('TYPE_PLAN_READ')")
+    public ResponseEntity<Page<SubscriptionTypeResponse>> list(@PathVariable UUID planId,
+                                                               @RequestParam(required = false) String nom,
                                                                @RequestParam(required = false) Boolean actif,
                                                                @RequestParam(required = false) Boolean recommande,
                                                                @RequestParam(defaultValue = "0") int page,
                                                                @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(subscriptionTypeService.findAll(
-                new SubscriptionTypeFilter(nom, actif, recommande, page, size)));
+                planId, new SubscriptionTypeFilter(nom, actif, recommande, page, size)));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_READ')")
-    public ResponseEntity<SubscriptionTypeResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(subscriptionTypeService.findResponseById(id));
+    @PreAuthorize("hasAuthority('TYPE_PLAN_READ')")
+    public ResponseEntity<SubscriptionTypeResponse> getById(@PathVariable UUID planId, @PathVariable UUID id) {
+        return ResponseEntity.ok(subscriptionTypeService.findResponseById(planId, id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_UPDATE')")
-    public ResponseEntity<SubscriptionTypeResponse> update(@PathVariable UUID id,
+    @PreAuthorize("hasAuthority('TYPE_PLAN_UPDATE')")
+    public ResponseEntity<SubscriptionTypeResponse> update(@PathVariable UUID planId,
+                                                           @PathVariable UUID id,
                                                            @Valid @RequestBody SubscriptionTypeRequest subscriptionTypeRequest) {
-        return ResponseEntity.ok(subscriptionTypeService.update(id, subscriptionTypeRequest));
+        return ResponseEntity.ok(subscriptionTypeService.update(planId, id, subscriptionTypeRequest));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_UPDATE')")
-    public ResponseEntity<SubscriptionTypeResponse> activate(@PathVariable UUID id) {
-        return ResponseEntity.ok(subscriptionTypeService.activate(id));
+    @PreAuthorize("hasAuthority('TYPE_PLAN_UPDATE')")
+    public ResponseEntity<SubscriptionTypeResponse> activate(@PathVariable UUID planId, @PathVariable UUID id) {
+        return ResponseEntity.ok(subscriptionTypeService.activate(planId, id));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_UPDATE')")
-    public ResponseEntity<SubscriptionTypeResponse> deactivate(@PathVariable UUID id) {
-        return ResponseEntity.ok(subscriptionTypeService.deactivate(id));
+    @PreAuthorize("hasAuthority('TYPE_PLAN_UPDATE')")
+    public ResponseEntity<SubscriptionTypeResponse> deactivate(@PathVariable UUID planId, @PathVariable UUID id) {
+        return ResponseEntity.ok(subscriptionTypeService.deactivate(planId, id));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_TYPE_DELETE')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        subscriptionTypeService.delete(id);
+    @PreAuthorize("hasAuthority('TYPE_PLAN_DELETE')")
+    public ResponseEntity<Void> delete(@PathVariable UUID planId, @PathVariable UUID id) {
+        subscriptionTypeService.delete(planId, id);
         return ResponseEntity.noContent().build();
     }
 }

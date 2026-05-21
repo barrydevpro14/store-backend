@@ -12,17 +12,18 @@ import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.IAbonnementService;
-import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.abonnement.application.service.ISubscriptionTypeService;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.Promotion;
-import org.store.abonnement.domain.model.TypeAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.abonnement.domain.service.PromotionDomainService;
+import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
 import org.store.abonnement.domain.service.UtilisationCouponDomainService;
+import org.store.property.SubscriptionProperties;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
@@ -37,14 +38,16 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
- * Orchestre le cycle de vie des abonnements : création de trial (interne) et souscription propriétaire.
+ * Orchestrates the Abonnement lifecycle: OWNER signup creates a TRIAL row, paid subscribe creates an
+ * EN_ATTENTE row, validation activates it. Trial windows live in the Abonnement table with
+ * {@code statut=TRIAL}; the trial-consumed flag on the entreprise stays in sync.
  */
 @Service
 @Transactional(readOnly = true)
 public class AbonnementServiceImpl implements IAbonnementService {
 
     private final AbonnementDomainService abonnementDomainService;
-    private final IPlanAbonnementService planAbonnementService;
+    private final TypePlanAbonnementDomainService typePlanAbonnementDomainService;
     private final ISubscriptionTypeService subscriptionTypeService;
     private final CouponDomainService couponDomainService;
     private final PromotionDomainService promotionDomainService;
@@ -52,10 +55,11 @@ public class AbonnementServiceImpl implements IAbonnementService {
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
     private final SubscriptionAmountCalculator amountCalculator;
+    private final SubscriptionProperties subscriptionProperties;
     private final ValidatorService validatorService;
 
     public AbonnementServiceImpl(AbonnementDomainService abonnementDomainService,
-                                 IPlanAbonnementService planAbonnementService,
+                                 TypePlanAbonnementDomainService typePlanAbonnementDomainService,
                                  ISubscriptionTypeService subscriptionTypeService,
                                  CouponDomainService couponDomainService,
                                  PromotionDomainService promotionDomainService,
@@ -63,9 +67,10 @@ public class AbonnementServiceImpl implements IAbonnementService {
                                  IEntrepriseService entrepriseService,
                                  ICurrentUserService currentUserService,
                                  SubscriptionAmountCalculator amountCalculator,
+                                 SubscriptionProperties subscriptionProperties,
                                  ValidatorService validatorService) {
         this.abonnementDomainService = abonnementDomainService;
-        this.planAbonnementService = planAbonnementService;
+        this.typePlanAbonnementDomainService = typePlanAbonnementDomainService;
         this.subscriptionTypeService = subscriptionTypeService;
         this.couponDomainService = couponDomainService;
         this.promotionDomainService = promotionDomainService;
@@ -73,38 +78,39 @@ public class AbonnementServiceImpl implements IAbonnementService {
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
         this.amountCalculator = amountCalculator;
+        this.subscriptionProperties = subscriptionProperties;
         this.validatorService = validatorService;
     }
 
-    /** Création d'un abonnement trial à 30 jours pour l'inscription propriétaire. */
+    /**
+     * Creates the TRIAL Abonnement for a fresh OWNER signup. Looks up the first active type on the
+     * trial plan and persists the row with {@code statut=TRIAL}, dateDebut today and
+     * dateFin today + {@code subscription.trial-days}.
+     */
     @Override
     @Transactional
-    public Abonnement createTrial(Entreprise entreprise, PlanAbonnement plan) {
-        return abonnementDomainService.createTrial(entreprise, plan);
+    public Abonnement createTrialForSignup(Entreprise entreprise) {
+        TypePlanAbonnement trialType = typePlanAbonnementDomainService.findFirstActifTrial()
+                .orElseThrow(() -> new EntityException("plan.trial.notFound"));
+        return abonnementDomainService.createTrial(entreprise, trialType, subscriptionProperties.trialDays());
     }
 
     /**
-     * Souscription OWNER.
-     *
-     * Étapes :
-     * 1. Résout l'entreprise du caller.
-     * 2. Charge plan + type + coupon optionnel, vérifie qu'ils sont applicables.
-     * 3. Cherche une promotion automatique active pour le plan (à `today`).
-     * 4. Calcule le breakdown des montants via `SubscriptionAmountCalculator`.
-     * 5. Crée l'`Abonnement` en EN_ATTENTE (sans dateDebut/dateFin — fixés au paiement).
-     * 6. Si coupon : crée `UtilisationCoupon` et incrémente `coupon.nombreUtilisations` (réserve la place).
+     * Owner-facing subscribe flow. Loads the chosen type, derives the plan from {@code type.plan}, validates
+     * both, applies the optional coupon + active promotion, computes the amount breakdown, persists the
+     * Abonnement in EN_ATTENTE, reserves the coupon (if any) and consumes the trial window on the entreprise.
      */
     @Override
     @Transactional
     public SubscribeResponse subscribe(SubscribeRequest subscribeRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
-        Entreprise entreprise = entrepriseService.findById(currentUser.entrepriseId());
+        UUID currentEntrepriseId = currentUser.entrepriseId();
+        Entreprise entreprise = entrepriseService.findById(currentEntrepriseId);
 
-        PlanAbonnement plan = planAbonnementService.findById(subscribeRequest.planId());
-        ensurePlanSubscribable(plan);
-
-        TypeAbonnement type = subscriptionTypeService.findById(subscribeRequest.typeId());
+        TypePlanAbonnement type = subscriptionTypeService.findById(subscribeRequest.typeId());
         ensureTypeActif(type);
+        PlanAbonnement plan = type.getPlan();
+        ensurePlanSubscribable(plan);
 
         Coupon coupon = resolveCoupon(subscribeRequest.couponCode(), plan.getId());
 
@@ -115,12 +121,14 @@ public class AbonnementServiceImpl implements IAbonnementService {
         SubscriptionAmountBreakdown breakdown = amountCalculator.calculate(
                 new SubscriptionAmountInputs(plan, type, promotion, coupon));
 
-        Abonnement abonnement = abonnementDomainService.createPending(entreprise, plan, type);
+        Abonnement abonnement = abonnementDomainService.createPending(entreprise, type);
         abonnementDomainService.setRenouvellementAuto(abonnement, subscribeRequest.renouvellementAuto());
 
         if (coupon != null) {
             reserveCoupon(coupon, entreprise, abonnement);
         }
+
+        consumeTrialIfAny(entreprise);
 
         return new SubscribeResponse(
                 new AbonnementResponse(abonnement),
@@ -130,57 +138,86 @@ public class AbonnementServiceImpl implements IAbonnementService {
         );
     }
 
-    /** Délègue au domain service ; lève `EntityException` si introuvable. */
+    /**
+     * Flags the entreprise as having consumed its trial. The TRIAL Abonnement row is left in
+     * place — it expires naturally at {@code dateFin} and stays as historical record.
+     */
+    @Override
+    public void consumeTrialIfAny(Entreprise entreprise) {
+        if (!entreprise.isTrialUsed()) {
+            entreprise.setTrialUsed(true);
+        }
+    }
+
+    /** Delegates to the domain service; throws {@code EntityException} when missing. */
     @Override
     public Abonnement findById(UUID id) {
         return abonnementDomainService.findById(id);
     }
 
-    /** Bascule `renouvellementAuto` sur un abonnement scopé à l'entreprise du caller. */
+    /** Toggles {@code renouvellementAuto} on an Abonnement scoped to the caller's entreprise. */
     @Override
     @Transactional
-    public AbonnementResponse updateRenouvellementAuto(UUID abonnementId, RenouvellementAutoRequest request) {
+    public AbonnementResponse updateRenouvellementAuto(UUID abonnementId, RenouvellementAutoRequest renouvellementAutoRequest) {
         Abonnement abonnement = ensureBelongsToCurrentEntreprise(abonnementDomainService.findById(abonnementId));
         return new AbonnementResponse(
-                abonnementDomainService.setRenouvellementAuto(abonnement, request.renouvellementAuto()));
+                abonnementDomainService.setRenouvellementAuto(abonnement, renouvellementAutoRequest.renouvellementAuto()));
     }
 
-    /** Listing paginé filtré (ADMIN). Aucun auto-scoping ; ADMIN voit tous les abonnements. */
+    /** ADMIN listing — no auto-scoping; the caller sees every Abonnement. */
     @Override
     public Page<AbonnementResponse> findAll(AbonnementFilter filter) {
         validatorService.validate(filter);
         return abonnementDomainService.findResponses(filter);
     }
 
-    /** Historique paginé du propriétaire : force `entrepriseId` sur l'entreprise du caller. */
+    /** Owner history — forces {@code entrepriseId} to the caller's entreprise on the filter. */
     @Override
     public Page<AbonnementResponse> findMyHistory(AbonnementFilter filter) {
         validatorService.validate(filter);
-        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
         AbonnementFilter scoped = new AbonnementFilter(
-                entrepriseId, filter.statut(), filter.planId(), filter.page(), filter.size());
+                currentEntrepriseId, filter.statut(), filter.planId(), filter.page(), filter.size());
         return abonnementDomainService.findResponses(scoped);
     }
 
-    /** Abonnement courant ACTIF du caller + jours restants + flag trial + fonctionnalités. */
+    /**
+     * Returns the caller's "current" Abonnement view: ACTIF paid row if present, otherwise a TRIAL row
+     * within its window. Throws {@code abonnement.noActive} when neither is found.
+     */
     @Override
     public CurrentAbonnementResponse findMyCurrent() {
-        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        Abonnement abonnement = abonnementDomainService.findCurrentActif(entrepriseId)
+        UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
+        Abonnement current = abonnementDomainService.findCurrent(currentEntrepriseId)
                 .orElseThrow(() -> new EntityException("abonnement.noActive"));
+        return buildCurrent(current);
+    }
 
+    /** Builds the current-view: AbonnementResponse + days left + plan features (works for ACTIF and TRIAL). */
+    @Override
+    public CurrentAbonnementResponse buildCurrent(Abonnement abonnement) {
         long joursRestants = abonnement.getDateFin() == null ? 0
                 : Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), abonnement.getDateFin()));
+
+        PlanAbonnement plan = abonnement.getTypePlanAbonnement().getPlan();
 
         return new CurrentAbonnementResponse(
                 new AbonnementResponse(abonnement),
                 joursRestants,
-                abonnement.getPlan() != null && abonnement.getPlan().isTrial(),
-                abonnement.getPlan() == null ? null : new PlanFeaturesResponse(abonnement.getPlan())
+                new PlanFeaturesResponse(plan)
         );
     }
 
-    /** Lève `BadArgumentException` si le plan n'est pas souscriptible (inactif, invisible ou trial). */
+    /**
+     * Returns {@code true} when the entreprise has an ACTIF or a still-running TRIAL Abonnement.
+     * Used as the login subscription gate.
+     */
+    @Override
+    public boolean hasActiveSubscription(UUID entrepriseId) {
+        return abonnementDomainService.findCurrent(entrepriseId).isPresent();
+    }
+
+    /** Throws {@code BadArgumentException("plan.notSubscribable")} when the plan is inactive, hidden or trial. */
     @Override
     public void ensurePlanSubscribable(PlanAbonnement plan) {
         if (!plan.isActif() || !plan.isVisible() || plan.isTrial()) {
@@ -188,16 +225,16 @@ public class AbonnementServiceImpl implements IAbonnementService {
         }
     }
 
-    /** Lève `BadArgumentException` si le type d'abonnement est désactivé. */
-    public void ensureTypeActif(TypeAbonnement type) {
+    /** Throws {@code BadArgumentException("subscriptionType.notSubscribable")} when the type is inactive. */
+    public void ensureTypeActif(TypePlanAbonnement type) {
         if (!type.isActif()) {
             throw new BadArgumentException("subscriptionType.notSubscribable");
         }
     }
 
     /**
-     * Cherche le coupon par code et valide son applicabilité (fenêtre, utilisations restantes, plan match).
-     * Retourne null si `code` blank/null.
+     * Loads the coupon by code and validates applicability (window, remaining usage, plan match). Returns
+     * {@code null} when the code is null/blank.
      */
     public Coupon resolveCoupon(String code, UUID planId) {
         if (code == null || code.isBlank()) {
@@ -220,7 +257,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
         return coupon;
     }
 
-    /** Lève `ForbiddenException` si l'abonnement n'appartient pas à l'entreprise du caller. */
+    /** Throws {@code ForbiddenException("abonnement.notOwned")} when the Abonnement is not owned by the caller. */
     @Override
     public Abonnement ensureBelongsToCurrentEntreprise(Abonnement abonnement) {
         UserPrincipal currentUser = currentUserService.getCurrent();
@@ -230,7 +267,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
         return abonnement;
     }
 
-    /** Délègue aux domain services : crée `UtilisationCoupon` et incrémente `coupon.nombreUtilisations`. */
+    /** Delegates to the domain services: creates {@code UtilisationCoupon} and increments {@code coupon.nombreUtilisations}. */
     public void reserveCoupon(Coupon coupon, Entreprise entreprise, Abonnement abonnement) {
         utilisationCouponDomainService.create(coupon, entreprise, abonnement);
         couponDomainService.incrementUsage(coupon);

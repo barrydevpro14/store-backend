@@ -9,13 +9,16 @@ import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.Promotion;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
@@ -36,9 +39,9 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Workflow de paiement manuel : le propriétaire enregistre son paiement avec preuve image obligatoire,
- * l'admin valide ou rejette. À la validation, l'abonnement est activé (dateDebut/dateFin calculés selon
- * la stratégie de remplacement à dateFin). Au rejet, le coupon réservé à la souscription est libéré.
+ * Manual-payment workflow: the owner registers a payment with a mandatory proof image, the admin validates
+ * or rejects it. On validation, the Abonnement is activated (dateDebut/dateFin computed via the
+ * dateFin-replacement strategy). On rejection, the coupon reserved at subscribe time is released.
  */
 @Service
 @Transactional(readOnly = true)
@@ -46,6 +49,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     private final PaiementAbonnementDomainService paiementAbonnementDomainService;
     private final AbonnementDomainService abonnementDomainService;
+    private final IAbonnementService abonnementService;
     private final PromotionDomainService promotionDomainService;
     private final CouponDomainService couponDomainService;
     private final UtilisationCouponDomainService utilisationCouponDomainService;
@@ -56,6 +60,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
+                                         IAbonnementService abonnementService,
                                          PromotionDomainService promotionDomainService,
                                          CouponDomainService couponDomainService,
                                          UtilisationCouponDomainService utilisationCouponDomainService,
@@ -65,6 +70,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                                          ValidatorService validatorService) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
+        this.abonnementService = abonnementService;
         this.promotionDomainService = promotionDomainService;
         this.couponDomainService = couponDomainService;
         this.utilisationCouponDomainService = utilisationCouponDomainService;
@@ -75,15 +81,16 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     /**
-     * OWNER enregistre son paiement : vérifie abonnement EN_ATTENTE + pas de paiement pendant déjà,
-     * recalcule le breakdown (plan + type + promotion active + coupon réservé) puis crée PaiementAbonnement EN_ATTENTE_VALIDATION.
+     * Owner registers a payment: enforces Abonnement EN_ATTENTE + no pending payment already, recomputes the
+     * breakdown (plan + type + active promotion + reserved coupon) and persists the PaiementAbonnement in
+     * EN_ATTENTE_VALIDATION.
      */
     @Override
     @Transactional
     public PaiementAbonnementResponse create(UUID abonnementId,
                                              PaiementAbonnementRequest paiementAbonnementRequest,
                                              MultipartFile preuve) {
-        Abonnement abonnement = ensureAbonnementBelongsToCurrentEntreprise(abonnementDomainService.findById(abonnementId));
+        Abonnement abonnement = abonnementService.ensureBelongsToCurrentEntreprise(abonnementDomainService.findById(abonnementId));
         ensureAbonnementIsPending(abonnement);
         ensureNoPendingPayment(abonnementId);
 
@@ -97,9 +104,9 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     /**
-     * ADMIN valide : passe le paiement en VALIDE et active l'abonnement (statut=ACTIF, dateDebut/dateFin calculés).
-     * Stratégie : si un abonnement actif existe déjà pour l'entreprise, le nouveau démarre `currentActif.dateFin + 1`,
-     * sinon il démarre aujourd'hui. dateFin = dateDebut + typeAbonnement.dureeMois.
+     * Admin validates: marks the payment VALIDE and activates the Abonnement (statut=ACTIF, dateDebut/dateFin
+     * computed). Strategy: if an active Abonnement already exists for the entreprise, the new one starts at
+     * {@code currentActif.dateFin + 1}; otherwise it starts today. dateFin = dateDebut + type.dureeMois.
      */
     @Override
     @Transactional
@@ -114,8 +121,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     /**
-     * ADMIN rejette : passe le paiement en REJETE avec motif obligatoire. Libère le coupon réservé
-     * (supprime UtilisationCoupon + décrémente coupon.nombreUtilisations).
+     * Admin rejects: marks the payment REJETE with a mandatory reason and releases the reserved coupon
+     * (removes UtilisationCoupon + decrements coupon.nombreUtilisations).
      */
     @Override
     @Transactional
@@ -129,7 +136,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 paiementAbonnementDomainService.markAsRejete(paiement, rejectPaiementRequest.motifRejet()));
     }
 
-    /** Listing paginé filtré ; auto-scopé à l'entreprise du caller s'il n'est pas ADMIN. */
+    /** Paginated filtered listing; auto-scoped to the caller's entreprise when the caller is not ADMIN. */
     @Override
     public Page<PaiementAbonnementResponse> findAll(PaiementAbonnementFilter filter) {
         validatorService.validate(filter);
@@ -137,7 +144,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return paiementAbonnementDomainService.findResponses(scoped);
     }
 
-    /** Retourne un paiement en `Response` après vérification de scoping. */
+    /** Returns a payment as a Response after the scoping check. */
     @Override
     public PaiementAbonnementResponse findResponseById(UUID paiementId) {
         PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
@@ -145,7 +152,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return new PaiementAbonnementResponse(paiement);
     }
 
-    /** Télécharge la preuve d'image associée au paiement (404 si pas de preuve). */
+    /** Downloads the proof image attached to the payment (404 when no proof). */
     @Override
     public ImageDownloadResponse getPreuve(UUID paiementId) {
         PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
@@ -158,51 +165,44 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return new ImageDownloadResponse(preuve.getDocument(), preuve.getContentType());
     }
 
-    /** Lève `ForbiddenException` si l'abonnement n'appartient pas à l'entreprise du caller. */
-    public Abonnement ensureAbonnementBelongsToCurrentEntreprise(Abonnement abonnement) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!abonnement.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("abonnement.notOwned");
-        }
-        return abonnement;
-    }
-
-    /** Lève `BadArgumentException` si l'abonnement n'est pas en EN_ATTENTE (déjà actif ou autre). */
+    /** Throws {@code BadArgumentException} when the Abonnement is not in EN_ATTENTE (already active or otherwise). */
     public void ensureAbonnementIsPending(Abonnement abonnement) {
         if (abonnement.getStatut() != AbonnementStatut.EN_ATTENTE) {
             throw new BadArgumentException("abonnement.notPending");
         }
     }
 
-    /** Lève `BadArgumentException` si un paiement EN_ATTENTE_VALIDATION existe déjà pour cet abonnement. */
+    /** Throws {@code BadArgumentException} when a payment is already EN_ATTENTE_VALIDATION for this Abonnement. */
     public void ensureNoPendingPayment(UUID abonnementId) {
         if (paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId)) {
             throw new BadArgumentException("paiementAbonnement.alreadyPending");
         }
     }
 
-    /** Lève `BadArgumentException` si le paiement n'est pas en EN_ATTENTE_VALIDATION (déjà validé ou rejeté). */
+    /** Throws {@code BadArgumentException} when the payment is not EN_ATTENTE_VALIDATION (already validated or rejected). */
     public void ensurePaiementIsPendingValidation(PaiementAbonnement paiement) {
         if (paiement.getStatut() != StatutPaiementAbonnement.EN_ATTENTE_VALIDATION) {
             throw new BadArgumentException("paiementAbonnement.notPendingValidation");
         }
     }
 
-    /** Recalcule le breakdown au moment du paiement (promotion active à `today`, coupon depuis `UtilisationCoupon`). */
+    /** Recomputes the breakdown at payment time (active promotion at {@code today}, coupon from {@code UtilisationCoupon}). */
     public SubscriptionAmountBreakdown recomputeBreakdown(Abonnement abonnement) {
+        TypePlanAbonnement type = abonnement.getTypePlanAbonnement();
+        PlanAbonnement plan = type.getPlan();
+
         Promotion promotion = promotionDomainService
-                .findFirstActivePromotionForPlan(abonnement.getPlan().getId(), LocalDate.now())
+                .findFirstActivePromotionForPlan(plan.getId(), LocalDate.now())
                 .orElse(null);
 
         Coupon coupon = utilisationCouponDomainService.findCouponIdByAbonnementId(abonnement.getId())
                 .map(couponDomainService::findById)
                 .orElse(null);
 
-        return amountCalculator.calculate(new SubscriptionAmountInputs(
-                abonnement.getPlan(), abonnement.getTypeAbonnement(), promotion, coupon));
+        return amountCalculator.calculate(new SubscriptionAmountInputs(plan, type, promotion, coupon));
     }
 
-    /** Calcule `dateDebut` (today ou `currentActif.dateFin+1`) puis `dateFin` (+ dureeMois) et délègue l'activation au domain service. */
+    /** Computes {@code dateDebut} (today or {@code currentActif.dateFin+1}) then {@code dateFin} (+ dureeMois) and delegates the activation to the domain service. */
     public void activateAbonnement(Abonnement abonnement) {
         UUID entrepriseId = abonnement.getEntreprise().getId();
 
@@ -211,12 +211,12 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 .map(latestDateFin -> latestDateFin.plusDays(1))
                 .orElse(LocalDate.now());
 
-        LocalDate dateFin = dateDebut.plusMonths(abonnement.getTypeAbonnement().getDureeMois());
+        LocalDate dateFin = dateDebut.plusMonths(abonnement.getTypePlanAbonnement().getDureeMois());
 
         abonnementDomainService.activate(abonnement, dateDebut, dateFin);
     }
 
-    /** Libère le coupon réservé : décrémente `coupon.nombreUtilisations` puis supprime l'`UtilisationCoupon` via bulk delete. */
+    /** Releases the reserved coupon: decrements {@code coupon.nombreUtilisations} then deletes the {@code UtilisationCoupon} via bulk delete. */
     public void releaseReservedCouponIfAny(UUID abonnementId) {
         utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId).ifPresent(couponId -> {
             Coupon coupon = couponDomainService.findById(couponId);
@@ -225,7 +225,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         });
     }
 
-    /** Auto-scope le filter à l'entreprise du caller si non-ADMIN. */
+    /** Auto-scopes the filter to the caller's entreprise when the caller is not ADMIN. */
     public PaiementAbonnementFilter scopeFilterForNonAdmin(PaiementAbonnementFilter filter) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         if (currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
@@ -235,7 +235,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 filter.statut(), filter.abonnementId(), currentUser.entrepriseId(), filter.page(), filter.size());
     }
 
-    /** ADMIN peut tout voir ; sinon le paiement doit être dans l'entreprise du caller. */
+    /** ADMIN sees everything; otherwise the payment must belong to the caller's entreprise. */
     public void ensurePaiementAccessibleByCaller(PaiementAbonnement paiement) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         if (currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {

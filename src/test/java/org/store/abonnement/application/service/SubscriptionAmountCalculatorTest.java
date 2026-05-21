@@ -8,7 +8,7 @@ import org.store.abonnement.domain.enums.ReductionType;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.Promotion;
-import org.store.abonnement.domain.model.TypeAbonnement;
+import org.store.abonnement.domain.model.TypePlanAbonnement;
 
 import java.math.BigDecimal;
 
@@ -24,8 +24,8 @@ class SubscriptionAmountCalculatorTest {
         return p;
     }
 
-    private TypeAbonnement type(int dureeMois, ReductionType reductionType, String valeur) {
-        TypeAbonnement t = new TypeAbonnement();
+    private TypePlanAbonnement type(int dureeMois, ReductionType reductionType, String valeur) {
+        TypePlanAbonnement t = new TypePlanAbonnement();
         t.setDureeMois(dureeMois);
         t.setReductionType(reductionType);
         t.setValeurReduction(valeur == null ? null : new BigDecimal(valeur));

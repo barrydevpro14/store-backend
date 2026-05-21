@@ -15,7 +15,7 @@ import org.store.abonnement.application.service.impl.PublicCatalogServiceImpl;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.PromotionDomainService;
-import org.store.abonnement.domain.service.TypeAbonnementDomainService;
+import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 class PublicCatalogServiceImplTest {
 
     @Mock private PlanAbonnementDomainService planAbonnementDomainService;
-    @Mock private TypeAbonnementDomainService typeAbonnementDomainService;
+    @Mock private TypePlanAbonnementDomainService typePlanAbonnementDomainService;
     @Mock private PromotionDomainService promotionDomainService;
 
     @InjectMocks
@@ -63,9 +63,9 @@ class PublicCatalogServiceImplTest {
                 true, summary);
     }
 
-    private SubscriptionTypeResponse type(String nom, int dureeMois) {
+    private SubscriptionTypeResponse type(UUID planId, String planNom, String nom, int dureeMois) {
         return new SubscriptionTypeResponse(
-                UUID.randomUUID(), nom, dureeMois,
+                UUID.randomUUID(), planId, planNom, nom, dureeMois,
                 null, null, dureeMois == 12, true, dureeMois);
     }
 
@@ -73,8 +73,10 @@ class PublicCatalogServiceImplTest {
     void findCatalog_should_aggregate_plans_types_and_promotions() {
         when(planAbonnementDomainService.findPublicResponses())
                 .thenReturn(List.of(plan(planAId, "Starter", 10), plan(planBId, "Pro", 20)));
-        when(typeAbonnementDomainService.findAllActifResponses())
-                .thenReturn(List.of(type("Mensuel", 1), type("Annuel", 12)));
+        when(typePlanAbonnementDomainService.findActifResponsesByPlanId(planAId))
+                .thenReturn(List.of(type(planAId, "Starter", "Mensuel", 1)));
+        when(typePlanAbonnementDomainService.findActifResponsesByPlanId(planBId))
+                .thenReturn(List.of(type(planBId, "Pro", "Annuel", 12)));
         when(promotionDomainService.findActiveGlobalResponses(any(LocalDate.class)))
                 .thenReturn(List.of(promo("Lancement global", null, null)));
         when(promotionDomainService.findActiveScopedResponses(any(LocalDate.class)))
@@ -83,7 +85,12 @@ class PublicCatalogServiceImplTest {
         PublicCatalogResponse response = service.findCatalog();
 
         assertThat(response.plans()).hasSize(2);
-        assertThat(response.subscriptionTypes()).hasSize(2);
+        assertThat(response.plans().get(0).subscriptionTypes())
+                .extracting(SubscriptionTypeResponse::nom)
+                .containsExactly("Mensuel");
+        assertThat(response.plans().get(1).subscriptionTypes())
+                .extracting(SubscriptionTypeResponse::nom)
+                .containsExactly("Annuel");
         assertThat(response.globalPromotions())
                 .extracting(PromotionResponse::nom)
                 .containsExactly("Lancement global");
@@ -96,14 +103,12 @@ class PublicCatalogServiceImplTest {
     @Test
     void findCatalog_should_return_empty_collections_when_no_data() {
         when(planAbonnementDomainService.findPublicResponses()).thenReturn(List.of());
-        when(typeAbonnementDomainService.findAllActifResponses()).thenReturn(List.of());
         when(promotionDomainService.findActiveGlobalResponses(any(LocalDate.class))).thenReturn(List.of());
         when(promotionDomainService.findActiveScopedResponses(any(LocalDate.class))).thenReturn(List.of());
 
         PublicCatalogResponse response = service.findCatalog();
 
         assertThat(response.plans()).isEmpty();
-        assertThat(response.subscriptionTypes()).isEmpty();
         assertThat(response.globalPromotions()).isEmpty();
     }
 
@@ -111,7 +116,7 @@ class PublicCatalogServiceImplTest {
     void findCatalog_should_attach_multiple_promotions_to_same_plan() {
         when(planAbonnementDomainService.findPublicResponses())
                 .thenReturn(List.of(plan(planAId, "Starter", 10)));
-        when(typeAbonnementDomainService.findAllActifResponses()).thenReturn(List.of());
+        when(typePlanAbonnementDomainService.findActifResponsesByPlanId(planAId)).thenReturn(List.of());
         when(promotionDomainService.findActiveGlobalResponses(any(LocalDate.class))).thenReturn(List.of());
         when(promotionDomainService.findActiveScopedResponses(any(LocalDate.class)))
                 .thenReturn(List.of(

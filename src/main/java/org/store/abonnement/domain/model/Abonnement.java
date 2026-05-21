@@ -19,11 +19,9 @@ public class Abonnement extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Entreprise entreprise;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private PlanAbonnement plan;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private TypeAbonnement typeAbonnement;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "type_plan_abonnement_id", nullable = false)
+    private TypePlanAbonnement typePlanAbonnement;
 
     private LocalDate dateDebut;
 

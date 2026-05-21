@@ -15,49 +15,49 @@ import java.util.UUID;
 
 public interface IAbonnementService {
 
-    /**
-     * Création interne d'un abonnement d'essai (utilisé par le flux d'inscription propriétaire).
-     */
-    Abonnement createTrial(Entreprise entreprise, PlanAbonnement plan);
-
-    /**
-     * Souscription OWNER : crée un Abonnement EN_ATTENTE pour l'entreprise du caller.
-     */
+    /** Owner-facing subscribe: creates an EN_ATTENTE Abonnement for the caller's entreprise. */
     SubscribeResponse subscribe(SubscribeRequest subscribeRequest);
 
     /**
-     * Lecture interne par id.
+     * Creates the TRIAL Abonnement attached to the entreprise at OWNER signup. Looks up the first
+     * {@code TypePlanAbonnement} of the active trial plan and builds the row with
+     * {@code statut=TRIAL}, {@code actif=true}, dateDebut today, dateFin today + trial-days.
      */
+    Abonnement createTrialForSignup(Entreprise entreprise);
+
+    /** Internal lookup by id. */
     Abonnement findById(UUID id);
 
-    /**
-     * Active ou désactive le renouvellement automatique sur un abonnement de l'entreprise du caller.
-     */
-    AbonnementResponse updateRenouvellementAuto(UUID abonnementId, RenouvellementAutoRequest request);
+    /** Toggles {@code renouvellementAuto} on an Abonnement owned by the caller's entreprise. */
+    AbonnementResponse updateRenouvellementAuto(UUID abonnementId, RenouvellementAutoRequest renouvellementAutoRequest);
 
-    /**
-     * Listing paginé filtré (ADMIN) : tous abonnements par entreprise / statut / plan.
-     */
+    /** ADMIN listing — all Abonnements filtered by entreprise / statut / plan. No scoping. */
     Page<AbonnementResponse> findAll(AbonnementFilter filter);
 
-    /**
-     * Historique paginé du OWNER : ses abonnements (auto-scopé entreprise du caller).
-     */
+    /** OWNER history paginated — auto-scoped to the caller's entreprise. */
     Page<AbonnementResponse> findMyHistory(AbonnementFilter filter);
 
     /**
-     * Abonnement courant ACTIF du OWNER + jours restants + flag trial + fonctionnalités du plan.
-     * Throw `EntityException("abonnement.noActive")` si aucun abonnement actif.
+     * Returns the caller's "current" Abonnement view (ACTIF or still-running TRIAL). Throws
+     * {@code EntityException("abonnement.noActive")} when neither is present.
      */
     CurrentAbonnementResponse findMyCurrent();
 
-    /**
-     * Vérifie qu'un plan est souscriptible : actif, visible, non-trial.
-     */
+    /** Throws {@code BadArgumentException("plan.notSubscribable")} if the plan is inactive, hidden or marked trial. */
     void ensurePlanSubscribable(PlanAbonnement plan);
 
-    /**
-     * Vérifie que l'abonnement appartient à l'entreprise du caller.
-     */
+    /** Throws {@code ForbiddenException("abonnement.notOwned")} if the Abonnement is not owned by the caller. */
     Abonnement ensureBelongsToCurrentEntreprise(Abonnement abonnement);
+
+    /** Marks the entreprise as having consumed its free trial. Idempotent. */
+    void consumeTrialIfAny(Entreprise entreprise);
+
+    /** Builds the current-view payload from an Abonnement (works for both ACTIF and TRIAL). */
+    CurrentAbonnementResponse buildCurrent(Abonnement abonnement);
+
+    /**
+     * Returns {@code true} when the entreprise has an ACTIF Abonnement OR a still-running TRIAL.
+     * Used as the login subscription gate.
+     */
+    boolean hasActiveSubscription(UUID entrepriseId);
 }

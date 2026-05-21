@@ -58,22 +58,21 @@ class PublicCatalogControllerTest {
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
                 true, null);
 
+        SubscriptionTypeResponse mensuel = new SubscriptionTypeResponse(
+                UUID.randomUUID(), planAId, "Starter", "Mensuel", 1, null, null, false, true, 1);
+        SubscriptionTypeResponse annuel = new SubscriptionTypeResponse(
+                UUID.randomUUID(), planBId, "Pro", "Annuel", 12,
+                ReductionType.POURCENTAGE, new BigDecimal("15"), true, true, 12);
+
         PublicPlanResponse planA = new PublicPlanResponse(
                 planAId, "Starter", "Pour un magasin", new BigDecimal("9900"),
-                1, 3, true, true, true, false, false, 10, List.of());
+                1, 3, true, true, true, false, false, 10, List.of(), List.of(mensuel));
         PublicPlanResponse planB = new PublicPlanResponse(
                 planBId, "Pro", "Pour 5 magasins", new BigDecimal("19900"),
-                5, 20, true, true, true, true, false, 20, List.of(promoPlanB));
-
-        SubscriptionTypeResponse mensuel = new SubscriptionTypeResponse(
-                UUID.randomUUID(), "Mensuel", 1, null, null, false, true, 1);
-        SubscriptionTypeResponse annuel = new SubscriptionTypeResponse(
-                UUID.randomUUID(), "Annuel", 12,
-                ReductionType.POURCENTAGE, new BigDecimal("15"), true, true, 12);
+                5, 20, true, true, true, true, false, 20, List.of(promoPlanB), List.of(annuel));
 
         PublicCatalogResponse catalog = new PublicCatalogResponse(
                 List.of(planA, planB),
-                List.of(mensuel, annuel),
                 List.of(globalPromo));
 
         when(publicCatalogService.findCatalog()).thenReturn(catalog);
@@ -82,11 +81,11 @@ class PublicCatalogControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans.length()").value(2))
                 .andExpect(jsonPath("$.plans[0].nom").value("Starter"))
+                .andExpect(jsonPath("$.plans[0].subscriptionTypes[0].nom").value("Mensuel"))
                 .andExpect(jsonPath("$.plans[1].nom").value("Pro"))
+                .andExpect(jsonPath("$.plans[1].subscriptionTypes[0].nom").value("Annuel"))
                 .andExpect(jsonPath("$.plans[1].promotions.length()").value(1))
                 .andExpect(jsonPath("$.plans[1].promotions[0].nom").value("Black Friday"))
-                .andExpect(jsonPath("$.subscriptionTypes.length()").value(2))
-                .andExpect(jsonPath("$.subscriptionTypes[1].nom").value("Annuel"))
                 .andExpect(jsonPath("$.globalPromotions.length()").value(1))
                 .andExpect(jsonPath("$.globalPromotions[0].nom").value("Lancement"));
     }
@@ -94,12 +93,11 @@ class PublicCatalogControllerTest {
     @Test
     void should_return_200_with_empty_catalog_when_no_data() throws Exception {
         when(publicCatalogService.findCatalog())
-                .thenReturn(new PublicCatalogResponse(List.of(), List.of(), List.of()));
+                .thenReturn(new PublicCatalogResponse(List.of(), List.of()));
 
         mockMvc.perform(get(PublicCatalogController.BASE_PATH))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans.length()").value(0))
-                .andExpect(jsonPath("$.subscriptionTypes.length()").value(0))
                 .andExpect(jsonPath("$.globalPromotions.length()").value(0));
     }
 }
