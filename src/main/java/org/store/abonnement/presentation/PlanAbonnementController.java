@@ -49,7 +49,7 @@ public class PlanAbonnementController {
                                                              @RequestParam(defaultValue = "0") int page,
                                                              @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(planAbonnementService.findAll(
-                new PlanAbonnementFilter(nom, actif, visible, trial, page, size)));
+                new PlanAbonnementFilter(nom, actif, visible, page, size)));
     }
 
     @GetMapping("/{id}")

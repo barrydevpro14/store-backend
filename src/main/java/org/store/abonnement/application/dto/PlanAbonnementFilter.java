@@ -9,7 +9,6 @@ public record PlanAbonnementFilter(
         String nom,
         Boolean actif,
         Boolean visible,
-        Boolean trial,
         @Min(0) int page,
         @Min(1) int size
 ) {

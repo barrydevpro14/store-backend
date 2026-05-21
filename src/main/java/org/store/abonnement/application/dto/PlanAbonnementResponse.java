@@ -18,7 +18,6 @@ public record PlanAbonnementResponse(
         boolean gestionComptabilite,
         boolean actif,
         boolean visible,
-        boolean trial,
         int ordre
 ) {
     public PlanAbonnementResponse(PlanAbonnement plan) {
@@ -35,7 +34,6 @@ public record PlanAbonnementResponse(
                 plan.isGestionComptabilite(),
                 plan.isActif(),
                 plan.isVisible(),
-                plan.isTrial(),
                 plan.getOrdre()
         );
     }

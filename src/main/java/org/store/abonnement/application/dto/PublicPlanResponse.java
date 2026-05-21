@@ -15,7 +15,6 @@ public record PublicPlanResponse(
         boolean gestionVente,
         boolean gestionAchat,
         boolean gestionComptabilite,
-        boolean trial,
         int ordre,
         List<PromotionResponse> promotions,
         List<SubscriptionTypeResponse> subscriptionTypes
@@ -34,12 +33,11 @@ public record PublicPlanResponse(
                               boolean gestionVente,
                               boolean gestionAchat,
                               boolean gestionComptabilite,
-                              boolean trial,
                               int ordre) {
         this(id, nom, description, prix,
                 nombreMagasinsMax, nombreEmployesMax,
                 gestionStock, gestionVente, gestionAchat, gestionComptabilite,
-                trial, ordre, List.of(), List.of());
+                ordre, List.of(), List.of());
     }
 
     /**
@@ -49,7 +47,7 @@ public record PublicPlanResponse(
         return new PublicPlanResponse(id, nom, description, prix,
                 nombreMagasinsMax, nombreEmployesMax,
                 gestionStock, gestionVente, gestionAchat, gestionComptabilite,
-                trial, ordre, newPromotions, subscriptionTypes);
+                 ordre, newPromotions, subscriptionTypes);
     }
 
     /**
@@ -59,6 +57,6 @@ public record PublicPlanResponse(
         return new PublicPlanResponse(id, nom, description, prix,
                 nombreMagasinsMax, nombreEmployesMax,
                 gestionStock, gestionVente, gestionAchat, gestionComptabilite,
-                trial, ordre, promotions, newTypes);
+                 ordre, promotions, newTypes);
     }
 }

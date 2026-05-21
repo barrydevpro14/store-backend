@@ -220,7 +220,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
     /** Throws {@code BadArgumentException("plan.notSubscribable")} when the plan is inactive, hidden or trial. */
     @Override
     public void ensurePlanSubscribable(PlanAbonnement plan) {
-        if (!plan.isActif() || !plan.isVisible() || plan.isTrial()) {
+        if (!plan.isActif() || !plan.isVisible()) {
             throw new BadArgumentException("plan.notSubscribable");
         }
     }

@@ -50,7 +50,7 @@ class PublicCatalogServiceImplTest {
                 id, nom, null, new BigDecimal("9900"),
                 1, 3,
                 true, true, true, false,
-                false, ordre);
+                 ordre);
     }
 
     private PromotionResponse promo(String nom, UUID planId, String planNom) {

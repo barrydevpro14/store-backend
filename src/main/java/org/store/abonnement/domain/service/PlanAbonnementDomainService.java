@@ -20,7 +20,7 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
     }
 
     public Optional<PlanAbonnement> findFirstTrialActif() {
-        return repository.findFirstByTrialTrueAndActifTrue();
+        return repository.findFirstByActifTrue();
     }
 
     public PlanAbonnement create(PlanAbonnementRequest planAbonnementRequest) {
@@ -41,7 +41,6 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
         plan.setGestionComptabilite(planAbonnementRequest.gestionComptabilite());
         plan.setActif(planAbonnementRequest.actif());
         plan.setVisible(planAbonnementRequest.visible());
-        plan.setTrial(planAbonnementRequest.trial());
         plan.setOrdre(planAbonnementRequest.ordre());
         return plan;
     }

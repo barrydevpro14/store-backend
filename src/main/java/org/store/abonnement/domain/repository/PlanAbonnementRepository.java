@@ -15,7 +15,7 @@ import java.util.Optional;
 
 public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement> {
 
-    Optional<PlanAbonnement> findFirstByTrialTrueAndActifTrue();
+    Optional<PlanAbonnement> findFirstByActifTrue();
 
     boolean existsByNom(String nom);
 
@@ -25,7 +25,7 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
             WHERE (:#{#filter.nom}     IS NULL OR LOWER(plan.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
               AND (:#{#filter.actif}   IS NULL OR plan.actif   = :#{#filter.actif})
               AND (:#{#filter.visible} IS NULL OR plan.visible = :#{#filter.visible})
-              AND (:#{#filter.trial}   IS NULL OR plan.trial   = :#{#filter.trial})
+            
             """)
     Page<PlanAbonnementResponse> findResponsesByFilter(@Param("filter") PlanAbonnementFilter filter, Pageable pageable);
 
@@ -34,7 +34,7 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
                     plan.id, plan.nom, plan.description, plan.prix,
                     plan.nombreMagasinsMax, plan.nombreEmployesMax,
                     plan.gestionStock, plan.gestionVente, plan.gestionAchat, plan.gestionComptabilite,
-                    plan.trial, plan.ordre)
+                     plan.ordre)
             FROM PlanAbonnement plan
             WHERE plan.actif = true AND plan.visible = true
             ORDER BY plan.ordre ASC, plan.nom ASC
