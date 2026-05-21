@@ -9,7 +9,62 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-21 — route-level PermissionGuard on Entreprise + Administration modules + ADMIN loses OWNER_ACCESS
+**Date:** 2026-05-21 (evening) — Refonte module Abonnement + OWNER Mon abonnement + Plans CRUD admin + MANAGER employee fix
+
+**Subject:** Large, multi-chunk session on the subscription module. The data model swung several times before landing: trial as separate statut on existing Abonnement → reverted → trial as `Entreprise.trialPlan`+`trialEndDate` → reverted → final state where trial is a full Abonnement row with `AbonnementStatut.TRIAL` bound to a `TypePlanAbonnement` flagged `trial=true`. Plus a one-shot subscription login gate, a complete frontend reshape of the catalogue + OWNER self-service + admin views, a MANAGER employee-creation fix, and finally a Plans CRUD page on the admin side.
+
+**Notable decisions:**
+
+### Backend — Subscription module refonte (commit `c50255c`)
+
+- **Entity rename + FK change**: `TypeAbonnement` → `TypePlanAbonnement` with a mandatory `@ManyToOne(optional=false)` to `PlanAbonnement`. Model locked after iteration: **1 Plan ↔ N Types** (one plan has many durations: Monthly / Trimestly / Annual). REST routes nested: `/api/v1/plans/{planId}/types` (CRUD + activate/deactivate).
+- **Trial model swing**: ended on trial being a full `Abonnement` row with new `AbonnementStatut.TRIAL`, bound to a `TypePlanAbonnement` flagged `trial=true`. `Entreprise` loses `trialPlan`/`trialEndDate`; only `trialUsed` boolean remains. `DataInitializer.ensureTrialPlanHasDefaultType` seeds a single "Essai" `TypePlanAbonnement` with `trial=true` on the trial plan (uniqueness invariant). `TypePlanAbonnementRepository.findByTrial()` becomes a one-line JPQL `WHERE type.trial = true` returning `Optional` (no ordering / limit needed). `RegisterPropertyServiceImpl.create` → `abonnementService.createTrialForSignup(entreprise)` → `AbonnementDomainService.createTrial` creates the TRIAL Abonnement (dateDebut=today, dateFin=+trialDays, statut=TRIAL, actif=true, renouvellementAuto=false).
+- **Login gate**: new `LoginServiceImpl.ensureEntrepriseHasActiveSubscription(principal)` blocks non-ADMIN users whose entreprise has no current Abonnement (ACTIF or TRIAL with `dateFin >= today`). 403 `auth.subscription.required` (FR + EN messages).
+- **Migrations V5..V11**: V5 `TypeAbonnement → TypePlanAbonnement` table rename + FK to plan + `TRUNCATE … CASCADE` to bypass the dangling FKs ; V6 permission codes `SUBSCRIPTION_TYPE_*` → `TYPE_PLAN_*` ; V8 trial backfill for the non-trial-used entreprises ; V9 retrial entreprises stuck in limbo (relaxed WHERE) ; V10 widens the `abonnement.statut` CHECK to accept TRIAL + seeds the trial type + migrates legacy `entreprise.trial_plan_id` / `trial_end_date` to TRIAL Abonnement rows + drops the obsolete columns ; V11 adds `type_plan_abonnement.trial` + backfill.
+- **Response surface tweaks**: `AbonnementResponse` gains `entrepriseSigle` for the admin list (label-only rendering — rule 43). `CurrentAbonnementResponse` flattened to `{abonnement, joursRestants, fonctionnalites}` — `abonnement` is always populated, the statut distinguishes paid vs trial. `consumeTrialIfAny` simplified to `entreprise.trialUsed = true`.
+- **798 / 798 backend tests green** through the chain (including `NonUniqueResult` + `null abonnementService` issue in `PaiementAbonnementServiceImplTest` fixed by mocking `IAbonnementService` after deduplicating `ensureBelongsToCurrentEntreprise`).
+
+### Frontend — Abonnement reshape + OWNER + admin (commits `f4c213d`, `911db81`)
+
+- **Public catalog**: durées nested under each `PublicPlan` (`PlanCard.subscriptionTypes`) — no separate table. Extracted `format-reduction.ts` helper (rule 45) consumed by both `PlanCard` and `SubscriptionTypeTable`. Deleted the old `SubscriptionTypesTable`.
+- **Administration → Abonnements**: new list page (`/dashboard/administration/abonnements`) listing every paid + pending + TRIAL Abonnement. Filters entreprise / statut / plan. Aligned with the new `AbonnementResponse.entrepriseSigle` for label-only rendering.
+- **Administration → Types d'abonnement**: durée CRUD relocated from the (mis-named) "Abonnements" tab. Header Select picks a plan ; CRUD scoped under that plan via the nested REST `/plans/{planId}/types`. Rule 43 fix on the Plan Select via `<SelectValue>{selectedPlanNom}</SelectValue>` (was leaking the UUID).
+- **OWNER Entreprise → Abonnement**: placeholder replaced by `MyAbonnementPage` consuming `/abonnements/me/current`. Branches on `abonnement.statut === 'TRIAL'` (primary-tinted card + sablier icon + jours restants) vs ACTIF (plan + dates + auto-renew toggle). Lists the plan's `fonctionnalites`.
+- **Mutation factory**: `useSubscriptionTypeMutation` extracted — shared boilerplate for the 5 hooks (Create / Update / Activate / Deactivate / Delete).
+- **Frontend DTOs added**: `Abonnement`, `AbonnementStatut` (now includes `TRIAL`), `AbonnementFilter`, `CurrentAbonnement` (always-populated `abonnement`), `PlanFeatures`, `PlanAdmin`, `PlanAbonnementSummary`, `SubscriptionTypeSummary`.
+- **i18n FR + EN**: namespaces `dashboard.administration.abonnements` (admin list), `dashboard.administration.typesAbonnement` (CRUD), `dashboard.entreprise.abonnement` (OWNER), plus `statut.TRIAL`.
+- **MANAGER employee-creation bug**: frontend was asking MANAGER to choose a magasin even though their `magasinId` is on the JWT — `useMagasinList` was 403-ing for them (no `STORE_READ`), the empty list triggered `fields.magasinEmptyHint`. Fix: `EmployeForm` reads `user.magasinId` from auth-store, skips `useMagasinList` when locked (`enabled: !isMagasinLocked`), resolves the locked magasin label via `useMagasin(callerMagasinId)`, pre-fills `defaultValues.magasinId`, and renders a read-only field for MANAGER / SELLER. OWNER (`magasinId=null`) keeps the full Select.
+- **305 / 305 frontend tests green** at commit time.
+
+### Frontend — Plans CRUD admin (this iteration)
+
+- New `Plans` tab under Administration (gated `ADMIN_ACCESS`, placed between Abonnements and Types d'abonnement). Mirrors the existing TypesAbonnement slice.
+- **Domain**: `plan-request.ts`, `plan-admin-filter.ts`, port `IPlanAdminRepository`.
+- **Infrastructure**: `plan-admin-api.ts` rewritten as the typed adapter — `listAll` (selector usage, kept for existing callers), `findPage` (paginated + filtered), `findById`, `create`, `update`, `activate`, `deactivate`, `delete`.
+- **Application**: query keys factory (`planAdminKeys`) + shared `usePlanAdminMutation` factory (rule 45) ; hooks `usePlanAdminList` / `usePlanAdminPage` / `useCreatePlan` / `useUpdatePlan` / `useActivatePlan` / `useDeactivatePlan` / `useDeletePlan` (the latter uses `removeQueries` for the detail key + `invalidateQueries` on lists, distinct cache strategy from the factory).
+- **Presentation**: `PlanAdminFilters` (debounced `nom` search using the **"adjust state in render"** pattern to satisfy `react-hooks/set-state-in-effect` cleanly, no setState-in-effect cascading) + actif/visible Selects ; `PlanForm` (sections identité, description, tarif + limites, fonctionnalités as checkbox group, statut ; `trial` flag **not exposed** — forced `false` on create, preserved on edit, since `DataInitializer` enforces a single trial plan) ; `PlanFormDialog` ; `PlanAdminTable` (row actions: edit / activate-or-deactivate / delete ; XOF-formatted price ; trial badge).
+- **Page** at `/dashboard/administration/plans` with the standard LoadingState / EmptyState / NoResults / Pagination plumbing + confirm dialogs for deactivate / delete.
+- **i18n FR + EN**: full `dashboard.administration.plans` namespace (filters, table, badges, row actions, form fields / validation, empty / no-results / confirm dialogs / toasts).
+
+### Verification
+
+- Backend `./mvnw test` : **798 / 798 green** at `c50255c`.
+- Frontend `vitest run` : **305 / 305 green** at `f4c213d` and `911db81`. Vitest could not run for this final Plans-CRUD chunk because of a pre-existing Node version mismatch in the local env (`v20.15.1` vs `std-env`'s `^20.17.0`) ; eslint + tsc remain clean on every new / modified file.
+- Frontend `tsc --noEmit` : no new errors (only the pre-existing `FormField.test.tsx` Resolver-typing issue, unrelated).
+- 3 commits pushed to `origin/dev` (1 backend + 2 frontend), 4th commit + push covers this final iteration (TODO + SESSIONS + Plans CRUD).
+
+### Open follow-ups (parked)
+
+- **Paiement abonnement admin** (list + validate + reject) — explicitly stopped after Plans CRUD this iteration. Speculative DTO extension to `PaiementAbonnementResponse` (entreprise/plan labels) and the `paiements` tab were reverted clean. To be resumed later — entail backend `PaiementAbonnementResponse` extension or a join-fetch on the lazy chain `paiement.abonnement.entreprise / .typePlanAbonnement.plan`.
+- **Trial uniqueness invariant**: `TypePlanAbonnement.trial` is currently enforced only by `DataInitializer`. Consider a partial unique index `WHERE trial = true` if admin gets ability to toggle the flag later.
+- **Vitest runnable in env**: Node v20.15.1 vs std-env requires ≥ 20.17. Either upgrade nvm default or pin std-env to a Node-20.15-compatible version. Pre-existing.
+- Administration sub-tabs Coupons / Promotions still placeholders.
+- `FormField.test.tsx` RHF resolver typing error still untriaged.
+- Prod ADMIN bootstrap via `@ConfigurationProperties`.
+
+---
+
+## 2026-05-21 — route-level PermissionGuard on Entreprise + Administration modules + ADMIN loses OWNER_ACCESS
 
 **Subject:** Short, focused session. Two related changes — one frontend, one backend — both around making the module isolation between SaaS-admin (Administration) and tenant-owner (Entreprise) airtight.
 
@@ -37,13 +92,6 @@
 - Frontend `vitest run` : **293 / 293 green** (+3 vs 290).
 - Backend `mvn test` : **774 / 774 green**.
 - 2 commits pushed to `origin/dev` (one per repo).
-
-### Open follow-ups (parked)
-
-- Administration sub-tabs Abonnements / Coupons / Promotions still placeholders.
-- Entreprise sub-tabs Abonnement / Paiements still placeholders.
-- Product image upload + product search wired to frontend.
-- Prod ADMIN bootstrap via `@ConfigurationProperties`.
 
 ---
 
