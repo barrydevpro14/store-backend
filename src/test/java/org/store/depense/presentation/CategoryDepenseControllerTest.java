@@ -77,7 +77,7 @@ class CategoryDepenseControllerTest {
     void should_return_200_with_listing() throws Exception {
         CategoryDepenseResponse cat = new CategoryDepenseResponse(UUID.randomUUID(), "Loyer", null, true);
         Page<CategoryDepenseResponse> page = new PageImpl<>(List.of(cat), PageRequest.of(0, 10), 1);
-        when(categoryDepenseService.findAllByCurrentEntreprise(any(Pageable.class))).thenReturn(page);
+        when(categoryDepenseService.findAll(any(org.store.depense.application.dto.CategoryDepenseFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(CategoryDepenseController.BASE_PATH))
                 .andExpect(status().isOk())

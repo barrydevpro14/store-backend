@@ -1,9 +1,9 @@
 package org.store.depense.domain.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.depense.application.dto.CategoryDepenseFilter;
 import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
 import org.store.depense.domain.model.CategoryDepense;
@@ -36,7 +36,7 @@ public class CategoryDepenseDomainService extends GlobalService<CategoryDepense,
         return repository.existsByNomAndEntrepriseId(nom, entrepriseId);
     }
 
-    public Page<CategoryDepenseResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
-        return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
+    public Page<CategoryDepenseResponse> findResponses(UUID entrepriseId, CategoryDepenseFilter filter) {
+        return repository.findResponsesByFilter(entrepriseId, filter, filter.toPageable());
     }
 }

@@ -1,7 +1,7 @@
 package org.store.depense.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.store.depense.application.dto.CategoryDepenseFilter;
 import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
 import org.store.depense.domain.model.CategoryDepense;
@@ -16,7 +16,7 @@ public interface ICategoryDepenseService {
 
     CategoryDepenseResponse findResponseById(UUID id);
 
-    Page<CategoryDepenseResponse> findAllByCurrentEntreprise(Pageable pageable);
+    Page<CategoryDepenseResponse> findAll(CategoryDepenseFilter filter);
 
     CategoryDepenseResponse update(UUID id, CategoryDepenseRequest categoryDepenseRequest);
 

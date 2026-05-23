@@ -1,11 +1,11 @@
 package org.store.depense.application.service.impl;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.depense.application.dto.CategoryDepenseFilter;
 import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
 import org.store.depense.application.service.ICategoryDepenseService;
@@ -58,8 +58,8 @@ public class CategoryDepenseServiceImpl implements ICategoryDepenseService {
     }
 
     @Override
-    public Page<CategoryDepenseResponse> findAllByCurrentEntreprise(Pageable pageable) {
-        return categoryDepenseDomainService.findResponsesByEntrepriseId(currentUserService.getCurrent().entrepriseId(), pageable);
+    public Page<CategoryDepenseResponse> findAll(CategoryDepenseFilter filter) {
+        return categoryDepenseDomainService.findResponses(currentUserService.getCurrent().entrepriseId(), filter);
     }
 
     /** Met à jour la catégorie après contrôle d'appartenance et unicité du nom (si changé). */

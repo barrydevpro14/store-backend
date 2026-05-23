@@ -2,7 +2,7 @@ package org.store.depense.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,11 +13,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.depense.application.dto.CategoryDepenseFilter;
 import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
 import org.store.depense.application.service.ICategoryDepenseService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -40,8 +43,14 @@ public class CategoryDepenseController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('EXPENSE_READ')")
-    public ResponseEntity<Page<CategoryDepenseResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(categoryDepenseService.findAllByCurrentEntreprise(pageable));
+    public ResponseEntity<Page<CategoryDepenseResponse>> list(@RequestParam(required = false) String nom,
+                                                              @RequestParam(required = false) Boolean actif,
+                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                              @RequestParam(defaultValue = "0") int page,
+                                                              @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(categoryDepenseService.findAll(
+                new CategoryDepenseFilter(nom, actif, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")
