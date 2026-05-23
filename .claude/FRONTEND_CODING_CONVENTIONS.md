@@ -529,6 +529,59 @@ Every CRUD list page's filter UI must include the shared `<DateRangeFilter />` c
 
 **Mirror rule backend:** `BACKEND_CODING_CONVENTIONS.md` rule 40 — defines the backend contract these UI fields target.
 
+### 49. Business-semantic filters live in the backend, never in `.filter()`
+
+Whenever a list/grid needs filtering based on business semantics (exclude trial plan from the OWNER subscribe page, hide soft-deleted rows from non-admins, restrict by tenant, drop archived records, …) the filter MUST be implemented on the backend via JPQL — never as a client-side `array.filter(...)` over a generic fetch.
+
+**Forbidden:**
+```ts
+// SubscribePage.tsx — exposes the trial plan over the wire, then hides it client-side
+const catalog = await catalogApi.findPublicCatalog()
+const paidPlans = catalog.plans.filter((plan) => plan.prix > 0)
+```
+
+**Required:**
+```ts
+// SubscribePage.tsx — backend already filtered via JPQL
+const catalog = await catalogApi.findSubscribableCatalog()
+const paidPlans = catalog.plans
+```
+
+**How to apply:**
+- Add a dedicated repository method in the backend (e.g. `findSubscribableResponses()`) with its own JPQL.
+- Expose a dedicated endpoint when the filter is permission-bound (`/catalog/subscribable` gated `SUBSCRIPTION_CREATE` is distinct from `/catalog/public` permitAll).
+- Frontend: extend the repository port + adapter (`catalog-api.ts`) with the new method, add a matching `use<X>` hook, and call it from the page. No `.filter(...)` over the generic catalog.
+- Cosmetic / UI-only filters (sort direction toggles, "show only my drafts" personal preferences not tied to permissions) stay on the client — the rule targets business invariants, not user comfort filters.
+
+**Mirror rule backend:** `BACKEND_CODING_CONVENTIONS.md` rule 41 — defines the JPQL contract these UI calls target.
+
+### 50. Primary CTA goes on the right of the row
+
+In any horizontal action row — filter bars, dialog footers, form button strips — the **primary** action (Submit, Search, Save, Create, Confirm…) sits at the **right** edge, and any secondary action (Reset, Cancel, Discard, Back…) sits to its **left**.
+
+**Required pattern (filter bar):**
+```tsx
+<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+  <Select>…</Select>
+  <Button type="button" variant="ghost" onClick={onReset} className="sm:ml-auto">
+    <X aria-hidden="true" className="size-4" />
+    {t('reset')}
+  </Button>
+  <Button type="button" onClick={onSearch}>
+    <Search aria-hidden="true" className="size-4" />
+    {tCommon('cta')}
+  </Button>
+</div>
+```
+
+The `sm:ml-auto` on the **first** action button pushes the entire trailing group to the right (`flex` collapses the gap before it). Both buttons stay together; any preceding controls (selects, inputs, date pickers) keep their natural left alignment.
+
+**Why:** Western reading order = top-left to bottom-right, so the eye lands last on the primary action. Putting Search before Reset on the left makes the user scan back-and-forth and ambiguates which action commits the form. This convention also matches every shadcn/Material/Apple-HIG dialog footer.
+
+**Forbidden:** `[Search][Reset]` on the left, `[Confirm][Cancel]` ordering, primary buttons floating mid-row.
+
+**Scope:** every `*Filters.tsx`, every dialog footer (`<DialogFooter>` already right-aligns), every form button strip. Filter row sweep landed in the same commit that introduced this rule.
+
 ---
 
 ## Logs / debug
