@@ -9,7 +9,81 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-21 (evening) — Refonte module Abonnement + OWNER Mon abonnement + Plans CRUD admin + MANAGER employee fix
+**Date:** 2026-05-23 — Module Achat end-to-end : create-order modal, paginated line table, details-in-modal, validate-with-initial-paiement, paiement list, cancel guard, frontend rule 51 (required-field asterisk)
+
+**Subject:** Long, multi-chunk session covering the full Achat module from scratch on the frontend plus three coordinated backend hardenings (constraint-violation handler, optional facture numero + auto-generation, optional initial paiement at validate, refuse cancel with paiement). Heavy UX iteration on the create-order surface (paginated line table, autocomplete combobox, NaN-safe number inputs, density passes, asterisk-only required markers, total + pagination on the same row). Receive step removed from the UI. Details page promoted to a modal (with a deep-link page route kept). 13 atomic commits pushed (4 backend + 9 frontend).
+
+**Notable decisions:**
+
+### Backend — Validate / cancel lifecycle hardening (commits `f1905cc`, `5092f59`, `ecc4d6e`)
+
+- **`LigneCommandeAchatResponse.quantiteRecue`** — added the cumulative received-quantity field to the read DTO (constructor + record). Frontend `ligne-commande-achat.ts` mirror updated to match.
+- **`DataIntegrityViolationException` handler** — new `@ExceptionHandler` in `GlobalException` extracts the Hibernate constraint name from the cause chain and maps to a known i18n key (`facture_achat_numero_key` → `factureAchat.numero.alreadyExists`). Unknown constraints fall back to the generic `error.dataIntegrity` (new key in both locales) and log the full stack at ERROR for debug. Defense-in-depth for race conditions or code paths that bypass the service-level pre-check.
+- **`FactureAchat.numero` made optional with auto-generation** — `FactureAchatCreateRequest.numero` dropped `@NotBlank`, kept `@Size(max=100)`. `FactureAchatDomainService.generateNumero()` builds `FACT-yyyyMMdd-HHmmssSSS` via the existing `ReferenceHelper`. `existsByNumero` added on the repository + domain service. `AchatServiceImpl.resolveNumeroFacture(...)` routes: empty → auto-generate ; provided → pre-check via `existsByNumero` and throw `UniqueResourceException("factureAchat.numero.alreadyExists", numero)`.
+- **`FactureAchat.dateEcheance` now required** (`@NotNull`) — comptable needs an échéance for payment tracking. Frontend Zod schema mirrors `.min(1, …)`.
+- **Optional initial paiement at validate** — `AchatValidateRequest` gains `@Valid PaiementAchatRequest paiement` (nullable). `AchatServiceImpl.applyOptionalInitialPaiement(...)` runs inside the same `@Transactional` as facture creation : refuses overpaiement (`paiementAchat.montant.exceedsRemaining`), persists the paiement via `PaiementAchatDomainService.create`, applies it to the facture (`montantPaye` + statut update). Atomic — no half-state if either leg fails.
+- **`ensureNoPaiementRecorded` in cancel** — refuses to cancel a commande whose facture has `montantPaye > 0` with new key `commandeAchat.cancel.hasPaiements`. Rationale : cancel reverses stock entries but doesn't touch paiements ; accepting it would leave an orphan paiement against a facture basculée en ANNULEE. Correct workflow is a refund (hors-scope V1), not a cancel.
+- **`AchatControllerTest`** : new `should_return_200_when_validate_with_blank_numero` (auto-gen path) + renamed `should_return_400_when_validate_facture_dateEcheance_missing` (numero blank is now legal — dateEcheance missing is the new 400 path). `AchatServiceImplTest` injects the new `PaiementAchatDomainService` mock. Backend achat slice **49 / 49 green**.
+
+### Frontend — Searchable Combobox + Label `required` (commits `30fda07`, `470a9f8`)
+
+- **Combobox primitive** (`src/common/presentation/ui/combobox.tsx`) wrapping `@base-ui/react/combobox` with the existing aesthetic. Drop-in replacement for `<Select>` when the list grows past ~30 entries. Takes `{ value, label }[]`, emits the value string.
+- **`<Label required>`** prop renders a trailing red `*` (`aria-hidden`). Pair with `aria-required` on the input. Documented as **frontend rule 51** in `.claude/FRONTEND_CODING_CONVENTIONS.md` and saved as the `required-field-asterisk` feedback memory. Form-by-form rollout same cadence as rule 50. Applied across the three achat forms this session ; existing `(facultatif)` / `(optional)` suffixes dropped from the matching i18n keys.
+
+### Frontend — Product fournisseur catalog (commit `654e727`)
+
+- `ProductFournisseur` DTO + `productFournisseurApi.{list,create}` against `/api/v1/product-suppliers` + `useProductFournisseurList()`. The create-line flow uses this to resolve `(productId, fournisseurId, qualityId)` → existing junction first, otherwise creates one on the fly. The OWNER never has to maintain the supplier-catalog by hand.
+
+### Frontend — Achat module foundation (commits `479a133`, `76bb6fa`, `8acc4ad`)
+
+- **Domain** : ~17 DTOs mirroring backend records (commande, lignes with `quantiteRecue`, statuts + motif-annulation enums, facture + paiement request/response, draft / validate / cancel / update-ligne payloads, summary lookups). `ICommandeAchatRepository` port covers list / findById / findDetailsById / createDraft / validate / cancel / updateLigne / deleteLigne.
+- **Infrastructure** : `commande-achat-api.ts` (orchestration) + `paiement-achat-api.ts` (facture-side list + create).
+- **Application** : `commandeAchatKeys` / `paiementAchatKeys` factories + mutation hooks (`useCreateAchat`, `useValidateAchat`, `useCancelAchat`, `useUpdateLigne`, `useDeleteLigne`, `useCreatePaiementAchat`) with scoped invalidation (paiement creation invalidates both the paiement list AND the commande's full-detail block, so the open details modal reflects the new `montantPaye` / statut).
+- **i18n** : full `dashboard.achats.*` namespace (~550 lines FR + EN) — listing, filters, statut + motifAnnulation enums, dialogs (create / validate / cancel / edit-ligne / paiement / details), moyenPaiement labels, toasts.
+
+### Frontend — Achat read + workflow + paiement UI (commit `dfbee6f`)
+
+- **Listing** : `CommandeAchatTable` (TanStack DataTable + status badges + client-side total HT), `CommandeAchatRowActions` (Voir le détail → callback opens modal, replaced the previous `<Link>`), `CommandeAchatFilters` (rule-50 right-aligned CTA + `DateRangeFilter` per rule 48), `CommandeAchatStatutBadge`, `AchatMagasinSelect` (OWNER picker when JWT has no magasinId).
+- **Details surfaced in a modal** : extracted `AchatDetailsContent` (shared body — status grid, facture summary, lignes table, sub-dialog wiring) + `AchatDetailsDialog` (modal wrapper that routes the workflow action bar into the `DialogFooter` via a `renderActionBar` render-prop). The full-page route at `/dashboard/achats/[id]` reuses the same content component, so the page and the modal never drift.
+- **Workflow dialogs** :
+  * `ValidateAchatDialog` — facture fields (numero optional + hint, dateEcheance required) + an optional "Paiement initial" section riding the same POST. Required-field `*` markers per rule 51. `prixVente > prixAchat` enforced on Ajouter click only (toast, not inline) — kept it out of the Zod schema so it doesn't fire as the user types.
+  * `CancelAchatDialog` — motif + commentaire form.
+  * `EditLigneDialog` — DRAFT-only ligne edit (quantite / prixAchat / prixVente / lot / expiration), same `prixVente > prixAchat` refine.
+- **Paiement** : `AchatFacturePaiementsSection` (compact Date / Moyen / Montant table under the facture summary) + `CreatePaiementAchatDialog` (`montant ≤ montantRestant` enforced). The "Nouveau paiement" button is gated by `PURCHASE_PAY` AND `facture.statut !∈ {PAYEE, ANNULEE}` ; the Cancel button is hidden when `facture.montantPaye > 0` (matches the backend guard).
+- **Receive step removed from the UI** : dropped the Réceptionner button, `ReceiveAchatDialog`, `useReceiveAchat`, the 3 reception DTOs, and the `receive` port + adapter. Backend `receive(...)` endpoint left in place (unused but not deleted).
+
+### Frontend — Create-order UX (commit `c08cb72`)
+
+- Two-zone layout :
+  1. Header (fournisseur + dateCommande) + an inline `AddAchatLineRow` (own RHF sub-form, resets on Add). Combobox primitive for product + quality. NaN-safe numeric inputs via `parseNumericInput` + Controller pattern (`form.reset(EMPTY_LINE)` clears every field visibly — register+valueAsNumber was leaving stale DOM values for the numeric inputs).
+  2. `AchatLineTable` — paginated read-only view of the appended lignes. Display order is reverse-chrono (newest at top) AND auto-jumps to page 1 on each Add — the manager sees confirmation of their last click without scrolling. Per-row delete. Total HT lives on the same row as the pagination controls (right side). Pagination card density tweaked : `[&_[data-slot=select-trigger]]:!h-7` to defeat the primitive's `data-[size=default]:h-12` ; hidden range "X-Y sur Z" helper.
+- Submit resolves each line to a `productFournisseurId` (cached lookup, otherwise `POST /api/v1/product-suppliers`) before posting `/achats`. `CreateAchatDialog` is the modal wrapper, widened to `sm:max-w-6xl xl:max-w-7xl`.
+- Submit button now disabled only on `!hasLines || isSubmitting` (dropped the redundant fournisseur check — Zod catches it).
+- Native HTML `required` attribute removed from line-row inputs (replaced with `aria-required="true"`) : it was tripping the parent form's submit when those inputs were empty after an Ajouter reset.
+
+### Frontend — Routes (commit `4b5acca`)
+
+- `/dashboard/achats` (`AchatsPage`) : rule-47 search-prompt listing scoped by magasinId. After-create flips the new commande's id into `detailsId` and opens the modal instead of routing.
+- `/dashboard/achats/[id]` (`AchatDetailsPage`) : kept for deep-link / bookmark access. Same shared content + thin page chrome.
+
+### Verification
+
+- Backend `./mvnw test -Dtest='AchatControllerTest,AchatServiceImplTest'` : **49 / 49 green** at the final commit. Full suite not re-run end-to-end this session (parked).
+- Frontend `vitest run` : **314 / 314 green** at every checkpoint.
+- Frontend `tsc --noEmit` : clean (only the pre-existing `FormField.test.tsx` Resolver-typing error, unrelated).
+- 13 commits pushed to `origin/dev` : 4 backend (`12f8e2f → ecc4d6e`) + 9 frontend (`30fda07 → 4b5acca`). All atomic per theme.
+
+### Open follow-ups (parked)
+
+- **Cancel "issue refund" workflow** — paiement-blocking cancel is enforced ; the proper refund flow is hors-scope V1. When tackled, also remove the now-orphan `ReceiveAchatDialog` / `useReceiveAchat` / receive endpoints if reception is definitively out.
+- **Vitest runnable in env** — Node v20.15.1 vs `std-env` ≥ 20.17 still pre-existing.
+- **`FormField.test.tsx` RHF resolver typing error** still untriaged.
+- **Full backend test suite re-run** — only the achat slice was verified this session.
+- **MR to main** — GitLab is suggesting MR links on both repos when ready.
+
+---
+
+## 2026-05-21 (evening) — Refonte module Abonnement + OWNER Mon abonnement + Plans CRUD admin + MANAGER employee fix
 
 **Subject:** Large, multi-chunk session on the subscription module. The data model swung several times before landing: trial as separate statut on existing Abonnement → reverted → trial as `Entreprise.trialPlan`+`trialEndDate` → reverted → final state where trial is a full Abonnement row with `AbonnementStatut.TRIAL` bound to a `TypePlanAbonnement` flagged `trial=true`. Plus a one-shot subscription login gate, a complete frontend reshape of the catalogue + OWNER self-service + admin views, a MANAGER employee-creation fix, and finally a Plans CRUD page on the admin side.
 
