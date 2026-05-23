@@ -584,6 +584,26 @@ The `sm:ml-auto` on the **first** action button pushes the entire trailing group
 
 ---
 
+### 51. Required form fields are marked with a trailing `*`
+
+Every input whose form schema requires a non-empty value MUST carry a red asterisk after its label. Optional fields stay unmarked — readers learn the convention once and can scan a form in seconds.
+
+**Implementation:** the shared `<Label>` primitive (`src/common/presentation/ui/label.tsx`) accepts a `required` boolean prop that renders the trailing `<span aria-hidden="true">*</span>` for you. Always pair it with `aria-required` (or the native `required` attribute) on the input element so screen readers still announce the field as mandatory — the `*` itself is decorative.
+
+```tsx
+<Label required>{t('fields.fournisseur')}</Label>
+<Select required aria-required …>…</Select>
+
+<Label>{t('fields.numeroLot')}</Label>     // optional → no *
+<Input type="text" …>
+```
+
+**Forbidden:** `(facultatif)` / `(optional)` suffixes baked into the label text, parenthetical reminders, or asterisks added manually as part of the i18n string — the marker is structural, not editorial. Drop existing `(facultatif)` strings as you sweep each form.
+
+**Scope:** every dialog form and every page-level form. Applied form-by-form as the area is touched, same rollout pattern as rule 50.
+
+---
+
 ## Logs / debug
 
 - **No `console.log` in production**. Temporarily acceptable in dev, remove before committing.
