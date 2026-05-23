@@ -89,7 +89,9 @@ class AchatControllerTest {
     }
 
     private AchatValidateRequest validValidateBody() {
-        return new AchatValidateRequest(new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null));
+        return new AchatValidateRequest(
+                new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
+                null);
     }
 
     private CommandeAchatResponse draftCommandeResponse() {
@@ -154,8 +156,26 @@ class AchatControllerTest {
     }
 
     @Test
-    void should_return_400_when_validate_facture_numero_blank() throws Exception {
-        AchatValidateRequest body = new AchatValidateRequest(new FactureAchatCreateRequest("", LocalDate.of(2026, 5, 15), null));
+    void should_return_200_when_validate_with_blank_numero() throws Exception {
+        // numero blank → backend auto-generates; controller-level validation must let it through.
+        when(achatService.validate(eq(commandeId), any(AchatValidateRequest.class)))
+                .thenReturn(new AchatResponse(receptionneeCommandeResponse(), sampleFacture()));
+
+        AchatValidateRequest body = new AchatValidateRequest(
+                new FactureAchatCreateRequest("", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
+                null);
+
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void should_return_400_when_validate_facture_dateEcheance_missing() throws Exception {
+        AchatValidateRequest body = new AchatValidateRequest(
+                new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null),
+                null);
 
         mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/validate")
                         .contentType(MediaType.APPLICATION_JSON)

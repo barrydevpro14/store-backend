@@ -17,6 +17,8 @@ public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
 
     Optional<FactureAchat> findByCommandeId(UUID commandeId);
 
+    boolean existsByNumero(String numero);
+
     @Query("""
             SELECT new org.store.achat.application.dto.FactureAchatResponse(facture)
             FROM FactureAchat facture

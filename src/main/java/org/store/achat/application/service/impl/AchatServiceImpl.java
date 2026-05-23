@@ -30,11 +30,15 @@ import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.achat.domain.model.LigneCommandeAchat;
+import org.store.achat.application.dto.PaiementAchatCreate;
+import org.store.achat.application.dto.PaiementAchatRequest;
 import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.achat.domain.service.LigneCommandeAchatDomainService;
+import org.store.achat.domain.service.PaiementAchatDomainService;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
+import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
@@ -73,6 +77,7 @@ public class AchatServiceImpl implements IAchatService {
     private final CommandeAchatDomainService commandeAchatDomainService;
     private final LigneCommandeAchatDomainService ligneCommandeAchatDomainService;
     private final FactureAchatDomainService factureAchatDomainService;
+    private final PaiementAchatDomainService paiementAchatDomainService;
     private final EntreeStockDomainService entreeStockDomainService;
     private final StockDomainService stockDomainService;
     private final MouvementStockDomainService mouvementStockDomainService;
@@ -86,6 +91,7 @@ public class AchatServiceImpl implements IAchatService {
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
                             FactureAchatDomainService factureAchatDomainService,
+                            PaiementAchatDomainService paiementAchatDomainService,
                             EntreeStockDomainService entreeStockDomainService,
                             StockDomainService stockDomainService,
                             MouvementStockDomainService mouvementStockDomainService,
@@ -98,6 +104,7 @@ public class AchatServiceImpl implements IAchatService {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
+        this.paiementAchatDomainService = paiementAchatDomainService;
         this.entreeStockDomainService = entreeStockDomainService;
         this.stockDomainService = stockDomainService;
         this.mouvementStockDomainService = mouvementStockDomainService;
@@ -149,18 +156,61 @@ public class AchatServiceImpl implements IAchatService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         FactureAchatCreateRequest factureRequest = achatValidateRequest.facture();
+        String numero = resolveNumeroFacture(factureRequest.numero());
+
         FactureAchat facture = factureAchatDomainService.create(new FactureAchatCreate(
-                commande, factureRequest.numero(),
+                commande, numero,
                 factureRequest.date(), factureRequest.dateEcheance(),
                 montantTotal
         ));
+
+        FactureAchat factureAfterPaiement = applyOptionalInitialPaiement(facture, montantTotal, achatValidateRequest.paiement());
 
         CommandeAchat validee = commandeAchatDomainService.validate(commande);
 
         return new AchatResponse(
                 new CommandeAchatResponse(validee),
-                new FactureAchatResponse(facture)
+                new FactureAchatResponse(factureAfterPaiement)
         );
+    }
+
+    /**
+     * Si l'OWNER a renseigné un paiement initial dans le payload de
+     * validate, on le persiste dans la même transaction. Refuse
+     * l'overpaiement (montant > total) avec un message i18n
+     * `paiementAchat.montant.exceedsRemaining`. Retourne la facture
+     * post-paiement (statut + montantPaye mis à jour) — ou la facture
+     * inchangée si aucun paiement n'a été fourni.
+     */
+    private FactureAchat applyOptionalInitialPaiement(FactureAchat facture, BigDecimal montantTotal, PaiementAchatRequest paiement) {
+        if (paiement == null) return facture;
+
+        if (paiement.montant().compareTo(montantTotal) > 0) {
+            throw new BadArgumentException("paiementAchat.montant.exceedsRemaining", montantTotal);
+        }
+
+        paiementAchatDomainService.create(new PaiementAchatCreate(
+                facture, paiement.montant(), paiement.datePaiement(), paiement.moyen()
+        ));
+        return factureAchatDomainService.applyPaiement(facture, paiement.montant());
+    }
+
+    /**
+     * Résout le numéro de facture : si l'OWNER l'a fourni, vérifie son
+     * unicité (sinon `UniqueResourceException` + message i18n
+     * `factureAchat.numero.alreadyExists`) ; sinon, en génère un au
+     * format `FACT-yyyyMMdd-HHmmssSSS`.
+     */
+    private String resolveNumeroFacture(String numero) {
+        if (numero == null || numero.isBlank()) {
+            return factureAchatDomainService.generateNumero();
+        }
+
+        String trimmed = numero.trim();
+        if (factureAchatDomainService.existsByNumero(trimmed)) {
+            throw new UniqueResourceException("factureAchat.numero.alreadyExists", trimmed);
+        }
+        return trimmed;
     }
 
     /**
@@ -316,6 +366,7 @@ public class AchatServiceImpl implements IAchatService {
         CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
         ensureCancellable(commande);
         ensureWithinCancelWindow(commande);
+        ensureNoPaiementRecorded(commande);
 
         List<EntreeStock> lots = entreeStockDomainService.findByCommandeAchatId(commande.getId());
         ensureNoLotConsumed(lots);
@@ -330,6 +381,24 @@ public class AchatServiceImpl implements IAchatService {
         facture.ifPresent(factureAchatDomainService::cancel);
 
         return new AnnulationAchatResponse(cancelled, retrait.totalQuantite(), retrait.nombreMouvements());
+    }
+
+    /**
+     * Refuse l'annulation d'une commande dont la facture associée a
+     * déjà reçu un paiement (`montantPaye > 0`). Cancel reverse les
+     * mouvements stock mais ne touche pas aux paiements — accepter
+     * l'annulation laisserait un paiement orphelin contre une facture
+     * basculée en ANNULEE. Le workflow correct est d'enregistrer un
+     * remboursement (hors-scope V1), pas d'annuler.
+     */
+    public void ensureNoPaiementRecorded(CommandeAchat commande) {
+        Optional<FactureAchat> facture = factureAchatDomainService.findByCommandeId(commande.getId());
+        facture.ifPresent(f -> {
+            BigDecimal montantPaye = f.getMontantPaye() != null ? f.getMontantPaye() : BigDecimal.ZERO;
+            if (montantPaye.compareTo(BigDecimal.ZERO) > 0) {
+                throw new BadArgumentException("commandeAchat.cancel.hasPaiements");
+            }
+        });
     }
 
     /**

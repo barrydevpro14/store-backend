@@ -75,6 +75,7 @@ class AchatServiceImplTest {
     @Mock private CommandeAchatDomainService commandeAchatDomainService;
     @Mock private LigneCommandeAchatDomainService ligneCommandeAchatDomainService;
     @Mock private FactureAchatDomainService factureAchatDomainService;
+    @Mock private org.store.achat.domain.service.PaiementAchatDomainService paiementAchatDomainService;
     @Mock private EntreeStockDomainService entreeStockDomainService;
     @Mock private StockDomainService stockDomainService;
     @Mock private MouvementStockDomainService mouvementStockDomainService;
@@ -157,7 +158,9 @@ class AchatServiceImplTest {
     }
 
     private AchatValidateRequest sampleValidateRequest() {
-        return new AchatValidateRequest(new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null));
+        return new AchatValidateRequest(
+                new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
+                null);
     }
 
     private LigneCommandeAchat sampleLigne(int quantite, BigDecimal prixAchat, BigDecimal prixVente) {

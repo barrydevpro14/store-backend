@@ -10,6 +10,7 @@ import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.achat.domain.repository.FactureAchatRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.ReferenceHelper;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -44,6 +45,29 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
 
     public Optional<FactureAchat> findByCommandeId(UUID commandeId) {
         return repository.findByCommandeId(commandeId);
+    }
+
+    /**
+     * Indique si une facture portant ce numéro existe déjà. Utilisé en
+     * pré-check avant `create(...)` pour surfacer une erreur métier
+     * propre (400 + message i18n) plutôt que de laisser la contrainte
+     * unique `facture_achat_numero_key` lever un
+     * `DataIntegrityViolationException` au flush.
+     */
+    public boolean existsByNumero(String numero) {
+        return repository.existsByNumero(numero);
+    }
+
+    /**
+     * Génère un numéro de facture unique au format
+     * `FACT-yyyyMMdd-HHmmssSSS` quand l'OWNER laisse le champ vide au
+     * `validate(...)`. Format aligné sur les autres références
+     * métier (`CMD-…`, etc.) — granularité ms suffisante pour éviter
+     * les collisions en pratique ; la contrainte unique DB reste le
+     * garde-fou ultime.
+     */
+    public String generateNumero() {
+        return ReferenceHelper.generate("FACT");
     }
 
     /** Bascule la facture en statut ANNULEE (paiements conservés tels quels pour audit). */
