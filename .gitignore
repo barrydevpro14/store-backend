@@ -34,3 +34,4 @@ build/
 
 ### SonarQube scanner cache ###
 .scannerwork/
+.claude/.obsidian/

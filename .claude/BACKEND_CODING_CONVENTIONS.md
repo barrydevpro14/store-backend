@@ -453,6 +453,41 @@ throw new EntityException("magasin.notFound", magasin.getNom());
 
 **Already-correct precedents:** `utilisateur.email.alreadyExists` is called with the email string (user input → safe). `fournisseur.reference.alreadyExists` is called with the reference (business code → safe). It's specifically `xxx.notFound`-style messages on `findById(...).orElseThrow(...)` chains that tend to leak ids.
 
+### Business-semantic filters live in JPQL, never in the client
+41. **Any filter rooted in business semantics — visibility per role, soft-delete masking, tenant scoping, "subscribable plans = plans with ≥ 1 active non-trial type", etc. — must be implemented as a dedicated JPQL repository method on the backend.** The frontend never re-filters an already-fetched list with `array.filter(...)` to enforce a business rule.
+
+❌ Bad (frontend):
+```ts
+// SubscribePage.tsx
+const paidPlans = catalog.plans.filter((plan) => plan.prix > 0)
+```
+
+✅ Good (backend):
+```java
+// PlanAbonnementRepository.java
+@Query("""
+    SELECT new ...PublicPlanResponse(...)
+    FROM PlanAbonnement plan
+    WHERE plan.actif = true AND plan.visible = true
+      AND EXISTS (
+        SELECT 1 FROM TypePlanAbonnement t
+        WHERE t.plan = plan AND t.actif = true AND t.trial = false
+      )
+    ORDER BY plan.ordre ASC, plan.nom ASC
+    """)
+List<PublicPlanResponse> findSubscribableResponses();
+```
+
+**Why:** filtering on the client (a) leaks data the user shouldn't see over the wire, (b) breaks pagination/counts, (c) couples UI to invariants the server should own, (d) silently regresses if another client (mobile, integration partner) forgets the filter. Doing it in JPQL keeps the rule central and enforceable.
+
+**How to apply:**
+- Add a new repository method with its own JPQL — never overload an existing one with optional `?` params if the semantics differ ("exclude trial plans" is a distinct intent from "list all visible plans").
+- Expose a dedicated endpoint when the filter is permission-bound (e.g. `/api/v1/catalog/subscribable` gated `SUBSCRIPTION_CREATE` ≠ `/api/v1/catalog/public` permitAll).
+- Gate the endpoint via `@PreAuthorize` so URL access is enforced too.
+- Frontend: add the matching adapter method + hook, then call it from the page. No `.filter(...)` over the generic catalog.
+
+**Mirror on the frontend:** rule 49 in `FRONTEND_CODING_CONVENTIONS.md`.
+
 ---
 
 ## Commit conventions
