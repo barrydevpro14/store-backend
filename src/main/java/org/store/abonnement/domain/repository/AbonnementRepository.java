@@ -2,12 +2,14 @@ package org.store.abonnement.domain.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
+import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.common.repository.BaseRepository;
 
 import java.time.LocalDate;
@@ -39,6 +41,11 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     /**
      * Picks the entreprise's "current" subscription: ACTIF first, otherwise a TRIAL whose
      * {@code dateFin >= today}. Expired trials and EN_ATTENTE rows are excluded.
+     *
+     * Single-row return is guaranteed by the {@code abonnement_one_actif_per_entreprise} partial
+     * unique index (V14) + {@link AbonnementDomainService#activate} which EXPIREs any sibling
+     * actif=true row before flipping the paid Abonnement to ACTIF. The ORDER BY still ranks
+     * ACTIF before TRIAL as a defensive tie-break.
      */
     @Query("""
             SELECT abonnement
@@ -63,6 +70,28 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
             """)
     Optional<Abonnement> findCurrentByEntreprise(@Param("entrepriseId") UUID entrepriseId,
                                                  @Param("today") LocalDate today);
+
+    /**
+     * EXPIREs every sibling actif=true Abonnement on the entreprise — to be called from
+     * {@link org.store.abonnement.domain.service.AbonnementDomainService#activate} before a paid
+     * Abonnement is flipped to actif=true, so the {@code abonnement_one_actif_per_entreprise}
+     * partial unique index (V14) is preserved. {@code flushAutomatically=true} forces the UPDATE
+     * to hit the DB before the subsequent {@code save} of the now-actif row, so the constraint
+     * check sees the siblings already deactivated. {@code clearAutomatically} is intentionally
+     * left off — the caller's {@code abonnement} reference must stay managed so the next
+     * {@code save(abonnement)} performs a plain UPDATE, not a {@code merge} round-trip.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE Abonnement abonnement
+            SET abonnement.actif = false,
+                abonnement.statut = org.store.abonnement.domain.enums.AbonnementStatut.EXPIRE
+            WHERE abonnement.entreprise.id = :entrepriseId
+              AND abonnement.id           <> :exceptId
+              AND abonnement.actif         = true
+            """)
+    int expireOtherActifByEntreprise(@Param("entrepriseId") UUID entrepriseId,
+                                     @Param("exceptId") UUID exceptId);
 
     @Query(value = """
             SELECT new org.store.abonnement.application.dto.AbonnementResponse(abonnement)

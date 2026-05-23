@@ -63,7 +63,15 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return save(abonnement);
     }
 
+    /**
+     * Flips the Abonnement to {@code statut=ACTIF, actif=true} and applies the validated paiement's
+     * window. Before flipping, EXPIREs every sibling actif=true row on the entreprise (TRIAL or
+     * older paid ACTIF) so the {@code abonnement_one_actif_per_entreprise} partial unique index
+     * (V14) is preserved.
+     */
     public Abonnement activate(Abonnement abonnement, LocalDate dateDebut, LocalDate dateFin) {
+        repository.expireOtherActifByEntreprise(abonnement.getEntreprise().getId(), abonnement.getId());
+
         abonnement.setDateDebut(dateDebut);
         abonnement.setDateFin(dateFin);
         abonnement.setActif(true);
@@ -77,7 +85,9 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
 
     /**
      * Returns the caller's "current" subscription: ACTIF if a paid one exists, otherwise a TRIAL
-     * still in its window. Expired trials and EN_ATTENTE rows are ignored.
+     * still in its window. Expired trials and EN_ATTENTE rows are ignored. Single-row return is
+     * guaranteed by the partial unique index {@code abonnement_one_actif_per_entreprise} (V14) +
+     * {@link #activate} which deactivates any sibling actif=true row first.
      */
     public Optional<Abonnement> findCurrent(UUID entrepriseId) {
         return repository.findCurrentByEntreprise(entrepriseId, LocalDate.now());

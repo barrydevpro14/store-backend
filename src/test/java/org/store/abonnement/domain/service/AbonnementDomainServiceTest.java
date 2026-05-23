@@ -107,6 +107,8 @@ class AbonnementDomainServiceTest {
     @Test
     void activate_should_set_dates_actif_and_status() {
         Abonnement abonnement = new Abonnement();
+        abonnement.setId(abonnementId);
+        abonnement.setEntreprise(entreprise);
         abonnement.setStatut(AbonnementStatut.EN_ATTENTE);
         abonnement.setActif(false);
         LocalDate dateDebut = LocalDate.of(2026, 5, 21);
@@ -119,6 +121,20 @@ class AbonnementDomainServiceTest {
         assertThat(result.getDateFin()).isEqualTo(dateFin);
         assertThat(result.isActif()).isTrue();
         assertThat(result.getStatut()).isEqualTo(AbonnementStatut.ACTIF);
+    }
+
+    @Test
+    void activate_should_expire_sibling_actif_rows_before_flipping_target() {
+        Abonnement target = new Abonnement();
+        target.setId(abonnementId);
+        target.setEntreprise(entreprise);
+        target.setStatut(AbonnementStatut.EN_ATTENTE);
+        target.setActif(false);
+        when(repository.save(target)).thenAnswer(inv -> inv.getArgument(0));
+
+        service.activate(target, LocalDate.now(), LocalDate.now().plusMonths(1));
+
+        verify(repository).expireOtherActifByEntreprise(entrepriseId, abonnementId);
     }
 
     @Test
