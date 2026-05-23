@@ -21,13 +21,26 @@ public interface TypePlanAbonnementRepository extends BaseRepository<TypePlanAbo
 
     List<TypePlanAbonnement> findByPlanIdOrderByOrdreAsc(UUID planId);
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.abonnement.application.dto.SubscriptionTypeResponse(type)
             FROM TypePlanAbonnement type
             WHERE type.plan.id = :planId
               AND (:#{#filter.nom}        IS NULL OR LOWER(type.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
               AND (:#{#filter.actif}      IS NULL OR type.actif      = :#{#filter.actif})
               AND (:#{#filter.recommande} IS NULL OR type.recommande = :#{#filter.recommande})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR type.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR type.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY type.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(type)
+            FROM TypePlanAbonnement type
+            WHERE type.plan.id = :planId
+              AND (:#{#filter.nom}        IS NULL OR LOWER(type.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
+              AND (:#{#filter.actif}      IS NULL OR type.actif      = :#{#filter.actif})
+              AND (:#{#filter.recommande} IS NULL OR type.recommande = :#{#filter.recommande})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR type.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR type.createdAt <  :#{#filter.createdEndDateTime()})
             """)
     Page<SubscriptionTypeResponse> findResponsesByFilter(@Param("planId") UUID planId,
                                                         @Param("filter") SubscriptionTypeFilter filter,

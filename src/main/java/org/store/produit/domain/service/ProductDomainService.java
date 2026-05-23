@@ -7,6 +7,7 @@ import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.CategoryProduct;
@@ -33,8 +34,8 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         return save(product);
     }
 
-    public Page<ProductResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
-        return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
+    public Page<ProductResponse> findResponsesByFilter(ProductFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 
     public Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {

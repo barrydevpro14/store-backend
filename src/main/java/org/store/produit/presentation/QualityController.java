@@ -2,7 +2,7 @@ package org.store.produit.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,11 +13,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.application.service.IQualityService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -40,8 +43,13 @@ public class QualityController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('QUALITY_READ')")
-    public ResponseEntity<Page<QualityResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(qualityService.findAllByCurrentEntreprise(pageable));
+    public ResponseEntity<Page<QualityResponse>> list(@RequestParam(required = false) String libelle,
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                      @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(qualityService.findAll(
+                new QualityFilter(libelle, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")

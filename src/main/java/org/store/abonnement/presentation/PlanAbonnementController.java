@@ -2,6 +2,7 @@ package org.store.abonnement.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,7 @@ import org.store.abonnement.application.dto.PlanAbonnementRequest;
 import org.store.abonnement.application.dto.PlanAbonnementResponse;
 import org.store.abonnement.application.service.IPlanAbonnementService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -45,11 +47,12 @@ public class PlanAbonnementController {
     public ResponseEntity<Page<PlanAbonnementResponse>> list(@RequestParam(required = false) String nom,
                                                              @RequestParam(required = false) Boolean actif,
                                                              @RequestParam(required = false) Boolean visible,
-                                                             @RequestParam(required = false) Boolean trial,
+                                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
                                                              @RequestParam(defaultValue = "0") int page,
                                                              @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(planAbonnementService.findAll(
-                new PlanAbonnementFilter(nom, actif, visible, page, size)));
+                new PlanAbonnementFilter(nom, actif, visible, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")

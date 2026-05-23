@@ -16,20 +16,30 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
 
     boolean existsByAbonnementIdAndStatut(UUID abonnementId, StatutPaiementAbonnement statut);
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.abonnement.application.dto.PaiementAbonnementResponse(paiement)
             FROM PaiementAbonnement paiement
+            LEFT JOIN FETCH paiement.abonnement abonnement
+            LEFT JOIN FETCH abonnement.entreprise
+            LEFT JOIN FETCH abonnement.typePlanAbonnement type
+            LEFT JOIN FETCH type.plan
+            WHERE (:#{#filter.statutAsEnum()}        IS NULL OR paiement.statut         = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.abonnementId}          IS NULL OR abonnement.id           = :#{#filter.abonnementId})
+              AND (:#{#filter.entrepriseId}          IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR paiement.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR paiement.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY paiement.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(paiement)
+            FROM PaiementAbonnement paiement
             JOIN paiement.abonnement abonnement
-            WHERE (:statut       IS NULL OR paiement.statut    = :statut)
-              AND (:abonnementId IS NULL OR abonnement.id      = :abonnementId)
-              AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
+            WHERE (:#{#filter.statutAsEnum()}        IS NULL OR paiement.statut         = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.abonnementId}          IS NULL OR abonnement.id           = :#{#filter.abonnementId})
+              AND (:#{#filter.entrepriseId}          IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR paiement.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR paiement.createdAt <  :#{#filter.createdEndDateTime()})
             """)
-    Page<PaiementAbonnementResponse> findResponsesByFilter(@Param("statut") StatutPaiementAbonnement statut,
-                                                           @Param("abonnementId") UUID abonnementId,
-                                                           @Param("entrepriseId") UUID entrepriseId,
+    Page<PaiementAbonnementResponse> findResponsesByFilter(@Param("filter") PaiementAbonnementFilter filter,
                                                            Pageable pageable);
-
-    default Page<PaiementAbonnementResponse> findResponsesByFilter(PaiementAbonnementFilter filter) {
-        return findResponsesByFilter(filter.statutAsEnum(), filter.abonnementId(), filter.entrepriseId(), filter.toPageable());
-    }
 }

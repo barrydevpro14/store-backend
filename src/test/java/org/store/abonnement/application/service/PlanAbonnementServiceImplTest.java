@@ -77,7 +77,6 @@ class PlanAbonnementServiceImplTest {
         plan.setGestionComptabilite(false);
         plan.setActif(true);
         plan.setVisible(true);
-        plan.setTrial(false);
         plan.setOrdre(10);
         return plan;
     }
@@ -112,7 +111,6 @@ class PlanAbonnementServiceImplTest {
     @Test
     void findFirstTrialActif_should_return_when_present() {
         PlanAbonnement trial = samplePlan();
-        trial.setTrial(true);
         when(planAbonnementDomainService.findFirstTrialActif()).thenReturn(Optional.of(trial));
 
         assertThat(service.findFirstTrialActif()).isSameAs(trial);
@@ -138,9 +136,9 @@ class PlanAbonnementServiceImplTest {
 
     @Test
     void findAll_should_delegate_to_domain_service() {
-        PlanAbonnementFilter filter = new PlanAbonnementFilter(null, null, null, null, 0, 10);
+        PlanAbonnementFilter filter = new PlanAbonnementFilter(null, null, null, null, null, 0, 10);
         PlanAbonnementResponse sample = new PlanAbonnementResponse(planId, "Starter", null,
-                new BigDecimal("9900"), 1, 3, true, true, true, false, true, true, false, 10);
+                new BigDecimal("9900"), 1, 3, true, true, true, false, true, true, 10);
         Page<PlanAbonnementResponse> page = new PageImpl<>(List.of(sample));
 
         when(planAbonnementDomainService.findResponses(filter)).thenReturn(page);

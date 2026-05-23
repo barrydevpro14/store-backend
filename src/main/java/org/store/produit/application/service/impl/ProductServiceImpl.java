@@ -1,7 +1,6 @@
 package org.store.produit.application.service.impl;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +13,7 @@ import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.service.ICategoryProductService;
@@ -78,11 +78,11 @@ public class ProductServiceImpl implements IProductService {
         return new ProductResponse(product);
     }
 
-    /** Liste paginée des produits de l'entreprise du caller. */
+    /** Liste paginée + filtrée des produits de l'entreprise du caller. */
     @Override
-    public Page<ProductResponse> findAllByCurrentEntreprise(Pageable pageable) {
+    public Page<ProductResponse> findAll(ProductFilter filter) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        return productDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
+        return productDomainService.findResponsesByFilter(filter, entrepriseId);
     }
 
     /** Met à jour les champs du produit après contrôle d'appartenance, d'unicité (si reference changée) et de cohérence catégorie. */

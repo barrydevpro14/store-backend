@@ -68,7 +68,7 @@ class PlanAbonnementControllerTest {
     private PlanAbonnementResponse sample() {
         return new PlanAbonnementResponse(planId, "Starter", "Plan d'entrée de gamme",
                 new BigDecimal("9900"), 1, 3,
-                true, true, true, false, true, true, false, 10);
+                true, true, true, false, true, true, 10);
     }
 
     @Test

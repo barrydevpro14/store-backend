@@ -13,7 +13,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
+import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
+import org.store.abonnement.application.dto.SubscriptionTypeSummaryResponse;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.achat.domain.enums.MoyenPaiement;
@@ -62,8 +64,12 @@ class PaiementAbonnementControllerTest {
     }
 
     private PaiementAbonnementResponse sample(StatutPaiementAbonnement statut) {
+        PlanAbonnementSummaryResponse plan = new PlanAbonnementSummaryResponse(
+                UUID.randomUUID(), "Premium", new BigDecimal("19900"));
+        SubscriptionTypeSummaryResponse type = new SubscriptionTypeSummaryResponse(
+                UUID.randomUUID(), "Annuel", 12);
         return new PaiementAbonnementResponse(
-                paiementId, abonnementId,
+                paiementId, abonnementId, "ACME", plan, type,
                 new BigDecimal("238800"), new BigDecimal("0"), new BigDecimal("238800"),
                 LocalDate.now(), MoyenPaiement.WAVE, "TXN-001",
                 statut, null, UUID.randomUUID(), LocalDateTime.now());
@@ -79,7 +85,10 @@ class PaiementAbonnementControllerTest {
         mockMvc.perform(get(PaiementAbonnementController.BASE_PATH))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].statut").value("EN_ATTENTE_VALIDATION"));
+                .andExpect(jsonPath("$.content[0].statut").value("EN_ATTENTE_VALIDATION"))
+                .andExpect(jsonPath("$.content[0].entrepriseSigle").value("ACME"))
+                .andExpect(jsonPath("$.content[0].plan.nom").value("Premium"))
+                .andExpect(jsonPath("$.content[0].type.nom").value("Annuel"));
     }
 
     @Test

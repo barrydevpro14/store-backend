@@ -174,7 +174,7 @@ class ClientServiceImplTest {
 
     @Test
     void findAllForCurrentUser_should_scope_to_magasin_for_employe() {
-        ClientFilter filter = new ClientFilter(null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
         ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
@@ -189,7 +189,7 @@ class ClientServiceImplTest {
 
     @Test
     void findAllForCurrentUser_should_scope_to_entreprise_for_proprietaire() {
-        ClientFilter filter = new ClientFilter(null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
         ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
@@ -204,7 +204,7 @@ class ClientServiceImplTest {
 
     @Test
     void findAllForCurrentUser_should_forward_nom_and_prenom() {
-        ClientFilter filter = new ClientFilter("Diallo", "Mama", 0, 10);
+        ClientFilter filter = new ClientFilter("Diallo", "Mama", null, null, 0, 10);
         Page<ClientResponse> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(vendeur());

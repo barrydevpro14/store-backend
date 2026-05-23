@@ -6,12 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.application.service.IFournisseurService;
@@ -53,7 +52,6 @@ class FournisseurControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(new FournisseurController(fournisseurService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
-                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .build();
 
         fournisseurId = UUID.randomUUID();
@@ -106,7 +104,7 @@ class FournisseurControllerTest {
     @Test
     void should_return_200_with_page_when_list() throws Exception {
         Page<FournisseurResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(fournisseurService.findAllByCurrentEntreprise(any(Pageable.class))).thenReturn(page);
+        when(fournisseurService.findAll(any(FournisseurFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(FournisseurController.BASE_PATH))
                 .andExpect(status().isOk())

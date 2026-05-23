@@ -2,6 +2,7 @@ package org.store.magasin.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.application.service.IMagasinService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -49,9 +51,12 @@ public class MagasinController {
     @PreAuthorize("hasAuthority('STORE_READ')")
     public ResponseEntity<Page<MagasinResponse>> list(@RequestParam(required = false) String nom,
                                                       @RequestParam(required = false) Boolean actif,
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise(new MagasinFilter(nom, actif, page, size)));
+        return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise(
+                new MagasinFilter(nom, actif, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")

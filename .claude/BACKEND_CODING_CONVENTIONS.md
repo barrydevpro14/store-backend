@@ -376,6 +376,56 @@ The summary (input, flow, rules, exceptions, output) of every business applicati
     - **Reason**: duplication is the #1 source of bugs that only show up after a partial fix lands on one copy. Extraction makes the next change land in one place.
     - **Mirror rule frontend**: `FRONTEND_CODING_CONVENTIONS.md` rule 45 — same meta-rule, applied to React/TS code (handlers, hooks, util modules).
 
+### Created-date filter + ORDER BY createdAt DESC on every CRUD list
+
+40. **Every `<X>Filter` record backing a CRUD list endpoint must expose two optional date fields — `LocalDate createdStartDate` + `LocalDate createdEndDate` — and the matching JPQL query must explicitly `ORDER BY entity.createdAt DESC` in the SELECT.** The pageable carries only `page` + `size` ; sort lives in the JPQL, not in `Sort.by(...)` on `toPageable()`.
+
+    - **Filter record shape**:
+      ```java
+      public record <X>Filter(
+              /* existing business criteria */,
+              LocalDate createdStartDate,
+              LocalDate createdEndDate,
+              @Min(0) int page,
+              @Min(1) int size
+      ) {
+          public Pageable toPageable() {
+              return PageRequest.of(page, size);
+          }
+      }
+      ```
+    - **JPQL pattern**:
+      ```java
+      @Query(value = """
+              SELECT new ...Response(entity)
+              FROM Entity entity
+              WHERE /* business filters */
+                AND (:#{#filter.createdStartDate} IS NULL OR entity.createdAt >= :#{#filter.createdStartDate})
+                AND (:#{#filter.createdEndDate}   IS NULL OR entity.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+              ORDER BY entity.createdAt DESC
+              """,
+             countQuery = """ /* same WHERE, no ORDER BY */ """)
+      Page<...Response> findResponsesByFilter(@Param("filter") <X>Filter filter, Pageable pageable);
+      ```
+    - **Controller**:
+      ```java
+      public ResponseEntity<Page<...>> list(@RequestParam(required = false) /* business params */,
+                                            @RequestParam(required = false) LocalDate createdStartDate,
+                                            @RequestParam(required = false) LocalDate createdEndDate,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "10") int size) { ... }
+      ```
+    - **Inclusive end-of-day semantics**: `createdEndDate` is interpreted as "every row created on or before that day" — JPQL uses `< createdEndDate + 1 day` so the comparison stays inclusive on the entered date without bringing time-of-day into the API.
+
+    - **Why ORDER BY in JPQL, not via `Sort.by(...)` on the Pageable**:
+      - The sort is part of the contract (deterministic listing for the UI) — it belongs to the query definition, not to a runtime call-site.
+      - Avoids surprises when the SpEL filter has a `JOIN FETCH` (Hibernate sometimes refuses `Sort.by` on joined column).
+      - Makes the query self-contained for tooling / EXPLAIN / DBA review.
+
+    - **Scope**: CRUD list endpoints (`/api/v1/<resource>` GET that returns a `Page<...Response>`). Specialized analytics endpoints with their own time dimension (`/reports/margins`, `/stocks/expiring-lots`, `/ventes/caisse/*`) keep their domain date — the createdAt filter is **additive** and applies to *every* CRUD list.
+
+    - **Mirror rule frontend**: `FRONTEND_CODING_CONVENTIONS.md` rule 48 — every CRUD list filter UI exposes a `<DateRangeFilter />` ("Du" / "Au") wired to these two backend params.
+
 ### i18n messages — never interpolate raw IDs
 
 User-facing i18n messages (`messages.properties` + EN counterpart) must never include a UUID or DB id in the placeholder. If the message takes `{0}`, fill it with a human label (`nom`, `libelle`, `username`, …) at the call site — never `entity.getId()`.

@@ -16,13 +16,26 @@ import java.util.UUID;
 
 public interface PromotionRepository extends BaseRepository<Promotion> {
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.abonnement.application.dto.PromotionResponse(promotion)
             FROM Promotion promotion
             LEFT JOIN promotion.plan plan
             WHERE (:#{#filter.nom}    IS NULL OR LOWER(promotion.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
               AND (:#{#filter.actif}  IS NULL OR promotion.actif = :#{#filter.actif})
               AND (:#{#filter.planId} IS NULL OR plan.id         = :#{#filter.planId})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR promotion.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR promotion.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY promotion.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(promotion)
+            FROM Promotion promotion
+            LEFT JOIN promotion.plan plan
+            WHERE (:#{#filter.nom}    IS NULL OR LOWER(promotion.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
+              AND (:#{#filter.actif}  IS NULL OR promotion.actif = :#{#filter.actif})
+              AND (:#{#filter.planId} IS NULL OR plan.id         = :#{#filter.planId})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR promotion.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR promotion.createdAt <  :#{#filter.createdEndDateTime()})
             """)
     Page<PromotionResponse> findResponsesByFilter(@Param("filter") PromotionFilter filter, Pageable pageable);
 

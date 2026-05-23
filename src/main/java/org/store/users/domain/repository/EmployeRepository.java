@@ -22,7 +22,7 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     boolean existsByMagasinIdAndRolePermissionCode(@Param("magasinId") UUID magasinId,
                                                    @Param("permissionCode") String permissionCode);
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
             FROM Employe employe
             WHERE employe.magasin.entreprise.id = :entrepriseId
@@ -31,7 +31,21 @@ public interface EmployeRepository extends BaseRepository<Employe> {
               AND (:#{#filter.role} IS NULL OR employe.account.role.libelle = :#{#filter.role})
               AND (:#{#filter.magasinId} IS NULL OR employe.magasin.id = :#{#filter.magasinId})
               AND (:#{#filter.actif} IS NULL OR employe.account.enabled = :#{#filter.actif})
-            ORDER BY employe.nom ASC, employe.prenom ASC
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR employe.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR employe.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY employe.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(employe)
+            FROM Employe employe
+            WHERE employe.magasin.entreprise.id = :entrepriseId
+              AND (:#{#filter.nom} IS NULL OR LOWER(employe.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
+              AND (:#{#filter.prenom} IS NULL OR LOWER(employe.prenom) LIKE LOWER(CONCAT('%', :#{#filter.prenom}, '%')))
+              AND (:#{#filter.role} IS NULL OR employe.account.role.libelle = :#{#filter.role})
+              AND (:#{#filter.magasinId} IS NULL OR employe.magasin.id = :#{#filter.magasinId})
+              AND (:#{#filter.actif} IS NULL OR employe.account.enabled = :#{#filter.actif})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR employe.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR employe.createdAt <  :#{#filter.createdEndDateTime()})
             """)
     Page<EmployeResponse> findResponsesByFilter(@Param("filter") EmployeFilter filter,
                                                 @Param("entrepriseId") UUID entrepriseId,

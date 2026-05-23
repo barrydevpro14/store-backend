@@ -1,10 +1,10 @@
 package org.store.produit.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.produit.application.dto.ImageMetadataResponse;
+import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.Product;
@@ -30,9 +30,9 @@ public interface IProductService {
     ProductResponse findResponseById(UUID id);
 
     /**
-     * Listing paginé des produits de l'entreprise du caller.
+     * Listing paginé + filtré des produits de l'entreprise du caller.
      */
-    Page<ProductResponse> findAllByCurrentEntreprise(Pageable pageable);
+    Page<ProductResponse> findAll(ProductFilter filter);
 
     /**
      * Modification d'un produit de l'entreprise du caller.

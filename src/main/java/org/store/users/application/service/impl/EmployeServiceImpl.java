@@ -216,7 +216,9 @@ public class EmployeServiceImpl implements IEmployeService {
             return filter;
         }
         return new EmployeFilter(filter.nom(), filter.prenom(), filter.role(),
-                currentUser.magasinId(), filter.actif(), filter.page(), filter.size());
+                currentUser.magasinId(), filter.actif(),
+                filter.createdStartDate(), filter.createdEndDate(),
+                filter.page(), filter.size());
     }
 
     /**

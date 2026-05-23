@@ -1,13 +1,13 @@
 package org.store.produit.application.service.impl;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.CategoryProductFilter;
 import org.store.produit.application.dto.CategoryProductRequest;
 import org.store.produit.application.dto.CategoryProductResponse;
 import org.store.produit.application.service.ICategoryProductService;
@@ -59,11 +59,11 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         return new CategoryProductResponse(categoryProduct);
     }
 
-    /** Liste paginée des catégories de l'entreprise du caller. */
+    /** Liste paginée + filtrée des catégories de l'entreprise du caller. */
     @Override
-    public Page<CategoryProductResponse> findAllByCurrentEntreprise(Pageable pageable) {
+    public Page<CategoryProductResponse> findAll(CategoryProductFilter filter) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        return categoryProductDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
+        return categoryProductDomainService.findResponsesByFilter(filter, entrepriseId);
     }
 
     /** Met à jour libellé et description après contrôle d'appartenance et d'unicité. */

@@ -44,7 +44,7 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
     }
 
     public Page<PaiementAbonnementResponse> findResponses(PaiementAbonnementFilter filter) {
-        return repository.findResponsesByFilter(filter);
+        return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 
     public PaiementAbonnement markAsValide(PaiementAbonnement paiement) {

@@ -1,13 +1,13 @@
 package org.store.produit.application.service.impl;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.application.service.IQualityService;
@@ -59,11 +59,11 @@ public class QualityServiceImpl implements IQualityService {
         return new QualityResponse(quality);
     }
 
-    /** Liste paginée des qualités de l'entreprise du caller. */
+    /** Liste paginée + filtrée des qualités de l'entreprise du caller. */
     @Override
-    public Page<QualityResponse> findAllByCurrentEntreprise(Pageable pageable) {
+    public Page<QualityResponse> findAll(QualityFilter filter) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        return qualityDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
+        return qualityDomainService.findResponsesByFilter(filter, entrepriseId);
     }
 
     /** Met à jour libellé et description après contrôle d'appartenance et d'unicité. */

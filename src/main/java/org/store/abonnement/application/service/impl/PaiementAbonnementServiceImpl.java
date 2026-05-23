@@ -232,7 +232,9 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
             return filter;
         }
         return new PaiementAbonnementFilter(
-                filter.statut(), filter.abonnementId(), currentUser.entrepriseId(), filter.page(), filter.size());
+                filter.statut(), filter.abonnementId(), currentUser.entrepriseId(),
+                filter.createdStartDate(), filter.createdEndDate(),
+                filter.page(), filter.size());
     }
 
     /** ADMIN sees everything; otherwise the payment must belong to the caller's entreprise. */

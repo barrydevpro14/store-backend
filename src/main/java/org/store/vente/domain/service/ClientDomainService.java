@@ -36,6 +36,8 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
                 magasinId,
                 LikePatternHelper.toLikePattern(filter.nom()),
                 LikePatternHelper.toLikePattern(filter.prenom()),
+                filter.createdStartDateTime(),
+                filter.createdEndDateTime(),
                 filter.toPageable());
     }
 
@@ -44,6 +46,8 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
                 entrepriseId,
                 LikePatternHelper.toLikePattern(filter.nom()),
                 LikePatternHelper.toLikePattern(filter.prenom()),
+                filter.createdStartDateTime(),
+                filter.createdEndDateTime(),
                 filter.toPageable());
     }
 }

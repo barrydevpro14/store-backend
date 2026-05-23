@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.application.service.impl.FournisseurServiceImpl;
@@ -151,16 +151,16 @@ class FournisseurServiceImplTest {
     }
 
     @Test
-    void findAllByCurrentEntreprise_should_paginate() {
-        Pageable pageable = PageRequest.of(0, 10);
+    void findAll_should_paginate() {
+        FournisseurFilter filter = new FournisseurFilter(null, null, null, null, 0, 10);
         FournisseurResponse item = new FournisseurResponse(fournisseurId, "Pneus Maroc SARL",
                 null, "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
-        Page<FournisseurResponse> page = new PageImpl<>(List.of(item), pageable, 1);
+        Page<FournisseurResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(fournisseurDomainService.findResponsesByEntrepriseId(entrepriseId, pageable)).thenReturn(page);
+        when(fournisseurDomainService.findResponsesByFilter(filter, entrepriseId)).thenReturn(page);
 
-        Page<FournisseurResponse> result = service.findAllByCurrentEntreprise(pageable);
+        Page<FournisseurResponse> result = service.findAll(filter);
 
         assertThat(result.getContent()).containsExactly(item);
     }

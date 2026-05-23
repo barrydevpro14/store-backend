@@ -177,7 +177,9 @@ public class AbonnementServiceImpl implements IAbonnementService {
         validatorService.validate(filter);
         UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
         AbonnementFilter scoped = new AbonnementFilter(
-                currentEntrepriseId, filter.statut(), filter.planId(), filter.page(), filter.size());
+                currentEntrepriseId, filter.statut(), filter.planId(),
+                filter.createdStartDate(), filter.createdEndDate(),
+                filter.page(), filter.size());
         return abonnementDomainService.findResponses(scoped);
     }
 

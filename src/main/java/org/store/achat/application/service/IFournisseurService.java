@@ -1,7 +1,7 @@
 package org.store.achat.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.domain.model.Fournisseur;
@@ -26,9 +26,9 @@ public interface IFournisseurService {
     FournisseurResponse findResponseById(UUID id);
 
     /**
-     * Listing paginé des fournisseurs de l'entreprise du caller.
+     * Listing paginé + filtré des fournisseurs de l'entreprise du caller.
      */
-    Page<FournisseurResponse> findAllByCurrentEntreprise(Pageable pageable);
+    Page<FournisseurResponse> findAll(FournisseurFilter filter);
 
     /**
      * Modification d'un fournisseur de l'entreprise du caller.

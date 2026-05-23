@@ -156,7 +156,7 @@ class SubscriptionTypeServiceImplTest {
 
     @Test
     void findAll_should_delegate() {
-        SubscriptionTypeFilter filter = new SubscriptionTypeFilter(null, null, null, 0, 10);
+        SubscriptionTypeFilter filter = new SubscriptionTypeFilter(null, null, null, null, null, 0, 10);
         Page<SubscriptionTypeResponse> page = new PageImpl<>(List.of());
         when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(typePlanAbonnementDomainService.findResponses(planId, filter)).thenReturn(page);

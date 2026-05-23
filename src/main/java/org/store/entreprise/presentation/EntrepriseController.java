@@ -2,6 +2,7 @@ package org.store.entreprise.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.security.application.dto.RegisterPropertyRequest;
 import org.store.security.application.service.IRegisterPropertyService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -56,10 +58,12 @@ public class EntrepriseController {
                                                          @RequestParam(required = false) String ninea,
                                                          @RequestParam(required = false) String rccm,
                                                          @RequestParam(required = false) Boolean actif,
+                                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
                                                          @RequestParam(defaultValue = "0") int page,
                                                          @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(entrepriseService.findAll(
-                new EntrepriseFilter(sigle, raisonSociale, ninea, rccm, actif, page, size)));
+                new EntrepriseFilter(sigle, raisonSociale, ninea, rccm, actif, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")

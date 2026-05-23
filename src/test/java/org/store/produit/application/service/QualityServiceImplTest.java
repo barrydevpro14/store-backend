@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.store.produit.application.dto.QualityFilter;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.entreprise.application.service.IEntrepriseService;
@@ -125,15 +125,15 @@ class QualityServiceImplTest {
     }
 
     @Test
-    void findAllByCurrentEntreprise_should_paginate() {
-        Pageable pageable = PageRequest.of(0, 10);
+    void findAll_should_paginate() {
+        QualityFilter filter = new QualityFilter(null, null, null, 0, 10);
         QualityResponse sample = new QualityResponse(qualityId, "Premium", "desc", entrepriseId);
-        Page<QualityResponse> page = new PageImpl<>(List.of(sample), pageable, 1);
+        Page<QualityResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(qualityDomainService.findResponsesByEntrepriseId(entrepriseId, pageable)).thenReturn(page);
+        when(qualityDomainService.findResponsesByFilter(filter, entrepriseId)).thenReturn(page);
 
-        Page<QualityResponse> result = service.findAllByCurrentEntreprise(pageable);
+        Page<QualityResponse> result = service.findAll(filter);
 
         assertThat(result.getContent()).containsExactly(sample);
     }

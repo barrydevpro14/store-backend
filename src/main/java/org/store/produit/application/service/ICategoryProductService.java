@@ -1,7 +1,7 @@
 package org.store.produit.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.store.produit.application.dto.CategoryProductFilter;
 import org.store.produit.application.dto.CategoryProductRequest;
 import org.store.produit.application.dto.CategoryProductResponse;
 import org.store.produit.domain.model.CategoryProduct;
@@ -26,9 +26,9 @@ public interface ICategoryProductService {
     CategoryProductResponse findResponseById(UUID id);
 
     /**
-     * Listing paginé des catégories de l'entreprise du caller.
+     * Listing paginé + filtré des catégories de l'entreprise du caller.
      */
-    Page<CategoryProductResponse> findAllByCurrentEntreprise(Pageable pageable);
+    Page<CategoryProductResponse> findAll(CategoryProductFilter filter);
 
     /**
      * Modification d'une catégorie de l'entreprise du caller.

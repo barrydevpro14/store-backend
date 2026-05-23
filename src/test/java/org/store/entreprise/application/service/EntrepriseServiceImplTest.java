@@ -132,7 +132,7 @@ class EntrepriseServiceImplTest {
     @Test
     void findAll_should_delegate_filter_to_domain_service() {
         org.store.entreprise.application.dto.EntrepriseFilter filter =
-                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, 0, 10);
+                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, null, null, 0, 10);
         EntrepriseResponse sample = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
                 "N", "R", "A", true, true, null);
         Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);

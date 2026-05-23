@@ -19,13 +19,24 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
 
     boolean existsByNom(String nom);
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.abonnement.application.dto.PlanAbonnementResponse(plan)
             FROM PlanAbonnement plan
             WHERE (:#{#filter.nom}     IS NULL OR LOWER(plan.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
               AND (:#{#filter.actif}   IS NULL OR plan.actif   = :#{#filter.actif})
               AND (:#{#filter.visible} IS NULL OR plan.visible = :#{#filter.visible})
-            
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR plan.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR plan.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY plan.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(plan)
+            FROM PlanAbonnement plan
+            WHERE (:#{#filter.nom}     IS NULL OR LOWER(plan.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
+              AND (:#{#filter.actif}   IS NULL OR plan.actif   = :#{#filter.actif})
+              AND (:#{#filter.visible} IS NULL OR plan.visible = :#{#filter.visible})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR plan.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR plan.createdAt <  :#{#filter.createdEndDateTime()})
             """)
     Page<PlanAbonnementResponse> findResponsesByFilter(@Param("filter") PlanAbonnementFilter filter, Pageable pageable);
 

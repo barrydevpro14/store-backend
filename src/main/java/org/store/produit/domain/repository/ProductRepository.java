@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.Product;
 
@@ -13,12 +14,44 @@ import java.util.UUID;
 
 public interface ProductRepository extends BaseRepository<Product> {
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.produit.application.dto.ProductResponse(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
+              AND (
+                  :#{#filter.nom} IS NULL
+                  OR :#{#filter.nom} = ''
+                  OR LOWER(produit.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%'))
+              )
+              AND (
+                  :#{#filter.reference} IS NULL
+                  OR :#{#filter.reference} = ''
+                  OR LOWER(produit.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%'))
+              )
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR produit.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR produit.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY produit.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(produit)
+            FROM Product produit
+            WHERE produit.entreprise.id = :entrepriseId
+              AND (
+                  :#{#filter.nom} IS NULL
+                  OR :#{#filter.nom} = ''
+                  OR LOWER(produit.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%'))
+              )
+              AND (
+                  :#{#filter.reference} IS NULL
+                  OR :#{#filter.reference} = ''
+                  OR LOWER(produit.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%'))
+              )
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR produit.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR produit.createdAt <  :#{#filter.createdEndDateTime()})
             """)
-    Page<ProductResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId, Pageable pageable);
+    Page<ProductResponse> findResponsesByFilter(@Param("filter") ProductFilter filter,
+                                                @Param("entrepriseId") UUID entrepriseId,
+                                                Pageable pageable);
 
     Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 

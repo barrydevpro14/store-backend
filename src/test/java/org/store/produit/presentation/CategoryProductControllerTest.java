@@ -6,14 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.produit.application.dto.CategoryProductFilter;
 import org.store.produit.application.dto.CategoryProductRequest;
 import org.store.produit.application.dto.CategoryProductResponse;
 import org.store.produit.application.service.ICategoryProductService;
@@ -53,7 +52,6 @@ class CategoryProductControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(new CategoryProductController(categoryProductService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
-                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .build();
 
         categoryId = UUID.randomUUID();
@@ -91,7 +89,7 @@ class CategoryProductControllerTest {
     @Test
     void should_return_200_with_page_when_list() throws Exception {
         Page<CategoryProductResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(categoryProductService.findAllByCurrentEntreprise(any(Pageable.class))).thenReturn(page);
+        when(categoryProductService.findAll(any(CategoryProductFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(CategoryProductController.BASE_PATH))
                 .andExpect(status().isOk())

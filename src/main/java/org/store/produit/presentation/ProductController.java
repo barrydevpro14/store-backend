@@ -3,6 +3,7 @@ package org.store.produit.presentation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +21,14 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.produit.application.dto.ImageMetadataResponse;
+import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.dto.ProductSearchResponse;
 import org.store.produit.application.service.IProductSearchService;
 import org.store.produit.application.service.IProductService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,8 +54,14 @@ public class ProductController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('PRODUCT_READ')")
-    public ResponseEntity<Page<ProductResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(productService.findAllByCurrentEntreprise(pageable));
+    public ResponseEntity<Page<ProductResponse>> list(@RequestParam(required = false) String nom,
+                                                      @RequestParam(required = false) String reference,
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                      @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(productService.findAll(
+                new ProductFilter(nom, reference, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/search")

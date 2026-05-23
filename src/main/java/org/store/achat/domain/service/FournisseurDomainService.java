@@ -1,8 +1,8 @@
 package org.store.achat.domain.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.domain.model.Fournisseur;
@@ -32,8 +32,8 @@ public class FournisseurDomainService extends GlobalService<Fournisseur, Fournis
         return save(fournisseur);
     }
 
-    public Page<FournisseurResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
-        return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
+    public Page<FournisseurResponse> findResponsesByFilter(FournisseurFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 
     public Optional<Fournisseur> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {

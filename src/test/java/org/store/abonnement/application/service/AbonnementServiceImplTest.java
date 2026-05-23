@@ -90,7 +90,6 @@ class AbonnementServiceImplTest {
         plan.setPrix(new BigDecimal("19900"));
         plan.setActif(true);
         plan.setVisible(true);
-        plan.setTrial(false);
 
         type = new TypePlanAbonnement();
         type.setId(typeId);
@@ -234,19 +233,6 @@ class AbonnementServiceImplTest {
     }
 
     @Test
-    void subscribe_should_throw_when_plan_is_trial() {
-        plan.setTrial(true);
-        SubscribeRequest request = new SubscribeRequest(planId, typeId, null, false);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(subscriptionTypeService.findById(typeId)).thenReturn(type);
-
-        assertThatThrownBy(() -> service.subscribe(request))
-                .isInstanceOf(BadArgumentException.class);
-    }
-
-    @Test
     void subscribe_should_throw_when_coupon_not_found() {
         SubscribeRequest request = new SubscribeRequest(planId, typeId, "GHOST", false);
 
@@ -346,7 +332,7 @@ class AbonnementServiceImplTest {
 
     @Test
     void findAll_should_delegate_unchanged_for_admin() {
-        AbonnementFilter filter = new AbonnementFilter(null, "ACTIF", null, 0, 10);
+        AbonnementFilter filter = new AbonnementFilter(null, "ACTIF", null, null, null, 0, 10);
         Page<AbonnementResponse> page = new PageImpl<>(java.util.List.of());
         when(abonnementDomainService.findResponses(filter)).thenReturn(page);
 
@@ -355,7 +341,7 @@ class AbonnementServiceImplTest {
 
     @Test
     void findMyHistory_should_force_entrepriseId_from_current_user() {
-        AbonnementFilter filter = new AbonnementFilter(null, "EN_ATTENTE", null, 0, 10);
+        AbonnementFilter filter = new AbonnementFilter(null, "EN_ATTENTE", null, null, null, 0, 10);
         Page<AbonnementResponse> page = new PageImpl<>(java.util.List.of());
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());

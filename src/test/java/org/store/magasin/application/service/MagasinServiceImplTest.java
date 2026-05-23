@@ -177,7 +177,7 @@ class MagasinServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
-        MagasinFilter filter = new MagasinFilter("centre", true, 0, 10);
+        MagasinFilter filter = new MagasinFilter("centre", true, null, null, 0, 10);
         MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "Centre-ville", "Adr", true, entrepriseId, null);
         Page<MagasinResponse> page = new PageImpl<>(List.of(first), PageRequest.of(0, 10), 1);
 

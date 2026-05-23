@@ -1,7 +1,7 @@
 package org.store.produit.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.domain.model.Quality;
@@ -26,9 +26,9 @@ public interface IQualityService {
     QualityResponse findResponseById(UUID id);
 
     /**
-     * Listing paginé des qualités de l'entreprise du caller.
+     * Listing paginé + filtré des qualités de l'entreprise du caller.
      */
-    Page<QualityResponse> findAllByCurrentEntreprise(Pageable pageable);
+    Page<QualityResponse> findAll(QualityFilter filter);
 
     /**
      * Modification d'une qualité de l'entreprise du caller.

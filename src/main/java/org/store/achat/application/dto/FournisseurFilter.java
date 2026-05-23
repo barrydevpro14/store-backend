@@ -1,4 +1,4 @@
-package org.store.abonnement.application.dto;
+package org.store.achat.application.dto;
 
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.PageRequest;
@@ -6,12 +6,10 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
-public record PromotionFilter(
+public record FournisseurFilter(
         String nom,
-        Boolean actif,
-        UUID planId,
+        String reference,
         LocalDate createdStartDate,
         LocalDate createdEndDate,
         @Min(0) int page,

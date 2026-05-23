@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.store.produit.application.dto.CategoryProductFilter;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.entreprise.application.service.IEntrepriseService;
@@ -125,15 +125,15 @@ class CategoryProductServiceImplTest {
     }
 
     @Test
-    void findAllByCurrentEntreprise_should_paginate() {
-        Pageable pageable = PageRequest.of(0, 10);
+    void findAll_should_paginate() {
+        CategoryProductFilter filter = new CategoryProductFilter(null, null, null, 0, 10);
         CategoryProductResponse sample = new CategoryProductResponse(categoryId, "Pneus", "desc", entrepriseId);
-        Page<CategoryProductResponse> page = new PageImpl<>(List.of(sample), pageable, 1);
+        Page<CategoryProductResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(categoryProductDomainService.findResponsesByEntrepriseId(entrepriseId, pageable)).thenReturn(page);
+        when(categoryProductDomainService.findResponsesByFilter(filter, entrepriseId)).thenReturn(page);
 
-        Page<CategoryProductResponse> result = service.findAllByCurrentEntreprise(pageable);
+        Page<CategoryProductResponse> result = service.findAll(filter);
 
         assertThat(result.getContent()).containsExactly(sample);
     }

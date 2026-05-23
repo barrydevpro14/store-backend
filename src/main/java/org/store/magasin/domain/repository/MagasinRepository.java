@@ -13,13 +13,24 @@ import java.util.UUID;
 
 public interface MagasinRepository extends BaseRepository<Magasin> {
 
-    @Query("""
+    @Query(value = """
             SELECT new org.store.magasin.application.dto.MagasinResponse(magasin)
             FROM Magasin magasin
             WHERE magasin.entreprise.id = :entrepriseId
               AND (:#{#filter.nom} IS NULL OR LOWER(magasin.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
               AND (:#{#filter.actif} IS NULL OR magasin.actif = :#{#filter.actif})
-            ORDER BY magasin.nom ASC
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR magasin.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR magasin.createdAt <  :#{#filter.createdEndDateTime()})
+            ORDER BY magasin.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(magasin)
+            FROM Magasin magasin
+            WHERE magasin.entreprise.id = :entrepriseId
+              AND (:#{#filter.nom} IS NULL OR LOWER(magasin.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
+              AND (:#{#filter.actif} IS NULL OR magasin.actif = :#{#filter.actif})
+              AND (:#{#filter.createdStartDateTime()} IS NULL OR magasin.createdAt >= :#{#filter.createdStartDateTime()})
+              AND (:#{#filter.createdEndDateTime()}   IS NULL OR magasin.createdAt <  :#{#filter.createdEndDateTime()})
             """)
     Page<MagasinResponse> findResponsesByFilter(@Param("filter") MagasinFilter filter,
                                                 @Param("entrepriseId") UUID entrepriseId,

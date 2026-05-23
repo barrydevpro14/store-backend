@@ -1,10 +1,10 @@
 package org.store.produit.domain.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.domain.model.Quality;
@@ -27,8 +27,8 @@ public class QualityDomainService extends GlobalService<Quality, QualityReposito
         return save(quality);
     }
 
-    public Page<QualityResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
-        return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
+    public Page<QualityResponse> findResponsesByFilter(QualityFilter filter, UUID entrepriseId) {
+        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 
     public Optional<Quality> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId) {

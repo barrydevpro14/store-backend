@@ -3,16 +3,28 @@ package org.store.abonnement.application.dto;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record SubscriptionTypeFilter(
         String nom,
         Boolean actif,
         Boolean recommande,
+        LocalDate createdStartDate,
+        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
+    public LocalDateTime createdStartDateTime() {
+        return createdStartDate == null ? null : createdStartDate.atStartOfDay();
+    }
+
+    public LocalDateTime createdEndDateTime() {
+        return createdEndDate == null ? null : createdEndDate.plusDays(1).atStartOfDay();
+    }
+
     public Pageable toPageable() {
-        return PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "ordre", "nom"));
+        return PageRequest.of(page, size);
     }
 }

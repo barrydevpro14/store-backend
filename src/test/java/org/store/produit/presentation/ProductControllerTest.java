@@ -18,6 +18,7 @@ import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.produit.application.dto.CategoryProductSummaryResponse;
 import org.store.produit.application.dto.ImageMetadataResponse;
+import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.dto.ProductSearchResponse;
@@ -137,7 +138,7 @@ class ProductControllerTest {
     @Test
     void should_return_200_with_page_when_list() throws Exception {
         Page<ProductResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(productService.findAllByCurrentEntreprise(any(Pageable.class))).thenReturn(page);
+        when(productService.findAll(any(ProductFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(ProductController.BASE_PATH))
                 .andExpect(status().isOk())

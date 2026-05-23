@@ -66,10 +66,10 @@ class PublicCatalogControllerTest {
 
         PublicPlanResponse planA = new PublicPlanResponse(
                 planAId, "Starter", "Pour un magasin", new BigDecimal("9900"),
-                1, 3, true, true, true, false, false, 10, List.of(), List.of(mensuel));
+                1, 3, true, true, true, false, 10, List.of(), List.of(mensuel));
         PublicPlanResponse planB = new PublicPlanResponse(
                 planBId, "Pro", "Pour 5 magasins", new BigDecimal("19900"),
-                5, 20, true, true, true, true, false, 20, List.of(promoPlanB), List.of(annuel));
+                5, 20, true, true, true, true, 20, List.of(promoPlanB), List.of(annuel));
 
         PublicCatalogResponse catalog = new PublicCatalogResponse(
                 List.of(planA, planB),

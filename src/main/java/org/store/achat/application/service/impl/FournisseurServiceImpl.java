@@ -1,9 +1,9 @@
 package org.store.achat.application.service.impl;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.application.service.IFournisseurService;
@@ -59,11 +59,11 @@ public class FournisseurServiceImpl implements IFournisseurService {
         return new FournisseurResponse(fournisseur);
     }
 
-    /** Liste paginée des fournisseurs de l'entreprise du caller. */
+    /** Liste paginée + filtrée des fournisseurs de l'entreprise du caller. */
     @Override
-    public Page<FournisseurResponse> findAllByCurrentEntreprise(Pageable pageable) {
+    public Page<FournisseurResponse> findAll(FournisseurFilter filter) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        return fournisseurDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
+        return fournisseurDomainService.findResponsesByFilter(filter, entrepriseId);
     }
 
     /** Met à jour le fournisseur après contrôle d'appartenance et d'unicité de référence si modifiée. */

@@ -307,7 +307,7 @@ class PaiementAbonnementServiceImplTest {
     @Test
     void findAll_should_force_entrepriseId_for_non_admin() {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        PaiementAbonnementFilter filter = new PaiementAbonnementFilter(null, null, null, 0, 10);
+        PaiementAbonnementFilter filter = new PaiementAbonnementFilter(null, null, null, null, null, 0, 10);
         Page<PaiementAbonnementResponse> page = new PageImpl<>(List.of());
         when(paiementAbonnementDomainService.findResponses(any(PaiementAbonnementFilter.class))).thenReturn(page);
 
@@ -320,7 +320,7 @@ class PaiementAbonnementServiceImplTest {
     @Test
     void findAll_should_keep_filter_for_admin() {
         when(currentUserService.getCurrent()).thenReturn(admin());
-        PaiementAbonnementFilter filter = new PaiementAbonnementFilter(null, null, null, 0, 10);
+        PaiementAbonnementFilter filter = new PaiementAbonnementFilter(null, null, null, null, null, 0, 10);
         Page<PaiementAbonnementResponse> page = new PageImpl<>(List.of());
         when(paiementAbonnementDomainService.findResponses(filter)).thenReturn(page);
 
