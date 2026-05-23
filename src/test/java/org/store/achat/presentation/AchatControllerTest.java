@@ -169,7 +169,7 @@ class AchatControllerTest {
                 UUID.randomUUID(),
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
-                10, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
+                10, 0, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
                 "LOT-001", null
         );
         AchatDetailsResponse details = new AchatDetailsResponse(receptionneeCommandeResponse(), sampleFacture(), List.of(ligne));
@@ -189,7 +189,7 @@ class AchatControllerTest {
                 ligneId,
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
-                200, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
+                200, 0, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
                 "LOT-002", null
         );
         when(achatService.updateLigne(eq(commandeId), eq(ligneId), any(LigneAchatUpdateRequest.class)))
