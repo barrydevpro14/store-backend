@@ -13,6 +13,14 @@ permissions:
   - EMPLOYE_RESET_PASSWORD
   - ADMIN_ACCESS
 
+  # Module-level access tickets — gate the sidebar entry and the module shell.
+  # Per-screen CRUD permissions still filter sub-nav tabs and row actions.
+  - ENTREPRISE_ACCESS
+  - SETTINGS_ACCESS
+  - SALES_ACCESS
+  - PURCHASES_ACCESS
+  - STOCK_ACCESS
+
   # AUTH
   - AUTH_LOGIN
   - AUTH_LOGOUT
@@ -295,6 +303,11 @@ roles:
     description: Propriétaire d'une entreprise
     permissions:
       - OWNER_ACCESS
+      - ENTREPRISE_ACCESS
+      - SETTINGS_ACCESS
+      - SALES_ACCESS
+      - PURCHASES_ACCESS
+      - STOCK_ACCESS
       - EMPLOYE_CREATE
       - EMPLOYE_READ
       - EMPLOYE_UPDATE
@@ -401,6 +414,10 @@ roles:
     assignableToEmploye: true
     permissions:
       - EMPLOYE_ACCESS
+      - SETTINGS_ACCESS
+      - SALES_ACCESS
+      - PURCHASES_ACCESS
+      - STOCK_ACCESS
       - EMPLOYE_CREATE
       - EMPLOYE_READ
       - EMPLOYE_UPDATE
@@ -483,6 +500,8 @@ roles:
     assignableToEmploye: true
     permissions:
       - EMPLOYE_ACCESS
+      - SALES_ACCESS
+      - STOCK_ACCESS
       - AUTH_LOGIN
       - AUTH_LOGOUT
       - AUTH_REFRESH_TOKEN

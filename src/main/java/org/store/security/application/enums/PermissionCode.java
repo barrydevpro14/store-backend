@@ -10,6 +10,15 @@ public enum PermissionCode {
     EMPLOYE_RESET_PASSWORD,
     ADMIN_ACCESS,
 
+    // Module-level access tickets — gate the sidebar entry and the module
+    // shell. Inside each module, per-screen CRUD permissions still filter
+    // sub-nav tabs and row actions.
+    ENTREPRISE_ACCESS,
+    SETTINGS_ACCESS,
+    SALES_ACCESS,
+    PURCHASES_ACCESS,
+    STOCK_ACCESS,
+
     CATEGORY_PRODUCT_CREATE,
     CATEGORY_PRODUCT_READ,
     CATEGORY_PRODUCT_UPDATE,
