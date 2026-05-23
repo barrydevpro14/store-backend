@@ -56,6 +56,21 @@ public interface TypePlanAbonnementRepository extends BaseRepository<TypePlanAbo
     List<SubscriptionTypeResponse> findActifResponsesByPlanId(@Param("planId") UUID planId);
 
     /**
+     * Same shape as {@link #findActifResponsesByPlanId(UUID)} but excludes trial-flagged types. Used by
+     * the OWNER subscribable catalog so the trial duration is never offered as a paid choice — the only
+     * trial type seeds the OWNER's TRIAL Abonnement at signup and is not a valid `subscribe` payload.
+     */
+    @Query("""
+            SELECT new org.store.abonnement.application.dto.SubscriptionTypeResponse(type)
+            FROM TypePlanAbonnement type
+            WHERE type.plan.id = :planId
+              AND type.actif = true
+              AND type.trial = false
+            ORDER BY type.ordre ASC, type.dureeMois ASC
+            """)
+    List<SubscriptionTypeResponse> findActifNonTrialResponsesByPlanId(@Param("planId") UUID planId);
+
+    /**
      * Returns the trial type — the {@code TypePlanAbonnement} flagged {@code trial=true}. The signup
      * flow binds the TRIAL Abonnement to it. Domain invariant: at most one row exists with
      * {@code trial=true} (enforced by {@code DataInitializer}), so neither ORDER BY nor LIMIT is needed.

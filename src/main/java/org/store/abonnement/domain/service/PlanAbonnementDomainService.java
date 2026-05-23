@@ -53,6 +53,11 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
         return repository.findPublicResponses();
     }
 
+    /** Plans the OWNER can subscribe to (≥ 1 active non-trial type) — used by the subscribable catalog. */
+    public List<PublicPlanResponse> findSubscribableResponses() {
+        return repository.findSubscribableResponses();
+    }
+
     public boolean existsByNom(String nom) {
         return repository.existsByNom(nom);
     }

@@ -77,7 +77,7 @@ class PublicCatalogControllerTest {
 
         when(publicCatalogService.findCatalog()).thenReturn(catalog);
 
-        mockMvc.perform(get(PublicCatalogController.BASE_PATH))
+        mockMvc.perform(get(PublicCatalogController.BASE_PATH + "/public"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans.length()").value(2))
                 .andExpect(jsonPath("$.plans[0].nom").value("Starter"))
@@ -95,7 +95,7 @@ class PublicCatalogControllerTest {
         when(publicCatalogService.findCatalog())
                 .thenReturn(new PublicCatalogResponse(List.of(), List.of()));
 
-        mockMvc.perform(get(PublicCatalogController.BASE_PATH))
+        mockMvc.perform(get(PublicCatalogController.BASE_PATH + "/public"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans.length()").value(0))
                 .andExpect(jsonPath("$.globalPromotions.length()").value(0));

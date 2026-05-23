@@ -56,6 +56,11 @@ public class TypePlanAbonnementDomainService extends GlobalService<TypePlanAbonn
         return repository.findActifResponsesByPlanId(planId);
     }
 
+    /** Active non-trial durations of a plan — used by the OWNER subscribable catalog. */
+    public List<SubscriptionTypeResponse> findActifNonTrialResponsesByPlanId(UUID planId) {
+        return repository.findActifNonTrialResponsesByPlanId(planId);
+    }
+
     /** True if another type already carries this name in the same plan. */
     public boolean existsByPlanIdAndNom(UUID planId, String nom) {
         return repository.existsByPlanIdAndNom(planId, nom);

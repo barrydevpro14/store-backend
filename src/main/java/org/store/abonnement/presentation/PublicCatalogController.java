@@ -1,6 +1,7 @@
 package org.store.abonnement.presentation;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,7 +12,7 @@ import org.store.abonnement.application.service.IPublicCatalogService;
 @RequestMapping(PublicCatalogController.BASE_PATH)
 public class PublicCatalogController {
 
-    public static final String BASE_PATH = "/api/v1/catalog/public";
+    public static final String BASE_PATH = "/api/v1/catalog";
 
     private final IPublicCatalogService publicCatalogService;
 
@@ -19,8 +20,14 @@ public class PublicCatalogController {
         this.publicCatalogService = publicCatalogService;
     }
 
-    @GetMapping
+    @GetMapping("/public")
     public ResponseEntity<PublicCatalogResponse> findCatalog() {
         return ResponseEntity.ok(publicCatalogService.findCatalog());
+    }
+
+    @GetMapping("/subscribable")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_CREATE')")
+    public ResponseEntity<PublicCatalogResponse> findSubscribableCatalog() {
+        return ResponseEntity.ok(publicCatalogService.findSubscribableCatalog());
     }
 }

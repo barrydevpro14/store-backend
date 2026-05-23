@@ -43,9 +43,27 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
      */
     @Override
     public PublicCatalogResponse findCatalog() {
+        return buildCatalog(planAbonnementDomainService.findPublicResponses(), this::typesForPlan);
+    }
+
+    /**
+     * OWNER subscribable catalog : drops the trial plan + trial types at JPQL level. Same promotion
+     * mapping as {@link #findCatalog()} ; if a paid plan also carries trial-flagged types they are
+     * removed from the response.
+     */
+    @Override
+    public PublicCatalogResponse findSubscribableCatalog() {
+        return buildCatalog(planAbonnementDomainService.findSubscribableResponses(), this::nonTrialTypesForPlan);
+    }
+
+    /**
+     * Hydrates plans with scoped promotions + per-plan types via the provided loader, and emits the
+     * global promotions at the top level. Factor commun aux deux variants du catalogue.
+     */
+    private PublicCatalogResponse buildCatalog(List<PublicPlanResponse> plansBase,
+                                               java.util.function.Function<UUID, List<SubscriptionTypeResponse>> typeLoader) {
         LocalDate today = LocalDate.now();
 
-        List<PublicPlanResponse> plansBase = planAbonnementDomainService.findPublicResponses();
         List<PromotionResponse> globalPromotions = promotionDomainService.findActiveGlobalResponses(today);
         List<PromotionResponse> scopedPromotions = promotionDomainService.findActiveScopedResponses(today);
 
@@ -55,7 +73,7 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
         List<PublicPlanResponse> plans = plansBase.stream()
                 .map(plan -> plan
                         .withPromotions(promotionsByPlanId.getOrDefault(plan.id(), List.of()))
-                        .withSubscriptionTypes(typesForPlan(plan.id())))
+                        .withSubscriptionTypes(typeLoader.apply(plan.id())))
                 .toList();
 
         return new PublicCatalogResponse(plans, globalPromotions);
@@ -64,5 +82,10 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
     /** Loads the active durations of a given plan, sorted by ordre then dureeMois. */
     private List<SubscriptionTypeResponse> typesForPlan(UUID planId) {
         return typePlanAbonnementDomainService.findActifResponsesByPlanId(planId);
+    }
+
+    /** Loads the active non-trial durations of a given plan — for the OWNER subscribable catalog. */
+    private List<SubscriptionTypeResponse> nonTrialTypesForPlan(UUID planId) {
+        return typePlanAbonnementDomainService.findActifNonTrialResponsesByPlanId(planId);
     }
 }

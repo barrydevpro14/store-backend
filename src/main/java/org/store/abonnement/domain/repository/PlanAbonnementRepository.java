@@ -51,4 +51,30 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
             ORDER BY plan.ordre ASC, plan.nom ASC
             """)
     List<PublicPlanResponse> findPublicResponses();
+
+    /**
+     * Same shape as {@link #findPublicResponses()} but restricted to plans the OWNER can actually
+     * subscribe to. A plan is "subscribable" iff it is active + visible AND has at least one active
+     * non-trial {@code TypePlanAbonnement}. The trial plan (whose active types are all flagged
+     * {@code trial=true}) is therefore filtered out at the DB level — the OWNER already owns a
+     * TRIAL Abonnement at signup, so re-subscribing to it is meaningless.
+     */
+    @Query("""
+            SELECT new org.store.abonnement.application.dto.PublicPlanResponse(
+                    plan.id, plan.nom, plan.description, plan.prix,
+                    plan.nombreMagasinsMax, plan.nombreEmployesMax,
+                    plan.gestionStock, plan.gestionVente, plan.gestionAchat, plan.gestionComptabilite,
+                     plan.ordre)
+            FROM PlanAbonnement plan
+            WHERE plan.actif = true AND plan.visible = true
+              AND EXISTS (
+                SELECT 1
+                FROM TypePlanAbonnement type
+                WHERE type.plan = plan
+                  AND type.actif = true
+                  AND type.trial = false
+              )
+            ORDER BY plan.ordre ASC, plan.nom ASC
+            """)
+    List<PublicPlanResponse> findSubscribableResponses();
 }
