@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.store.common.i18n.IMessageSourceService;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -54,6 +56,49 @@ public class GlobalException {
         String message = messageSourceService.getMessage("validation.error");
         logger.warn("HTTP 400 - {} ({})", message, errors);
         return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message, errors), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Filet de sécurité pour les violations de contraintes uniques qui
+     * échappent au pré-check métier (race condition, code qui ne passe
+     * pas par le service, etc.). Mappe le nom de la contrainte vers
+     * une clé i18n explicite ; en l'absence de mapping connu on
+     * retourne un message générique mais on log la cause complète
+     * pour faciliter le debugging.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> dataIntegrityViolation(DataIntegrityViolationException ex) {
+        String constraintName = extractConstraintName(ex);
+        String messageKey = CONSTRAINT_MESSAGE_KEYS.get(constraintName);
+
+        if (messageKey != null) {
+            String message = messageSourceService.getMessage(messageKey);
+            logger.warn("HTTP 409 - {} (constraint={})", message, constraintName);
+            return new ResponseEntity<>(new ErrorResponse(HttpStatus.CONFLICT.value(), message, null), HttpStatus.CONFLICT);
+        }
+
+        String fallback = messageSourceService.getMessage("error.dataIntegrity");
+        logger.error("HTTP 409 - unmapped constraint violation (constraint={})", constraintName, ex);
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.CONFLICT.value(), fallback, null), HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Mapping connu nom-de-contrainte-DB → clé i18n. Étendre au cas
+     * par cas quand un nouveau cas de race condition apparaît.
+     */
+    private static final Map<String, String> CONSTRAINT_MESSAGE_KEYS = Map.of(
+            "facture_achat_numero_key", "factureAchat.numero.alreadyExists"
+    );
+
+    private String extractConstraintName(DataIntegrityViolationException ex) {
+        Throwable cause = ex.getCause();
+        while (cause != null) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException constraintEx) {
+                return constraintEx.getConstraintName();
+            }
+            cause = cause.getCause();
+        }
+        return null;
     }
 
 
