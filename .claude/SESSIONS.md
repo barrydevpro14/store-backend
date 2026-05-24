@@ -9,7 +9,89 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-24 — Close the achat stock-update gap: fold reception into a single `receive()` operation, drop VALIDEE + PARTIELLEMENT_RECEPTIONNEE statuts (backend + frontend)
+**Date:** 2026-05-24 (long day) — Full vente UI, stock UI, inventaire module, role management, reporting pages, notification module, CORS fix, client + stock filtering fixes
+
+**Subject:** Massive multi-session day. Delivered the complete frontend for vente (sales) and stock, a physical inventory module, roles management with custom role creation, reporting dashboards for ADMIN/OWNER/MANAGER, and a notification bell+page. Multiple backend fixes along the way (vente statut rename, CORS PATCH, stock date filter sentinel, client PSQLException). 10 atomic commits pushed to `origin/dev` on both repos.
+
+**Notable decisions:**
+
+### Backend
+
+- **CommandeVente statuts renamed** DRAFT | VALIDATE | CANCEL (dropped NOT_DELIVERED + DELIVERED + ANNULEE). V16 Flyway migration backfills existing rows. 791/791 green.
+- **SALE_* and PURCHASE_* removed from ADMIN** role (14 permissions deleted from YAML + SQL DELETE from DB — RBAC sync is additive-only). ADMIN keeps CLIENT_*, STOCK_*, REPORT_SALES.
+- **CORS PATCH** added to `Access-Control-Allow-Methods` (was missing, blocked threshold + role assignment calls).
+- **Stock server-side filtering** — `StockFilter` gains `productName` (LIKE via LikePatternHelper on nom + reference) + `startDate`/`endDate`. Sentinel dates 2000-01-01 / 2099-12-31 used instead of IS NULL OR pattern (same Hibernate 7 / PostgreSQL type-inference fix as ClientRepository).
+- **Client PSQLException fix** — `ClientRepository` had `:createdStart IS NULL OR` causing `42P18`. Fixed with sentinel values in `ClientDomainService.createdStart/End()` + removed IS NULL guards.
+- **Client telephone required** — `@NotBlank` added to `ClientRequest.telephone`.
+- **Role creation API** — `POST /api/v1/roles` + `PUT /api/v1/roles/{id}/permissions` (gated `USER_ASSIGN_ROLE`). Uniqueness check on libelle. `RoleDomainService.setPermissions()` helper. `INVENTORY_ACCESS` permission added. `USER_ASSIGN_ROLE` granted to MANAGER.
+- **Employee quick role assignment** — `PATCH /api/v1/employees/{id}/role` (AssignRoleRequest) reuses existing role guards without requiring all other fields.
+- **Notification API** — `NotificationRepository` + `NotificationDomainService` extended with JPQL queries (findByDestinataire paginated, countUnread, markAllAsRead @Modifying bulk). Full service + controller: `GET /api/v1/notifications`, `GET /count-unread`, `PATCH /{id}/lue`, `PATCH /lue-tout`.
+
+### Frontend (10 backend + 5 frontend commits)
+
+- **Vente module** (53 files) — full CRUD: CreateVenteDialog chains POST /ventes + POST /{id}/validate (DRAFT invisible to employee). Product Combobox auto-fills prixUnitaire from prixVente. Client Combobox with phone in label (searchable by name OR phone). Optional initial payment active by default. Lines table paginated. Details modal with facture + paiements + cancel + edit ligne. Statuts: DRAFT | VALIDATE | CANCEL.
+- **Stock module** (40 files) — 3 sub-tabs (Stock, Mouvements, Lots expirants). StockFilters: product Combobox (useProductSearch minChars=0) + DateRangeFilter, server-side. AjustementDialog, ThresholdDialog. StockKpiStrip (valeur + nb produits + sous seuil).
+- **Inventaire module** (34 files) — INVENTORY_ACCESS sidebar entry. Full lifecycle: EN_COURS → BILAN → CLOTURE | ANNULE. AddLigneDialog (product Combobox), BilanDialog (caisse + roulement + dateDebutPeriode), RapportSection (financial breakdown BENEFICE/PERTE/EQUILIBRE), inline qty edit in details.
+- **Roles management** (Settings, USER_ASSIGN_ROLE) — role cards (name, description, employee count). Employee-role table with Changer le rôle dialog + Désactiver/Réactiver. Nouveau rôle dialog with grouped permission checkboxes (ADMIN/OWNER/MANAGER-level excluded, group-level select-all).
+- **Reporting pages** — `/dashboard/administration/reporting` (ADMIN, first tab): entreprises + ACTIF/TRIAL subs + pending payments + revenue YTD + recent payments table. `/dashboard/reporting` (SALES_ACCESS sidebar, MANAGER/SELLER/OWNER): today's revenue/orders + stock value + below-threshold + pending purchases + top 5 products today.
+- **Notification bell + page** — Bell in header between LocaleSwitcher and UserMenu, red badge (99+ cap), polls every 60 s. `/dashboard/notifications`: paginated list, unread highlighted, per-item mark-read, mark-all-read.
+- **Client form fixes** — `isMagasinLocked` pattern applied (MANAGER/SELLER auto-fill, OWNER Select). `isCreate` prop unblocks submit. Telephone required. Client Combobox in CreateVenteDialog shows phone in label.
+- **Entreprise module** — Reporting tab removed (duplicate; standalone sidebar entry serves all).
+
+### Open follow-ups (parked)
+
+- Notification creation logic (EMAIL/SMS/PUSH channels, scheduler that walks Echeance) — entity+API exists, no sender yet.
+- FormField.test.tsx RHF resolver typing error — pre-existing, parked.
+- MR to main — GitLab suggesting MR links on both repos.
+
+---
+
+## 2026-05-24 (continuation) — Close the DRAFT-abandon gap: `DELETE /api/v1/achats/{id}` + "Supprimer le brouillon" UI
+
+**Subject:** Short focused follow-up to the morning session. After folding reception into a single `receive()` and pruning the intermediate statuts, the only remaining exit-less state on the achat lifecycle was DRAFT — `ensureCancellable` had been narrowed to `RECEPTIONNEE`, and `ensureNotLastLigne` made it impossible to abandon a brouillon by deleting all its lignes. The user noticed the "cancel commande" affordance was nowhere visible and asked option **A** (add a way to abandon a DRAFT). 2 atomic commits pushed to `origin/dev` on both repos.
+
+**Notable decisions:**
+
+### Backend — DRAFT discard endpoint (commit `592d35f`)
+
+- **`DELETE /api/v1/achats/{commandeId}`** gated `PURCHASE_DELETE`. New method `IAchatService.deleteDraft(UUID)` + impl in `AchatServiceImpl` : guards `ensureBelongsToCurrentEntreprise` + reuses the existing `ensureCommandeIsDraft` ; then `commandeAchatDomainService.delete(commande)`. The existing `@OneToMany(cascade = ALL)` on `CommandeAchat.lignes` cascade-deletes the lignes. No facture / stock / paiement to defaire — DRAFT guarantees no materialisation.
+- **No new i18n keys** — the existing `commandeAchat.notDraft` (FR + EN) already covers the misuse path. Symmetric with how `deleteLigne` reuses the same guard.
+- **Permission choice** : `PURCHASE_DELETE` (already in the YAML — used by `deleteLigne`). Same actor (OWNER / MANAGER / ADMIN) who can edit/delete individual lignes can now also nuke the whole brouillon.
+- **Tests** : 3 service (`deleteDraft_should_delete_commande_when_draft` / `should_throw_when_commande_not_draft` / `should_propagate_forbidden_when_not_owned`) + 1 controller (`should_return_204_when_delete_draft`). Backend suite : **791 / 791 green** (+4 vs 787).
+
+### Frontend — "Supprimer le brouillon" action (commit `36ce1cf`)
+
+- **Port + adapter** : `ICommandeAchatRepository.deleteDraft(commandeId)` added next to the existing `cancel(...)` + `receive(...)` ; adapter calls `apiClient.delete('/api/v1/achats/{id}')`.
+- **New hook `useDeleteAchat`** : invalidates `commandeAchatKeys.lists()`, then **removes** (not invalidates) both `commandeAchatKeys.detail(id)` and `commandeAchatKeys.fullDetail(id)` so no stale refetch hits a now-404 detail endpoint. Same defensive pattern we used on the magasin logo delete (round-3 fix from 2026-05-19).
+- **`AchatDetailsContent`** : new state `deleteDraftOpen` + handler `handleDeleteDraftConfirmed`. Action bar gains a destructive button "Supprimer le brouillon" guarded by `canShowDeleteDraft = isDraft && canDelete`. New optional `onCommandeDeleted?: () => void` prop fires after a successful delete so the host can close itself.
+- **Host wiring** : `AchatDetailsDialog` passes `onCommandeDeleted = () => onOpenChange(false)` to close the modal ; `AchatDetailsPage` (deep-link route) passes `() => router.push('/dashboard/achats')` so the now-stale URL doesn't 404 the user.
+- **`ConfirmDialog`** : reuses the existing destructive shared primitive. Title / description / confirm-label localized.
+- **i18n FR + EN** added : `dashboard.achats.details.actions.deleteDraft`, `dashboard.achats.details.confirmDelete.{title, description, confirm}`, `dashboard.achats.toasts.draftDeleted`.
+- **Vitest** : **314 / 314 green** (unchanged baseline — consistent with `useCancelAchat` / `useReceiveAchat` pattern of shipping without bespoke hook tests).
+- **`tsc --noEmit`** : clean modulo the pre-existing `FormField.test.tsx` resolver typing error (still parked).
+
+### Commit strategy
+
+2 atomic commits, each compiling + tests passing independently :
+1. `592d35f` **feat(achat)**: allow DRAFT discard via DELETE endpoint — `IAchatService` + impl + controller + 4 tests (5 files, +74 lines).
+2. `36ce1cf` **feat(achat)**: wire "Supprimer le brouillon" action on DRAFT details — port + adapter + new hook + UI + i18n FR/EN (8 files, +104/-5).
+
+### Verification
+
+- Backend `./mvnw test` : **791 / 791 green** end-to-end.
+- Frontend `vitest run` : **314 / 314 green** (via interactive shell using nvm default node v20.19.5).
+- Frontend `tsc --noEmit` : clean (parked FormField.test.tsx error untouched).
+- Pushed to `origin/dev` on both repos : backend `be9825a..592d35f`, frontend `988a8fa..36ce1cf`. GitLab is suggesting MR links on both.
+
+### Open follow-ups (parked)
+
+- **Cancel "issue refund" workflow** — paiement-blocking cancel still enforced (RECEPTIONNEE with `montantPaye > 0`) ; the proper refund flow is hors-scope V1. Same item as the morning session.
+- **`FormField.test.tsx` RHF resolver typing error** — pre-existing across multiple sessions, still untriaged.
+- **MR to main** — GitLab suggesting MR links on both repos.
+
+---
+
+## 2026-05-24 (morning) — Close the achat stock-update gap: fold reception into a single `receive()` operation, drop VALIDEE + PARTIELLEMENT_RECEPTIONNEE statuts (backend + frontend)
 
 **Subject:** Short, focused refactor. Previous session shipped the achat module end-to-end but removed the reception UI, leaving validated commandes stuck without ever entering stock (validate created only the facture ; the orphaned `POST /receptions` endpoint that materialized stock was unreachable from the UI). User pushed back: "did you update stock while achat process?". After a short clarifier (Option A restore the partial-reception flow vs Option B fold reception into validate) the user picked B, then asked to rename the merged method `validate` → `receive` and to drop the now-unreachable intermediate statuts entirely. 3 atomic commits pushed to `origin/dev` on both repos.
 
