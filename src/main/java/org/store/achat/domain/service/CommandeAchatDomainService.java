@@ -42,18 +42,6 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
         return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }
 
-    /** Bascule la commande en statut VALIDEE (facture créée, montant gelé ; stock pas encore physiquement reçu). */
-    public CommandeAchat validate(CommandeAchat commande) {
-        commande.setStatut(CommandeAchatStatut.VALIDEE);
-        return save(commande);
-    }
-
-    /** Bascule la commande en statut PARTIELLEMENT_RECEPTIONNEE après une réception partielle de stock. */
-    public CommandeAchat markPartiallyReceived(CommandeAchat commande) {
-        commande.setStatut(CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE);
-        return save(commande);
-    }
-
     /** Bascule la commande en statut RECEPTIONNEE quand toutes les lignes ont été totalement reçues. */
     public CommandeAchat markReceptionnee(CommandeAchat commande) {
         commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
