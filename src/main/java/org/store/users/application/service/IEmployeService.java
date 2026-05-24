@@ -5,6 +5,7 @@ import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
+import org.store.users.application.dto.AssignRoleRequest;
 import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.domain.model.Employe;
 
@@ -22,6 +23,9 @@ public interface IEmployeService {
     EmployeResponse findResponseById(UUID id);
 
     EmployeResponse update(UUID id, EmployeUpdateRequest request);
+
+    /** Change uniquement le rôle d'un employé (sans modifier les autres champs). */
+    EmployeResponse assignRole(UUID id, AssignRoleRequest request);
 
     void deactivate(UUID id);
 

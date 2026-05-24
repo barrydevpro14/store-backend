@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.security.application.dto.ResetPasswordRequest;
+import org.store.users.application.dto.AssignRoleRequest;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
@@ -86,6 +87,13 @@ public class EmployeController {
     public ResponseEntity<Void> activate(@PathVariable UUID id) {
         employeService.activate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasAuthority('USER_ASSIGN_ROLE')")
+    public ResponseEntity<EmployeResponse> assignRole(@PathVariable UUID id,
+                                                      @Valid @RequestBody AssignRoleRequest request) {
+        return ResponseEntity.ok(employeService.assignRole(id, request));
     }
 
     @PostMapping("/{id}/reset-password")

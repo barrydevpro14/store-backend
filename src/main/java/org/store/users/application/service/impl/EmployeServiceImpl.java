@@ -156,6 +156,23 @@ public class EmployeServiceImpl implements IEmployeService {
         return new EmployeResponse(employe);
     }
 
+    /** Change uniquement le rôle — les coordonnées et le magasin restent inchangés. */
+    @Override
+    @Transactional
+    public EmployeResponse assignRole(UUID id, org.store.users.application.dto.AssignRoleRequest request) {
+        validatorService.validate(request);
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        Employe employe = findAccessibleEmploye(id, currentUser);
+
+        Role newRole = roleService.findByLibelle(request.role());
+        List<String> newRolePermissions = permissionsService.findAllByRoleId(newRole.getId());
+        ensureRoleAllowed(newRole);
+        ensureCallerCanAssignRole(currentUser, newRolePermissions);
+
+        employeDomainService.changeRole(employe, newRole);
+        return new EmployeResponse(employe);
+    }
+
     /** Desactive l'employe (account.enabled = false) — l'historique reste intact, login bloque. */
     @Override
     @Transactional
