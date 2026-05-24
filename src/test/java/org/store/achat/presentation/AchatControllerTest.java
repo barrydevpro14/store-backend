@@ -10,9 +10,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.achat.application.dto.AchatDraftResponse;
+import org.store.achat.application.dto.AchatReceiveRequest;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
-import org.store.achat.application.dto.AchatValidateRequest;
 import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.CommandeAchatResponse;
@@ -22,9 +22,6 @@ import org.store.achat.application.dto.FournisseurSummaryResponse;
 import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
-import org.store.achat.application.dto.LigneReceptionRequest;
-import org.store.achat.application.dto.ReceptionAchatRequest;
-import org.store.achat.application.dto.ReceptionAchatResponse;
 import org.store.achat.application.service.IAchatService;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
@@ -88,8 +85,8 @@ class AchatControllerTest {
                 List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", null)));
     }
 
-    private AchatValidateRequest validValidateBody() {
-        return new AchatValidateRequest(
+    private AchatReceiveRequest validReceiveBody() {
+        return new AchatReceiveRequest(
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
                 null);
     }
@@ -143,41 +140,41 @@ class AchatControllerTest {
     }
 
     @Test
-    void should_return_200_when_validate_purchase() throws Exception {
-        when(achatService.validate(eq(commandeId), any(AchatValidateRequest.class)))
+    void should_return_200_when_receive_purchase() throws Exception {
+        when(achatService.receive(eq(commandeId), any(AchatReceiveRequest.class)))
                 .thenReturn(new AchatResponse(receptionneeCommandeResponse(), sampleFacture()));
 
-        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/validate")
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receive")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validValidateBody())))
+                        .content(objectMapper.writeValueAsString(validReceiveBody())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.commande.statut").value("RECEPTIONNEE"))
                 .andExpect(jsonPath("$.facture.numero").value("FAC-001"));
     }
 
     @Test
-    void should_return_200_when_validate_with_blank_numero() throws Exception {
+    void should_return_200_when_receive_with_blank_numero() throws Exception {
         // numero blank → backend auto-generates; controller-level validation must let it through.
-        when(achatService.validate(eq(commandeId), any(AchatValidateRequest.class)))
+        when(achatService.receive(eq(commandeId), any(AchatReceiveRequest.class)))
                 .thenReturn(new AchatResponse(receptionneeCommandeResponse(), sampleFacture()));
 
-        AchatValidateRequest body = new AchatValidateRequest(
+        AchatReceiveRequest body = new AchatReceiveRequest(
                 new FactureAchatCreateRequest("", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
                 null);
 
-        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/validate")
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receive")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void should_return_400_when_validate_facture_dateEcheance_missing() throws Exception {
-        AchatValidateRequest body = new AchatValidateRequest(
+    void should_return_400_when_receive_facture_dateEcheance_missing() throws Exception {
+        AchatReceiveRequest body = new AchatReceiveRequest(
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), null),
                 null);
 
-        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/validate")
+        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receive")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
@@ -280,48 +277,6 @@ class AchatControllerTest {
         AnnulationAchatRequest body = new AnnulationAchatRequest("", null);
 
         mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/annuler")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_200_when_receive_purchase() throws Exception {
-        ReceptionAchatResponse response = new ReceptionAchatResponse(
-                commandeId, "CMD-AUTO", CommandeAchatStatut.PARTIELLEMENT_RECEPTIONNEE,
-                60, 60, 100
-        );
-        when(achatService.receive(eq(commandeId), any(ReceptionAchatRequest.class))).thenReturn(response);
-
-        ReceptionAchatRequest body = new ReceptionAchatRequest(List.of(
-                new LigneReceptionRequest(ligneId, 60, "LOT-RECEIVED", null)));
-
-        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receptions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.statut").value("PARTIELLEMENT_RECEPTIONNEE"))
-                .andExpect(jsonPath("$.totalQuantiteRecueDansCetteReception").value(60))
-                .andExpect(jsonPath("$.totalQuantiteRecueGlobale").value(60))
-                .andExpect(jsonPath("$.totalQuantiteCommandee").value(100));
-    }
-
-    @Test
-    void should_return_400_when_receive_empty_lignes() throws Exception {
-        ReceptionAchatRequest body = new ReceptionAchatRequest(List.of());
-
-        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receptions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_400_when_receive_quantite_zero() throws Exception {
-        ReceptionAchatRequest body = new ReceptionAchatRequest(List.of(
-                new LigneReceptionRequest(ligneId, 0, null, null)));
-
-        mockMvc.perform(post(AchatController.BASE_PATH + "/" + commandeId + "/receptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());

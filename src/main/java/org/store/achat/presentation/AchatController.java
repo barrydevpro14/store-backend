@@ -14,15 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.achat.application.dto.AchatDraftResponse;
+import org.store.achat.application.dto.AchatReceiveRequest;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
-import org.store.achat.application.dto.AchatValidateRequest;
 import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
-import org.store.achat.application.dto.ReceptionAchatRequest;
-import org.store.achat.application.dto.ReceptionAchatResponse;
 import org.store.achat.application.service.IAchatService;
 
 import java.util.UUID;
@@ -51,18 +49,11 @@ public class AchatController {
         return ResponseEntity.ok(achatService.findDetailsById(commandeId));
     }
 
-    @PostMapping("/{commandeId}/validate")
+    @PostMapping("/{commandeId}/receive")
     @PreAuthorize("hasAuthority('PURCHASE_APPROVE')")
-    public ResponseEntity<AchatResponse> validate(@PathVariable UUID commandeId,
-                                                  @Valid @RequestBody AchatValidateRequest achatValidateRequest) {
-        return ResponseEntity.ok(achatService.validate(commandeId, achatValidateRequest));
-    }
-
-    @PostMapping("/{commandeId}/receptions")
-    @PreAuthorize("hasAuthority('PURCHASE_APPROVE')")
-    public ResponseEntity<ReceptionAchatResponse> receive(@PathVariable UUID commandeId,
-                                                          @Valid @RequestBody ReceptionAchatRequest receptionAchatRequest) {
-        return ResponseEntity.ok(achatService.receive(commandeId, receptionAchatRequest));
+    public ResponseEntity<AchatResponse> receive(@PathVariable UUID commandeId,
+                                                 @Valid @RequestBody AchatReceiveRequest achatReceiveRequest) {
+        return ResponseEntity.ok(achatService.receive(commandeId, achatReceiveRequest));
     }
 
     @PutMapping("/orders/{commandeId}/lignes/{ligneId}")
