@@ -12,7 +12,7 @@ public record ClientRequest(
         @NotBlank @Size(max = 255) String nom,
         @Size(max = 255) String prenom,
         @Email @Size(max = 255) String email,
-        @Phone @Size(max = 30) String telephone,
+        @NotBlank @Phone @Size(max = 30) String telephone,
         @Size(max = 255) String adresse,
         @NotNull UUID magasinId
 ) {

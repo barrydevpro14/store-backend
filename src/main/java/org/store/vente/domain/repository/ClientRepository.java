@@ -26,8 +26,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             WHERE client.magasin.id = :magasinId
               AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
               AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
-              AND (:createdStart IS NULL OR client.createdAt >= :createdStart)
-              AND (:createdEnd   IS NULL OR client.createdAt <  :createdEnd)
+              AND client.createdAt >= :createdStart
+              AND client.createdAt <  :createdEnd
             ORDER BY client.createdAt DESC
             """,
            countQuery = """
@@ -36,8 +36,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             WHERE client.magasin.id = :magasinId
               AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
               AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
-              AND (:createdStart IS NULL OR client.createdAt >= :createdStart)
-              AND (:createdEnd   IS NULL OR client.createdAt <  :createdEnd)
+              AND client.createdAt >= :createdStart
+              AND client.createdAt <  :createdEnd
             """)
     Page<ClientResponse> findResponsesByMagasinId(@Param("magasinId") UUID magasinId,
                                                   @Param("nomPattern") String nomPattern,
@@ -52,8 +52,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             WHERE client.magasin.entreprise.id = :entrepriseId
               AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
               AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
-              AND (:createdStart IS NULL OR client.createdAt >= :createdStart)
-              AND (:createdEnd   IS NULL OR client.createdAt <  :createdEnd)
+              AND client.createdAt >= :createdStart
+              AND client.createdAt <  :createdEnd
             ORDER BY client.createdAt DESC
             """,
            countQuery = """
@@ -62,8 +62,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             WHERE client.magasin.entreprise.id = :entrepriseId
               AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
               AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
-              AND (:createdStart IS NULL OR client.createdAt >= :createdStart)
-              AND (:createdEnd   IS NULL OR client.createdAt <  :createdEnd)
+              AND client.createdAt >= :createdStart
+              AND client.createdAt <  :createdEnd
             """)
     Page<ClientResponse> findResponsesByEntrepriseId(@Param("entrepriseId") UUID entrepriseId,
                                                      @Param("nomPattern") String nomPattern,

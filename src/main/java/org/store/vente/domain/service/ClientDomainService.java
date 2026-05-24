@@ -11,6 +11,7 @@ import org.store.vente.application.dto.ClientResponse;
 import org.store.vente.domain.model.Client;
 import org.store.vente.domain.repository.ClientRepository;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -36,8 +37,8 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
                 magasinId,
                 LikePatternHelper.toLikePattern(filter.nom()),
                 LikePatternHelper.toLikePattern(filter.prenom()),
-                filter.createdStartDateTime(),
-                filter.createdEndDateTime(),
+                createdStart(filter),
+                createdEnd(filter),
                 filter.toPageable());
     }
 
@@ -46,8 +47,20 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
                 entrepriseId,
                 LikePatternHelper.toLikePattern(filter.nom()),
                 LikePatternHelper.toLikePattern(filter.prenom()),
-                filter.createdStartDateTime(),
-                filter.createdEndDateTime(),
+                createdStart(filter),
+                createdEnd(filter),
                 filter.toPageable());
+    }
+
+    private static LocalDateTime createdStart(ClientFilter filter) {
+        return filter.createdStartDateTime() != null
+                ? filter.createdStartDateTime()
+                : LocalDateTime.of(2000, 1, 1, 0, 0, 0);
+    }
+
+    private static LocalDateTime createdEnd(ClientFilter filter) {
+        return filter.createdEndDateTime() != null
+                ? filter.createdEndDateTime()
+                : LocalDateTime.of(2099, 12, 31, 23, 59, 59);
     }
 }

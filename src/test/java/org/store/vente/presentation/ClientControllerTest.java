@@ -147,7 +147,7 @@ class ClientControllerTest {
 
     @Test
     void should_return_200_when_updated() throws Exception {
-        ClientRequest body = new ClientRequest("Updated", null, null, null, null, magasinId);
+        ClientRequest body = new ClientRequest("Updated", null, null, "+221770000002", null, magasinId);
         ClientResponse updated = new ClientResponse(clientId, "Updated", null, null, null, null);
         when(clientService.update(eq(clientId), any(ClientRequest.class))).thenReturn(updated);
 
