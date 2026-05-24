@@ -2,11 +2,13 @@ package org.store.security.domain.service;
 
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.repository.RoleRepository;
 
 import java.util.LinkedHashSet;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class RoleDomainService extends GlobalService<Role, RoleRepository> {
@@ -25,6 +27,12 @@ public class RoleDomainService extends GlobalService<Role, RoleRepository> {
         role.setDescription(description);
         role.setAssignableToEmploye(assignableToEmploye);
         role.setPermissions(new LinkedHashSet<>());
+        return save(role);
+    }
+
+    /** Remplace les permissions du rôle par le set fourni et persiste. */
+    public Role setPermissions(Role role, Set<Permissions> permissions) {
+        role.setPermissions(permissions);
         return save(role);
     }
 }
