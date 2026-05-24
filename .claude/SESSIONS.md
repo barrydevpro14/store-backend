@@ -9,7 +9,58 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-23 — Module Achat end-to-end : create-order modal, paginated line table, details-in-modal, validate-with-initial-paiement, paiement list, cancel guard, frontend rule 51 (required-field asterisk)
+**Date:** 2026-05-24 — Close the achat stock-update gap: fold reception into a single `receive()` operation, drop VALIDEE + PARTIELLEMENT_RECEPTIONNEE statuts (backend + frontend)
+
+**Subject:** Short, focused refactor. Previous session shipped the achat module end-to-end but removed the reception UI, leaving validated commandes stuck without ever entering stock (validate created only the facture ; the orphaned `POST /receptions` endpoint that materialized stock was unreachable from the UI). User pushed back: "did you update stock while achat process?". After a short clarifier (Option A restore the partial-reception flow vs Option B fold reception into validate) the user picked B, then asked to rename the merged method `validate` → `receive` and to drop the now-unreachable intermediate statuts entirely. 3 atomic commits pushed to `origin/dev` on both repos.
+
+**Notable decisions:**
+
+### Backend — Single `receive()` operation (commits `7d58af6`, `48229d0`)
+
+- **`AchatServiceImpl.receive(UUID, AchatReceiveRequest)`** is now the sole engagement step out of DRAFT. One transaction: recompute `montantTotal` from current lignes → create `FactureAchat` (auto-numero via `ReferenceHelper` if blank, else uniqueness check) → apply optional initial paiement → for each ligne create `EntreeStock` (snapshot lot/expiration from the ligne), upsert aggregate `Stock`, journal `MouvementStock(ENTREE_ACHAT)` with `facture.numero` as `referenceDocument`, update `productFournisseur.prixVente`, increment `LigneCommandeAchat.quantiteRecue` → bascule DRAFT → RECEPTIONNEE. Helper `materializeStockForLigne(commande, facture, ligne)` extracted (rule 30 — 3 params).
+- **DTO rename** `AchatValidateRequest` → `AchatReceiveRequest`. Same shape `(facture: FactureAchatCreateRequest, paiement: PaiementAchatRequest?)`.
+- **Endpoint rename** `POST /api/v1/achats/{id}/validate` → `POST /api/v1/achats/{id}/receive`. `PURCHASE_APPROVE` permission unchanged.
+- **Drop the partial-reception batch** : `IAchatService.receive(commandeId, ReceptionAchatRequest)` + helpers (`receiveOneLine`, `ensureReceivable`, `ensureLignesDistinctes`, `ensureQuantiteRecueNotExceeded`), the controller `POST /receptions` endpoint, and the 3 DTOs `ReceptionAchatRequest` / `LigneReceptionRequest` / `ReceptionAchatResponse` all deleted.
+- **`ensureCancellable` tightened** to allow only `RECEPTIONNEE`. DRAFT was never cancellable (no stock to reverse — delete lignes to abandon a brouillon) and the intermediate statuts no longer exist.
+- **Enum prune** : `CommandeAchatStatut` keeps only `DRAFT / RECEPTIONNEE / ANNULEE`. `CommandeAchatDomainService.validate()` and `markPartiallyReceived()` removed (no production caller).
+- **Flyway `V15__drop_validee_partielle_statuts.sql`** : backfill any leftover row (`UPDATE commande_achat SET statut='RECEPTIONNEE' WHERE statut IN ('VALIDEE','PARTIELLEMENT_RECEPTIONNEE')`) then rebuild `commande_achat_statut_check` with the narrowed allowed set. Idempotent (`DROP CONSTRAINT IF EXISTS`).
+- **i18n** : drop the 4 `commandeAchat.receive.*` keys (FR + EN). `commandeAchat.cancel.notCancellable` wording updated to mention only RECEPTIONNEE.
+- **Tests** : `AchatServiceImplTest` + `AchatControllerTest` rewritten. New service test cases (`receive_should_create_facture_and_materialize_stock_for_every_ligne`, `receive_should_compute_total_from_lines`, `receive_should_persist_initial_paiement_when_provided`, `receive_should_throw_when_paiement_exceeds_total`, `receive_should_throw_when_commande_not_draft`, `receive_should_propagate_forbidden_when_not_owned`, `cancel_should_throw_when_facture_has_paiement`) assert facture creation + montant computation + stock side-effects (`EntreeStock` creation, `MouvementStock(ENTREE_ACHAT)` journal, `pf.prixVente` update, `quantiteRecue` increment) + statut bascule. Old `validate_*` + `receive_*` (reception batch) + `cancel_should_allow_validee_*` + `cancel_should_allow_partiellement_*` tests removed. Backend suite : **787 / 787 green**.
+
+### Frontend — Cascade rename + statut prune (commit `988a8fa`)
+
+- **File renames** : `achat-validate-request.ts` → `achat-receive-request.ts`, `useValidateAchat.ts` → `useReceiveAchat.ts`, `ValidateAchatDialog.tsx` → `ReceiveAchatDialog.tsx`. Git tracked one of those as a rename, two as new+delete because content changed.
+- **Adapter** `commande-achat-api.ts` : method `validate()` → `receive()`, endpoint `${ACHAT_PATH}/${commandeId}/validate` → `/receive`. Port `ICommandeAchatRepository.receive(...)` renamed accordingly.
+- **`AchatDetailsContent.tsx`** : import `ReceiveAchatDialog`, state vars `receiveOpen` / `canReceive` / `handleOpenReceive`, action button label switched to `t('actions.receive')`, `CANCELLABLE_STATUTS` narrowed to `['RECEPTIONNEE']`. Comment block clarifies the one-step lifecycle.
+- **TS enum prune** `commande-achat-statut.ts` : union narrowed to `'DRAFT' | 'RECEPTIONNEE' | 'ANNULEE'`. `CommandeAchatStatutBadge.tsx` drops the corresponding variants.
+- **i18n** `messages/{fr,en}.json` : rename `validateDialog` → `receiveDialog` block (description, submit + submitting copy), `toasts.validated` → `toasts.received`, `details.actions.validate` → `details.actions.receive`. Drop `statut.VALIDEE` + `statut.PARTIELLEMENT_RECEPTIONNEE` entries.
+- **Stale comments** swept in `useUpdateLigne`, `useDeleteLigne`, `ligne-achat-update-request`, `achat-response` — references to "statut ≥ VALIDEE" replaced by "la commande n'est plus en DRAFT" wording.
+- Vitest : **314 / 314 green**. `tsc --noEmit` clean apart from the pre-existing `FormField.test.tsx` resolver typing error (unrelated, parked from last session).
+
+### Commit strategy
+
+3 atomic commits, each compiling + tests passing independently :
+1. `7d58af6` **refactor(achat)**: fold reception into single `receive()` operation — service + interface + controller + DTOs + i18n drops + tests (12 files, +198/−596).
+2. `48229d0` **chore(achat)**: drop VALIDEE + PARTIELLEMENT_RECEPTIONNEE statuts — enum + Flyway V15 + domain service cleanup (3 files, +16/−14). Temporarily restored the enum + domain service methods between commits 1 and 2 to keep each commit compileable (verified the achat slice 37/37 green at every step).
+3. `988a8fa` **refactor(achat)**: mirror backend rename + drop dead statuts in frontend (16 files, +127/−138).
+
+### Verification
+
+- Backend `./mvnw test` : **787 / 787 green** end-to-end (full suite, not just the achat slice).
+- Frontend `vitest run` : **314 / 314 green**.
+- Frontend `tsc --noEmit` : clean (modulo the parked `FormField.test.tsx` resolver typing error).
+- Pushed to `origin/dev` on both repos : backend `eacb28c..48229d0`, frontend `4b5acca..988a8fa`. GitLab is suggesting MR links on both.
+
+### Open follow-ups (parked)
+
+- **Cancel "issue refund" workflow** — paiement-blocking cancel still enforced (`ensureNoPaiementRecorded` refuses cancel if `facture.montantPaye > 0`) ; the proper refund flow is hors-scope V1.
+- **Vitest runnable in env** — Node v20.19.5 via nvm `default` works now (previous Node v20.15.1 vs `std-env` mismatch resolved last session). Confirmed runnable this session.
+- **`FormField.test.tsx` RHF resolver typing error** still untriaged — pre-existing from last session, unrelated to this refactor.
+- **MR to main** — GitLab suggesting MR links on both repos when ready.
+
+---
+
+## 2026-05-23 — Module Achat end-to-end : create-order modal, paginated line table, details-in-modal, validate-with-initial-paiement, paiement list, cancel guard, frontend rule 51 (required-field asterisk)
 
 **Subject:** Long, multi-chunk session covering the full Achat module from scratch on the frontend plus three coordinated backend hardenings (constraint-violation handler, optional facture numero + auto-generation, optional initial paiement at validate, refuse cancel with paiement). Heavy UX iteration on the create-order surface (paginated line table, autocomplete combobox, NaN-safe number inputs, density passes, asterisk-only required markers, total + pagination on the same row). Receive step removed from the UI. Details page promoted to a modal (with a deep-link page route kept). 13 atomic commits pushed (4 backend + 9 frontend).
 
