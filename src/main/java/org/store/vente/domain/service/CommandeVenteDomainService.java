@@ -66,18 +66,18 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         return repository.ventilationParVendeurByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
-    /** Bascule la commande en statut ANNULEE avec motif, commentaire et timestamp d'annulation. */
+    /** Bascule la commande en statut CANCEL avec motif, commentaire et timestamp d'annulation. */
     public CommandeVente cancel(CommandeVente commande, MotifAnnulationVente motif, String commentaire) {
-        commande.setStatut(CommandeVenteStatut.ANNULEE);
+        commande.setStatut(CommandeVenteStatut.CANCEL);
         commande.setMotifAnnulation(motif);
         commande.setCommentaireAnnulation(commentaire);
         commande.setDateAnnulation(LocalDateTime.now());
         return save(commande);
     }
 
-    /** Bascule la commande en statut DELIVERED lors de la validation (matérialisation stock + facture). */
+    /** Bascule la commande en statut VALIDATE lors de la validation (matérialisation stock + facture). */
     public CommandeVente validate(CommandeVente commande) {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
         return save(commande);
     }
 }

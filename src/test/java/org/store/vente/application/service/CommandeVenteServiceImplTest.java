@@ -70,7 +70,7 @@ class CommandeVenteServiceImplTest {
 
     private CommandeVenteResponse sampleResponse() {
         return new CommandeVenteResponse(
-                UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.DELIVERED,
+                UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.VALIDATE,
                 null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 null, LocalDate.of(2026, 5, 16),
                 new BigDecimal("1300.00"), BigDecimal.ZERO,
@@ -111,7 +111,7 @@ class CommandeVenteServiceImplTest {
     void findResponseById_should_return_response_with_user_when_found_in_entreprise_scope() {
         UUID commandeId = UUID.randomUUID();
         CommandeVenteResponse responseWithUser = new CommandeVenteResponse(
-                commandeId, "VTE-AUTO-002", CommandeVenteStatut.DELIVERED,
+                commandeId, "VTE-AUTO-002", CommandeVenteStatut.VALIDATE,
                 null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),

@@ -103,7 +103,7 @@ class VenteControllerTest {
 
     private CommandeVenteResponse deliveredCommandeResponse() {
         return new CommandeVenteResponse(
-                commandeId, "VTE-AUTO", CommandeVenteStatut.DELIVERED,
+                commandeId, "VTE-AUTO", CommandeVenteStatut.VALIDATE,
                 null,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
@@ -152,7 +152,7 @@ class VenteControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validValidateBody())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.commande.statut").value("DELIVERED"))
+                .andExpect(jsonPath("$.commande.statut").value("VALIDATE"))
                 .andExpect(jsonPath("$.facture.numero").value("FAC-VTE-AUTO"));
     }
 
@@ -224,7 +224,7 @@ class VenteControllerTest {
     void should_return_200_when_cancel_sale() throws Exception {
         AnnulationVenteResponse cancelResponse = new AnnulationVenteResponse(
                 commandeId, "VTE-AUTO",
-                CommandeVenteStatut.ANNULEE,
+                CommandeVenteStatut.CANCEL,
                 MotifAnnulationVente.ERREUR_SAISIE,
                 "Saisie incorrecte",
                 "2026-05-18 14:30:00",
@@ -239,7 +239,7 @@ class VenteControllerTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.commandeId").value(commandeId.toString()))
-                .andExpect(jsonPath("$.statut").value("ANNULEE"))
+                .andExpect(jsonPath("$.statut").value("CANCEL"))
                 .andExpect(jsonPath("$.motif").value("ERREUR_SAISIE"))
                 .andExpect(jsonPath("$.totalQuantiteReinjectee").value(8))
                 .andExpect(jsonPath("$.nombreMouvementsCrees").value(1));

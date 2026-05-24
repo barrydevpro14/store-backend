@@ -71,9 +71,9 @@ import java.util.UUID;
  * Orchestre le cycle vente en 2 étapes :
  * <ol>
  *     <li>Création DRAFT (commande + lignes, validations prix + scoping PF) — visible et éditable avant encaissement.</li>
- *     <li>Validation (consommation stock FIFO + facture + paiement initial éventuel + bascule DELIVERED).</li>
+ *     <li>Validation (consommation stock FIFO + facture + paiement initial éventuel + bascule VALIDATE).</li>
  * </ol>
- * Cancel : sur DELIVERED uniquement (workflow d'annulation = ré-injection stock + statut ANNULEE).
+ * Cancel : sur VALIDATE uniquement (workflow d'annulation = ré-injection stock + statut CANCEL).
  */
 @Service
 @Transactional(readOnly = true)
@@ -364,14 +364,14 @@ public class VenteServiceImpl implements IVenteService {
         return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
     }
 
-    /** Vérifie que la commande est dans un statut annulable (DELIVERED) — throw BadArgument sinon. */
+    /** Vérifie que la commande est dans un statut annulable (VALIDATE) — throw BadArgument sinon. */
     public void ensureCancellable(CommandeVente commande) {
         CommandeVenteStatut statut = commande.getStatut();
-        if (statut == CommandeVenteStatut.ANNULEE) {
+        if (statut == CommandeVenteStatut.CANCEL) {
             throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
         }
-        if (statut != CommandeVenteStatut.DELIVERED) {
-            throw new BadArgumentException("commandeVente.cancel.notDelivered", statut.name());
+        if (statut != CommandeVenteStatut.VALIDATE) {
+            throw new BadArgumentException("commandeVente.cancel.notValidated", statut.name());
         }
     }
 

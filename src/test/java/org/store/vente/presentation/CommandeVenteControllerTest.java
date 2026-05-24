@@ -55,7 +55,7 @@ class CommandeVenteControllerTest {
 
     private CommandeVenteResponse sampleListItem() {
         return new CommandeVenteResponse(
-                UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.DELIVERED,
+                UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.VALIDATE,
                 null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 null, LocalDate.of(2026, 5, 16),
                 new BigDecimal("150.00"), BigDecimal.ZERO,
@@ -65,7 +65,7 @@ class CommandeVenteControllerTest {
 
     private CommandeVenteResponse sampleDetailWithUser(UUID id) {
         return new CommandeVenteResponse(
-                id, "VTE-AUTO-002", CommandeVenteStatut.DELIVERED,
+                id, "VTE-AUTO-002", CommandeVenteStatut.VALIDATE,
                 null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),
@@ -97,7 +97,7 @@ class CommandeVenteControllerTest {
                         .param("magasinId", magasinId.toString())
                         .param("clientId", clientId.toString())
                         .param("vendeurId", vendeurId.toString())
-                        .param("statut", "DELIVERED")
+                        .param("statut", "VALIDATE")
                         .param("reference", "VTE-2026")
                         .param("montantMin", "100.00")
                         .param("montantMax", "5000.00")
@@ -113,7 +113,7 @@ class CommandeVenteControllerTest {
         assertThat(captured.magasinId()).isEqualTo(magasinId);
         assertThat(captured.clientId()).isEqualTo(clientId);
         assertThat(captured.vendeurId()).isEqualTo(vendeurId);
-        assertThat(captured.statut()).isEqualTo("DELIVERED");
+        assertThat(captured.statut()).isEqualTo("VALIDATE");
         assertThat(captured.reference()).isEqualTo("VTE-2026");
         assertThat(captured.montantMin()).isEqualByComparingTo(new BigDecimal("100.00"));
         assertThat(captured.montantMax()).isEqualByComparingTo(new BigDecimal("5000.00"));

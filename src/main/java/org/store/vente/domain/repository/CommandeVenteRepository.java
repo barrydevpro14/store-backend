@@ -54,7 +54,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             SELECT COUNT(commande) FROM CommandeVente commande
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :magasinId
-              AND commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.DELIVERED
+              AND commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
               AND commande.createdAt >= :startOfDay
               AND commande.createdAt <= :endOfDay
             """)
@@ -67,7 +67,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             SELECT COALESCE(SUM(ligne.quantite), 0) FROM LigneCommandeVente ligne
             WHERE ligne.commande.magasin.entreprise.id = :entrepriseId
               AND ligne.commande.magasin.id = :magasinId
-              AND ligne.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.DELIVERED
+              AND ligne.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
               AND ligne.commande.createdAt >= :startOfDay
               AND ligne.commande.createdAt <= :endOfDay
             """)
@@ -89,7 +89,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             LEFT JOIN account.user user
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :magasinId
-              AND commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.DELIVERED
+              AND commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
               AND commande.createdAt >= :startOfDay
               AND commande.createdAt <= :endOfDay
               AND user.id IS NOT NULL

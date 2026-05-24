@@ -48,7 +48,7 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
             SELECT COALESCE(SUM(facture.montantTotal), 0) FROM FactureClient facture
             WHERE facture.commande.magasin.entreprise.id = :entrepriseId
               AND facture.commande.magasin.id = :magasinId
-              AND facture.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.DELIVERED
+              AND facture.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
               AND facture.commande.createdAt >= :startOfDay
               AND facture.commande.createdAt <= :endOfDay
             """)

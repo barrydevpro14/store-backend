@@ -281,13 +281,13 @@ class VenteServiceImplTest {
         when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(commandeVenteDomainService.validate(commande)).thenAnswer(inv -> {
-            commande.setStatut(CommandeVenteStatut.DELIVERED);
+            commande.setStatut(CommandeVenteStatut.VALIDATE);
             return commande;
         });
 
         VenteResponse response = service.validate(commandeId, sampleValidateRequest());
 
-        assertThat(response.commande().statut()).isEqualTo(CommandeVenteStatut.DELIVERED);
+        assertThat(response.commande().statut()).isEqualTo(CommandeVenteStatut.VALIDATE);
         assertThat(response.facture().numero()).isEqualTo("FAC-VTE-AUTO");
 
         verify(sortieStockService).consumeForVente(any(SortieStockForVente.class));
@@ -359,7 +359,7 @@ class VenteServiceImplTest {
 
     @Test
     void validate_should_throw_when_commande_not_draft() {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -429,7 +429,7 @@ class VenteServiceImplTest {
 
     @Test
     void updateLigne_should_throw_when_commande_not_draft() {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
         LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(150, new BigDecimal("12.00"));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
@@ -474,7 +474,7 @@ class VenteServiceImplTest {
 
     @Test
     void deleteLigne_should_throw_when_commande_not_draft() {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -487,7 +487,7 @@ class VenteServiceImplTest {
 
     @Test
     void findDetailsById_should_return_commande_facture_lignes_paiements() {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
         commande.setCreatedBy(UUID.randomUUID().toString());
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
@@ -547,7 +547,7 @@ class VenteServiceImplTest {
         UUID localLigneId = UUID.randomUUID();
         LigneCommandeVente ligne = new LigneCommandeVente();
         ligne.setId(localLigneId);
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
         commande.setCreatedAt(LocalDateTime.now().minusHours(1));
         commande.setLignes(List.of(ligne));
         return commande;
@@ -583,7 +583,7 @@ class VenteServiceImplTest {
         });
         when(commandeVenteDomainService.cancel(any(), any(), any())).thenAnswer(inv -> {
             CommandeVente arg = inv.getArgument(0);
-            arg.setStatut(CommandeVenteStatut.ANNULEE);
+            arg.setStatut(CommandeVenteStatut.CANCEL);
             arg.setMotifAnnulation(inv.getArgument(1));
             arg.setCommentaireAnnulation(inv.getArgument(2));
             arg.setDateAnnulation(LocalDateTime.now());
@@ -596,7 +596,7 @@ class VenteServiceImplTest {
 
         assertThat(response.totalQuantiteReinjectee()).isEqualTo(8);
         assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
-        assertThat(response.statut()).isEqualTo(CommandeVenteStatut.ANNULEE);
+        assertThat(response.statut()).isEqualTo(CommandeVenteStatut.CANCEL);
         assertThat(response.motif()).isEqualTo(MotifAnnulationVente.ERREUR_SAISIE);
 
         verify(entreeStockDomainService).creditQuantiteRestante(lot, 8);
@@ -615,7 +615,7 @@ class VenteServiceImplTest {
 
     @Test
     void cancel_should_throw_when_already_cancelled() {
-        commande.setStatut(CommandeVenteStatut.ANNULEE);
+        commande.setStatut(CommandeVenteStatut.CANCEL);
         commande.setCreatedAt(LocalDateTime.now().minusHours(1));
 
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
@@ -648,7 +648,7 @@ class VenteServiceImplTest {
 
     @Test
     void cancel_should_throw_when_window_expired() {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
         commande.setCreatedAt(LocalDateTime.now().minusHours(48));
 
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
@@ -665,7 +665,7 @@ class VenteServiceImplTest {
 
     @Test
     void cancel_should_throw_when_cross_entreprise() {
-        commande.setStatut(CommandeVenteStatut.DELIVERED);
+        commande.setStatut(CommandeVenteStatut.VALIDATE);
         commande.setCreatedAt(LocalDateTime.now().minusHours(1));
 
         UUID otherEntrepriseId = UUID.randomUUID();
