@@ -49,6 +49,13 @@ public class AchatController {
         return ResponseEntity.ok(achatService.findDetailsById(commandeId));
     }
 
+    @DeleteMapping("/{commandeId}")
+    @PreAuthorize("hasAuthority('PURCHASE_DELETE')")
+    public ResponseEntity<Void> deleteDraft(@PathVariable UUID commandeId) {
+        achatService.deleteDraft(commandeId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{commandeId}/receive")
     @PreAuthorize("hasAuthority('PURCHASE_APPROVE')")
     public ResponseEntity<AchatResponse> receive(@PathVariable UUID commandeId,

@@ -49,6 +49,13 @@ public interface IAchatService {
     AchatDetailsResponse findDetailsById(UUID commandeId);
 
     /**
+     * Supprime une commande encore en DRAFT (abandon de brouillon) : commande + lignes en cascade.
+     * Aucune facture, aucune entrée stock, aucun paiement à défaire (le DRAFT garantit l'absence
+     * d'effets de bord). Refuse si la commande n'est plus en DRAFT.
+     */
+    void deleteDraft(UUID commandeId);
+
+    /**
      * Annule une commande RECEPTIONNEE dans la fenêtre temporelle autorisée. Retire le stock alimenté par
      * cet achat (chaque lot doit être intact : aucun lot consommé par une vente), flag annulee=true sur
      * chaque EntreeStock, journalise un RETOUR_FOURNISSEUR par lot, bascule commande + facture en ANNULEE.

@@ -242,6 +242,14 @@ class AchatControllerTest {
     }
 
     @Test
+    void should_return_204_when_delete_draft() throws Exception {
+        mockMvc.perform(delete(AchatController.BASE_PATH + "/" + commandeId))
+                .andExpect(status().isNoContent());
+
+        verify(achatService).deleteDraft(commandeId);
+    }
+
+    @Test
     void should_return_200_when_cancel_purchase() throws Exception {
         AnnulationAchatResponse response = new AnnulationAchatResponse(
                 commandeId, "CMD-AUTO", CommandeAchatStatut.ANNULEE,

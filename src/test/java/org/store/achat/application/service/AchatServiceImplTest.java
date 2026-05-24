@@ -487,6 +487,44 @@ class AchatServiceImplTest {
     }
 
     @Test
+    void deleteDraft_should_delete_commande_when_draft() {
+        commande.setStatut(CommandeAchatStatut.DRAFT);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        service.deleteDraft(commandeId);
+
+        verify(commandeAchatDomainService).delete(commande);
+    }
+
+    @Test
+    void deleteDraft_should_throw_when_commande_not_draft() {
+        commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
+
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
+
+        assertThatThrownBy(() -> service.deleteDraft(commandeId))
+                .isInstanceOf(BadArgumentException.class)
+                .hasMessageContaining("notDraft");
+
+        verify(commandeAchatDomainService, never()).delete(any());
+    }
+
+    @Test
+    void deleteDraft_should_propagate_forbidden_when_not_owned() {
+        when(commandeAchatService.findById(commandeId)).thenReturn(commande);
+        when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande))
+                .thenThrow(new ForbiddenException("commandeAchat.notOwned"));
+
+        assertThatThrownBy(() -> service.deleteDraft(commandeId))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(commandeAchatDomainService, never()).delete(any());
+    }
+
+    @Test
     void findDetailsById_should_return_commande_facture_and_lignes() {
         LigneCommandeAchat ligne = sampleLigne(10, new BigDecimal("10.00"), new BigDecimal("15.00"));
         commande.setLignes(List.of(ligne));

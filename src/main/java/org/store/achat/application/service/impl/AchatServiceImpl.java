@@ -284,6 +284,20 @@ public class AchatServiceImpl implements IAchatService {
         ligneCommandeAchatDomainService.delete(ligne);
     }
 
+    /**
+     * Supprime une commande encore en DRAFT (abandon de brouillon). Les lignes sont supprimées en cascade
+     * (mapping `@OneToMany(cascade = ALL)` côté entité). Aucune facture/stock/paiement à défaire — le statut
+     * DRAFT garantit l'absence de matérialisation. Refuse si la commande n'est plus en DRAFT.
+     */
+    @Override
+    @Transactional
+    public void deleteDraft(UUID commandeId) {
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+
+        commandeAchatDomainService.delete(commande);
+    }
+
     /** Retourne le détail d'un achat : commande + facture (null si DRAFT) + lignes. Scoping entreprise via la commande. */
     @Override
     public AchatDetailsResponse findDetailsById(UUID commandeId) {
