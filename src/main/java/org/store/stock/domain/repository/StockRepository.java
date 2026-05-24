@@ -23,6 +23,11 @@ public interface StockRepository extends BaseRepository<Stock> {
             WHERE stock.magasin.entreprise.id = :entrepriseId
               AND stock.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.productId} IS NULL OR stock.produit.id = :#{#filter.productId})
+              AND (:#{#filter.productNamePattern()} IS NULL
+                   OR LOWER(stock.produit.nom) LIKE :#{#filter.productNamePattern()}
+                   OR LOWER(COALESCE(stock.produit.reference, '')) LIKE :#{#filter.productNamePattern()})
+              AND stock.updatedAt >= :#{#filter.createdStart()}
+              AND stock.updatedAt <= :#{#filter.createdEnd()}
             """)
     Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,
                                               @Param("entrepriseId") UUID entrepriseId,
