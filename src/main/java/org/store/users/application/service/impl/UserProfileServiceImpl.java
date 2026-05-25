@@ -98,9 +98,12 @@ public class UserProfileServiceImpl implements IUserProfileService {
         }
     }
 
-    /** Resout l'Utilisateur courant via userId du principal. Throw si l'utilisateur n'est plus en BDD (compte supprime mais JWT encore valide). */
+    /** Résout l'Utilisateur courant via userId du principal. Lève EntityException si le compte n'a pas de profil (ADMIN sans Utilisateur) ou si l'utilisateur a été supprimé. */
     public Utilisateur findCurrentUser() {
         UserPrincipal currentUser = currentUserService.getCurrent();
+        if (currentUser.userId() == null) {
+            throw new EntityException("user.profile.notFound");
+        }
         return utilisateurDomainService.findById(currentUser.userId());
     }
 }

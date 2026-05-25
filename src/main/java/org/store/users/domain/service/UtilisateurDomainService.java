@@ -8,12 +8,18 @@ import org.store.users.application.dto.UserProfileUpdateRequest;
 import org.store.users.domain.model.Utilisateur;
 import org.store.users.domain.repository.UtilisateurRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class UtilisateurDomainService extends GlobalService<Utilisateur, UtilisateurRepository> {
     public UtilisateurDomainService(UtilisateurRepository repository) {
         super(repository);
+    }
+
+    /** Retourne l'Utilisateur lié à un Account donné, ou empty si aucun profil n'a été créé pour ce compte. */
+    public Optional<Utilisateur> findByAccountId(UUID accountId) {
+        return repository.findByAccountId(accountId);
     }
 
     /** Met a jour les champs Person (nom, prenom, email, telephone, adresse). Username/role/magasin geres ailleurs. */

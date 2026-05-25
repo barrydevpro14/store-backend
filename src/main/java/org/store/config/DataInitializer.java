@@ -17,6 +17,9 @@ import org.store.security.application.service.IRolesPermissionsSyncService;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.service.AccountDomainService;
 import org.store.security.domain.service.RoleDomainService;
+import org.store.security.domain.model.Account;
+import org.store.users.domain.model.Utilisateur;
+import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.math.BigDecimal;
 
@@ -38,6 +41,7 @@ public class DataInitializer implements ApplicationRunner {
     private final AccountDomainService accountDomainService;
     private final RoleDomainService roleDomainService;
     private final PasswordEncoder passwordEncoder;
+    private final UtilisateurDomainService utilisateurDomainService;
 
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
@@ -45,7 +49,8 @@ public class DataInitializer implements ApplicationRunner {
                            TypePlanAbonnementDomainService typePlanAbonnementDomainService,
                            AccountDomainService accountDomainService,
                            RoleDomainService roleDomainService,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           UtilisateurDomainService utilisateurDomainService) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
@@ -53,6 +58,7 @@ public class DataInitializer implements ApplicationRunner {
         this.accountDomainService = accountDomainService;
         this.roleDomainService = roleDomainService;
         this.passwordEncoder = passwordEncoder;
+        this.utilisateurDomainService = utilisateurDomainService;
     }
 
     @Override
@@ -68,20 +74,34 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     /**
-     * Idempotent : si un account `admin` existe déjà (peu importe son
-     * mot de passe), on le laisse intact. Seule la 1ère initialisation
-     * pose les credentials seedés. Pour rotater le mot de passe ensuite,
-     * passer par l'API de change-password.
+     * Idempotent : crée le compte ADMIN seedé s'il n'existe pas encore, puis
+     * s'assure qu'un profil Utilisateur lui est attaché (pour que GET /users/me
+     * ne retourne pas 500 sur l'admin seedé). Chaque étape est indépendante :
+     * un redémarrage avec un compte déjà existant mais sans Utilisateur rattrapera
+     * le profil manquant.
      */
     private void ensureAdminAccount() {
-        if (accountDomainService.findByUsername(ADMIN_USERNAME).isPresent()) {
-            return;
+        Account adminAccount = accountDomainService.findByUsername(ADMIN_USERNAME).orElse(null);
+
+        if (adminAccount == null) {
+            Role adminRole = roleDomainService.findByLibelle(ADMIN_ROLE)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Rôle ADMIN absent en base — la sync RBAC doit s'exécuter avant ensureAdminAccount."));
+            adminAccount = accountDomainService.create(
+                    ADMIN_USERNAME, passwordEncoder.encode(rbacProperties.adminPassword()), adminRole);
+            log.info("DataInitializer: compte ADMIN seedé (username={})", ADMIN_USERNAME);
         }
-        Role adminRole = roleDomainService.findByLibelle(ADMIN_ROLE)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Rôle ADMIN absent en base — la sync RBAC doit s'exécuter avant ensureAdminAccount."));
-        accountDomainService.create(ADMIN_USERNAME, passwordEncoder.encode(rbacProperties.adminPassword()), adminRole);
-        log.info("DataInitializer: compte ADMIN seedé (username={})", ADMIN_USERNAME);
+
+        Account finalAdminAccount = adminAccount;
+        boolean hasProfile = utilisateurDomainService.findByAccountId(adminAccount.getId()).isPresent();
+        if (!hasProfile) {
+            Utilisateur utilisateur = new Utilisateur();
+            utilisateur.setAccount(finalAdminAccount);
+            utilisateur.setNom("Admin");
+            utilisateur.setPrenom("Système");
+            utilisateurDomainService.save(utilisateur);
+            log.info("DataInitializer: profil Utilisateur créé pour le compte ADMIN seedé");
+        }
     }
 
     private void ensureTrialPlan() {
