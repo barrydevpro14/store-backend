@@ -7,8 +7,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.produit.application.dto.ImageMetadataResponse;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.application.service.IEntrepriseService;
@@ -21,7 +21,6 @@ import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.service.ProductDomainService;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.List;
@@ -113,11 +112,12 @@ public class ProductServiceImpl implements IProductService {
     /** Lève `ForbiddenException` si le produit n'appartient pas à l'entreprise du caller. */
     @Override
     public Product ensureBelongsToCurrentEntreprise(Product product) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!product.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("product.notOwned");
-        }
-        return product;
+        return OwnershipHelper.ensureOwnership(
+                product,
+                product.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "product.notOwned"
+        );
     }
 
     /** Lève `UniqueResourceException` si la référence est déjà utilisée dans l'entreprise. */

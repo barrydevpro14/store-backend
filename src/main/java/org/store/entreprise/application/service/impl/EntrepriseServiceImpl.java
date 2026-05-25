@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
-import org.store.common.exceptions.ForbiddenException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
@@ -147,10 +147,11 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
 
     @Override
     public Entreprise ensureBelongsToCurrentUser(Entreprise entreprise) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!entreprise.getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("entreprise.notOwned");
-        }
-        return entreprise;
+        return OwnershipHelper.ensureOwnership(
+                entreprise,
+                entreprise.getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "entreprise.notOwned"
+        );
     }
 }

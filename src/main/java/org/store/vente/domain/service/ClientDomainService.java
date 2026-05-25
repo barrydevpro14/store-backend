@@ -3,6 +3,7 @@ package org.store.vente.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.DateHelper;
 import org.store.common.tools.LikePatternHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.vente.application.dto.ClientFilter;
@@ -53,14 +54,10 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
     }
 
     private static LocalDateTime createdStart(ClientFilter filter) {
-        return filter.createdStartDateTime() != null
-                ? filter.createdStartDateTime()
-                : LocalDateTime.of(2000, 1, 1, 0, 0, 0);
+        return DateHelper.coalesceStart(filter.createdStartDateTime());
     }
 
     private static LocalDateTime createdEnd(ClientFilter filter) {
-        return filter.createdEndDateTime() != null
-                ? filter.createdEndDateTime()
-                : LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+        return DateHelper.coalesceEnd(filter.createdEndDateTime());
     }
 }

@@ -10,7 +10,23 @@ public final class DateHelper {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    /** Sentinel lower bound used to avoid IS NULL type-inference issues with PostgreSQL (2000-01-01). */
+    public static final LocalDateTime SENTINEL_START = LocalDateTime.of(2000, 1, 1, 0, 0, 0);
+
+    /** Sentinel upper bound used to avoid IS NULL type-inference issues with PostgreSQL (2099-12-31). */
+    public static final LocalDateTime SENTINEL_END = LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+
     private DateHelper() {
+    }
+
+    /** Returns value if non-null, otherwise SENTINEL_START. */
+    public static LocalDateTime coalesceStart(LocalDateTime value) {
+        return value != null ? value : SENTINEL_START;
+    }
+
+    /** Returns value if non-null, otherwise SENTINEL_END. */
+    public static LocalDateTime coalesceEnd(LocalDateTime value) {
+        return value != null ? value : SENTINEL_END;
     }
 
     /** Convertit une date ISO (yyyy-MM-dd) en LocalDateTime au début de la journée (00:00:00). Retourne null si null/blank. */

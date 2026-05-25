@@ -5,12 +5,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.EntityException;
-import org.store.common.exceptions.ForbiddenException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.notification.application.dto.NotificationResponse;
 import org.store.notification.application.service.INotificationService;
 import org.store.notification.domain.model.Notification;
 import org.store.notification.domain.service.NotificationDomainService;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -48,12 +47,14 @@ public class NotificationServiceImpl implements INotificationService {
     @Override
     @Transactional
     public NotificationResponse markAsRead(UUID id) {
-        UserPrincipal current = currentUserService.getCurrent();
         Notification notification = notificationDomainService.findById(id);
 
-        if (!notification.getDestinataire().getId().equals(current.accountId())) {
-            throw new ForbiddenException("notification.notOwned");
-        }
+        OwnershipHelper.ensureOwnership(
+                notification,
+                notification.getDestinataire().getId(),
+                currentUserService.getCurrent().accountId(),
+                "notification.notOwned"
+        );
 
         return new NotificationResponse(notificationDomainService.markAsRead(notification));
     }

@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
@@ -25,6 +26,7 @@ import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
 
+/** Manages the full lifecycle of a Magasin (CRUD, logo upload, access-control checks) scoped to the current user's entreprise. */
 @Service
 public class MagasinServiceImpl implements IMagasinService {
 
@@ -105,11 +107,12 @@ public class MagasinServiceImpl implements IMagasinService {
 
     @Override
     public Magasin ensureBelongsToCurrentEntreprise(Magasin magasin) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!magasin.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("magasin.notOwned");
-        }
-        return magasin;
+        return OwnershipHelper.ensureOwnership(
+                magasin,
+                magasin.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "magasin.notOwned"
+        );
     }
 
     @Override

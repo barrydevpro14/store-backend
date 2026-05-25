@@ -9,11 +9,10 @@ import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.achat.domain.service.FournisseurDomainService;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -95,11 +94,12 @@ public class FournisseurServiceImpl implements IFournisseurService {
     /** Lève `ForbiddenException` si le fournisseur n'appartient pas à l'entreprise du caller. */
     @Override
     public Fournisseur ensureBelongsToCurrentEntreprise(Fournisseur fournisseur) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!fournisseur.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("fournisseur.notOwned");
-        }
-        return fournisseur;
+        return OwnershipHelper.ensureOwnership(
+                fournisseur,
+                fournisseur.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "fournisseur.notOwned"
+        );
     }
 
     /** Lève `UniqueResourceException` si la référence est déjà utilisée dans l'entreprise (skippé si null/blank). */

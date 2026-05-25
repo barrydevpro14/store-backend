@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.exceptions.BadArgumentException;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.PaiementVenteCreate;
@@ -79,10 +79,12 @@ public class PaiementVenteServiceImpl implements IPaiementVenteService {
 
     /** Vérifie que la facture appartient à l'entreprise du caller (via commande.magasin.entreprise). */
     public void ensureBelongsToCurrentEntreprise(FactureClient facture, UUID entrepriseId) {
-        UUID factureEntrepriseId = facture.getCommande().getMagasin().getEntreprise().getId();
-        if (!factureEntrepriseId.equals(entrepriseId)) {
-            throw new ForbiddenException("commandeVente.notOwned");
-        }
+        OwnershipHelper.ensureOwnership(
+                facture,
+                facture.getCommande().getMagasin().getEntreprise().getId(),
+                entrepriseId,
+                "commandeVente.notOwned"
+        );
     }
 
     /** Rejette les paiements sur une facture déjà entièrement payée. */

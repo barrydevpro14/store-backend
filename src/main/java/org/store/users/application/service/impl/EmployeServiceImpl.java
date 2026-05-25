@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.OwnershipHelper;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.ResetPasswordRequest;
@@ -212,9 +213,12 @@ public class EmployeServiceImpl implements IEmployeService {
 
     /** Verifie que l'employe est dans la meme entreprise que le caller (via magasin.entreprise). */
     public void ensureBelongsToCurrentEntreprise(Employe employe, UUID entrepriseId) {
-        if (!employe.getMagasin().getEntreprise().getId().equals(entrepriseId)) {
-            throw new ForbiddenException("employe.notOwned");
-        }
+        OwnershipHelper.ensureOwnership(
+                employe,
+                employe.getMagasin().getEntreprise().getId(),
+                entrepriseId,
+                "employe.notOwned"
+        );
     }
 
     /** Bloque le MANAGER qui tente d'acceder a un employe d'un autre magasin. */

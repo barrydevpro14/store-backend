@@ -13,9 +13,8 @@ import org.store.achat.domain.model.PaiementAchat;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.achat.domain.service.PaiementAchatDomainService;
 import org.store.common.exceptions.BadArgumentException;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
-import org.store.security.application.dto.UserPrincipal;
+import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.math.BigDecimal;
@@ -78,10 +77,11 @@ public class PaiementAchatServiceImpl implements IPaiementAchatService {
 
     /** Lève ForbiddenException si la facture n'appartient pas à l'entreprise du caller (via commande.magasin.entreprise). */
     public void ensureFactureBelongsToCurrentEntreprise(FactureAchat facture) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        UUID entrepriseFacture = facture.getCommande().getMagasin().getEntreprise().getId();
-        if (!entrepriseFacture.equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("factureAchat.notOwned");
-        }
+        OwnershipHelper.ensureOwnership(
+                facture,
+                facture.getCommande().getMagasin().getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "factureAchat.notOwned"
+        );
     }
 }

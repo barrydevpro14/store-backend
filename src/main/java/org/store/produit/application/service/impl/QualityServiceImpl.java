@@ -3,8 +3,8 @@ package org.store.produit.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.QualityFilter;
@@ -13,7 +13,6 @@ import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.application.service.IQualityService;
 import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.QualityDomainService;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -90,11 +89,12 @@ public class QualityServiceImpl implements IQualityService {
     /** Lève `ForbiddenException` si la qualité n'appartient pas à l'entreprise du caller. */
     @Override
     public Quality ensureBelongsToCurrentEntreprise(Quality quality) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!quality.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("quality.notOwned");
-        }
-        return quality;
+        return OwnershipHelper.ensureOwnership(
+                quality,
+                quality.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "quality.notOwned"
+        );
     }
 
     /** Lève `UniqueResourceException` si le libellé est déjà utilisé dans l'entreprise. */

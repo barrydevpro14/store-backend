@@ -5,13 +5,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.dto.UserSummaryResponse;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.property.SaleProperties;
-import org.store.security.application.dto.UserPrincipal;
+import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.IAccountService;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.MouvementJournalize;
@@ -272,11 +271,12 @@ public class VenteServiceImpl implements IVenteService {
 
     /** Lève `ForbiddenException` si la commande n'appartient pas à l'entreprise du caller (via magasin.entreprise). */
     public CommandeVente ensureBelongsToCurrentEntreprise(CommandeVente commande) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!commande.getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("commandeVente.notOwned");
-        }
-        return commande;
+        return OwnershipHelper.ensureOwnership(
+                commande,
+                commande.getMagasin().getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "commandeVente.notOwned"
+        );
     }
 
     /** Lève BadArgument si la commande n'est pas en DRAFT (déjà validée ou annulée). */

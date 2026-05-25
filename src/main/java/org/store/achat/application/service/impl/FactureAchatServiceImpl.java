@@ -10,9 +10,8 @@ import org.store.achat.application.service.IFactureAchatService;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.common.exceptions.EntityException;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
-import org.store.security.application.dto.UserPrincipal;
+import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -40,10 +39,12 @@ public class FactureAchatServiceImpl implements IFactureAchatService {
     @Override
     public FactureAchatResponse findResponseById(UUID id) {
         FactureAchat facture = factureAchatDomainService.findById(id);
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!facture.getCommande().getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("factureAchat.notOwned");
-        }
+        OwnershipHelper.ensureOwnership(
+                facture,
+                facture.getCommande().getMagasin().getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "factureAchat.notOwned"
+        );
         return new FactureAchatResponse(facture);
     }
 

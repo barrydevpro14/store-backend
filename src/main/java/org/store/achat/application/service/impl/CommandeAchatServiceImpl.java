@@ -8,9 +8,8 @@ import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.service.CommandeAchatDomainService;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
-import org.store.security.application.dto.UserPrincipal;
+import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -57,10 +56,11 @@ public class CommandeAchatServiceImpl implements ICommandeAchatService {
     /** Lève `ForbiddenException` si la commande n'appartient pas à l'entreprise du caller. */
     @Override
     public CommandeAchat ensureBelongsToCurrentEntreprise(CommandeAchat commande) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!commande.getMagasin().getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("commandeAchat.notOwned");
-        }
-        return commande;
+        return OwnershipHelper.ensureOwnership(
+                commande,
+                commande.getMagasin().getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "commandeAchat.notOwned"
+        );
     }
 }

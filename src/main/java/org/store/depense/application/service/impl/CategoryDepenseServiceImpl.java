@@ -3,8 +3,8 @@ package org.store.depense.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.depense.application.dto.CategoryDepenseFilter;
 import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
@@ -13,7 +13,6 @@ import org.store.depense.domain.model.CategoryDepense;
 import org.store.depense.domain.service.CategoryDepenseDomainService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -88,11 +87,12 @@ public class CategoryDepenseServiceImpl implements ICategoryDepenseService {
     /** Lève ForbiddenException si la catégorie n'appartient pas à l'entreprise du caller. */
     @Override
     public CategoryDepense ensureBelongsToCurrentEntreprise(CategoryDepense categoryDepense) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!categoryDepense.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("categoryDepense.notOwned");
-        }
-        return categoryDepense;
+        return OwnershipHelper.ensureOwnership(
+                categoryDepense,
+                categoryDepense.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "categoryDepense.notOwned"
+        );
     }
 
     /** Lève UniqueResourceException si une catégorie portant ce nom existe déjà dans l'entreprise. */

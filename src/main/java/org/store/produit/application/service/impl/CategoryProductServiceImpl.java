@@ -3,8 +3,8 @@ package org.store.produit.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.CategoryProductFilter;
@@ -13,7 +13,6 @@ import org.store.produit.application.dto.CategoryProductResponse;
 import org.store.produit.application.service.ICategoryProductService;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.service.CategoryProductDomainService;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -90,11 +89,12 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
     /** Lève `ForbiddenException` si la catégorie n'appartient pas à l'entreprise du caller. */
     @Override
     public CategoryProduct ensureBelongsToCurrentEntreprise(CategoryProduct categoryProduct) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!categoryProduct.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("categoryProduct.notOwned");
-        }
-        return categoryProduct;
+        return OwnershipHelper.ensureOwnership(
+                categoryProduct,
+                categoryProduct.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "categoryProduct.notOwned"
+        );
     }
 
     /** Lève `UniqueResourceException` si le libellé est déjà utilisé dans l'entreprise. */

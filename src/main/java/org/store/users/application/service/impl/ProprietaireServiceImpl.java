@@ -9,6 +9,7 @@ import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.service.ProprietaireDomainService;
 import org.store.users.domain.service.UtilisateurDomainService;
 
+/** Creates a Proprietaire user by enforcing contact uniqueness (email + phone) then delegating to the domain layer. */
 @Service
 public class ProprietaireServiceImpl implements IProprietaireService {
 
