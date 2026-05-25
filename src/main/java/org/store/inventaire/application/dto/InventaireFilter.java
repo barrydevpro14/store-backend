@@ -11,6 +11,7 @@ import org.store.common.validation.EnumValue;
 import org.store.inventaire.domain.enums.InventaireStatut;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record InventaireFilter(
@@ -35,6 +36,14 @@ public record InventaireFilter(
     public LocalDate toDate() {
         return DateHelper.parseStartOfDay(endDate) != null
                 ? DateHelper.parseStartOfDay(endDate).toLocalDate() : null;
+    }
+
+    public LocalDateTime createdStartDateTime() {
+        return createdStartDate == null ? DateHelper.SENTINEL_START : createdStartDate.atStartOfDay();
+    }
+
+    public LocalDateTime createdEndDateTime() {
+        return createdEndDate == null ? DateHelper.SENTINEL_END : createdEndDate.plusDays(1).atStartOfDay();
     }
 
     public Pageable toPageable() {

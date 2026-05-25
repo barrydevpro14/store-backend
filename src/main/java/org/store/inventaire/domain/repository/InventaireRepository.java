@@ -22,8 +22,8 @@ public interface InventaireRepository extends BaseRepository<Inventaire> {
               AND (:#{#filter.statutAsEnum()} IS NULL OR inventaire.statut = :#{#filter.statutAsEnum()})
               AND (:#{#filter.fromDate()} IS NULL OR inventaire.date >= :#{#filter.fromDate()})
               AND (:#{#filter.toDate()} IS NULL OR inventaire.date <= :#{#filter.toDate()})
-              AND (:#{#filter.createdStartDate} IS NULL OR inventaire.createdAt >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR inventaire.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+              AND inventaire.createdAt >= :#{#filter.createdStartDateTime()}
+              AND inventaire.createdAt <  :#{#filter.createdEndDateTime()}
             ORDER BY inventaire.date DESC, inventaire.createdAt DESC
             """)
     Page<InventaireResponse> findResponsesByFilter(@Param("filter") InventaireFilter filter,

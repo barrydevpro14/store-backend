@@ -39,6 +39,14 @@ public record MouvementStockFilter(
         return DateHelper.parseEndOfDay(endDate);
     }
 
+    public LocalDateTime createdStartDateTime() {
+        return createdStartDate == null ? DateHelper.SENTINEL_START : createdStartDate.atStartOfDay();
+    }
+
+    public LocalDateTime createdEndDateTime() {
+        return createdEndDate == null ? DateHelper.SENTINEL_END : createdEndDate.plusDays(1).atStartOfDay();
+    }
+
     public Pageable toPageable() {
         return PageRequest.of(page, size);
     }
