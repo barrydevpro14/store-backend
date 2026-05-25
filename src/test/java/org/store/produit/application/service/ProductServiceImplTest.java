@@ -238,7 +238,9 @@ class ProductServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(productId, new ProductRequest("x", "y", null, categoryId)))
+        ProductRequest updateReq = new ProductRequest("x", "y", null, categoryId);
+
+        assertThatThrownBy(() -> service.update(productId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(productDomainService, never()).save(any());
@@ -417,7 +419,9 @@ class ProductServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.uploadImages(productId, List.of(file)))
+        List<MultipartFile> images = List.of(file);
+
+        assertThatThrownBy(() -> service.uploadImages(productId, images))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(uploadFileService, never()).buildImages(any());

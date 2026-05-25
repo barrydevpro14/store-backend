@@ -164,7 +164,10 @@ class PaiementAbonnementServiceImplTest {
         when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement))
                 .thenThrow(new ForbiddenException("abonnement.notOwned"));
 
-        assertThatThrownBy(() -> service.create(abonnementId, sampleRequest(), validFile()))
+        PaiementAbonnementRequest req = sampleRequest();
+        MultipartFile file = validFile();
+
+        assertThatThrownBy(() -> service.create(abonnementId, req, file))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -175,7 +178,10 @@ class PaiementAbonnementServiceImplTest {
         when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
         when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
 
-        assertThatThrownBy(() -> service.create(abonnementId, sampleRequest(), validFile()))
+        PaiementAbonnementRequest req = sampleRequest();
+        MultipartFile file = validFile();
+
+        assertThatThrownBy(() -> service.create(abonnementId, req, file))
                 .isInstanceOf(BadArgumentException.class);
     }
 
@@ -186,7 +192,10 @@ class PaiementAbonnementServiceImplTest {
         when(paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(abonnementId, sampleRequest(), validFile()))
+        PaiementAbonnementRequest req = sampleRequest();
+        MultipartFile file = validFile();
+
+        assertThatThrownBy(() -> service.create(abonnementId, req, file))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(paiementAbonnementDomainService, never()).createPending(any(PaiementAbonnementCreationContext.class));
@@ -300,7 +309,9 @@ class PaiementAbonnementServiceImplTest {
         paiement.setStatut(StatutPaiementAbonnement.REJETE);
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
 
-        assertThatThrownBy(() -> service.reject(paiementId, new RejectPaiementRequest("x")))
+        RejectPaiementRequest rejectReq = new RejectPaiementRequest("x");
+
+        assertThatThrownBy(() -> service.reject(paiementId, rejectReq))
                 .isInstanceOf(BadArgumentException.class);
     }
 

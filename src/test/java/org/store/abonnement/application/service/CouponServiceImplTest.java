@@ -109,7 +109,9 @@ class CouponServiceImplTest {
     void create_should_throw_when_code_taken() {
         when(couponDomainService.existsByCode("PROMO10")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(validRequest()))
+        CouponRequest req = validRequest();
+
+        assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(UniqueResourceException.class);
 
         verify(couponDomainService, never()).create(any(), any());

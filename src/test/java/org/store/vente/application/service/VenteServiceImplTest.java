@@ -247,7 +247,9 @@ class VenteServiceImplTest {
     void create_should_throw_when_user_not_employe() {
         when(employeService.findCurrentUser()).thenThrow(new ForbiddenException("vente.user.required"));
 
-        assertThatThrownBy(() -> service.create(sampleRequest()))
+        VenteRequest venteReq = sampleRequest();
+
+        assertThatThrownBy(() -> service.create(venteReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(commandeVenteDomainService, never()).create(any());
@@ -364,7 +366,9 @@ class VenteServiceImplTest {
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
-        assertThatThrownBy(() -> service.validate(commandeId, sampleValidateRequest()))
+        VenteValidateRequest validateReq = sampleValidateRequest();
+
+        assertThatThrownBy(() -> service.validate(commandeId, validateReq))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(factureClientDomainService, never()).create(any());
@@ -382,7 +386,9 @@ class VenteServiceImplTest {
         foreignMagasin.setEntreprise(other);
         commande.setMagasin(foreignMagasin);
 
-        assertThatThrownBy(() -> service.validate(commandeId, sampleValidateRequest()))
+        VenteValidateRequest validateReq = sampleValidateRequest();
+
+        assertThatThrownBy(() -> service.validate(commandeId, validateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(factureClientDomainService, never()).create(any());
@@ -534,10 +540,12 @@ class VenteServiceImplTest {
         foreignMagasin.setEntreprise(other);
         commande.setMagasin(foreignMagasin);
 
-        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        UUID commandeIdLocal = commande.getId();
+
+        when(commandeVenteDomainService.findById(commandeIdLocal)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
-        assertThatThrownBy(() -> service.findDetailsById(commande.getId()))
+        assertThatThrownBy(() -> service.findDetailsById(commandeIdLocal))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(factureClientDomainService, never()).findByCommandeId(any());
@@ -618,12 +626,14 @@ class VenteServiceImplTest {
         commande.setStatut(CommandeVenteStatut.CANCEL);
         commande.setCreatedAt(LocalDateTime.now().minusHours(1));
 
-        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        UUID commandeIdLocal = commande.getId();
+
+        when(commandeVenteDomainService.findById(commandeIdLocal)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
         AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
 
-        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+        assertThatThrownBy(() -> service.cancel(commandeIdLocal, req))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
@@ -635,12 +645,14 @@ class VenteServiceImplTest {
         commande.setStatut(CommandeVenteStatut.DRAFT);
         commande.setCreatedAt(LocalDateTime.now().minusHours(1));
 
-        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        UUID commandeIdLocal = commande.getId();
+
+        when(commandeVenteDomainService.findById(commandeIdLocal)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
         AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
 
-        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+        assertThatThrownBy(() -> service.cancel(commandeIdLocal, req))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
@@ -651,13 +663,15 @@ class VenteServiceImplTest {
         commande.setStatut(CommandeVenteStatut.VALIDATE);
         commande.setCreatedAt(LocalDateTime.now().minusHours(48));
 
-        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        UUID commandeIdLocal = commande.getId();
+
+        when(commandeVenteDomainService.findById(commandeIdLocal)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(saleProperties.cancelWindowHours()).thenReturn(24);
 
         AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
 
-        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+        assertThatThrownBy(() -> service.cancel(commandeIdLocal, req))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
@@ -676,12 +690,14 @@ class VenteServiceImplTest {
         foreignMagasin.setEntreprise(other);
         commande.setMagasin(foreignMagasin);
 
-        when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
+        UUID commandeIdLocal = commande.getId();
+
+        when(commandeVenteDomainService.findById(commandeIdLocal)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
         AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", null);
 
-        assertThatThrownBy(() -> service.cancel(commande.getId(), req))
+        assertThatThrownBy(() -> service.cancel(commandeIdLocal, req))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(commandeVenteDomainService, never()).cancel(any(), any(), any());

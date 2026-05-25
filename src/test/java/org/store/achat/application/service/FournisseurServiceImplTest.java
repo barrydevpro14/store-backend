@@ -211,8 +211,9 @@ class FournisseurServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(fournisseurDomainService.findById(fournisseurId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(fournisseurId,
-                new FournisseurRequest("x", null, null, null, null, null, null)))
+        FournisseurRequest updateReq = new FournisseurRequest("x", null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.update(fournisseurId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(fournisseurDomainService, never()).save(any());

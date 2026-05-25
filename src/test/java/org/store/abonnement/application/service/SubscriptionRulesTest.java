@@ -42,15 +42,19 @@ class SubscriptionRulesTest {
 
     @Test
     void ensureReductionConsistent_should_throw_when_value_without_type() {
+        BigDecimal valeur = new BigDecimal("10");
+
         assertThatThrownBy(() -> SubscriptionRules.ensureReductionConsistent(
-                null, new BigDecimal("10"), "reduction.invalid"))
+                null, valeur, "reduction.invalid"))
                 .isInstanceOf(BadArgumentException.class);
     }
 
     @Test
     void ensureReductionConsistent_should_throw_when_pourcentage_above_100() {
+        BigDecimal valeur = new BigDecimal("150");
+
         assertThatThrownBy(() -> SubscriptionRules.ensureReductionConsistent(
-                ReductionType.POURCENTAGE, new BigDecimal("150"), "reduction.invalid"))
+                ReductionType.POURCENTAGE, valeur, "reduction.invalid"))
                 .isInstanceOf(BadArgumentException.class);
     }
 
@@ -70,8 +74,10 @@ class SubscriptionRulesTest {
 
     @Test
     void ensurePeriodValid_should_throw_when_dateFin_before_dateDebut() {
-        assertThatThrownBy(() -> SubscriptionRules.ensurePeriodValid(
-                LocalDate.of(2026, 12, 31), LocalDate.of(2026, 1, 1), "invalidPeriod"))
+        LocalDate dateDebut = LocalDate.of(2026, 12, 31);
+        LocalDate dateFin = LocalDate.of(2026, 1, 1);
+
+        assertThatThrownBy(() -> SubscriptionRules.ensurePeriodValid(dateDebut, dateFin, "invalidPeriod"))
                 .isInstanceOf(BadArgumentException.class);
     }
 }

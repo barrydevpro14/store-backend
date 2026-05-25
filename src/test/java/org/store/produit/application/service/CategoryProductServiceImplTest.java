@@ -192,7 +192,9 @@ class CategoryProductServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(categoryProductDomainService.findById(categoryId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(categoryId, new CategoryProductRequest("x", null)))
+        CategoryProductRequest updateReq = new CategoryProductRequest("x", null);
+
+        assertThatThrownBy(() -> service.update(categoryId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(categoryProductDomainService, never()).save(any());

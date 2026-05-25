@@ -185,7 +185,9 @@ class EmployeServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(roleService.findByLibelle("OWNER")).thenReturn(propRole);
 
-        assertThatThrownBy(() -> service.create(request("OWNER", magasinId)))
+        EmployeRequest req = request("OWNER", magasinId);
+
+        assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(magasinService, never()).findById(any());
@@ -201,7 +203,9 @@ class EmployeServiceImplTest {
         when(permissionsService.findAllByRoleId(managerRole.getId()))
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
 
-        assertThatThrownBy(() -> service.create(request("MANAGER", magasinId)))
+        EmployeRequest req = request("MANAGER", magasinId);
+
+        assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(magasinService, never()).findById(any());
@@ -220,7 +224,9 @@ class EmployeServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(employeDomainService.existsByMagasinIdAndRolePermissionCode(magasinId, "EMPLOYE_CREATE")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(request("MANAGER", magasinId)))
+        EmployeRequest req = request("MANAGER", magasinId);
+
+        assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());
@@ -244,7 +250,9 @@ class EmployeServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(foreignMagasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
 
-        assertThatThrownBy(() -> service.create(request("SELLER", foreignMagasinId)))
+        EmployeRequest req = request("SELLER", foreignMagasinId);
+
+        assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());
@@ -376,7 +384,9 @@ class EmployeServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(manager());
         when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(other));
 
-        assertThatThrownBy(() -> service.resetPassword(employeId, new ResetPasswordRequest("brandnewP@ss")))
+        ResetPasswordRequest resetReq = new ResetPasswordRequest("brandnewP@ss");
+
+        assertThatThrownBy(() -> service.resetPassword(employeId, resetReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).resetPassword(any(), any());
@@ -425,7 +435,9 @@ class EmployeServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(otherMagasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
 
-        assertThatThrownBy(() -> service.create(request("SELLER", otherMagasinId)))
+        EmployeRequest req = request("SELLER", otherMagasinId);
+
+        assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());

@@ -61,7 +61,7 @@ class RolesPermissionsSyncServiceImplTest {
             public boolean exists() {
                 return true;
             }
-        });
+        }, null);
         service = new RolesPermissionsSyncServiceImpl(properties, permissionsDomainService, roleDomainService);
     }
 

@@ -15,9 +15,11 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.service.impl.EntreeStockServiceImpl;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
@@ -34,7 +36,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -129,8 +130,8 @@ class EntreeStockServiceImplTest {
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(eq(request), eq(magasin), eq(produit), eq(productFournisseur))).thenReturn(savedLot);
-        when(stockDomainService.createOrUpdateEntry(magasin, produit, 100, new BigDecimal("10.00"))).thenReturn(upsertedStock);
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(savedLot);
+        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upsertedStock);
 
         EntreeStockResponse response = service.create(request);
 
@@ -171,8 +172,8 @@ class EntreeStockServiceImplTest {
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(existingStock));
-        when(entreeStockDomainService.create(eq(request), eq(magasin), eq(produit), eq(productFournisseur))).thenReturn(savedLot);
-        when(stockDomainService.createOrUpdateEntry(magasin, produit, 50, new BigDecimal("20.00"))).thenReturn(upsertedStock);
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(savedLot);
+        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upsertedStock);
 
         service.create(request);
 
@@ -195,8 +196,8 @@ class EntreeStockServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(entreeStockDomainService, never()).create(any(), any(), any(), any());
-        verify(stockDomainService, never()).createOrUpdateEntry(any(), any(), anyInt(), any());
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+        verify(stockDomainService, never()).createOrUpdateEntry(any(StockEntryContext.class));
         verify(mouvementStockDomainService, never()).journalize(any(), any());
     }
 
@@ -213,7 +214,7 @@ class EntreeStockServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(entreeStockDomainService, never()).create(any(), any(), any(), any());
-        verify(stockDomainService, never()).createOrUpdateEntry(any(), any(), anyInt(), any());
+        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
+        verify(stockDomainService, never()).createOrUpdateEntry(any(StockEntryContext.class));
     }
 }

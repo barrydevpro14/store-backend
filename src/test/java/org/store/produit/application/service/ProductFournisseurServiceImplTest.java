@@ -17,6 +17,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.ProductFournisseurCreate;
 import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
@@ -122,7 +123,7 @@ class ProductFournisseurServiceImplTest {
         when(qualityService.findById(qualityId)).thenReturn(quality);
         when(qualityService.ensureBelongsToCurrentEntreprise(quality)).thenReturn(quality);
         when(productFournisseurDomainService.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId)).thenReturn(false);
-        when(productFournisseurDomainService.create(request, product, fournisseur, quality)).thenReturn(saved);
+        when(productFournisseurDomainService.create(any(ProductFournisseurCreate.class))).thenReturn(saved);
 
         ProductFournisseurResponse response = service.create(request);
 
@@ -152,7 +153,7 @@ class ProductFournisseurServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(ProductFournisseurCreate.class));
     }
 
     @Test
@@ -172,7 +173,7 @@ class ProductFournisseurServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UniqueResourceException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(ProductFournisseurCreate.class));
     }
 
     @Test
@@ -188,7 +189,7 @@ class ProductFournisseurServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(ProductFournisseurCreate.class));
     }
 
     @Test
@@ -206,7 +207,7 @@ class ProductFournisseurServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(productFournisseurDomainService, never()).create(any(), any(), any(), any());
+        verify(productFournisseurDomainService, never()).create(any(ProductFournisseurCreate.class));
     }
 
     @Test
@@ -306,8 +307,9 @@ class ProductFournisseurServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productFournisseurDomainService.findById(productFournisseurId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(productFournisseurId,
-                new ProductFournisseurRequest(productId, fournisseurId, qualityId, new BigDecimal("1"), new BigDecimal("2"), null, null)))
+        ProductFournisseurRequest updateReq = new ProductFournisseurRequest(productId, fournisseurId, qualityId, new BigDecimal("1"), new BigDecimal("2"), null, null);
+
+        assertThatThrownBy(() -> service.update(productFournisseurId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(productFournisseurDomainService, never()).save(any());
@@ -333,7 +335,9 @@ class ProductFournisseurServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productFournisseurDomainService.findById(productFournisseurId)).thenReturn(pf);
 
-        assertThatThrownBy(() -> service.updatePrixVente(productFournisseurId, new BigDecimal("12.50")))
+        BigDecimal prixVente = new BigDecimal("12.50");
+
+        assertThatThrownBy(() -> service.updatePrixVente(productFournisseurId, prixVente))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(productFournisseurDomainService, never()).updatePrixVente(any(), any());
@@ -380,10 +384,15 @@ class ProductFournisseurServiceImplTest {
 
     @Test
     void ensurePrixVenteGreaterThanPrixAchat_should_throw_when_below_or_equal() {
-        assertThatThrownBy(() -> service.ensurePrixVenteGreaterThanPrixAchat(new BigDecimal("10"), new BigDecimal("10")))
+        BigDecimal prixEqual = new BigDecimal("10");
+        BigDecimal prixAchat = new BigDecimal("10");
+
+        assertThatThrownBy(() -> service.ensurePrixVenteGreaterThanPrixAchat(prixEqual, prixAchat))
                 .isInstanceOf(BadArgumentException.class);
 
-        assertThatThrownBy(() -> service.ensurePrixVenteGreaterThanPrixAchat(new BigDecimal("9"), new BigDecimal("10")))
+        BigDecimal prixBas = new BigDecimal("9");
+
+        assertThatThrownBy(() -> service.ensurePrixVenteGreaterThanPrixAchat(prixBas, prixAchat))
                 .isInstanceOf(BadArgumentException.class);
     }
 }

@@ -192,7 +192,9 @@ class QualityServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(qualityDomainService.findById(qualityId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(qualityId, new QualityRequest("x", null)))
+        QualityRequest updateReq = new QualityRequest("x", null);
+
+        assertThatThrownBy(() -> service.update(qualityId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(qualityDomainService, never()).save(any());

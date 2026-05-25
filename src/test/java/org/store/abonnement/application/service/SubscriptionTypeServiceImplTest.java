@@ -94,7 +94,9 @@ class SubscriptionTypeServiceImplTest {
         when(planAbonnementService.findById(planId)).thenReturn(plan);
         when(typePlanAbonnementDomainService.existsByPlanIdAndNom(planId, "Mensuel")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(planId, validRequest()))
+        SubscriptionTypeRequest req = validRequest();
+
+        assertThatThrownBy(() -> service.create(planId, req))
                 .isInstanceOf(UniqueResourceException.class);
 
         verify(typePlanAbonnementDomainService, never()).create(any(), any());

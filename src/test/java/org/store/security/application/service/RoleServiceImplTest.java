@@ -9,8 +9,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.common.exceptions.EntityException;
+import org.store.common.service.ValidatorService;
 import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
+import org.store.security.domain.service.PermissionsDomainService;
 import org.store.security.domain.service.RoleDomainService;
 
 import java.util.LinkedHashSet;
@@ -26,8 +28,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RoleServiceImplTest {
 
-    @Mock
-    private RoleDomainService roleDomainService;
+    @Mock private RoleDomainService roleDomainService;
+    @Mock private PermissionsDomainService permissionsDomainService;
+    @Mock private ValidatorService validatorService;
 
     @InjectMocks
     private RoleServiceImpl service;
@@ -71,6 +74,35 @@ class RoleServiceImplTest {
         permission.setId(UUID.randomUUID());
         permission.setCode(code);
         return permission;
+    }
+
+    @Test
+    void resolvePermissions_should_return_permissions_for_known_codes() {
+        Permissions saleRead = buildPermission("SALE_READ");
+        Permissions stockRead = buildPermission("STOCK_READ");
+        when(permissionsDomainService.findByCode("SALE_READ")).thenReturn(Optional.of(saleRead));
+        when(permissionsDomainService.findByCode("STOCK_READ")).thenReturn(Optional.of(stockRead));
+
+        Set<Permissions> result = service.resolvePermissions(List.of("SALE_READ", "STOCK_READ"));
+
+        assertThat(result).containsExactlyInAnyOrder(saleRead, stockRead);
+    }
+
+    @Test
+    void resolvePermissions_should_ignore_unknown_codes() {
+        Permissions saleRead = buildPermission("SALE_READ");
+        when(permissionsDomainService.findByCode("SALE_READ")).thenReturn(Optional.of(saleRead));
+        when(permissionsDomainService.findByCode("UNKNOWN_CODE")).thenReturn(Optional.empty());
+
+        Set<Permissions> result = service.resolvePermissions(List.of("SALE_READ", "UNKNOWN_CODE"));
+
+        assertThat(result).containsExactly(saleRead);
+    }
+
+    @Test
+    void resolvePermissions_should_return_empty_set_for_empty_input() {
+        Set<Permissions> result = service.resolvePermissions(List.of());
+        assertThat(result).isEmpty();
     }
 
     private static Role buildRole(String libelle, String description, Set<Permissions> permissions) {

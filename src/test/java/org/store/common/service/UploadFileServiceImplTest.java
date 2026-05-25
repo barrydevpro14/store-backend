@@ -93,7 +93,9 @@ class UploadFileServiceImplTest {
         assertThatThrownBy(() -> service.buildImages(null))
                 .isInstanceOf(BadArgumentException.class);
 
-        assertThatThrownBy(() -> service.buildImages(List.of()))
+        List<MultipartFile> emptyList = List.of();
+
+        assertThatThrownBy(() -> service.buildImages(emptyList))
                 .isInstanceOf(BadArgumentException.class);
     }
 

@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.repository.StockRepository;
 
@@ -44,7 +45,7 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.empty());
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 100, new BigDecimal("10.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, 100, new BigDecimal("10.00")));
 
         assertThat(stock.getMagasin()).isSameAs(magasin);
         assertThat(stock.getProduit()).isSameAs(produit);
@@ -64,7 +65,7 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 50, new BigDecimal("20.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, 50, new BigDecimal("20.00")));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(150);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("13.33"));
@@ -81,7 +82,7 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 100, new BigDecimal("25.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, 100, new BigDecimal("25.00")));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(300);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("16.67"));
@@ -98,7 +99,7 @@ class StockDomainServiceTest {
         when(stockRepository.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, 10, new BigDecimal("15.00"));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, 10, new BigDecimal("15.00")));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(10);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("15.00"));

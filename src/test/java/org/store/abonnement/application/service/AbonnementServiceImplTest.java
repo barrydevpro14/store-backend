@@ -323,8 +323,10 @@ class AbonnementServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findById(abonnement.getId())).thenReturn(abonnement);
 
-        assertThatThrownBy(() -> service.updateRenouvellementAuto(
-                abonnement.getId(), new RenouvellementAutoRequest(true)))
+        UUID abonnementId = abonnement.getId();
+        RenouvellementAutoRequest renewReq = new RenouvellementAutoRequest(true);
+
+        assertThatThrownBy(() -> service.updateRenouvellementAuto(abonnementId, renewReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(abonnementDomainService, never()).setRenouvellementAuto(any(), anyBoolean());

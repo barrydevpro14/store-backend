@@ -18,8 +18,10 @@ import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.AjustementStockRequest;
+import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.service.impl.AjustementStockServiceImpl;
 import org.store.stock.domain.enums.MotifAjustement;
@@ -132,16 +134,16 @@ class AjustementStockServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(entreeStockDomainService.create(any(EntreeStockRequest.class), eq(magasin), eq(produit), eq(productFournisseur)))
+        when(entreeStockDomainService.create(any(EntreeStockCreate.class)))
                 .thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(eq(magasin), eq(produit), eq(20), eq(new BigDecimal("10.00"))))
+        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class)))
                 .thenReturn(updated);
         when(mouvementStockDomainService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvement());
 
         MouvementStockResponse response = service.create(req);
 
         assertThat(response.detail().type()).isEqualTo(MouvementStockType.AJUSTEMENT);
-        verify(entreeStockDomainService).create(any(EntreeStockRequest.class), eq(magasin), eq(produit), eq(productFournisseur));
+        verify(entreeStockDomainService).create(any(EntreeStockCreate.class));
     }
 
     @Test

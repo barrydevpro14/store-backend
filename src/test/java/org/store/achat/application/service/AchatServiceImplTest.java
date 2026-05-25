@@ -44,8 +44,10 @@ import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.property.PurchaseProperties;
+import org.store.achat.application.dto.LigneCommandeAchatUpdate;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
@@ -250,7 +252,7 @@ class AchatServiceImplTest {
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(eq(magasin), eq(produit), eq(100), eq(new BigDecimal("10.00")))).thenReturn(stockAfter);
+        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenAnswer(inv -> {
             commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
             return commande;
@@ -296,7 +298,7 @@ class AchatServiceImplTest {
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
         when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(), any(), any(int.class), any())).thenReturn(stockAfter);
+        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
 
         service.receive(commandeId, sampleReceiveRequest());
@@ -321,7 +323,7 @@ class AchatServiceImplTest {
         when(factureAchatDomainService.applyPaiement(eq(facture), eq(new BigDecimal("400.00")))).thenReturn(facture);
         when(stockDomainService.findByMagasinIdAndProduitId(any(), any())).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(), any(), any(int.class), any())).thenReturn(stockAfter);
+        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
 
         AchatReceiveRequest body = new AchatReceiveRequest(
@@ -363,7 +365,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
 
-        assertThatThrownBy(() -> service.receive(commandeId, sampleReceiveRequest()))
+        AchatReceiveRequest receiveReq = sampleReceiveRequest();
+
+        assertThatThrownBy(() -> service.receive(commandeId, receiveReq))
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("notDraft");
 
@@ -378,7 +382,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande))
                 .thenThrow(new ForbiddenException("commandeAchat.notOwned"));
 
-        assertThatThrownBy(() -> service.receive(commandeId, sampleReceiveRequest()))
+        AchatReceiveRequest receiveReq = sampleReceiveRequest();
+
+        assertThatThrownBy(() -> service.receive(commandeId, receiveReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(factureAchatDomainService, never()).create(any());
@@ -393,7 +399,7 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(ligneCommandeAchatDomainService.findById(ligneId)).thenReturn(ligne);
-        when(ligneCommandeAchatDomainService.update(eq(ligne), eq(150), eq(new BigDecimal("12.00")), eq(new BigDecimal("18.00")), eq("LOT-2"), eq(null)))
+        when(ligneCommandeAchatDomainService.update(eq(ligne), any(LigneCommandeAchatUpdate.class)))
                 .thenAnswer(inv -> {
                     ligne.setQuantite(150);
                     ligne.setPrixAchat(new BigDecimal("12.00"));
@@ -421,7 +427,7 @@ class AchatServiceImplTest {
         assertThatThrownBy(() -> service.updateLigne(commandeId, ligneId, req))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneCommandeAchatDomainService, never()).update(any(), any(int.class), any(), any(), any(), any());
+        verify(ligneCommandeAchatDomainService, never()).update(any(), any(LigneCommandeAchatUpdate.class));
     }
 
     @Test
@@ -439,7 +445,7 @@ class AchatServiceImplTest {
         assertThatThrownBy(() -> service.updateLigne(commandeId, ligneId, req))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneCommandeAchatDomainService, never()).update(any(), any(int.class), any(), any(), any(), any());
+        verify(ligneCommandeAchatDomainService, never()).update(any(), any(LigneCommandeAchatUpdate.class));
     }
 
     @Test
@@ -631,7 +637,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
 
-        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+        AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("alreadyCancelled");
 
@@ -647,7 +655,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
 
-        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+        AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("notCancellable");
 
@@ -663,7 +673,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
 
-        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+        AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("windowExpired");
 
@@ -676,7 +688,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande))
                 .thenThrow(new ForbiddenException("commandeAchat.notOwned"));
 
-        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+        AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
@@ -694,7 +708,9 @@ class AchatServiceImplTest {
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
         when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lotIntact, lotConsomme));
 
-        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+        AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("lotAlreadyConsumed");
 
@@ -713,7 +729,9 @@ class AchatServiceImplTest {
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
         when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
 
-        assertThatThrownBy(() -> service.cancel(commandeId, new AnnulationAchatRequest("ERREUR_SAISIE", null)))
+        AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
+
+        assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("hasPaiements");
 

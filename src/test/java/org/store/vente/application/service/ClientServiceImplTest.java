@@ -268,8 +268,9 @@ class ClientServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(vendeur());
         when(clientDomainService.findById(clientId)).thenReturn(foreignClient);
 
-        assertThatThrownBy(() -> service.update(clientId,
-                new ClientRequest("x", null, null, null, null, magasinId)))
+        ClientRequest updateReq = new ClientRequest("x", null, null, null, null, magasinId);
+
+        assertThatThrownBy(() -> service.update(clientId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(clientDomainService, never()).save(any());

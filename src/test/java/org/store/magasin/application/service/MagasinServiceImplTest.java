@@ -211,7 +211,9 @@ class MagasinServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(magasinDomainService.findById(magasinId)).thenReturn(foreign);
 
-        assertThatThrownBy(() -> service.update(magasinId, new MagasinRequest("x", "y")))
+        MagasinRequest updateReq = new MagasinRequest("x", "y");
+
+        assertThatThrownBy(() -> service.update(magasinId, updateReq))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(magasinDomainService, never()).save(any());

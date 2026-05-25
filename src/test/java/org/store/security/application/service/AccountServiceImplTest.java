@@ -57,7 +57,9 @@ class AccountServiceImplTest {
         AccountRequest request = new AccountRequest("john.doe", "S3cretPwd!");
         when(accountDomainService.findByUsername("john.doe")).thenReturn(Optional.of(new Account()));
 
-        assertThatThrownBy(() -> service.create(request, new Role()))
+        Role role = new Role();
+
+        assertThatThrownBy(() -> service.create(request, role))
                 .isInstanceOf(UniqueResourceException.class);
 
         verify(accountDomainService, never()).create(any(), any(), any());

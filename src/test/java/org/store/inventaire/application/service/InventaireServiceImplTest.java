@@ -253,7 +253,10 @@ class InventaireServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
 
-        assertThatThrownBy(() -> service.updateLigne(inventaireId, UUID.randomUUID(), new LigneInventaireUpdateRequest(5)))
+        UUID randomLigneId = UUID.randomUUID();
+        LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(5);
+
+        assertThatThrownBy(() -> service.updateLigne(inventaireId, randomLigneId, updateReq))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(ligneInventaireDomainService, never()).updateQuantiteReelle(any(), eq(5));
@@ -273,7 +276,9 @@ class InventaireServiceImplTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
         when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(ligneAutre);
 
-        assertThatThrownBy(() -> service.updateLigne(inventaireId, ligneId, new LigneInventaireUpdateRequest(5)))
+        LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(5);
+
+        assertThatThrownBy(() -> service.updateLigne(inventaireId, ligneId, updateReq))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(ligneInventaireDomainService, never()).updateQuantiteReelle(any(), eq(5));
@@ -301,7 +306,9 @@ class InventaireServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
 
-        assertThatThrownBy(() -> service.deleteLigne(inventaireId, UUID.randomUUID()))
+        UUID randomLigneId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.deleteLigne(inventaireId, randomLigneId))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(ligneInventaireDomainService, never()).delete(any());
@@ -347,7 +354,9 @@ class InventaireServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
 
-        assertThatThrownBy(() -> service.passerEnBilan(inventaireId, bilanRequest("0.00", "0.00", LocalDate.now())))
+        BilanInventaireRequest bilan = bilanRequest("0.00", "0.00", LocalDate.now());
+
+        assertThatThrownBy(() -> service.passerEnBilan(inventaireId, bilan))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(rapportInventaireDomainService, never()).create(any(), any());
@@ -459,7 +468,7 @@ class InventaireServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
-        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, 0, 10);
+        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, null, null, 0, 10);
         InventaireResponse response = new InventaireResponse(inventaireEnCours);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());

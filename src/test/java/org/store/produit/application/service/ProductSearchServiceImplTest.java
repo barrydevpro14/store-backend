@@ -99,7 +99,9 @@ class ProductSearchServiceImplTest {
     void search_should_throw_when_proprietaire_and_magasinId_absent() {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
-        assertThatThrownBy(() -> service.search("clou", null, PageRequest.of(0, 10)))
+        PageRequest pageable = PageRequest.of(0, 10);
+
+        assertThatThrownBy(() -> service.search("clou", null, pageable))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(productDomainService, never()).searchByEntrepriseWithActiveLots(any(), any(), any(), any());
