@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.domain.model.Stock;
@@ -67,16 +68,16 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
      * via la formule {@code (qtyAvant × prixMoyenAvant + quantite × prixAchat) / qtyApres}
      * (scale 2, arrondi HALF_UP). Si aucun stock n'existe pour la paire, il est initialisé à zéro avant le calcul.
      */
-    public Stock createOrUpdateEntry(Magasin magasin, Product produit, int quantite, BigDecimal prixAchat) {
-        Stock stock = findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
-                .orElseGet(() -> initStock(magasin, produit));
+    public Stock createOrUpdateEntry(StockEntryContext context) {
+        Stock stock = findByMagasinIdAndProduitId(context.magasin().getId(), context.produit().getId())
+                .orElseGet(() -> initStock(context.magasin(), context.produit()));
 
         int qtyAvant = stock.getQuantiteDisponible();
-        int qtyApres = qtyAvant + quantite;
+        int qtyApres = qtyAvant + context.quantite();
 
         BigDecimal prixMoyenAvant = stock.getPrixAchatMoyen() != null ? stock.getPrixAchatMoyen() : BigDecimal.ZERO;
         BigDecimal nouvelleMoyenne = prixMoyenAvant.multiply(BigDecimal.valueOf(qtyAvant))
-                .add(prixAchat.multiply(BigDecimal.valueOf(quantite)))
+                .add(context.prixAchat().multiply(BigDecimal.valueOf(context.quantite())))
                 .divide(BigDecimal.valueOf(qtyApres), 2, RoundingMode.HALF_UP);
 
         stock.setQuantiteDisponible(qtyApres);

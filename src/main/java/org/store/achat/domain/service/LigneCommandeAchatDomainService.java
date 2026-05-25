@@ -2,12 +2,10 @@ package org.store.achat.domain.service;
 
 import org.springframework.stereotype.Service;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
+import org.store.achat.application.dto.LigneCommandeAchatUpdate;
 import org.store.achat.domain.model.LigneCommandeAchat;
 import org.store.achat.domain.repository.LigneCommandeAchatRepository;
 import org.store.common.service.GlobalService;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Service
 public class LigneCommandeAchatDomainService extends GlobalService<LigneCommandeAchat, LigneCommandeAchatRepository> {
@@ -29,13 +27,12 @@ public class LigneCommandeAchatDomainService extends GlobalService<LigneCommande
     }
 
     /** Met à jour quantité + prix + traçabilité lot d'une ligne en DRAFT (snapshot avant matérialisation). */
-    public LigneCommandeAchat update(LigneCommandeAchat ligne, int quantite, BigDecimal prixAchat, BigDecimal prixVente,
-                                     String numeroLot, LocalDate dateExpiration) {
-        ligne.setQuantite(quantite);
-        ligne.setPrixAchat(prixAchat);
-        ligne.setPrixVente(prixVente);
-        ligne.setNumeroLot(numeroLot);
-        ligne.setDateExpiration(dateExpiration);
+    public LigneCommandeAchat update(LigneCommandeAchat ligne, LigneCommandeAchatUpdate ligneUpdate) {
+        ligne.setQuantite(ligneUpdate.quantite());
+        ligne.setPrixAchat(ligneUpdate.prixAchat());
+        ligne.setPrixVente(ligneUpdate.prixVente());
+        ligne.setNumeroLot(ligneUpdate.numeroLot());
+        ligne.setDateExpiration(ligneUpdate.dateExpiration());
         return save(ligne);
     }
 

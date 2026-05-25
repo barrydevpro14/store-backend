@@ -18,6 +18,7 @@ import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.LigneCommandeAchatUpdate;
 import org.store.achat.application.dto.RetraitStockResult;
 import org.store.achat.application.service.IAchatService;
 import org.store.achat.application.service.ICommandeAchatService;
@@ -45,6 +46,7 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.property.PurchaseProperties;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
@@ -182,7 +184,8 @@ public class AchatServiceImpl implements IAchatService {
      * post-paiement (statut + montantPaye mis à jour) — ou la facture
      * inchangée si aucun paiement n'a été fourni.
      */
-    private FactureAchat applyOptionalInitialPaiement(FactureAchat facture, BigDecimal montantTotal, PaiementAchatRequest paiement) {
+    @Override
+    public FactureAchat applyOptionalInitialPaiement(FactureAchat facture, BigDecimal montantTotal, PaiementAchatRequest paiement) {
         if (paiement == null) return facture;
 
         if (paiement.montant().compareTo(montantTotal) > 0) {
@@ -201,7 +204,8 @@ public class AchatServiceImpl implements IAchatService {
      * `factureAchat.numero.alreadyExists`) ; sinon, en génère un au
      * format `FACT-yyyyMMdd-HHmmssSSS`.
      */
-    private String resolveNumeroFacture(String numero) {
+    @Override
+    public String resolveNumeroFacture(String numero) {
         if (numero == null || numero.isBlank()) {
             return factureAchatDomainService.generateNumero();
         }
@@ -234,7 +238,7 @@ public class AchatServiceImpl implements IAchatService {
                 commande
         ));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, quantite, ligne.getPrixAchat());
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, quantite, ligne.getPrixAchat()));
 
         mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,
@@ -261,11 +265,13 @@ public class AchatServiceImpl implements IAchatService {
 
         LigneCommandeAchat updated = ligneCommandeAchatDomainService.update(
                 ligne,
-                ligneAchatUpdateRequest.quantite(),
-                ligneAchatUpdateRequest.prixAchat(),
-                ligneAchatUpdateRequest.prixVente(),
-                ligneAchatUpdateRequest.numeroLot(),
-                ligneAchatUpdateRequest.dateExpiration()
+                new LigneCommandeAchatUpdate(
+                        ligneAchatUpdateRequest.quantite(),
+                        ligneAchatUpdateRequest.prixAchat(),
+                        ligneAchatUpdateRequest.prixVente(),
+                        ligneAchatUpdateRequest.numeroLot(),
+                        ligneAchatUpdateRequest.dateExpiration()
+                )
         );
 
         return new LigneCommandeAchatResponse(updated);

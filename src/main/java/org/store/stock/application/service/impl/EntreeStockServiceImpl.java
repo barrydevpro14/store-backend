@@ -7,9 +7,11 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
@@ -62,8 +64,14 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 .map(Stock::getQuantiteDisponible)
                 .orElse(0);
 
-        EntreeStock entreeStock = entreeStockDomainService.create(entreeStockRequest, magasin, produit, productFournisseur);
-        Stock stock = stockDomainService.createOrUpdateEntry(magasin, produit, entreeStockRequest.quantite(), entreeStockRequest.prixAchat());
+        EntreeStock entreeStock = entreeStockDomainService.create(new EntreeStockCreate(
+                magasin, produit, productFournisseur,
+                entreeStockRequest.quantite(), entreeStockRequest.prixAchat(),
+                entreeStockRequest.numeroLot(), entreeStockRequest.dateExpiration(),
+                null));
+
+        Stock stock = stockDomainService.createOrUpdateEntry(
+                new StockEntryContext(magasin, produit, entreeStockRequest.quantite(), entreeStockRequest.prixAchat()));
 
         mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,

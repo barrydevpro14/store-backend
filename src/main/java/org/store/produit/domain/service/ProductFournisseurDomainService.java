@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.common.service.GlobalService;
-import org.store.produit.application.dto.ProductFournisseurRequest;
+import org.store.produit.application.dto.ProductFournisseurCreate;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -21,15 +21,15 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
         super(repository);
     }
 
-    public ProductFournisseur create(ProductFournisseurRequest productFournisseurRequest, Product product, Fournisseur fournisseur, Quality quality) {
+    public ProductFournisseur create(ProductFournisseurCreate productFournisseurCreate) {
         ProductFournisseur productFournisseur = new ProductFournisseur();
-        productFournisseur.setProduct(product);
-        productFournisseur.setFournisseur(fournisseur);
-        productFournisseur.setQuality(quality);
-        productFournisseur.setPrixAchat(productFournisseurRequest.prixAchat());
-        productFournisseur.setPrixVente(productFournisseurRequest.prixVente());
-        productFournisseur.setReferenceFournisseur(productFournisseurRequest.referenceFournisseur());
-        productFournisseur.setOrigine(productFournisseurRequest.origine());
+        productFournisseur.setProduct(productFournisseurCreate.product());
+        productFournisseur.setFournisseur(productFournisseurCreate.fournisseur());
+        productFournisseur.setQuality(productFournisseurCreate.quality());
+        productFournisseur.setPrixAchat(productFournisseurCreate.productFournisseurRequest().prixAchat());
+        productFournisseur.setPrixVente(productFournisseurCreate.productFournisseurRequest().prixVente());
+        productFournisseur.setReferenceFournisseur(productFournisseurCreate.productFournisseurRequest().referenceFournisseur());
+        productFournisseur.setOrigine(productFournisseurCreate.productFournisseurRequest().origine());
         return save(productFournisseur);
     }
 

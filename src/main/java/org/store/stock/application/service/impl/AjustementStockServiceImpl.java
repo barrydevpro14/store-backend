@@ -11,8 +11,9 @@ import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.AjustementStockRequest;
-import org.store.stock.application.dto.EntreeStockRequest;
+import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.service.IAjustementStockService;
 import org.store.stock.domain.enums.MotifAjustement;
@@ -100,17 +101,13 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
             throw new BadArgumentException("stock.adjustment.productMismatch");
         }
 
-        EntreeStockRequest entreeReq = new EntreeStockRequest(
-                magasin.getId(),
-                productFournisseur.getId(),
-                request.quantite(),
-                request.prixAchat(),
+        entreeStockDomainService.create(new EntreeStockCreate(
+                magasin, produit, productFournisseur,
+                request.quantite(), request.prixAchat(),
                 null, null,
-                "Ajustement: " + request.motif().name()
-        );
-        entreeStockDomainService.create(entreeReq, magasin, produit, productFournisseur);
+                null));
 
-        return stockDomainService.createOrUpdateEntry(magasin, produit, request.quantite(), request.prixAchat());
+        return stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, request.quantite(), request.prixAchat()));
     }
 
     /** Vérifie la disponibilité, consomme les lots FIFO (sans SortieStock), décrémente le stock et retourne le stock à jour. */
@@ -130,11 +127,11 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
 
     /** Décrémente quantiteRestante des lots FIFO sans créer de SortieStock. */
     public void consumeLotsFifoForAdjustment(List<EntreeStock> lots, int quantiteDemandee) {
-        int restant = quantiteDemandee;
-        for (EntreeStock lot : lots) {
-            if (restant == 0) break;
-            restant = decrementLot(lot, restant);
-        }
+        int[] restant = {quantiteDemandee};
+
+        lots.stream()
+                .takeWhile(lot -> restant[0] > 0)
+                .forEach(lot -> restant[0] = decrementLot(lot, restant[0]));
     }
 
     /** Décrémente la quantité restante du lot du minimum entre sa quantité et le restant à consommer, persiste, et retourne le nouveau restant. */

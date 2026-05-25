@@ -8,8 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.common.exceptions.BadArgumentException;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.OwnershipHelper;
+import org.store.produit.application.dto.ProductFournisseurCreate;
 import org.store.produit.application.dto.ProductFournisseurRequest;
 import org.store.produit.application.dto.ProductFournisseurResponse;
 import org.store.produit.application.service.IProductFournisseurService;
@@ -19,7 +20,6 @@ import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.ProductFournisseurDomainService;
-import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -60,7 +60,8 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
         ensurePrixVenteGreaterThanPrixAchat(productFournisseurRequest.prixVente(), productFournisseurRequest.prixAchat());
         ensureTripletAvailable(product.getId(), fournisseur.getId(), quality.getId());
 
-        return new ProductFournisseurResponse(productFournisseurDomainService.create(productFournisseurRequest, product, fournisseur, quality));
+        return new ProductFournisseurResponse(productFournisseurDomainService.create(
+                new ProductFournisseurCreate(productFournisseurRequest, product, fournisseur, quality)));
     }
 
     /** Retourne le lien ou lève `EntityException`. */
@@ -131,11 +132,12 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
     /** Lève `ForbiddenException` si le lien n'appartient pas à l'entreprise du caller (vérification via product.entreprise). */
     @Override
     public ProductFournisseur ensureBelongsToCurrentEntreprise(ProductFournisseur productFournisseur) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!productFournisseur.getProduct().getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("productFournisseur.notOwned");
-        }
-        return productFournisseur;
+        return OwnershipHelper.ensureOwnership(
+                productFournisseur,
+                productFournisseur.getProduct().getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "productFournisseur.notOwned"
+        );
     }
 
     /** Lève `UniqueResourceException` si un lien (product, fournisseur, quality) existe déjà. */

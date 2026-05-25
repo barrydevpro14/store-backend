@@ -3,11 +3,7 @@ package org.store.stock.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
-import org.store.magasin.domain.model.Magasin;
-import org.store.produit.domain.model.Product;
-import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.EntreeStockCreate;
-import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.ExpiringLotResponse;
 import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.domain.model.EntreeStock;
@@ -38,17 +34,7 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return repository.findActiveLotsByMagasinAndProductIds(magasinId, productIds);
     }
 
-    /** Création d'une entrée stock manuelle (sans commande achat). */
-    public EntreeStock create(EntreeStockRequest entreeStockRequest, Magasin magasin, Product produit, ProductFournisseur productFournisseur) {
-        return create(new EntreeStockCreate(
-                magasin, produit, productFournisseur,
-                entreeStockRequest.quantite(), entreeStockRequest.prixAchat(),
-                entreeStockRequest.numeroLot(), entreeStockRequest.dateExpiration(),
-                null
-        ));
-    }
-
-    /** Recrédite la quantité restante d'un lot lors d'une annulation de vente (compense les SortieStock annulées). */
+/** Recrédite la quantité restante d'un lot lors d'une annulation de vente (compense les SortieStock annulées). */
     public EntreeStock creditQuantiteRestante(EntreeStock lot, int quantite) {
         lot.setQuantiteRestante(lot.getQuantiteRestante() + quantite);
         return save(lot);

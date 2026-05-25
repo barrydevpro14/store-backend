@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
-import org.store.common.exceptions.ForbiddenException;
+import org.store.common.tools.OwnershipHelper;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.DateHelper;
@@ -240,9 +240,12 @@ public class InventaireServiceImpl implements IInventaireService {
 
     /** Verifie que l'inventaire appartient a l'entreprise du caller (via magasin.entreprise). */
     public void ensureBelongsToCurrentEntreprise(Inventaire inventaire, UUID entrepriseId) {
-        if (!inventaire.getMagasin().getEntreprise().getId().equals(entrepriseId)) {
-            throw new ForbiddenException("inventaire.notOwned");
-        }
+        OwnershipHelper.ensureOwnership(
+                inventaire,
+                inventaire.getMagasin().getEntreprise().getId(),
+                entrepriseId,
+                "inventaire.notOwned"
+        );
     }
 
     /** Verifie que l'inventaire est au statut EN_COURS (sinon plus modifiable). */
@@ -337,7 +340,7 @@ public class InventaireServiceImpl implements IInventaireService {
     /** Agregre les depenses du magasin sur la periode [dateDebut, dateFin] via DepenseDomainService.computeTotal. */
     public BigDecimal computeDepense(Magasin magasin, LocalDate dateDebut, LocalDate dateFin) {
         DepenseFilter filter = new DepenseFilter(
-                magasin.getId(), null, null, DateHelper.format(dateDebut), DateHelper.format(dateFin), 0, 1
+                magasin.getId(), null, null, DateHelper.format(dateDebut), DateHelper.format(dateFin), null, null, 0, 1
         );
         DepenseTotalResponse total = depenseDomainService.computeTotal(filter, magasin.getEntreprise().getId());
         return total != null && total.montantTotal() != null ? total.montantTotal() : BigDecimal.ZERO;
