@@ -31,6 +31,9 @@ import org.store.common.exceptions.ForbiddenException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
+import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
+import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
+import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
 import org.store.security.application.service.ICurrentUserService;
@@ -57,6 +60,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     private final SubscriptionAmountCalculator amountCalculator;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final INotificationEventPublisher notificationEventPublisher;
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
@@ -67,7 +71,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                                          IUploadFileService uploadFileService,
                                          SubscriptionAmountCalculator amountCalculator,
                                          ICurrentUserService currentUserService,
-                                         ValidatorService validatorService) {
+                                         ValidatorService validatorService,
+                                         INotificationEventPublisher notificationEventPublisher) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
         this.abonnementService = abonnementService;
@@ -78,6 +83,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         this.amountCalculator = amountCalculator;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.notificationEventPublisher = notificationEventPublisher;
     }
 
     /**
@@ -100,6 +106,9 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         PaiementAbonnement paiement = paiementAbonnementDomainService.createPending(
                 new PaiementAbonnementCreationContext(abonnement, paiementAbonnementRequest, breakdown, preuveImage));
 
+        notificationEventPublisher.publishPaiementSubmitted(
+                new org.store.notification.application.event.PaiementAbonnementSubmittedEvent(paiement));
+
         return new PaiementAbonnementResponse(paiement);
     }
 
@@ -117,7 +126,11 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         Abonnement abonnement = paiement.getAbonnement();
         activateAbonnement(abonnement);
 
-        return new PaiementAbonnementResponse(paiementAbonnementDomainService.markAsValide(paiement));
+        PaiementAbonnement validatedPaiement = paiementAbonnementDomainService.markAsValide(paiement);
+
+        notificationEventPublisher.publishPaiementValidated(new PaiementAbonnementValidatedEvent(validatedPaiement));
+
+        return new PaiementAbonnementResponse(validatedPaiement);
     }
 
     /**
@@ -132,8 +145,11 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
         releaseReservedCouponIfAny(paiement.getAbonnement().getId());
 
-        return new PaiementAbonnementResponse(
-                paiementAbonnementDomainService.markAsRejete(paiement, rejectPaiementRequest.motifRejet()));
+        PaiementAbonnement rejectedPaiement = paiementAbonnementDomainService.markAsRejete(paiement, rejectPaiementRequest.motifRejet());
+
+        notificationEventPublisher.publishPaiementRejected(new PaiementAbonnementRejectedEvent(rejectedPaiement));
+
+        return new PaiementAbonnementResponse(rejectedPaiement);
     }
 
     /** Paginated filtered listing; auto-scoped to the caller's entreprise when the caller is not ADMIN. */

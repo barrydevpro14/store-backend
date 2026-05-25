@@ -7,10 +7,18 @@ import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.repository.ProprietaireRepository;
 
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
 public class ProprietaireDomainService extends GlobalService<Proprietaire, ProprietaireRepository> {
     public ProprietaireDomainService(ProprietaireRepository repository) {
         super(repository);
+    }
+
+    /** Retourne le compte du propriétaire d'une entreprise. */
+    public Optional<Account> findAccountByEntrepriseId(UUID entrepriseId) {
+        return repository.findAccountByEntrepriseId(entrepriseId);
     }
 
     public Proprietaire create(UtilisateurRequest utilisateurRequest, Account account) {

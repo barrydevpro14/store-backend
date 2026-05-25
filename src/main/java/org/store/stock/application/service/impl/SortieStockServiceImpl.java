@@ -22,6 +22,8 @@ import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.SortieStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
+import org.store.notification.application.event.StockBelowThresholdEvent;
+import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.SortieStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
@@ -43,19 +45,22 @@ public class SortieStockServiceImpl implements ISortieStockService {
     private final MouvementStockDomainService mouvementStockDomainService;
     private final IMagasinService magasinService;
     private final IProductService productService;
+    private final INotificationEventPublisher notificationEventPublisher;
 
     public SortieStockServiceImpl(EntreeStockDomainService entreeStockDomainService,
                                   SortieStockDomainService sortieStockDomainService,
                                   StockDomainService stockDomainService,
                                   MouvementStockDomainService mouvementStockDomainService,
                                   IMagasinService magasinService,
-                                  IProductService productService) {
+                                  IProductService productService,
+                                  INotificationEventPublisher notificationEventPublisher) {
         this.entreeStockDomainService = entreeStockDomainService;
         this.sortieStockDomainService = sortieStockDomainService;
         this.stockDomainService = stockDomainService;
         this.mouvementStockDomainService = mouvementStockDomainService;
         this.magasinService = magasinService;
         this.productService = productService;
+        this.notificationEventPublisher = notificationEventPublisher;
     }
 
     /** Vérifie les accès, consomme les lots FIFO, met à jour stock agrégé et journalise. */
@@ -77,6 +82,10 @@ public class SortieStockServiceImpl implements ISortieStockService {
                 new LotConsumptionContext(sortieStockRequest.quantite(), sortieStockRequest.prixVente(), null));
 
         Stock updated = stockDomainService.decrement(stock, sortieStockRequest.quantite());
+
+        if (updated.getSeuilApprovisionnement() > 0 && updated.getQuantiteDisponible() <= updated.getSeuilApprovisionnement()) {
+            notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
+        }
 
         mouvementStockDomainService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.SORTIE_VENTE,
@@ -113,6 +122,10 @@ public class SortieStockServiceImpl implements ISortieStockService {
         ));
 
         Stock updated = stockDomainService.decrement(stock, sortieStockForVente.quantite());
+
+        if (updated.getSeuilApprovisionnement() > 0 && updated.getQuantiteDisponible() <= updated.getSeuilApprovisionnement()) {
+            notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
+        }
 
         mouvementStockDomainService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.SORTIE_VENTE,

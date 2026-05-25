@@ -56,6 +56,8 @@ import org.store.vente.domain.model.PaiementVente;
 import org.store.vente.domain.service.CommandeVenteDomainService;
 import org.store.vente.domain.service.FactureClientDomainService;
 import org.store.vente.domain.service.LigneCommandeVenteDomainService;
+import org.store.notification.application.event.VenteValidatedEvent;
+import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.math.BigDecimal;
@@ -94,6 +96,7 @@ public class VenteServiceImpl implements IVenteService {
     private final StockDomainService stockDomainService;
     private final MouvementStockDomainService mouvementStockDomainService;
     private final SaleProperties saleProperties;
+    private final INotificationEventPublisher notificationEventPublisher;
 
     public VenteServiceImpl(CommandeVenteDomainService commandeVenteDomainService,
                             LigneCommandeVenteDomainService ligneCommandeVenteDomainService,
@@ -110,7 +113,8 @@ public class VenteServiceImpl implements IVenteService {
                             SortieStockDomainService sortieStockDomainService,
                             StockDomainService stockDomainService,
                             MouvementStockDomainService mouvementStockDomainService,
-                            SaleProperties saleProperties) {
+                            SaleProperties saleProperties,
+                            INotificationEventPublisher notificationEventPublisher) {
         this.commandeVenteDomainService = commandeVenteDomainService;
         this.ligneCommandeVenteDomainService = ligneCommandeVenteDomainService;
         this.factureClientDomainService = factureClientDomainService;
@@ -127,6 +131,7 @@ public class VenteServiceImpl implements IVenteService {
         this.stockDomainService = stockDomainService;
         this.mouvementStockDomainService = mouvementStockDomainService;
         this.saleProperties = saleProperties;
+        this.notificationEventPublisher = notificationEventPublisher;
     }
 
     /** Crée une commande de vente DRAFT + ses lignes (validations prix + scoping PF), sans toucher au stock. */
@@ -182,6 +187,8 @@ public class VenteServiceImpl implements IVenteService {
         FactureClient finalFacture = applyPremierPaiementIfPresent(venteValidateRequest.premierPaiement(), facture);
 
         CommandeVente delivered = commandeVenteDomainService.validate(commande);
+
+        notificationEventPublisher.publishVenteValidated(new VenteValidatedEvent(delivered));
 
         UserSummaryResponse userSummary = accountService.findUserSummaryByAccountId(delivered.getCreatedBy()).orElse(null);
 

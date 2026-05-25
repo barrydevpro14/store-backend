@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.security.domain.model.Account;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.domain.model.Employe;
@@ -54,6 +55,10 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     Page<EmployeResponse> findResponsesByFilter(@Param("filter") EmployeFilter filter,
                                                 @Param("entrepriseId") UUID entrepriseId,
                                                 Pageable pageable);
+
+    @Query("SELECT e.account FROM Employe e WHERE e.magasin.id = :magasinId AND e.account.role.libelle = :roleLibelle AND e.account.enabled = true")
+    List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(@Param("magasinId") UUID magasinId,
+                                                              @Param("roleLibelle") String roleLibelle);
 
     @Query("""
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
