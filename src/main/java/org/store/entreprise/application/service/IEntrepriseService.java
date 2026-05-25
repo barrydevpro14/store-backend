@@ -6,9 +6,11 @@ import org.store.common.dto.ImageDownloadResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseStatsResponse;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.users.domain.model.Proprietaire;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IEntrepriseService {
@@ -71,4 +73,7 @@ public interface IEntrepriseService {
 
     /** Supprime le logo de l'entreprise du propriétaire connecté (idempotent). */
     void deleteCurrentUserLogo();
+
+    /** Statistiques par entreprise pour le reporting ADMIN : magasinCount + employeCount. */
+    List<EntrepriseStatsResponse> findStats();
 }

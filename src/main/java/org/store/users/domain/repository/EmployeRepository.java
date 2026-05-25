@@ -9,10 +9,14 @@ import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.domain.model.Employe;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface EmployeRepository extends BaseRepository<Employe> {
+
+    @Query("SELECT employe.magasin.entreprise.id, COUNT(employe) FROM Employe employe GROUP BY employe.magasin.entreprise.id")
+    List<Object[]> countAllGroupByEntrepriseId();
 
     @Query("""
             SELECT COUNT(employe) > 0 FROM Employe employe

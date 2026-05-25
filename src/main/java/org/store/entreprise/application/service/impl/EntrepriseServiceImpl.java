@@ -15,11 +15,18 @@ import org.store.common.service.ValidatorService;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseStatsResponse;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.entreprise.domain.service.EntrepriseDomainService;
+import org.store.magasin.domain.service.MagasinDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.users.domain.model.Proprietaire;
+import org.store.users.domain.service.EmployeDomainService;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import java.util.UUID;
 
@@ -30,15 +37,21 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     private final IUploadFileService uploadFileService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final MagasinDomainService magasinDomainService;
+    private final EmployeDomainService employeDomainService;
 
     public EntrepriseServiceImpl(EntrepriseDomainService entrepriseDomainService,
                                  IUploadFileService uploadFileService,
                                  ICurrentUserService currentUserService,
-                                 ValidatorService validatorService) {
+                                 ValidatorService validatorService,
+                                 MagasinDomainService magasinDomainService,
+                                 EmployeDomainService employeDomainService) {
         this.entrepriseDomainService = entrepriseDomainService;
         this.uploadFileService = uploadFileService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.magasinDomainService = magasinDomainService;
+        this.employeDomainService = employeDomainService;
     }
 
     @Override
@@ -137,6 +150,22 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
         if (entreprise.getLogo() != null) {
             entrepriseDomainService.clearLogo(entreprise);
         }
+    }
+
+    @Override
+    public List<EntrepriseStatsResponse> findStats() {
+        List<Entreprise> entreprises = entrepriseDomainService.findAll();
+
+        Map<UUID, Long> magasinCounts = magasinDomainService.countByEntrepriseId();
+        Map<UUID, Long> employeCounts = employeDomainService.countByEntrepriseId();
+
+        return entreprises.stream()
+                .map(entreprise -> new EntrepriseStatsResponse(
+                        entreprise,
+                        magasinCounts.getOrDefault(entreprise.getId(), 0L),
+                        employeCounts.getOrDefault(entreprise.getId(), 0L)
+                ))
+                .toList();
     }
 
     /** Resout l'entreprise du proprietaire connecte via UserPrincipal.entrepriseId. */

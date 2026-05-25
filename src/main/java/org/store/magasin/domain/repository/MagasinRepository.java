@@ -9,9 +9,13 @@ import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface MagasinRepository extends BaseRepository<Magasin> {
+
+    @Query("SELECT magasin.entreprise.id, COUNT(magasin) FROM Magasin magasin GROUP BY magasin.entreprise.id")
+    List<Object[]> countAllGroupByEntrepriseId();
 
     @Query(value = """
             SELECT new org.store.magasin.application.dto.MagasinResponse(magasin)

@@ -23,7 +23,10 @@ import org.store.common.dto.ImageDownloadResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseStatsResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
+
+import java.util.List;
 import org.store.security.application.dto.RegisterPropertyRequest;
 import org.store.security.application.service.IRegisterPropertyService;
 
@@ -49,6 +52,12 @@ public class EntrepriseController {
     @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
     public ResponseEntity<EntrepriseResponse> create(@Valid @RequestBody RegisterPropertyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(registerPropertyService.registerEntrepriseByAdmin(request));
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    public ResponseEntity<List<EntrepriseStatsResponse>> stats() {
+        return ResponseEntity.ok(entrepriseService.findStats());
     }
 
     @GetMapping

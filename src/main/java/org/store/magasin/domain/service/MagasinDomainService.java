@@ -11,12 +11,24 @@ import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.repository.MagasinRepository;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class MagasinDomainService extends GlobalService<Magasin, MagasinRepository> {
     public MagasinDomainService(MagasinRepository repository) {
         super(repository);
+    }
+
+    /** Retourne le nombre de magasins par entreprise pour le reporting ADMIN. */
+    public Map<UUID, Long> countByEntrepriseId() {
+        return repository.countAllGroupByEntrepriseId().stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
     }
 
     public Magasin create(MagasinRequest magasinRequest, Entreprise entreprise) {

@@ -13,13 +13,25 @@ import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.repository.EmployeRepository;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class EmployeDomainService extends GlobalService<Employe, EmployeRepository> {
     public EmployeDomainService(EmployeRepository repository) {
         super(repository);
+    }
+
+    /** Retourne le nombre d'employés par entreprise pour le reporting ADMIN. */
+    public Map<UUID, Long> countByEntrepriseId() {
+        return repository.countAllGroupByEntrepriseId().stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
     }
 
     public boolean existsByMagasinIdAndRolePermissionCode(UUID magasinId, String permissionCode) {
