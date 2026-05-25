@@ -50,7 +50,9 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
     public AdminOverviewStatsResponse getOverviewStats() {
         int currentYear = LocalDate.now().getYear();
 
-        long totalEntreprises          = entrepriseDomainService.count();
+        long totalEntreprisesActives   = entrepriseDomainService.countByActif(true);
+        long totalEntreprisesInactives = entrepriseDomainService.countByActif(false);
+        long totalEntreprises          = totalEntreprisesActives + totalEntreprisesInactives;
         long totalMagasinsActifs       = magasinDomainService.countByActif(true);
         long totalMagasinsInactifs     = magasinDomainService.countByActif(false);
         long totalMagasins             = totalMagasinsActifs + totalMagasinsInactifs;
@@ -66,6 +68,8 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
 
         return new AdminOverviewStatsResponse(
                 totalEntreprises,
+                totalEntreprisesActives,
+                totalEntreprisesInactives,
                 totalMagasins,
                 totalMagasinsActifs,
                 totalMagasinsInactifs,

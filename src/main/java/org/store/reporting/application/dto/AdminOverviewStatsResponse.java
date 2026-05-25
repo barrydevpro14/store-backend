@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 /** All admin reporting overview KPI counts in a single response. */
 public record AdminOverviewStatsResponse(
         long totalEntreprises,
+        long totalEntreprisesActives,
+        long totalEntreprisesInactives,
         long totalMagasins,
         long totalMagasinsActifs,
         long totalMagasinsInactifs,

@@ -46,4 +46,9 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         entreprise.setLogo(null);
         return save(entreprise);
     }
+
+    /** Compte les entreprises actives ou inactives. */
+    public long countByActif(boolean actif) {
+        return repository.countByActif(actif);
+    }
 }

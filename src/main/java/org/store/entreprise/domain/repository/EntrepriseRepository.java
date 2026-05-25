@@ -11,6 +11,9 @@ import org.store.entreprise.domain.model.Entreprise;
 
 public interface EntrepriseRepository extends BaseRepository<Entreprise> {
 
+    @Query("SELECT COUNT(entreprise) FROM Entreprise entreprise WHERE entreprise.actif = :actif")
+    long countByActif(@Param("actif") boolean actif);
+
     @Query(value = """
             SELECT new org.store.entreprise.application.dto.EntrepriseResponse(entreprise)
             FROM Entreprise entreprise
