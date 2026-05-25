@@ -1,4 +1,4 @@
-package org.store.vente.presentation;
+package org.store.reporting.presentation;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,14 +16,14 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(CaisseController.BASE_PATH)
-public class CaisseController {
+@RequestMapping(CaisseReportingController.BASE_PATH)
+public class CaisseReportingController {
 
     public static final String BASE_PATH = "/api/v1/ventes/caisse";
 
     private final ICaisseService caisseService;
 
-    public CaisseController(ICaisseService caisseService) {
+    public CaisseReportingController(ICaisseService caisseService) {
         this.caisseService = caisseService;
     }
 

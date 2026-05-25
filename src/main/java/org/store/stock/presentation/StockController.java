@@ -17,7 +17,6 @@ import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
-import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IExpiringLotsService;
 import org.store.stock.application.service.IStockService;
 
@@ -62,12 +61,6 @@ public class StockController {
         return ResponseEntity.ok(stockService.findBelowThresholdByCurrentEntreprise(
                 new StockFilter(magasinId, productId, page, size)
         ));
-    }
-
-    @GetMapping("/valuation")
-    @PreAuthorize("hasAuthority('STOCK_READ')")
-    public ResponseEntity<StockValuationResponse> computeValuation(@RequestParam UUID magasinId) {
-        return ResponseEntity.ok(stockService.computeValuation(magasinId));
     }
 
     @GetMapping("/expiring-lots")

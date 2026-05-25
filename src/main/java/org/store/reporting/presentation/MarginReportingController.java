@@ -1,4 +1,4 @@
-package org.store.stock.presentation;
+package org.store.reporting.presentation;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,14 +13,14 @@ import org.store.stock.application.service.IMarginReportService;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(MarginReportController.BASE_PATH)
-public class MarginReportController {
+@RequestMapping(MarginReportingController.BASE_PATH)
+public class MarginReportingController {
 
     public static final String BASE_PATH = "/api/v1/reports/margins";
 
     private final IMarginReportService marginReportService;
 
-    public MarginReportController(IMarginReportService marginReportService) {
+    public MarginReportingController(IMarginReportService marginReportService) {
         this.marginReportService = marginReportService;
     }
 

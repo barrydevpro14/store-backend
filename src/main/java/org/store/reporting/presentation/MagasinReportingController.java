@@ -1,4 +1,4 @@
-package org.store.stock.presentation;
+package org.store.reporting.presentation;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.achat.domain.enums.StatutFacture;
-import org.store.stock.application.dto.MagasinOverviewStatsResponse;
+import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.service.StockDomainService;

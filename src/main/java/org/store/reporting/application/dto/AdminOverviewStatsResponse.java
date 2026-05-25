@@ -1,4 +1,4 @@
-package org.store.security.application.dto;
+package org.store.reporting.application.dto;
 
 import java.math.BigDecimal;
 

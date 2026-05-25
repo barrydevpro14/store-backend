@@ -1,4 +1,4 @@
-package org.store.security.application.service.impl;
+package org.store.reporting.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -8,8 +8,8 @@ import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.entreprise.domain.service.EntrepriseDomainService;
 import org.store.magasin.domain.service.MagasinDomainService;
-import org.store.security.application.dto.AdminOverviewStatsResponse;
-import org.store.security.application.service.IAdminReportingService;
+import org.store.reporting.application.dto.AdminOverviewStatsResponse;
+import org.store.reporting.application.service.IAdminReportingService;
 import org.store.users.domain.service.EmployeDomainService;
 
 import java.math.BigDecimal;

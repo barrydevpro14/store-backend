@@ -1,6 +1,6 @@
-package org.store.security.application.service;
+package org.store.reporting.application.service;
 
-import org.store.security.application.dto.AdminOverviewStatsResponse;
+import org.store.reporting.application.dto.AdminOverviewStatsResponse;
 
 public interface IAdminReportingService {
 

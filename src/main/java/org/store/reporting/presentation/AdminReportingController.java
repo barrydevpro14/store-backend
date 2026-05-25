@@ -1,12 +1,12 @@
-package org.store.security.presentation;
+package org.store.reporting.presentation;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.store.security.application.dto.AdminOverviewStatsResponse;
-import org.store.security.application.service.IAdminReportingService;
+import org.store.reporting.application.dto.AdminOverviewStatsResponse;
+import org.store.reporting.application.service.IAdminReportingService;
 
 @RestController
 @RequestMapping(AdminReportingController.BASE_PATH)

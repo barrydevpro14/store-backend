@@ -23,11 +23,8 @@ import org.store.common.dto.ImageDownloadResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
-import org.store.entreprise.application.dto.EntrepriseStatsResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.store.security.application.dto.RegisterPropertyRequest;
 import org.store.security.application.service.IRegisterPropertyService;
 
@@ -53,15 +50,6 @@ public class EntrepriseController {
     @PreAuthorize("hasAuthority('COMPANY_CREATE')")
     public ResponseEntity<EntrepriseResponse> create(@Valid @RequestBody RegisterPropertyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(registerPropertyService.registerEntrepriseByAdmin(request));
-    }
-
-    @GetMapping("/stats")
-    @PreAuthorize("hasAuthority('COMPANY_READ')")
-    public ResponseEntity<Page<EntrepriseStatsResponse>> stats(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(entrepriseService.findStats(
-                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "raisonSociale"))));
     }
 
     @GetMapping
