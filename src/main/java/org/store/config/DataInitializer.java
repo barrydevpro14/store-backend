@@ -12,6 +12,10 @@ import org.store.abonnement.application.dto.SubscriptionTypeRequest;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
+import org.store.notification.domain.enums.CanalNotification;
+import org.store.notification.domain.enums.NotificationStatut;
+import org.store.notification.domain.model.Notification;
+import org.store.notification.domain.service.NotificationDomainService;
 import org.store.property.RbacProperties;
 import org.store.security.application.service.IRolesPermissionsSyncService;
 import org.store.security.domain.model.Role;
@@ -42,6 +46,7 @@ public class DataInitializer implements ApplicationRunner {
     private final RoleDomainService roleDomainService;
     private final PasswordEncoder passwordEncoder;
     private final UtilisateurDomainService utilisateurDomainService;
+    private final NotificationDomainService notificationDomainService;
 
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
@@ -50,7 +55,8 @@ public class DataInitializer implements ApplicationRunner {
                            AccountDomainService accountDomainService,
                            RoleDomainService roleDomainService,
                            PasswordEncoder passwordEncoder,
-                           UtilisateurDomainService utilisateurDomainService) {
+                           UtilisateurDomainService utilisateurDomainService,
+                           NotificationDomainService notificationDomainService) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
@@ -59,6 +65,7 @@ public class DataInitializer implements ApplicationRunner {
         this.roleDomainService = roleDomainService;
         this.passwordEncoder = passwordEncoder;
         this.utilisateurDomainService = utilisateurDomainService;
+        this.notificationDomainService = notificationDomainService;
     }
 
     @Override
@@ -71,6 +78,9 @@ public class DataInitializer implements ApplicationRunner {
             log.info("DataInitializer: RBAC sync skipped (security.rbac.sync=false)");
         }
         ensureTrialPlan();
+        if (rbacProperties.sync()) {
+            seedSampleNotifications();
+        }
     }
 
     /**
@@ -149,5 +159,56 @@ public class DataInitializer implements ApplicationRunner {
         trialType.setTrial(true);
         typePlanAbonnementDomainService.save(trialType);
         log.info("DataInitializer: création type d'essai '{}' sur le plan '{}'", TYPE_TRIAL_NOM, trialPlan.getNom());
+    }
+
+    /**
+     * Seeds sample IN_APP notifications on the ADMIN account so the notification UI can be previewed.
+     * Idempotent: only seeds when the admin account has zero notifications.
+     */
+    private void seedSampleNotifications() {
+        Account adminAccount = accountDomainService.findByUsername(ADMIN_USERNAME).orElse(null);
+        if (adminAccount == null) return;
+
+        long existing = notificationDomainService.countUnread(adminAccount.getId())
+                + notificationDomainService.findByDestinataire(adminAccount.getId(),
+                        org.springframework.data.domain.PageRequest.of(0, 1))
+                        .getTotalElements();
+        if (existing > 0) return;
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        seedNotif(adminAccount, "Contact : Demande de démo",
+                "Amadou Diallo <amadou@example.com>\nBonjour, je souhaite une démonstration de votre solution ERP.",
+                NotificationStatut.ENVOYEE, now.minusHours(2));
+
+        seedNotif(adminAccount, "Nouveau paiement à valider — SARL Alpha",
+                "L'entreprise « SARL Alpha » a soumis un paiement de 15 000 XOF. En attente de validation.",
+                NotificationStatut.ENVOYEE, now.minusHours(5));
+
+        seedNotif(adminAccount, "Contact : Problème de connexion",
+                "Fatou Ndiaye <fatou@store-client.sn>\nJe n'arrive pas à me connecter à mon espace. Mon username est fndaye.",
+                NotificationStatut.ENVOYEE, now.minusDays(1));
+
+        seedNotif(adminAccount, "Nouveau paiement à valider — GIE Soleil",
+                "L'entreprise « GIE Soleil » a soumis un paiement de 45 000 XOF. En attente de validation.",
+                NotificationStatut.LUE, now.minusDays(2));
+
+        seedNotif(adminAccount, "Contact : Question sur les tarifs",
+                "Omar Ba <oba@gmail.com>\nQuels sont vos tarifs pour une PME de 10 employés ?",
+                NotificationStatut.LUE, now.minusDays(3));
+
+        log.info("DataInitializer: 5 notifications de démo seedées pour le compte ADMIN");
+    }
+
+    private void seedNotif(Account dest, String titre, String message,
+                           NotificationStatut statut, java.time.LocalDateTime dateEnvoi) {
+        Notification n = new Notification();
+        n.setDestinataire(dest);
+        n.setTitre(titre);
+        n.setMessage(message);
+        n.setCanal(CanalNotification.IN_APP);
+        n.setStatut(statut);
+        n.setDateEnvoi(dateEnvoi);
+        notificationDomainService.save(n);
     }
 }
