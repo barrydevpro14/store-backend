@@ -30,6 +30,9 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
               AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})
               AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})
+              AND (:#{#filter.createdStartDate} IS NULL OR commande.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR commande.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+            ORDER BY commande.createdAt DESC
             """)
     Page<CommandeVenteResponse> findResponsesByFilter(@Param("filter") CommandeVenteFilter filter,
                                                      @Param("entrepriseId") UUID entrepriseId,

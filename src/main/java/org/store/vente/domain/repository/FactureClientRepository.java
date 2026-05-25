@@ -30,6 +30,9 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
               AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})
               AND (:#{#filter.fromDateTime()} IS NULL OR facture.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR facture.createdAt <= :#{#filter.toDateTime()})
+              AND (:#{#filter.createdStartDate} IS NULL OR facture.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR facture.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+            ORDER BY facture.createdAt DESC
             """)
     Page<FactureClientResponse> findResponsesByFilter(@Param("filter") FactureClientFilter filter,
                                                      @Param("entrepriseId") UUID entrepriseId,

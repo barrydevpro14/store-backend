@@ -21,6 +21,7 @@ import org.store.achat.application.dto.PaiementAchatResponse;
 import org.store.achat.application.service.IFactureAchatService;
 import org.store.achat.application.service.IPaiementAchatService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -45,10 +46,13 @@ public class FactureAchatController {
                                                            @RequestParam(required = false) String statut,
                                                            @RequestParam(required = false) String startDate,
                                                            @RequestParam(required = false) String endDate,
+                                                           @RequestParam(required = false) LocalDate createdStartDate,
+                                                           @RequestParam(required = false) LocalDate createdEndDate,
                                                            @RequestParam(defaultValue = "0") int page,
                                                            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(factureAchatService.findAllByCurrentEntreprise(
-                new FactureAchatFilter(magasinId, fournisseurId, statut, startDate, endDate, page, size)
+                new FactureAchatFilter(magasinId, fournisseurId, statut, startDate, endDate,
+                        createdStartDate, createdEndDate, page, size)
         ));
     }
 

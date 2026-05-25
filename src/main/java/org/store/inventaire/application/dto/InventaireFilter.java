@@ -18,6 +18,8 @@ public record InventaireFilter(
         @EnumValue(enumClass = InventaireStatut.class) String statut,
         @DatePattern String startDate,
         @DatePattern String endDate,
+        LocalDate createdStartDate,
+        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {

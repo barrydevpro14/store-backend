@@ -26,8 +26,9 @@ public interface StockRepository extends BaseRepository<Stock> {
               AND (:#{#filter.productNamePattern()} IS NULL
                    OR LOWER(stock.produit.nom) LIKE :#{#filter.productNamePattern()}
                    OR LOWER(COALESCE(stock.produit.reference, '')) LIKE :#{#filter.productNamePattern()})
-              AND stock.updatedAt >= :#{#filter.createdStart()}
-              AND stock.updatedAt <= :#{#filter.createdEnd()}
+              AND (:#{#filter.createdStartDate} IS NULL OR stock.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR stock.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+            ORDER BY stock.createdAt DESC
             """)
     Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,
                                               @Param("entrepriseId") UUID entrepriseId,

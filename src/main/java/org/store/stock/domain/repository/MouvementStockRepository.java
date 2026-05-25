@@ -23,6 +23,9 @@ public interface MouvementStockRepository extends BaseRepository<MouvementStock>
               AND (:#{#filter.typeAsEnum()} IS NULL OR mouvement.type = :#{#filter.typeAsEnum()})
               AND (:#{#filter.fromDateTime()} IS NULL OR mouvement.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR mouvement.createdAt <= :#{#filter.toDateTime()})
+              AND (:#{#filter.createdStartDate} IS NULL OR mouvement.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR mouvement.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+            ORDER BY mouvement.createdAt DESC
             """)
     Page<MouvementStockResponse> findResponsesByFilter(@Param("filter") MouvementStockFilter filter,
                                                        @Param("entrepriseId") UUID entrepriseId,

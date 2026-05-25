@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.tools.DateHelper;
 import org.store.common.tools.EnumHelper;
@@ -13,6 +12,7 @@ import org.store.common.validation.DatePattern;
 import org.store.common.validation.EnumValue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -26,6 +26,8 @@ public record FactureClientFilter(
         @DecimalMin(value = "0.0") BigDecimal montantMax,
         @DatePattern String startDate,
         @DatePattern String endDate,
+        LocalDate createdStartDate,
+        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
@@ -42,6 +44,6 @@ public record FactureClientFilter(
     }
 
     public Pageable toPageable() {
-        return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return PageRequest.of(page, size);
     }
 }

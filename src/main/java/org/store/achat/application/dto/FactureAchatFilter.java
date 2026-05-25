@@ -10,6 +10,7 @@ import org.store.common.tools.EnumHelper;
 import org.store.common.validation.DatePattern;
 import org.store.common.validation.EnumValue;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,6 +20,8 @@ public record FactureAchatFilter(
         @EnumValue(enumClass = StatutFacture.class) String statut,
         @DatePattern String startDate,
         @DatePattern String endDate,
+        LocalDate createdStartDate,
+        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {

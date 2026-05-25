@@ -12,6 +12,7 @@ import org.store.stock.application.dto.MouvementStockFilter;
 import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.service.IMouvementStockService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -35,10 +36,13 @@ public class MouvementStockController {
                                                              @RequestParam(required = false) String type,
                                                              @RequestParam(required = false) String startDate,
                                                              @RequestParam(required = false) String endDate,
+                                                             @RequestParam(required = false) LocalDate createdStartDate,
+                                                             @RequestParam(required = false) LocalDate createdEndDate,
                                                              @RequestParam(defaultValue = "0") int page,
                                                              @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(mouvementStockService.findAllByCurrentEntreprise(
-                new MouvementStockFilter(magasinId, productId, stockId, type, startDate, endDate, page, size)
+                new MouvementStockFilter(magasinId, productId, stockId, type, startDate, endDate,
+                        createdStartDate, createdEndDate, page, size)
         ));
     }
 }

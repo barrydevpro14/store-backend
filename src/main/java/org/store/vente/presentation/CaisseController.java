@@ -39,7 +39,10 @@ public class CaisseController {
     @PreAuthorize("hasAuthority('SALE_READ')")
     public ResponseEntity<List<TopProduitResponse>> topProduits(@RequestParam UUID magasinId,
                                                                 @RequestParam(required = false) String date,
-                                                                @RequestParam(defaultValue = "3") int nombre) {
-        return ResponseEntity.ok(caisseService.findTopProduits(new TopProduitsFilter(magasinId, date, nombre)));
+                                                                @RequestParam(required = false) String startDate,
+                                                                @RequestParam(required = false) String endDate,
+                                                                @RequestParam(defaultValue = "5") int nombre) {
+        return ResponseEntity.ok(caisseService.findTopProduits(
+                new TopProduitsFilter(magasinId, date, startDate, endDate, nombre)));
     }
 }

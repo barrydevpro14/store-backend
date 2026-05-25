@@ -21,6 +21,7 @@ import org.store.vente.application.service.IFactureClientService;
 import org.store.vente.application.service.IPaiementVenteService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -49,11 +50,13 @@ public class FactureClientController {
                                                             @RequestParam(required = false) BigDecimal montantMax,
                                                             @RequestParam(required = false) String startDate,
                                                             @RequestParam(required = false) String endDate,
+                                                            @RequestParam(required = false) LocalDate createdStartDate,
+                                                            @RequestParam(required = false) LocalDate createdEndDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(factureClientService.findAllByCurrentEntreprise(
                 new FactureClientFilter(magasinId, clientId, vendeurId, statut, numero,
-                        montantMin, montantMax, startDate, endDate, page, size)
+                        montantMin, montantMax, startDate, endDate, createdStartDate, createdEndDate, page, size)
         ));
     }
 

@@ -23,7 +23,9 @@ public interface DepenseRepository extends BaseRepository<Depense> {
               AND (:#{#filter.modePaiementAsEnum()} IS NULL OR depense.modePaiement = :#{#filter.modePaiementAsEnum()})
               AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
               AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
-            ORDER BY depense.dateDepense DESC
+              AND (:#{#filter.createdStartDate} IS NULL OR depense.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR depense.createdAt < :#{#filter.createdEndDate.plusDays(1)})
+            ORDER BY depense.createdAt DESC
             """)
     Page<DepenseResponse> findResponsesByFilter(@Param("filter") DepenseFilter filter,
                                                 @Param("entrepriseId") UUID entrepriseId,
@@ -42,6 +44,8 @@ public interface DepenseRepository extends BaseRepository<Depense> {
               AND (:#{#filter.modePaiementAsEnum()} IS NULL OR depense.modePaiement = :#{#filter.modePaiementAsEnum()})
               AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
               AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
+              AND (:#{#filter.createdStartDate} IS NULL OR depense.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR depense.createdAt < :#{#filter.createdEndDate.plusDays(1)})
             """)
     DepenseTotalResponse computeTotal(@Param("filter") DepenseFilter filter,
                                       @Param("entrepriseId") UUID entrepriseId);

@@ -28,6 +28,8 @@ public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
               AND (:#{#filter.statutAsEnum()} IS NULL OR facture.statut = :#{#filter.statutAsEnum()})
               AND (:#{#filter.fromDateTime()} IS NULL OR facture.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR facture.createdAt <= :#{#filter.toDateTime()})
+              AND (:#{#filter.createdStartDate} IS NULL OR facture.createdAt >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR facture.createdAt < :#{#filter.createdEndDate.plusDays(1)})
             ORDER BY facture.createdAt DESC
             """)
     Page<FactureAchatResponse> findResponsesByFilter(@Param("filter") FactureAchatFilter filter,

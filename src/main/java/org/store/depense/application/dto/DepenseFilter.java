@@ -19,6 +19,8 @@ public record DepenseFilter(
         @EnumValue(enumClass = MoyenPaiement.class) String modePaiement,
         @DatePattern String startDate,
         @DatePattern String endDate,
+        LocalDate createdStartDate,
+        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
