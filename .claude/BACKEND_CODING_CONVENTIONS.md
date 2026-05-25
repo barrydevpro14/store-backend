@@ -488,6 +488,49 @@ List<PublicPlanResponse> findSubscribableResponses();
 
 **Mirror on the frontend:** rule 49 in `FRONTEND_CODING_CONVENTIONS.md`.
 
+### 42. Each endpoint must use its own atomic permission — never a module gate as the sole guard
+
+**Every `@PreAuthorize` annotation must reference a dedicated operation-level permission code, not a broad module access gate like `ADMIN_ACCESS`, `OWNER_ACCESS`, or `EMPLOYE_ACCESS`.**
+
+Module access gates (`ADMIN_ACCESS`, `OWNER_ACCESS`, `EMPLOYE_ACCESS`, `ENTREPRISE_ACCESS`) are **entry tickets** that guard the sidebar section and the module shell (`PermissionGuard`). They must not be the sole guard on individual endpoints — that would give any admin/owner carte blanche on every operation in the module.
+
+❌ Bad:
+```java
+@GetMapping
+@PreAuthorize("hasAuthority('ADMIN_ACCESS')")         // too broad — every admin op uses the same gate
+public ResponseEntity<Page<EntrepriseResponse>> list(...) { ... }
+
+@PostMapping
+@PreAuthorize("hasAuthority('ADMIN_ACCESS')")         // create and list share the same permission
+public ResponseEntity<EntrepriseResponse> create(...) { ... }
+```
+
+✅ Good:
+```java
+@GetMapping
+@PreAuthorize("hasAuthority('COMPANY_READ')")         // list = read
+public ResponseEntity<Page<EntrepriseResponse>> list(...) { ... }
+
+@PostMapping
+@PreAuthorize("hasAuthority('COMPANY_CREATE')")       // create has its own code
+public ResponseEntity<EntrepriseResponse> create(...) { ... }
+
+@PutMapping("/{id}")
+@PreAuthorize("hasAuthority('COMPANY_UPDATE')")       // update has its own code
+public ResponseEntity<EntrepriseResponse> update(...) { ... }
+```
+
+**Naming convention for operation-level codes**: `<DOMAIN>_<VERB>` where VERB ∈ `{READ, CREATE, UPDATE, DELETE}` for standard CRUD. Non-CRUD verbs are allowed when the operation has clear distinct semantics (`LOCK`, `UNLOCK`, `ASSIGN_ROLE`, `RESET_PASSWORD`, `EXPORT`, `UPLOAD_IMAGE`, etc.).
+
+**Steps when adding a new endpoint:**
+1. Identify the operation type (READ / CREATE / UPDATE / DELETE / special).
+2. Check `PermissionCode` for an existing code that matches the semantic. Reuse it if it fits.
+3. If no matching code exists, add a new entry to `PermissionCode` + the global `permissions:` list in `roles-permissions.yml` + assign to relevant roles.
+4. Put `@PreAuthorize("hasAuthority('NEW_CODE')")` on the endpoint.
+5. Add to the `BACKEND_CODING_CONVENTIONS.md` if it introduces a new pattern.
+
+**Why:** module gates are coarse-grained by design. Atomic codes let you grant `COMPANY_READ` to a read-only support role without granting `COMPANY_CREATE` or `COMPANY_DELETE`. They also make security audits possible (grep the codebase for who has `COMPANY_DELETE`).
+
 ---
 
 ## Commit conventions

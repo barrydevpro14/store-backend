@@ -49,19 +49,19 @@ public class EntrepriseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_CREATE')")
     public ResponseEntity<EntrepriseResponse> create(@Valid @RequestBody RegisterPropertyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(registerPropertyService.registerEntrepriseByAdmin(request));
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_READ')")
     public ResponseEntity<List<EntrepriseStatsResponse>> stats() {
         return ResponseEntity.ok(entrepriseService.findStats());
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_READ')")
     public ResponseEntity<Page<EntrepriseResponse>> list(@RequestParam(required = false) String sigle,
                                                          @RequestParam(required = false) String raisonSociale,
                                                          @RequestParam(required = false) String ninea,
@@ -76,26 +76,26 @@ public class EntrepriseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_READ')")
     public ResponseEntity<EntrepriseResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(entrepriseService.findResponseById(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_UPDATE')")
     public ResponseEntity<EntrepriseResponse> update(@PathVariable UUID id,
                                                      @Valid @RequestBody EntrepriseRequest request) {
         return ResponseEntity.ok(entrepriseService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_UPDATE')")
     public ResponseEntity<EntrepriseResponse> activate(@PathVariable UUID id) {
         return ResponseEntity.ok(entrepriseService.activate(id));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('COMPANY_UPDATE')")
     public ResponseEntity<EntrepriseResponse> deactivate(@PathVariable UUID id) {
         return ResponseEntity.ok(entrepriseService.deactivate(id));
     }

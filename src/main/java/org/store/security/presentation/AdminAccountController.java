@@ -34,7 +34,7 @@ public class AdminAccountController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('USER_READ')")
     public ResponseEntity<Page<AdminAccountResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -43,19 +43,19 @@ public class AdminAccountController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('USER_CREATE')")
     public ResponseEntity<AdminAccountResponse> create(@Valid @RequestBody AdminAccountRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminAccountService.create(request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('USER_UNLOCK')")
     public ResponseEntity<AdminAccountResponse> activate(@PathVariable UUID id) {
         return ResponseEntity.ok(adminAccountService.setEnabled(id, true));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('USER_LOCK')")
     public ResponseEntity<AdminAccountResponse> deactivate(@PathVariable UUID id) {
         return ResponseEntity.ok(adminAccountService.setEnabled(id, false));
     }
