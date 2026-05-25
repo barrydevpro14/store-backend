@@ -168,8 +168,9 @@ Current state: 7 entities (`Abonnement`, `PlanAbonnement`, `TypeAbonnement`, `Pa
 - [x] **Role management UI + backend** (2026-05-24) — Settings → Rôles. Custom role creation (permission checkboxes, admin-level excluded). Employee quick role change. Backend: POST /roles + PATCH /employees/{id}/role.
 - [x] **Reporting dashboards** (2026-05-24) — /dashboard/administration/reporting (ADMIN KPIs + payments). /dashboard/reporting (SALES_ACCESS: today revenue, stock, pending purchases, top products).
 - [x] **Notification module** (2026-05-24) — Backend API (list, count-unread, mark-read). Frontend bell (60 s poll, badge) + /dashboard/notifications page.
-- [ ] Home dashboard (simple KPIs: today's sales, low stock, upcoming due dates)
-- [ ] Purchase UI flow: supplier selection → order → reception → invoice
+- [ ] Home dashboard (simple KPIs: today's sales, low stock, upcoming due dates) — partially covered by /dashboard/reporting
+- [x] **Purchase UI flow** (2026-05-23) — full achat module: create draft, line table paginated, details modal, validate+facture+paiement, cancel, delete draft. Already shipped.
+- [x] **Expenses UI** — DepensesPage already shipped under /dashboard/depenses.
 - [ ] Store selector (if the owner has several) → propagates to Zustand store
 - [x] Global API error handling — `runMutationWithToast(mutation, args, { successMessage, onSuccess, onError, onSettled })` in `src/common/application/mutation-toast.ts`, used by every write-side hook. Centralizes `toast.error(apiError.message)` on `onError` and `toast.success(successMessage)` on `onSuccess`.
 

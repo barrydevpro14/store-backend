@@ -602,6 +602,32 @@ Every input whose form schema requires a non-empty value MUST carry a red asteri
 
 **Scope:** every dialog form and every page-level form. Applied form-by-form as the area is touched, same rollout pattern as rule 50.
 
+### 52. One hook per file — no co-located hooks
+
+**Every `useXxx` hook lives in its own dedicated file.** No exception.
+
+**Forbidden:**
+- Defining two or more hooks in the same `.ts` / `.tsx` file.
+- Inlining a `useQuery` / `useMutation` body directly inside a component or page file.
+- "Helper hook" files that bundle several `useXxx` exports together.
+
+**Required pattern:**
+- One file → one exported hook. File name: `use<Domain><Action>.ts` (camelCase, no PascalCase).
+- Feature-scoped hooks live under `features/<feature>/application/use<X>.ts`.
+- Cross-feature hooks live under `common/application/use<X>.ts`.
+- The hook file exports exactly one function — the hook itself. No side-exported types (put those in `domain/dtos/`), no utility functions (promote to `common/tools/`).
+
+**Examples:**
+```
+features/vente/application/useCaisseResumeToday.ts   ← one hook
+features/achat/application/usePendingPurchasesCount.ts  ← one hook
+features/vente/application/useUnpaidInvoicesCount.ts    ← one hook
+```
+
+**Why:** co-located hooks create invisible coupling — renaming one file silently removes the other. One-hook-per-file keeps the import graph flat, lets each hook be tested in isolation (rule 39), and mirrors the one-component-per-file constraint (rule 46).
+
+**Mirror rule:** rule 46 (one JSX component per file) — same intent applied to hooks.
+
 ---
 
 ## Logs / debug
