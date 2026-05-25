@@ -51,7 +51,7 @@ public class AbonnementController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ADMIN_ACCESS')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<Page<AbonnementResponse>> findAll(@RequestParam(required = false) UUID entrepriseId,
                                                             @RequestParam(required = false) String statut,
                                                             @RequestParam(required = false) UUID planId,
