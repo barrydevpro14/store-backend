@@ -10,6 +10,9 @@ public enum PermissionCode {
     EMPLOYE_RESET_PASSWORD,
     ADMIN_ACCESS,
 
+    CONTACT_READ,
+    CONTACT_RESPOND,
+
     // Module-level access tickets — gate the sidebar entry and the module
     // shell. Inside each module, per-screen CRUD permissions still filter
     // sub-nav tabs and row actions.
