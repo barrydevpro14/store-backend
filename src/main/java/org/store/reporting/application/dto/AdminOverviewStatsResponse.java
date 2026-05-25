@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 public record AdminOverviewStatsResponse(
         long totalEntreprises,
         long totalMagasins,
+        long totalMagasinsActifs,
+        long totalMagasinsInactifs,
         long totalEmployes,
         long abonnementsActifs,
         long abonnementsTrial,
@@ -13,6 +15,7 @@ public record AdminOverviewStatsResponse(
         long abonnementsSuspendus,
         long paiementsEnAttente,
         long paiementsRejetes,
+        long contactMessagesNouveaux,
         BigDecimal revenueYtd
 ) {
 }

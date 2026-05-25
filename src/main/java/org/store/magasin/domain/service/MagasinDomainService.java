@@ -56,4 +56,9 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
         magasin.setLogo(null);
         return save(magasin);
     }
+
+    /** Compte les magasins actifs ou inactifs. */
+    public long countByActif(boolean actif) {
+        return repository.countByActif(actif);
+    }
 }

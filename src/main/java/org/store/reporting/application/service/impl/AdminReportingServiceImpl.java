@@ -6,6 +6,8 @@ import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
+import org.store.contact.domain.enums.ContactStatut;
+import org.store.contact.domain.service.ContactMessageDomainService;
 import org.store.entreprise.domain.service.EntrepriseDomainService;
 import org.store.magasin.domain.service.MagasinDomainService;
 import org.store.reporting.application.dto.AdminOverviewStatsResponse;
@@ -28,37 +30,45 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
     private final PaiementAbonnementDomainService paiementAbonnementDomainService;
     private final MagasinDomainService magasinDomainService;
     private final EmployeDomainService employeDomainService;
+    private final ContactMessageDomainService contactMessageDomainService;
 
     public AdminReportingServiceImpl(EntrepriseDomainService entrepriseDomainService,
                                      AbonnementDomainService abonnementDomainService,
                                      PaiementAbonnementDomainService paiementAbonnementDomainService,
                                      MagasinDomainService magasinDomainService,
-                                     EmployeDomainService employeDomainService) {
+                                     EmployeDomainService employeDomainService,
+                                     ContactMessageDomainService contactMessageDomainService) {
         this.entrepriseDomainService = entrepriseDomainService;
         this.abonnementDomainService = abonnementDomainService;
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.magasinDomainService = magasinDomainService;
         this.employeDomainService = employeDomainService;
+        this.contactMessageDomainService = contactMessageDomainService;
     }
 
     @Override
     public AdminOverviewStatsResponse getOverviewStats() {
         int currentYear = LocalDate.now().getYear();
 
-        long totalEntreprises   = entrepriseDomainService.count();
-        long totalMagasins      = magasinDomainService.countByEntrepriseId().values().stream().mapToLong(Long::longValue).sum();
-        long totalEmployes      = employeDomainService.countByEntrepriseId().values().stream().mapToLong(Long::longValue).sum();
-        long abonnementsActifs  = abonnementDomainService.countByStatut(AbonnementStatut.ACTIF);
-        long abonnementsTrial   = abonnementDomainService.countByStatut(AbonnementStatut.TRIAL);
-        long abonnementsExpires = abonnementDomainService.countByStatut(AbonnementStatut.EXPIRE);
-        long abonnementsSuspend = abonnementDomainService.countByStatut(AbonnementStatut.SUSPENDU);
-        long paiementsEnAttente = paiementAbonnementDomainService.countByStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        long paiementsRejetes   = paiementAbonnementDomainService.countByStatut(StatutPaiementAbonnement.REJETE);
-        BigDecimal revenueYtd   = paiementAbonnementDomainService.sumValidatedRevenueForYear(currentYear);
+        long totalEntreprises          = entrepriseDomainService.count();
+        long totalMagasinsActifs       = magasinDomainService.countByActif(true);
+        long totalMagasinsInactifs     = magasinDomainService.countByActif(false);
+        long totalMagasins             = totalMagasinsActifs + totalMagasinsInactifs;
+        long totalEmployes             = employeDomainService.countByEntrepriseId().values().stream().mapToLong(Long::longValue).sum();
+        long abonnementsActifs         = abonnementDomainService.countByStatut(AbonnementStatut.ACTIF);
+        long abonnementsTrial          = abonnementDomainService.countByStatut(AbonnementStatut.TRIAL);
+        long abonnementsExpires        = abonnementDomainService.countByStatut(AbonnementStatut.EXPIRE);
+        long abonnementsSuspend        = abonnementDomainService.countByStatut(AbonnementStatut.SUSPENDU);
+        long paiementsEnAttente        = paiementAbonnementDomainService.countByStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
+        long paiementsRejetes          = paiementAbonnementDomainService.countByStatut(StatutPaiementAbonnement.REJETE);
+        long contactMessagesNouveaux   = contactMessageDomainService.countByStatut(ContactStatut.NOUVEAU);
+        BigDecimal revenueYtd          = paiementAbonnementDomainService.sumValidatedRevenueForYear(currentYear);
 
         return new AdminOverviewStatsResponse(
                 totalEntreprises,
                 totalMagasins,
+                totalMagasinsActifs,
+                totalMagasinsInactifs,
                 totalEmployes,
                 abonnementsActifs,
                 abonnementsTrial,
@@ -66,6 +76,7 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
                 abonnementsSuspend,
                 paiementsEnAttente,
                 paiementsRejetes,
+                contactMessagesNouveaux,
                 revenueYtd != null ? revenueYtd : BigDecimal.ZERO
         );
     }
