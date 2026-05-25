@@ -47,6 +47,15 @@ public interface StockRepository extends BaseRepository<Stock> {
                                                     Pageable pageable);
 
     @Query("""
+            SELECT COUNT(stock)
+            FROM Stock stock
+            WHERE stock.magasin.id = :magasinId
+              AND stock.seuilApprovisionnement > 0
+              AND stock.quantiteDisponible <= stock.seuilApprovisionnement
+            """)
+    long countBelowThreshold(@Param("magasinId") UUID magasinId);
+
+    @Query("""
             SELECT new org.store.stock.application.dto.StockValuationResponse(
                 :magasinId,
                 SUM(stock.quantiteDisponible * COALESCE(stock.prixAchatMoyen, 0)),

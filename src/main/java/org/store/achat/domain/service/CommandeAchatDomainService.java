@@ -56,4 +56,9 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
         commande.setDateAnnulation(LocalDateTime.now());
         return save(commande);
     }
+
+    /** Compte les commandes d'achat dans un statut donné pour un magasin. */
+    public long countByMagasinIdAndStatut(UUID magasinId, CommandeAchatStatut statut) {
+        return repository.countByMagasinIdAndStatut(magasinId, statut);
+    }
 }

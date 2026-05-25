@@ -9,10 +9,15 @@ import org.store.vente.application.dto.FactureClientFilter;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.domain.model.FactureClient;
 
+import org.store.achat.domain.enums.StatutFacture;
+
 import java.util.Optional;
 import java.util.UUID;
 
 public interface FactureClientRepository extends BaseRepository<FactureClient> {
+
+    @Query("SELECT COUNT(facture) FROM FactureClient facture WHERE facture.commande.magasin.id = :magasinId AND facture.statut = :statut")
+    long countByMagasinIdAndStatut(@Param("magasinId") UUID magasinId, @Param("statut") StatutFacture statut);
 
     Optional<FactureClient> findByCommandeId(UUID commandeId);
 

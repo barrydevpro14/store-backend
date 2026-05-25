@@ -9,9 +9,14 @@ import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.common.repository.BaseRepository;
 
+import org.store.achat.domain.enums.CommandeAchatStatut;
+
 import java.util.UUID;
 
 public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
+
+    @Query("SELECT COUNT(commande) FROM CommandeAchat commande WHERE commande.magasin.id = :magasinId AND commande.statut = :statut")
+    long countByMagasinIdAndStatut(@Param("magasinId") UUID magasinId, @Param("statut") CommandeAchatStatut statut);
 
     @Query("""
             SELECT new org.store.achat.application.dto.CommandeAchatResponse(commande)

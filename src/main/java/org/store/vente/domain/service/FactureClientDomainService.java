@@ -81,4 +81,9 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
 
         return save(facture);
     }
+
+    /** Compte les factures dans un statut donné pour un magasin. */
+    public long countByMagasinIdAndStatut(UUID magasinId, StatutFacture statut) {
+        return repository.countByMagasinIdAndStatut(magasinId, statut);
+    }
 }

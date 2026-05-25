@@ -94,4 +94,9 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         stock.setPrixAchatMoyen(BigDecimal.ZERO);
         return stock;
     }
+
+    /** Compte les produits en dessous du seuil d'approvisionnement pour un magasin. */
+    public long countBelowThreshold(UUID magasinId) {
+        return repository.countBelowThreshold(magasinId);
+    }
 }
