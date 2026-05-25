@@ -44,10 +44,7 @@ public class TypePlanAbonnement extends AuditableEntity {
 
     private boolean actif = true;
 
-    // Marqueur du type d'essai gratuit. Seul {@code true} pour le type
-    // utilisé par {@code AbonnementServiceImpl.createTrialForSignup}
-    // (Abonnement avec statut TRIAL au signup). Il existe au plus un type
-    // {@code trial=true} actif en base.
+    /** True for the single free-trial type used by AbonnementServiceImpl on signup. At most one trial type is active at a time. */
     private boolean trial = false;
 
     private int ordre;

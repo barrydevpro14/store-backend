@@ -106,8 +106,9 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
 
         if ((associationsChanged || flagChanged) && !wasCreated) {
             roleDomainService.save(role);
-            context.updatedRoles().add(roleDef.libelle());
-            log.info("RBAC sync: updated role '{}'", roleDef.libelle());
+            String libelle = roleDef.libelle();
+            context.updatedRoles().add(libelle);
+            log.info("RBAC sync: updated role '{}'", libelle);
         }
     }
 
@@ -118,8 +119,9 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
                 roleDef.description(),
                 roleDef.assignableToEmployeOrFalse()
         );
-        context.addedRoles().add(roleDef.libelle());
-        log.info("RBAC sync: created role '{}'", roleDef.libelle());
+        String libelle = roleDef.libelle();
+        context.addedRoles().add(libelle);
+        log.info("RBAC sync: created role '{}'", libelle);
         return saved;
     }
 

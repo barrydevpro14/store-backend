@@ -28,15 +28,7 @@ public class DataInitializer implements ApplicationRunner {
     private static final String PLAN_TRIAL_NOM = "Essai";
     private static final String TYPE_TRIAL_NOM = "Essai";
 
-    /**
-     * Identité de seed du compte ADMIN SaaS — uniquement créé quand
-     * `security.rbac.sync=true` (env dev). En prod ce flag reste off
-     * par défaut et le compte doit être bootstrappé via un autre flux.
-     * À sortir en property dédiée le jour où la prod aura besoin d'un
-     * super-admin seedé.
-     */
     private static final String ADMIN_USERNAME = "admin";
-    private static final String ADMIN_PASSWORD = "passer123";
     private static final String ADMIN_ROLE = "ADMIN";
 
     private final RbacProperties rbacProperties;
@@ -88,7 +80,7 @@ public class DataInitializer implements ApplicationRunner {
         Role adminRole = roleDomainService.findByLibelle(ADMIN_ROLE)
                 .orElseThrow(() -> new IllegalStateException(
                         "Rôle ADMIN absent en base — la sync RBAC doit s'exécuter avant ensureAdminAccount."));
-        accountDomainService.create(ADMIN_USERNAME, passwordEncoder.encode(ADMIN_PASSWORD), adminRole);
+        accountDomainService.create(ADMIN_USERNAME, passwordEncoder.encode(rbacProperties.adminPassword()), adminRole);
         log.info("DataInitializer: compte ADMIN seedé (username={})", ADMIN_USERNAME);
     }
 

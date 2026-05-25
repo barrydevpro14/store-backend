@@ -32,11 +32,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    @SuppressWarnings("java:S112")
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
+    @SuppressWarnings("java:S112")
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter,
                                                    CustomAuthenticationEntryPoint authenticationEntryPoint,

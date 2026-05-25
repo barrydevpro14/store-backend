@@ -96,9 +96,11 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
                     wrappedResponse.getCharacterEncoding(),
                     wrappedResponse.getContentType());
 
-            log.info("← {} {} {} in {}ms | request: {} | response: {}",
-                    wrappedResponse.getStatus(), method, path, duration,
-                    mask(requestBody), mask(responseBody));
+            if (log.isInfoEnabled()) {
+                log.info("← {} {} {} in {}ms | request: {} | response: {}",
+                        wrappedResponse.getStatus(), method, path, duration,
+                        mask(requestBody), mask(responseBody));
+            }
 
             wrappedResponse.copyBodyToResponse();
             MDC.clear();

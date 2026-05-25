@@ -6,6 +6,7 @@ public abstract class LocalizedRuntimeException extends RuntimeException {
 
     @Getter
     private final String messageKey;
+    @SuppressWarnings("java:S1948")
     private final Object[] args;
 
     protected LocalizedRuntimeException(String messageKey, Object... args) {

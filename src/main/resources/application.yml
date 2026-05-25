@@ -46,6 +46,7 @@ security:
   rbac:
     sync: ${RBAC_SYNC:false}
     file: ${RBAC_FILE:classpath:security/roles-permissions.yml}
+    admin-password: ${RBAC_ADMIN_PASSWORD:passer123}
 
 upload:
   allowed-image-types:

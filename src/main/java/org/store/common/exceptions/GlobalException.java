@@ -19,8 +19,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+@SuppressWarnings("java:S2166")
 @RestControllerAdvice
 public class GlobalException {
+
+    private static final String HTTP_LOG_FORMAT = "HTTP {} - {}";
+
     private final Logger logger = LoggerFactory.getLogger(GlobalException.class.getSimpleName());
     private final IMessageSourceService messageSourceService;
 
@@ -217,12 +221,12 @@ public class GlobalException {
     private ResponseEntity<ErrorResponse> buildError(String message, int statusCode, Throwable cause) {
         if (statusCode >= 500) {
             if (cause != null) {
-                logger.error("HTTP {} - {}", statusCode, message, cause);
+                logger.error(HTTP_LOG_FORMAT, statusCode, message, cause);
             } else {
-                logger.error("HTTP {} - {}", statusCode, message);
+                logger.error(HTTP_LOG_FORMAT, statusCode, message);
             }
         } else {
-            logger.warn("HTTP {} - {}", statusCode, message);
+            logger.warn(HTTP_LOG_FORMAT, statusCode, message);
         }
         return new ResponseEntity<>(new ErrorResponse(statusCode, message, null), HttpStatus.valueOf(statusCode));
     }

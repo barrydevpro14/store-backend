@@ -13,6 +13,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface EnumValue {
 
+    @SuppressWarnings("java:S1452")
     Class<? extends Enum<?>> enumClass();
 
     boolean ignoreCase() default false;

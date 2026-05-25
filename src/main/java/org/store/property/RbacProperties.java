@@ -6,6 +6,7 @@ import org.springframework.core.io.Resource;
 @ConfigurationProperties(prefix = "security.rbac")
 public record RbacProperties(
         boolean sync,
-        Resource file
+        Resource file,
+        String adminPassword
 ) {
 }
