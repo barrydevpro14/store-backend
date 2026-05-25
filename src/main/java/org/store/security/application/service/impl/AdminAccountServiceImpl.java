@@ -14,6 +14,8 @@ import org.store.security.application.service.IRoleService;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.service.AccountDomainService;
+import org.store.users.domain.model.Utilisateur;
+import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.util.UUID;
 
@@ -29,15 +31,18 @@ public class AdminAccountServiceImpl implements IAdminAccountService {
     private final IRoleService roleService;
     private final PasswordEncoder passwordEncoder;
     private final ValidatorService validatorService;
+    private final UtilisateurDomainService utilisateurDomainService;
 
     public AdminAccountServiceImpl(AccountDomainService accountDomainService,
                                    IRoleService roleService,
                                    PasswordEncoder passwordEncoder,
-                                   ValidatorService validatorService) {
+                                   ValidatorService validatorService,
+                                   UtilisateurDomainService utilisateurDomainService) {
         this.accountDomainService = accountDomainService;
         this.roleService = roleService;
         this.passwordEncoder = passwordEncoder;
         this.validatorService = validatorService;
+        this.utilisateurDomainService = utilisateurDomainService;
     }
 
     @Override
@@ -46,19 +51,31 @@ public class AdminAccountServiceImpl implements IAdminAccountService {
                 .map(AdminAccountResponse::new);
     }
 
+    /** Crée un compte ADMIN avec son profil (nom, prénom, email, téléphone) après vérification d'unicité. */
     @Override
     @Transactional
-    public AdminAccountResponse create(AdminAccountRequest request) {
-        validatorService.validate(request);
+    public AdminAccountResponse create(AdminAccountRequest adminAccountRequest) {
+        validatorService.validate(adminAccountRequest);
 
-        if (accountDomainService.existsByUsername(request.username())) {
-            throw new BadArgumentException("account.username.alreadyExists", request.username());
+        if (accountDomainService.existsByUsername(adminAccountRequest.username())) {
+            throw new BadArgumentException("account.username.alreadyExists", adminAccountRequest.username());
         }
 
+        utilisateurDomainService.ensureContactsAvailable(adminAccountRequest.email(), adminAccountRequest.telephone());
+
         Role adminRole = roleService.findByLibelle("ADMIN");
-        String hashedPassword = passwordEncoder.encode(request.password());
-        Account account = accountDomainService.create(request.username(), hashedPassword, adminRole);
-        return new AdminAccountResponse(account);
+        String hashedPassword = passwordEncoder.encode(adminAccountRequest.password());
+        Account account = accountDomainService.create(adminAccountRequest.username(), hashedPassword, adminRole);
+
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setAccount(account);
+        utilisateur.setNom(adminAccountRequest.nom());
+        utilisateur.setPrenom(adminAccountRequest.prenom());
+        utilisateur.setEmail(adminAccountRequest.email());
+        utilisateur.setTelephone(adminAccountRequest.telephone());
+        utilisateurDomainService.save(utilisateur);
+
+        return new AdminAccountResponse(account, utilisateur);
     }
 
     @Override

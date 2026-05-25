@@ -15,6 +15,15 @@ public interface AccountRepository extends BaseRepository<Account> {
 
     boolean existsByUsername(String username);
 
-    @Query("SELECT account FROM Account account WHERE account.role.libelle = :roleLibelle ORDER BY account.createdAt DESC")
+    @Query(value = """
+            SELECT account FROM Account account
+            LEFT JOIN FETCH account.user
+            WHERE account.role.libelle = :roleLibelle
+            ORDER BY account.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(account) FROM Account account
+            WHERE account.role.libelle = :roleLibelle
+            """)
     Page<Account> findAllByRoleLibelle(@Param("roleLibelle") String roleLibelle, Pageable pageable);
 }
