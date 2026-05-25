@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.store.common.i18n.IMessageSourceService;
 import org.store.notification.application.event.ContactMessageReceivedEvent;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
 import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
@@ -24,7 +25,7 @@ import java.time.LocalDateTime;
 
 /**
  * Listens to business domain events and persists IN_APP Notification rows asynchronously.
- * Each handler resolves the target account(s) and delegates persistence to NotificationDomainService.
+ * All notification titles and messages are resolved via IMessageSourceService — no hardcoded text.
  */
 @Component
 public class NotificationEventListener {
@@ -35,26 +36,29 @@ public class NotificationEventListener {
     private final EmployeDomainService employeDomainService;
     private final ProprietaireDomainService proprietaireDomainService;
     private final AccountDomainService accountDomainService;
+    private final IMessageSourceService messageSourceService;
 
     public NotificationEventListener(NotificationDomainService notificationDomainService,
                                      EmployeDomainService employeDomainService,
                                      ProprietaireDomainService proprietaireDomainService,
-                                     AccountDomainService accountDomainService) {
+                                     AccountDomainService accountDomainService,
+                                     IMessageSourceService messageSourceService) {
         this.notificationDomainService = notificationDomainService;
         this.employeDomainService = employeDomainService;
         this.proprietaireDomainService = proprietaireDomainService;
         this.accountDomainService = accountDomainService;
+        this.messageSourceService = messageSourceService;
     }
 
     @Async
     @EventListener
     public void onVenteValidated(VenteValidatedEvent event) {
         var commande = event.commande();
-        String titre = "Vente validée — " + commande.getReference();
-        String message = "La commande " + commande.getReference() + " a été validée.";
-        var magasinId = commande.getMagasin().getId();
+        String titre   = messageSourceService.getMessage("notification.vente.validated.titre", new Object[]{commande.getReference()});
+        String message = messageSourceService.getMessage("notification.vente.validated.message", new Object[]{commande.getReference()});
 
-        employeDomainService.findActiveAccountsByMagasinIdAndRoleLibelle(magasinId, "MANAGER")
+        employeDomainService
+                .findActiveAccountsByMagasinIdAndRoleLibelle(commande.getMagasin().getId(), "MANAGER")
                 .forEach(account -> createInApp(account, titre, message));
 
         log.info("VenteValidated notification sent for commande {}", commande.getReference());
@@ -63,27 +67,46 @@ public class NotificationEventListener {
     @Async
     @EventListener
     public void onStockBelowThreshold(StockBelowThresholdEvent event) {
-        var stock = event.stock();
-        String produitNom = stock.getProduit().getNom();
-        String titre = "Stock bas — " + produitNom;
-        String message = "Le stock de « " + produitNom + " » est en dessous du seuil d'approvisionnement (" + stock.getQuantiteDisponible() + " unité(s)).";
-        var magasinId = stock.getMagasin().getId();
+        var stock      = event.stock();
+        String nom     = stock.getProduit().getNom();
+        String titre   = messageSourceService.getMessage("notification.stock.belowThreshold.titre", new Object[]{nom});
+        String message = messageSourceService.getMessage("notification.stock.belowThreshold.message",
+                new Object[]{nom, stock.getQuantiteDisponible()});
 
-        employeDomainService.findActiveAccountsByMagasinIdAndRoleLibelle(magasinId, "MANAGER")
+        employeDomainService
+                .findActiveAccountsByMagasinIdAndRoleLibelle(stock.getMagasin().getId(), "MANAGER")
                 .forEach(account -> createInApp(account, titre, message));
 
-        log.info("StockBelowThreshold notification sent for product {}", produitNom);
+        log.info("StockBelowThreshold notification sent for product {}", nom);
+    }
+
+    @Async
+    @EventListener
+    public void onPaiementSubmitted(PaiementAbonnementSubmittedEvent event) {
+        var paiement   = event.paiement();
+        String sigle   = paiement.getAbonnement().getEntreprise().getSigle();
+        String titre   = messageSourceService.getMessage("notification.paiement.submitted.titre", new Object[]{sigle});
+        String message = messageSourceService.getMessage("notification.paiement.submitted.message",
+                new Object[]{sigle, paiement.getMontantFinal()});
+
+        accountDomainService
+                .findAllByRoleLibelle("ADMIN", org.springframework.data.domain.Pageable.ofSize(100))
+                .getContent()
+                .forEach(account -> createInApp(account, titre, message));
+
+        log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", paiement.getId());
     }
 
     @Async
     @EventListener
     public void onPaiementValidated(PaiementAbonnementValidatedEvent event) {
-        var paiement = event.paiement();
-        var entrepriseId = paiement.getAbonnement().getEntreprise().getId();
-        String titre = "Paiement validé";
-        String message = "Votre paiement de " + paiement.getMontantFinal() + " XOF a été validé. Votre abonnement est actif.";
+        var paiement   = event.paiement();
+        String titre   = messageSourceService.getMessage("notification.paiement.validated.titre");
+        String message = messageSourceService.getMessage("notification.paiement.validated.message",
+                new Object[]{paiement.getMontantFinal()});
 
-        proprietaireDomainService.findAccountByEntrepriseId(entrepriseId)
+        proprietaireDomainService
+                .findAccountByEntrepriseId(paiement.getAbonnement().getEntreprise().getId())
                 .ifPresent(account -> createInApp(account, titre, message));
 
         log.info("PaiementValidated notification sent for paiement {}", paiement.getId());
@@ -92,12 +115,13 @@ public class NotificationEventListener {
     @Async
     @EventListener
     public void onPaiementRejected(PaiementAbonnementRejectedEvent event) {
-        var paiement = event.paiement();
-        var entrepriseId = paiement.getAbonnement().getEntreprise().getId();
-        String titre = "Paiement rejeté";
-        String message = "Votre paiement a été rejeté. Motif : " + paiement.getMotifRejet();
+        var paiement   = event.paiement();
+        String titre   = messageSourceService.getMessage("notification.paiement.rejected.titre");
+        String message = messageSourceService.getMessage("notification.paiement.rejected.message",
+                new Object[]{paiement.getMotifRejet()});
 
-        proprietaireDomainService.findAccountByEntrepriseId(entrepriseId)
+        proprietaireDomainService
+                .findAccountByEntrepriseId(paiement.getAbonnement().getEntreprise().getId())
                 .ifPresent(account -> createInApp(account, titre, message));
 
         log.info("PaiementRejected notification sent for paiement {}", paiement.getId());
@@ -105,30 +129,18 @@ public class NotificationEventListener {
 
     @Async
     @EventListener
-    public void onPaiementSubmitted(PaiementAbonnementSubmittedEvent event) {
-        var paiement = event.paiement();
-        var entrepriseSigle = paiement.getAbonnement().getEntreprise().getSigle();
-        String titre = "Nouveau paiement à valider — " + entrepriseSigle;
-        String message = "L'entreprise « " + entrepriseSigle + " » a soumis un paiement de "
-                + paiement.getMontantFinal() + " XOF. En attente de validation.";
-        accountDomainService.findAllByRoleLibelle("ADMIN", org.springframework.data.domain.Pageable.ofSize(100))
-                .getContent()
-                .forEach(account -> createInApp(account, titre, message));
-        log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", paiement.getId());
-    }
-
-    @Async
-    @EventListener
     public void onContactMessageReceived(ContactMessageReceivedEvent event) {
-        var contactMessage = event.contactMessage();
-        String titre = "Contact : " + contactMessage.getSujet();
-        String body = contactMessage.getNom() + " <" + contactMessage.getEmail() + ">\n" + contactMessage.getMessage();
+        var contact  = event.contactMessage();
+        String titre = messageSourceService.getMessage("notification.contact.received.titre", new Object[]{contact.getSujet()});
+        String body  = messageSourceService.getMessage("notification.contact.received.message",
+                new Object[]{contact.getNom(), contact.getEmail(), contact.getMessage()});
 
-        accountDomainService.findAllByRoleLibelle("ADMIN", org.springframework.data.domain.Pageable.ofSize(100))
+        accountDomainService
+                .findAllByRoleLibelle("ADMIN", org.springframework.data.domain.Pageable.ofSize(100))
                 .getContent()
                 .forEach(account -> createInApp(account, titre, body));
 
-        log.info("ContactMessageReceived notification sent for contact from {}", contactMessage.getEmail());
+        log.info("ContactMessageReceived notification sent for contact from {}", contact.getEmail());
     }
 
     private void createInApp(Account destinataire, String titre, String message) {
