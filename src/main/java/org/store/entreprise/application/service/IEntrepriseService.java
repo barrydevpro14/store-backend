@@ -1,6 +1,7 @@
 package org.store.entreprise.application.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
@@ -74,6 +75,6 @@ public interface IEntrepriseService {
     /** Supprime le logo de l'entreprise du propriétaire connecté (idempotent). */
     void deleteCurrentUserLogo();
 
-    /** Statistiques par entreprise pour le reporting ADMIN : magasinCount + employeCount. */
-    List<EntrepriseStatsResponse> findStats();
+    /** Statistiques par entreprise pour le reporting ADMIN : magasinCount + employeCount, paginées. */
+    Page<EntrepriseStatsResponse> findStats(Pageable pageable);
 }

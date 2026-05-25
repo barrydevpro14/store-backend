@@ -26,7 +26,8 @@ import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.application.dto.EntrepriseStatsResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
 
-import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.store.security.application.dto.RegisterPropertyRequest;
 import org.store.security.application.service.IRegisterPropertyService;
 
@@ -56,8 +57,11 @@ public class EntrepriseController {
 
     @GetMapping("/stats")
     @PreAuthorize("hasAuthority('COMPANY_READ')")
-    public ResponseEntity<List<EntrepriseStatsResponse>> stats() {
-        return ResponseEntity.ok(entrepriseService.findStats());
+    public ResponseEntity<Page<EntrepriseStatsResponse>> stats(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(entrepriseService.findStats(
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "raisonSociale"))));
     }
 
     @GetMapping

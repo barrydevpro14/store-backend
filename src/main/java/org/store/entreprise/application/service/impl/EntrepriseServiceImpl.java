@@ -24,6 +24,10 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.service.EmployeDomainService;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -153,19 +157,21 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     }
 
     @Override
-    public List<EntrepriseStatsResponse> findStats() {
-        List<Entreprise> entreprises = entrepriseDomainService.findAll();
+    public Page<EntrepriseStatsResponse> findStats(Pageable pageable) {
+        Page<Entreprise> entreprisePage = entrepriseDomainService.findAll(pageable);
 
         Map<UUID, Long> magasinCounts = magasinDomainService.countByEntrepriseId();
         Map<UUID, Long> employeCounts = employeDomainService.countByEntrepriseId();
 
-        return entreprises.stream()
+        List<EntrepriseStatsResponse> content = entreprisePage.getContent().stream()
                 .map(entreprise -> new EntrepriseStatsResponse(
                         entreprise,
                         magasinCounts.getOrDefault(entreprise.getId(), 0L),
                         employeCounts.getOrDefault(entreprise.getId(), 0L)
                 ))
                 .toList();
+
+        return new PageImpl<>(content, pageable, entreprisePage.getTotalElements());
     }
 
     /** Resout l'entreprise du proprietaire connecte via UserPrincipal.entrepriseId. */
