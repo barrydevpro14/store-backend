@@ -9,7 +9,10 @@ import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
+import org.store.achat.application.dto.PaiementAchatRequest;
+import org.store.achat.domain.model.FactureAchat;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface IAchatService {
@@ -62,4 +65,10 @@ public interface IAchatService {
      * Les paiements éventuels sont conservés (remboursement hors-app).
      */
     AnnulationAchatResponse cancel(UUID commandeId, AnnulationAchatRequest annulationAchatRequest);
+
+    /** Persiste le paiement initial éventuel sur la facture et retourne la facture mise à jour. */
+    FactureAchat applyOptionalInitialPaiement(FactureAchat facture, BigDecimal montantTotal, PaiementAchatRequest paiementAchatRequest);
+
+    /** Valide l'unicité ou génère un numéro de facture au format FACT-yyyyMMdd-HHmmssSSS. */
+    String resolveNumeroFacture(String numero);
 }

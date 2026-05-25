@@ -60,8 +60,9 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
      * Hydrates plans with scoped promotions + per-plan types via the provided loader, and emits the
      * global promotions at the top level. Factor commun aux deux variants du catalogue.
      */
-    private PublicCatalogResponse buildCatalog(List<PublicPlanResponse> plansBase,
-                                               java.util.function.Function<UUID, List<SubscriptionTypeResponse>> typeLoader) {
+    @Override
+    public PublicCatalogResponse buildCatalog(List<PublicPlanResponse> plansBase,
+                                              java.util.function.Function<UUID, List<SubscriptionTypeResponse>> typeLoader) {
         LocalDate today = LocalDate.now();
 
         List<PromotionResponse> globalPromotions = promotionDomainService.findActiveGlobalResponses(today);
@@ -80,12 +81,14 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
     }
 
     /** Loads the active durations of a given plan, sorted by ordre then dureeMois. */
-    private List<SubscriptionTypeResponse> typesForPlan(UUID planId) {
+    @Override
+    public List<SubscriptionTypeResponse> typesForPlan(UUID planId) {
         return typePlanAbonnementDomainService.findActifResponsesByPlanId(planId);
     }
 
     /** Loads the active non-trial durations of a given plan — for the OWNER subscribable catalog. */
-    private List<SubscriptionTypeResponse> nonTrialTypesForPlan(UUID planId) {
+    @Override
+    public List<SubscriptionTypeResponse> nonTrialTypesForPlan(UUID planId) {
         return typePlanAbonnementDomainService.findActifNonTrialResponsesByPlanId(planId);
     }
 }

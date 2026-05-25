@@ -69,7 +69,8 @@ public class ProductSearchServiceImpl implements IProductSearchService {
     }
 
     /** Résout le magasinId pour la recherche : pour un EMPLOYE absence de paramètre = son magasin ; pour un OWNER le paramètre est obligatoire. */
-    private UUID resolveSearchMagasinId(UserPrincipal currentUser, UUID requestedMagasinId) {
+    @Override
+    public UUID resolveSearchMagasinId(UserPrincipal currentUser, UUID requestedMagasinId) {
         if (requestedMagasinId != null) {
             return requestedMagasinId;
         }

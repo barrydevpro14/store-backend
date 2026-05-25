@@ -26,8 +26,8 @@ import org.store.abonnement.domain.service.UtilisationCouponDomainService;
 import org.store.property.SubscriptionProperties;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
-import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
+import org.store.common.tools.OwnershipHelper;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.security.application.dto.UserPrincipal;
@@ -262,11 +262,12 @@ public class AbonnementServiceImpl implements IAbonnementService {
     /** Throws {@code ForbiddenException("abonnement.notOwned")} when the Abonnement is not owned by the caller. */
     @Override
     public Abonnement ensureBelongsToCurrentEntreprise(Abonnement abonnement) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
-        if (!abonnement.getEntreprise().getId().equals(currentUser.entrepriseId())) {
-            throw new ForbiddenException("abonnement.notOwned");
-        }
-        return abonnement;
+        return OwnershipHelper.ensureOwnership(
+                abonnement,
+                abonnement.getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "abonnement.notOwned"
+        );
     }
 
     /** Delegates to the domain services: creates {@code UtilisationCoupon} and increments {@code coupon.nombreUtilisations}. */

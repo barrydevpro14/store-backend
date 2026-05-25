@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Locale;
 
+/** Resolves i18n message codes against the Spring {@link org.springframework.context.MessageSource} using the current locale. */
 @Service
 public class MessageSourceServiceImpl implements IMessageSourceService {
 

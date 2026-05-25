@@ -129,14 +129,16 @@ public class SortieStockServiceImpl implements ISortieStockService {
     /** Consomme les lots FIFO selon le contexte (qty cible, prix, ligneVente optionnelle) et retourne les sorties créées. */
     public List<SortieStockResponse> consumeFifo(List<EntreeStock> lots, LotConsumptionContext context) {
         List<SortieStockResponse> sorties = new ArrayList<>();
-        int restant = context.totalAConsommer();
+        int[] restant = {context.totalAConsommer()};
 
-        for (EntreeStock lot : lots) {
-            if (restant == 0) break;
-            LotConsumption consumption = consumeOneLot(lot, restant, context);
-            sorties.add(consumption.sortie());
-            restant = consumption.restantApres();
-        }
+        lots.stream()
+                .takeWhile(lot -> restant[0] > 0)
+                .forEach(lot -> {
+                    LotConsumption consumption = consumeOneLot(lot, restant[0], context);
+                    sorties.add(consumption.sortie());
+                    restant[0] = consumption.restantApres();
+                });
+
         return sorties;
     }
 

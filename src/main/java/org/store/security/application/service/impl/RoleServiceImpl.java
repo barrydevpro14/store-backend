@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/** Manages application roles: lookup by name, full listing, and creation of custom assignable roles with their permissions. */
 @Service
 @Transactional(readOnly = true)
 public class RoleServiceImpl implements IRoleService {
@@ -78,11 +79,11 @@ public class RoleServiceImpl implements IRoleService {
         return new RoleResponse(role);
     }
 
-    private Set<Permissions> resolvePermissions(List<String> codes) {
+    public Set<Permissions> resolvePermissions(List<String> codes) {
         Set<Permissions> result = new LinkedHashSet<>();
-        for (String code : codes) {
-            permissionsDomainService.findByCode(code).ifPresent(result::add);
-        }
+
+        codes.forEach(code -> permissionsDomainService.findByCode(code).ifPresent(result::add));
+
         return result;
     }
 }
