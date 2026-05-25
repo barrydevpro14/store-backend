@@ -12,6 +12,8 @@ import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.repository.PaiementAbonnementRepository;
 import org.store.common.service.GlobalService;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -56,5 +58,17 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         paiement.setStatut(StatutPaiementAbonnement.REJETE);
         paiement.setMotifRejet(motifRejet);
         return save(paiement);
+    }
+
+    /** Compte les paiements dans un statut donné. */
+    public long countByStatut(StatutPaiementAbonnement statut) {
+        return repository.countByStatut(statut);
+    }
+
+    /** Somme le montantFinal des paiements VALIDE dont la datePaiement tombe dans l'année donnée. */
+    public BigDecimal sumValidatedRevenueForYear(int year) {
+        LocalDate startOfYear = LocalDate.of(year, 1, 1);
+        LocalDate startOfNextYear = LocalDate.of(year + 1, 1, 1);
+        return repository.sumValidatedRevenueForYear(startOfYear, startOfNextYear);
     }
 }

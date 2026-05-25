@@ -18,6 +18,9 @@ import java.util.UUID;
 
 public interface AbonnementRepository extends BaseRepository<Abonnement> {
 
+    @Query("SELECT COUNT(abonnement) FROM Abonnement abonnement WHERE abonnement.statut = :statut")
+    long countByStatut(@Param("statut") AbonnementStatut statut);
+
     @Query("""
             SELECT abonnement
             FROM Abonnement abonnement

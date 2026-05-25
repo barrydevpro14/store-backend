@@ -100,4 +100,9 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     public Page<AbonnementResponse> findResponses(AbonnementFilter filter) {
         return repository.findResponsesByFilter(filter, filter.toPageable());
     }
+
+    /** Compte le nombre d'abonnements dans un statut donné. */
+    public long countByStatut(AbonnementStatut statut) {
+        return repository.countByStatut(statut);
+    }
 }
