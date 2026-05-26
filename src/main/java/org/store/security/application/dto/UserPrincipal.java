@@ -11,7 +11,6 @@ public record UserPrincipal(
         UUID entrepriseId,
         UUID magasinId,
         String username,
-        String currency,
         String role,
         List<String> permissions
 ) {

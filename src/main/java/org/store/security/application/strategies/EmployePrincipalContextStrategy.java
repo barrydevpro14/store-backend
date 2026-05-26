@@ -20,6 +20,6 @@ public class EmployePrincipalContextStrategy implements UserPrincipalContextStra
         if (magasin == null) {
             return UserPrincipalContext.empty();
         }
-        return new UserPrincipalContext(magasin.getEntreprise().getId(), magasin.getId(), magasin.getEntreprise().getCurrency());
+        return new UserPrincipalContext(magasin.getEntreprise().getId(), magasin.getId());
     }
 }
