@@ -21,6 +21,6 @@ public class ProprietairePrincipalContextStrategy implements UserPrincipalContex
             return UserPrincipalContext.empty();
         }
 
-        return new UserPrincipalContext(entreprise.getId(), null);
+        return new UserPrincipalContext(entreprise.getId(), null, entreprise.getCurrency());
     }
 }
