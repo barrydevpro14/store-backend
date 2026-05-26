@@ -9,9 +9,9 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-24 (long day) — Full vente UI, stock UI, inventaire module, role management, reporting pages, notification module, CORS fix, client + stock filtering fixes
+**Date:** 2026-05-25 — Convention sweeps, contact module, ApplicationEvent notifications, reporting consolidation, admin dashboard KPI strip
 
-**Subject:** Massive multi-session day. Delivered the complete frontend for vente (sales) and stock, a physical inventory module, roles management with custom role creation, reporting dashboards for ADMIN/OWNER/MANAGER, and a notification bell+page. Multiple backend fixes along the way (vente statut rename, CORS PATCH, stock date filter sentinel, client PSQLException). 10 atomic commits pushed to `origin/dev` on both repos.
+**Subject:** Long multi-session day. Convention sweeps across frontend (rules 42, 46, 52) and backend (rules 27–42). Shipped a full Contact module (public form + admin CRUD), ApplicationEvent-driven notification system (6 triggers, fully i18n-safe), and consolidated all reporting code into `org.store.reporting`. Extended `AdminOverviewStatsResponse` with active/inactive breakdowns for entreprises and magasins. Built the admin-specific 6-card KPI strip on the dashboard home page. SonarQube Quality Gate passed (custom gate, overall coverage 75.9%). Multiple bug fixes: date filter zeros, navigation double-highlight, administration sub-tabs bleeding on reporting page, duplicate magasin card for ADMIN, missing active/inactive count display.
 
 **Notable decisions:**
 
@@ -43,6 +43,54 @@
 - Notification creation logic (EMAIL/SMS/PUSH channels, scheduler that walks Echeance) — entity+API exists, no sender yet.
 - FormField.test.tsx RHF resolver typing error — pre-existing, parked.
 - MR to main — GitLab suggesting MR links on both repos.
+
+---
+
+## 2026-05-25 — Convention sweeps, contact module, ApplicationEvent notifications, reporting consolidation, admin dashboard KPI strip
+
+**Subject:** Long multi-session day. Applied convention sweeps across frontend (rules 42, 46, 52) and backend (rules 27–42). Shipped a full Contact module (public form + admin CRUD), an ApplicationEvent-driven notification system (6 triggers), and consolidated all reporting code into `org.store.reporting`. Extended `AdminOverviewStatsResponse` with active/inactive breakdowns. Built the admin-specific 6-card KPI strip on the dashboard home page. SonarQube Quality Gate passed. Multiple bug fixes: date filter zeros across 10 repositories, navigation double-highlight, administration sub-tabs bleeding on reporting page, duplicate magasin card for ADMIN, missing active/inactive count display.
+
+**Notable decisions:**
+
+### Backend
+
+- **Contact module** — `ContactMessage extends AuditableEntity` with `ContactStatut` (NOUVEAU/EN_COURS/RESOLU). Public `POST /api/v1/contact` (permitAll in SecurityConfig). Admin: `GET /api/v1/admin/contact` (paginated, filters nom/email/statut + createdStartDate/EndDate), `GET /{id}`, `PATCH /{id}/statut`. Permissions `CONTACT_READ` + `CONTACT_UPDATE` granted to ADMIN. `ContactMessageDomainService.countByStatut` feeds the admin overview stats endpoint.
+
+- **ApplicationEvent notification system (6 triggers)** — `NotificationEventPublisher` wraps Spring's `ApplicationEventPublisher` in `org.store.notification.application.service`. 6 event classes under `org.store.notification.domain.event`. `NotificationEventListener` annotated `@Async @EventListener` creates `Notification` rows via `NotificationDomainService`. Triggers wired: vente validated (`VenteServiceImpl`), stock below threshold (`AjustementStockServiceImpl`), paiement abonnement submitted/validated/rejected (`PaiementAbonnementServiceImpl`), contact message received (`ContactMessageServiceImpl`). All title/body text resolved via `IMessageSourceService` — zero hardcoded strings. `DataInitializer` seeds 5 sample notifications for admin on first boot (idempotent).
+
+- **Reporting module consolidation** — All reporting code moved to `org.store.reporting` module. `IAdminReportingService` + `AdminReportingServiceImpl` (single `@Transactional(readOnly=true)` call aggregating 14 KPI counts) + `AdminReportingController` (`GET /api/v1/admin/reporting/overview`, gated `ADMIN_ACCESS`). `AdminOverviewStatsResponse` extended: `totalEntreprisesActives`, `totalEntreprisesInactives`, `totalMagasinsActifs`, `totalMagasinsInactifs`, `contactMessagesNouveaux`. `countByActif(boolean)` added to `EntrepriseRepository` and `MagasinRepository`, exposed via domain services.
+
+- **SonarQube Quality Gate** — 51 new tests added to reach overall coverage 75.9% (custom gate threshold 75%). S6437 hardcoded admin password externalized to `${RBAC_ADMIN_PASSWORD:passer123}` in `application.yml` via `RbacProperties.adminPassword`. Backend convention sweeps: Javadoc on all `<X>ServiceImpl`, max-3-params record grouping, explicit variable names, streams, extract repeated calls, blank lines around streams, filter at DB not client, created-date filter + `ORDER BY createdAt DESC`, atomic endpoint permissions (rule 42).
+
+- **Date filter fix (sentinel values)** — LocalDate compared to LocalDateTime in JPQL caused Hibernate 7 IS NULL type inference `PSQLException` (`42P18`) across 10 filter records. Fixed with sentinel dates (`2000-01-01` / `2099-12-31`) via `DateHelper.SENTINEL_START/END` and removing `IS NULL OR` guards from all affected repositories. Same pattern as `StockFilter` from a prior session.
+
+### Frontend
+
+- **Admin dashboard KPI strip** — `DashboardWelcome` detects ADMIN via `navGuard.canSee({ requiredPermission: 'ADMIN_ACCESS' }, user)`. ADMIN sees a 6-card KPI strip (Entreprises with active/inactive dots, Magasins with active/inactive dots, Abonnements actifs, Paiements en attente, Messages contact nouveaux, Revenue YTD). Generic merchant KPI section hidden for ADMIN via `{!isAdmin && ...}`.
+
+- **MetricCard `activeInactive` prop** — New optional prop `{ active, inactive, activeLabel, inactiveLabel }` renders colored dot indicators: emerald for active, muted for inactive. Used by the Entreprises and Magasins cards on the admin KPI strip.
+
+- **`useAdminOverviewStats` hook** — Dedicated hook at `features/security/application/useAdminOverviewStats.ts` (rule 52). Queries `/api/v1/admin/reporting/overview`, `staleTime: 60_000`. Accepts `enabled` prop so it only fires for ADMIN.
+
+- **Contact module admin page** — `/dashboard/administration/contact` with paginated table, filters (nom/email/statut + `<DateRangeFilter />`), status update dialog. Hooks in own files (rule 52), components in own files (rule 46). Administration `_tabs.ts` entry added.
+
+- **Navigation double-highlight fix** — `/administration/reporting` was triggering both the `adminReporting` and `administration` sidebar links. Fixed with a longest-prefix-wins `isRouteActive` algorithm in `DashboardShell.tsx`: more-specific matching items take precedence over parent paths.
+
+- **Administration sub-tabs bleed fix** — `AdministrationLayout` wraps all `/administration/*` routes, so the sub-nav was showing on the reporting page (which has its own full-page layout). Fixed with a `showTabs` conditional that checks whether the current path belongs to a recognized Administration tab.
+
+- **Convention sweeps (rules 42, 46, 52)** — Rule 42: each endpoint uses its own atomic permission code, never `ADMIN_ACCESS` as sole guard. Rule 46: every JSX-returning component in its own file. Rule 52: every `useXxx` hook in its own file, no inline `useQuery` bodies in components. Applied across remaining non-compliant pages.
+
+### Verification
+
+- Backend `./mvnw test` : **791 / 791 green** at `fd8e7d2` (latest commit).
+- Frontend `vitest run` + `tsc --noEmit` : clean at each checkpoint.
+- 5 atomic backend commits pushed to `origin/dev` this session: `3128b16` (reporting consolidation), `b5ea198` (ApplicationEvent notifications), `aa605c0` (i18n fix), `182eb90` (seed notifications), `fd8e7d2` (admin overview dashboard).
+
+### Open follow-ups (parked)
+
+- Backend restart required after adding `totalEntreprisesActives/Inactives` fields — new API fields will be `null` until the next boot.
+- `application.yml` default credentials still partially hardcoded (known debt item, tracked in TODO.md).
+- Frontend README.md still generic `create-next-app` template.
 
 ---
 
