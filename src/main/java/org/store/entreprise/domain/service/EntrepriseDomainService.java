@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
+import org.store.country.domain.model.Country;
+import org.store.country.domain.service.CountryDomainService;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -13,8 +15,13 @@ import org.store.users.domain.model.Proprietaire;
 
 @Service
 public class EntrepriseDomainService extends GlobalService<Entreprise, EntrepriseRepository> {
-    public EntrepriseDomainService(EntrepriseRepository repository) {
+
+    private final CountryDomainService countryDomainService;
+
+    public EntrepriseDomainService(EntrepriseRepository repository,
+                                    CountryDomainService countryDomainService) {
         super(repository);
+        this.countryDomainService = countryDomainService;
     }
 
     public Entreprise create(EntrepriseRequest entrepriseRequest, Proprietaire proprietaire) {
@@ -25,6 +32,12 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         entreprise.setNinea(entrepriseRequest.ninea());
         entreprise.setRccm(entrepriseRequest.rccm());
         entreprise.setAdresse(entrepriseRequest.adresse());
+
+        if (entrepriseRequest.countryId() != null) {
+            Country country = countryDomainService.findById(entrepriseRequest.countryId());
+            entreprise.setCountry(country);
+        }
+
         entreprise.setTrialUsed(true);
         entreprise.setActif(true);
         return save(entreprise);
@@ -35,19 +48,16 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 
-    /** Pose ou remplace le logo. orphanRemoval supprime auto l'ancienne PieceJointe. */
-    public Entreprise setLogo(Entreprise entreprise, PieceJointe logo) {
-        entreprise.setLogo(logo);
+    public Entreprise setLogo(Entreprise entreprise, PieceJointe pieceJointe) {
+        entreprise.setLogo(pieceJointe);
         return save(entreprise);
     }
 
-    /** Supprime le logo (orphanRemoval supprime la PieceJointe). */
     public Entreprise clearLogo(Entreprise entreprise) {
         entreprise.setLogo(null);
         return save(entreprise);
     }
 
-    /** Compte les entreprises actives ou inactives. */
     public long countByActif(boolean actif) {
         return repository.countByActif(actif);
     }

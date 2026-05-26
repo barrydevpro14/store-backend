@@ -7,6 +7,7 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.common.base.AuditableEntity;
 import org.store.common.model.PieceJointe;
+import org.store.country.domain.model.Country;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
 import org.store.users.domain.model.Proprietaire;
@@ -28,6 +29,10 @@ public class Entreprise extends AuditableEntity {
     private String adresse;
     private boolean trialUsed = false;
     private boolean actif = true;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "country_id", nullable = false)
+    private Country country;
 
     @OneToMany(mappedBy = "entreprise", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Abonnement> abonnements;

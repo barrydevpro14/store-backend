@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
                                 .requestMatchers("/api/v1/auth/**").permitAll()
+                                .requestMatchers("/api/v1/countries").permitAll()
                                 .requestMatchers("/api/v1/catalog/public", "/api/v1/catalog/public/**").permitAll()
                                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/contact").permitAll()
                                 .anyRequest().authenticated()
