@@ -1,6 +1,7 @@
 package org.store.notification.application.service;
 
 import org.store.notification.application.event.ContactMessageReceivedEvent;
+import org.store.notification.application.event.ContactMessageRepliedEvent;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
 import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
@@ -14,4 +15,5 @@ public interface INotificationEventPublisher {
     void publishPaiementValidated(PaiementAbonnementValidatedEvent event);
     void publishPaiementRejected(PaiementAbonnementRejectedEvent event);
     void publishContactMessageReceived(ContactMessageReceivedEvent event);
+    void publishContactMessageReplied(ContactMessageRepliedEvent event);
 }

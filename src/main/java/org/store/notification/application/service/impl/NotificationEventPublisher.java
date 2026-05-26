@@ -3,6 +3,7 @@ package org.store.notification.application.service.impl;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.store.notification.application.event.ContactMessageReceivedEvent;
+import org.store.notification.application.event.ContactMessageRepliedEvent;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
 import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
@@ -50,6 +51,11 @@ public class NotificationEventPublisher implements INotificationEventPublisher {
 
     @Override
     public void publishContactMessageReceived(ContactMessageReceivedEvent event) {
+        publisher.publishEvent(event);
+    }
+
+    @Override
+    public void publishContactMessageReplied(ContactMessageRepliedEvent event) {
         publisher.publishEvent(event);
     }
 }
