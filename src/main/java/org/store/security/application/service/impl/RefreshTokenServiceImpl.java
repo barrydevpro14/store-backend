@@ -6,7 +6,13 @@ import org.store.security.application.service.IUserPrincipalFactory;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
+import org.store.audit.domain.service.AuditLogDomainService;
 import org.store.common.exceptions.UnauthorisedException;
+import org.store.common.tools.RequestHelper;
 import org.store.property.JwtProperties;
 import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.UserPrincipal;
@@ -25,15 +31,21 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
     private final IJwtService jwtService;
     private final IUserPrincipalFactory userPrincipalFactory;
     private final JwtProperties jwtProperties;
+    private final IAuditEventPublisher auditEventPublisher;
+    private final AuditLogDomainService auditLogDomainService;
 
     public RefreshTokenServiceImpl(RefreshTokenDomainService refreshTokenDomainService,
                                    IJwtService jwtService,
                                    IUserPrincipalFactory userPrincipalFactory,
-                                   JwtProperties jwtProperties) {
+                                   JwtProperties jwtProperties,
+                                   IAuditEventPublisher auditEventPublisher,
+                                   AuditLogDomainService auditLogDomainService) {
         this.refreshTokenDomainService = refreshTokenDomainService;
         this.jwtService = jwtService;
         this.userPrincipalFactory = userPrincipalFactory;
         this.jwtProperties = jwtProperties;
+        this.auditEventPublisher = auditEventPublisher;
+        this.auditLogDomainService = auditLogDomainService;
     }
 
     @Override
@@ -77,7 +89,27 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
             if (!token.isRevoked()) {
                 token.setRevoked(true);
                 refreshTokenDomainService.save(token);
+                publishLogoutAudit(token);
             }
         });
+    }
+
+    private void publishLogoutAudit(RefreshToken token) {
+        if (token.getUser() == null || token.getUser().getAccount() == null) return;
+
+        Account account = token.getUser().getAccount();
+        UserPrincipal principal = userPrincipalFactory.build(account);
+        String accountId = principal.accountId().toString();
+
+        String duration = auditLogDomainService.findLastLogin(accountId)
+                .map(last -> AuditLogDomainService.formatDuration(last.getCreatedAt()))
+                .orElse("unknown");
+
+        String details = "IP: " + RequestHelper.getClientIp() + " | Duration: " + duration;
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.LOGOUT, AuditEntityType.ACCOUNT,
+                principal.accountId(), principal.username(),
+                accountId, principal.username(),
+                principal.entrepriseId(), details));
     }
 }

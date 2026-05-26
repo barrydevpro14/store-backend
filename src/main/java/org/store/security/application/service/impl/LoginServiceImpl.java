@@ -7,7 +7,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.tools.RequestHelper;
 import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.LoginRequest;
 import org.store.security.application.dto.UserPrincipal;
@@ -27,19 +32,22 @@ public class LoginServiceImpl implements ILoginService {
     private final IJwtService jwtService;
     private final IUserPrincipalFactory userPrincipalFactory;
     private final IRefreshTokenService refreshTokenService;
+    private final IAuditEventPublisher auditEventPublisher;
 
     public LoginServiceImpl(AuthenticationManager authenticationManager,
                             IAccountService accountService,
                             IAbonnementService abonnementService,
                             IJwtService jwtService,
                             IUserPrincipalFactory userPrincipalFactory,
-                            IRefreshTokenService refreshTokenService) {
+                            IRefreshTokenService refreshTokenService,
+                            IAuditEventPublisher auditEventPublisher) {
         this.authenticationManager = authenticationManager;
         this.accountService = accountService;
         this.abonnementService = abonnementService;
         this.jwtService = jwtService;
         this.userPrincipalFactory = userPrincipalFactory;
         this.refreshTokenService = refreshTokenService;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /** Authenticates the caller, runs the subscription gate, then issues the JWT pair. */
@@ -56,6 +64,14 @@ public class LoginServiceImpl implements ILoginService {
 
         String accessToken = jwtService.generateToken(principal);
         String refreshToken = refreshTokenService.create(account);
+
+        String details = "IP: " + RequestHelper.getClientIp() + " | UA: " + RequestHelper.getUserAgent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.LOGIN, AuditEntityType.ACCOUNT,
+                principal.accountId(), principal.username(),
+                principal.accountId().toString(), principal.username(),
+                principal.entrepriseId(), details));
+
         return new AuthResponse(accessToken, refreshToken);
     }
 
