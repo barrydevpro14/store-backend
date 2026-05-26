@@ -29,6 +29,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.service.AuditLogDomainService;
 
 @ExtendWith(MockitoExtension.class)
 class RefreshTokenServiceImplTest {
@@ -53,7 +56,7 @@ class RefreshTokenServiceImplTest {
                 "Bearer ",
                 new JwtProperties.Expiration(Duration.ofHours(1), Duration.ofDays(7))
         );
-        service = new RefreshTokenServiceImpl(refreshTokenDomainService, jwtService, userPrincipalFactory, jwtProperties);
+        service = new RefreshTokenServiceImpl(refreshTokenDomainService, jwtService, userPrincipalFactory, jwtProperties, mock(IAuditEventPublisher.class), mock(AuditLogDomainService.class));
     }
 
     @Test
@@ -171,6 +174,6 @@ class RefreshTokenServiceImplTest {
     }
 
     private UserPrincipal samplePrincipal() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), null, null, "user", "OWNER", List.of());
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), null, null, "user", null, null, "OWNER", List.of());
     }
 }

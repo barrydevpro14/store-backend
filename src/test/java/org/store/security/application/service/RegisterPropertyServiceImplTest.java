@@ -62,7 +62,7 @@ class RegisterPropertyServiceImplTest {
         validRequest = new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
                 new UtilisateurRequest("Doe", "John", "john@example.com", "+221700000000", "Dakar"),
-                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"),
+                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", null),
                 new MagasinRequest("Magasin Centre", "Dakar Centre")
         );
     }
@@ -74,7 +74,7 @@ class RegisterPropertyServiceImplTest {
         Proprietaire proprietaire = new Proprietaire();
         Entreprise entreprise = entrepriseWithId();
         Magasin magasin = magasinWithId();
-        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entreprise.getId(), magasin.getId(), "john.doe", "OWNER", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entreprise.getId(), magasin.getId(), "john.doe", null, null, "OWNER", List.of());
 
         when(roleService.findByLibelle("OWNER")).thenReturn(role);
         when(accountService.create(eq(validRequest.account()), eq(role))).thenReturn(account);

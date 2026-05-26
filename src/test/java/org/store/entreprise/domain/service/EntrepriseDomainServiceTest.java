@@ -29,7 +29,7 @@ class EntrepriseDomainServiceTest {
     void create_should_construct_entreprise_with_proprietaire_trial_used_and_active() {
         EntrepriseRequest request = new EntrepriseRequest(
                 "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"
-        );
+        , null);
         Proprietaire proprietaire = new Proprietaire();
         when(repository.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
 

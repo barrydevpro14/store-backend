@@ -54,7 +54,7 @@ class EntrepriseServiceImplTest {
     }
 
     private UserPrincipal proprietaire(UUID entId) {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entId, UUID.randomUUID(), "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entId, UUID.randomUUID(), "owner", null, null, "OWNER",
                 List.of("OWNER_ACCESS"));
     }
 
@@ -62,7 +62,7 @@ class EntrepriseServiceImplTest {
     void create_should_delegate_to_domain_service() {
         EntrepriseRequest request = new EntrepriseRequest(
                 "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"
-        );
+        , null);
         Proprietaire proprietaire = new Proprietaire();
         Entreprise expected = new Entreprise();
         when(entrepriseDomainService.create(request, proprietaire)).thenReturn(expected);
@@ -85,14 +85,14 @@ class EntrepriseServiceImplTest {
 
     @Test
     void updateCurrentUserEntreprise_should_apply_changes() {
-        EntrepriseRequest request = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2");
+        EntrepriseRequest request = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", null);
         when(currentUserService.getCurrent()).thenReturn(proprietaire(entrepriseId));
         when(entrepriseDomainService.findById(entrepriseId)).thenReturn(entreprise);
         when(entrepriseDomainService.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EntrepriseResponse response = service.updateCurrentUserEntreprise(request);
 
-        assertThat(response.sigle()).isEqualTo("NEW");
+        assertThat(response.sigle()).isEqualTo("NEW", null);
         assertThat(response.raisonSociale()).isEqualTo("NEW SARL");
         assertThat(response.ninea()).isEqualTo("N2");
     }
@@ -132,9 +132,9 @@ class EntrepriseServiceImplTest {
     @Test
     void findAll_should_delegate_filter_to_domain_service() {
         org.store.entreprise.application.dto.EntrepriseFilter filter =
-                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, null, null, 0, 10);
+                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, true, null, null, 0, 10);
         EntrepriseResponse sample = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
-                "N", "R", "A", true, true, null);
+                "N", "R", "A", null, true, true, null);
         Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
         when(entrepriseDomainService.findResponsesByFilter(filter)).thenReturn(page);
 
@@ -152,9 +152,9 @@ class EntrepriseServiceImplTest {
         when(entrepriseDomainService.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EntrepriseResponse response = service.update(entrepriseId,
-                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr"));
+                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr", null));
 
-        assertThat(response.sigle()).isEqualTo("NEW");
+        assertThat(response.sigle()).isEqualTo("NEW", null);
         assertThat(response.raisonSociale()).isEqualTo("NEW SARL");
     }
 

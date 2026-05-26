@@ -96,6 +96,8 @@ class VenteServiceImplTest {
     @Mock private StockDomainService stockDomainService;
     @Mock private MouvementStockDomainService mouvementStockDomainService;
     @Mock private SaleProperties saleProperties;
+    @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
+    @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private VenteServiceImpl service;
@@ -175,7 +177,7 @@ class VenteServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("SALE_READ"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("SALE_READ"));
     }
 
     private VenteRequest sampleRequest() {

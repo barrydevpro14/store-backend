@@ -80,7 +80,7 @@ class ClientControllerTest {
 
     @Test
     void should_return_400_when_nom_blank() throws Exception {
-        ClientRequest body = new ClientRequest("", null, null, null, null, magasinId);
+        ClientRequest body = new ClientRequest("", null, null, magasinId);
 
         mockMvc.perform(post(ClientController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -90,7 +90,7 @@ class ClientControllerTest {
 
     @Test
     void should_return_400_when_magasinId_null() throws Exception {
-        ClientRequest body = new ClientRequest("Diallo", null, null, null, null, null);
+        ClientRequest body = new ClientRequest("Diallo", null, null, null);
 
         mockMvc.perform(post(ClientController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +148,7 @@ class ClientControllerTest {
     @Test
     void should_return_200_when_updated() throws Exception {
         ClientRequest body = new ClientRequest("Updated", null, null, "+221770000002", null, magasinId);
-        ClientResponse updated = new ClientResponse(clientId, "Updated", null, null, null, null);
+        ClientResponse updated = new ClientResponse(clientId, "Updated", null, null, null);
         when(clientService.update(eq(clientId), any(ClientRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put(ClientController.BASE_PATH + "/" + clientId)

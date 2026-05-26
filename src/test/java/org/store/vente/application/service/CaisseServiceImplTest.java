@@ -69,7 +69,7 @@ class CaisseServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "vendeur1", "SELLER", List.of("SALE_READ"));
+                "vendeur1", null, null, "SELLER", List.of("SALE_READ"));
     }
 
     @Test

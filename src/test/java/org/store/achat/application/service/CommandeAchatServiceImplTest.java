@@ -75,7 +75,7 @@ class CommandeAchatServiceImplTest {
     }
 
     private UserPrincipal user() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("PURCHASE_READ"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("PURCHASE_READ"));
     }
 
     @Test
@@ -104,7 +104,7 @@ class CommandeAchatServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_validate_and_delegate() {
-        CommandeAchatFilter filter = new CommandeAchatFilter(magasin.getId(), null, null, null, null, null, 0, 10);
+        CommandeAchatFilter filter = new CommandeAchatFilter(magasin.getId(), null, null, 0, 10);
         Page<CommandeAchatResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(user());

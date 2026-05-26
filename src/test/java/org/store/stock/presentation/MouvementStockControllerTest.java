@@ -82,7 +82,7 @@ class MouvementStockControllerTest {
                 .andExpect(jsonPath("$.content[0].detail.type").value("ENTREE_ACHAT"))
                 .andExpect(jsonPath("$.content[0].detail.quantite").value(100));
 
-        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, null, null, null, null, null, null, null, 0, 10)));
+        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, null, null, 0, 10)));
     }
 
     @Test

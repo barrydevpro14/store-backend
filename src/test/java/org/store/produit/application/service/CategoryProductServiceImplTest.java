@@ -56,7 +56,7 @@ class CategoryProductServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", null, null, "OWNER",
                 List.of("CATEGORY_PRODUCT_CREATE", "CATEGORY_PRODUCT_READ"));
     }
 

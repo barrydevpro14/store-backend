@@ -76,7 +76,7 @@ class ProductServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER",
                 List.of("PRODUCT_CREATE", "PRODUCT_READ"));
     }
 
@@ -167,7 +167,7 @@ class ProductServiceImplTest {
 
     @Test
     void findAll_should_paginate() {
-        ProductFilter filter = new ProductFilter(null, null, null, null, 0, 10);
+        ProductFilter filter = new ProductFilter(null, null, null, 0, 10);
         ProductResponse sample = new ProductResponse(productId, "Pneu", "PN-1", "desc",
                 new CategoryProductSummaryResponse(categoryId, "Pneus"),
                 entrepriseId, null);

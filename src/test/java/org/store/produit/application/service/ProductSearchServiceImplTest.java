@@ -76,12 +76,12 @@ class ProductSearchServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER",
                 List.of("PRODUCT_READ"));
     }
 
     private UserPrincipal vendeur(UUID magasinScopedId) {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinScopedId, "vendeur", "SELLER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinScopedId, "vendeur", null, null, "SELLER",
                 List.of("PRODUCT_READ"));
     }
 

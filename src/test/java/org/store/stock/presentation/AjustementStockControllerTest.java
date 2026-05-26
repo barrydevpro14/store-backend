@@ -103,7 +103,7 @@ class AjustementStockControllerTest {
 
     @Test
     void should_return_400_when_required_fields_null() throws Exception {
-        AjustementStockRequest body = new AjustementStockRequest(null, null, null, null,
+        AjustementStockRequest body = new AjustementStockRequest(null, null, null,
                 null, null, null, null);
 
         mockMvc.perform(post(AjustementStockController.BASE_PATH)

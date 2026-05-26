@@ -87,6 +87,8 @@ class AchatServiceImplTest {
     @Mock private org.store.achat.application.service.ICommandeAchatService commandeAchatService;
     @Mock private ValidatorService validatorService;
     @Mock private PurchaseProperties purchaseProperties;
+    @Mock private org.store.security.application.service.ICurrentUserService currentUserService;
+    @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private AchatServiceImpl service;
@@ -106,6 +108,7 @@ class AchatServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        when(currentUserService.getCurrent()).thenReturn(new org.store.security.application.dto.UserPrincipal(java.util.UUID.randomUUID(), null, java.util.UUID.randomUUID(), null, "test", null, null, "OWNER", java.util.List.of()));
         magasinId = UUID.randomUUID();
         fournisseurId = UUID.randomUUID();
         productFournisseurId = UUID.randomUUID();

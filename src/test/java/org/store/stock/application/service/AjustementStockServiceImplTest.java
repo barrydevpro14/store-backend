@@ -57,6 +57,8 @@ class AjustementStockServiceImplTest {
     @Mock private IMagasinService magasinService;
     @Mock private IProductService productService;
     @Mock private IProductFournisseurService productFournisseurService;
+    @Mock private org.store.security.application.service.ICurrentUserService currentUserService;
+    @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private AjustementStockServiceImpl service;
@@ -73,6 +75,7 @@ class AjustementStockServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        when(currentUserService.getCurrent()).thenReturn(new org.store.security.application.dto.UserPrincipal(java.util.UUID.randomUUID(), null, java.util.UUID.randomUUID(), null, "test", null, null, "OWNER", java.util.List.of()));
         magasinId = UUID.randomUUID();
         productId = UUID.randomUUID();
         productFournisseurId = UUID.randomUUID();

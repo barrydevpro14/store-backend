@@ -94,7 +94,7 @@ class CommandeAchatDomainServiceTest {
     void findResponsesByFilter_should_delegate_to_repository_with_filter_and_entreprise() {
         UUID magasinId = magasin.getId();
         CommandeAchatFilter filter = new CommandeAchatFilter(
-                magasinId, null, null, null, null, null, 0, 10);
+                magasinId, null, null, 0, 10);
 
         CommandeAchatResponse responseItem = new CommandeAchatResponse(buildCommande("CMD-001"));
         Page<CommandeAchatResponse> page = new PageImpl<>(

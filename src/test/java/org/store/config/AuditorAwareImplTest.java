@@ -69,7 +69,7 @@ class AuditorAwareImplTest {
         UUID accountId = UUID.randomUUID();
         UserPrincipal principal = new UserPrincipal(
                 accountId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                "admin", "ADMIN", List.of());
+                "admin", null, null, "ADMIN", List.of());
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 principal, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));

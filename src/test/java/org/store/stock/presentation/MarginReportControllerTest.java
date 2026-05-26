@@ -1,4 +1,5 @@
 package org.store.stock.presentation;
+import org.store.reporting.presentation.MarginReportingController;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ class MarginReportControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new MarginReportController(marginReportService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new MarginReportingController(marginReportService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();
@@ -53,7 +54,7 @@ class MarginReportControllerTest {
         MarginReportResponse response = new MarginReportResponse(new BigDecimal("2750.00"), 150L, 2L);
         when(marginReportService.compute(any(MarginReportFilter.class))).thenReturn(response);
 
-        mockMvc.perform(get(MarginReportController.BASE_PATH)
+        mockMvc.perform(get(MarginReportingController.BASE_PATH)
                         .param("magasinId", magasinId.toString())
                         .param("productId", productId.toString())
                         .param("startDate", "2026-05-01")

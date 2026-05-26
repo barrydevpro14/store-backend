@@ -37,6 +37,7 @@ class LoginServiceImplTest {
     @Mock private IJwtService jwtService;
     @Mock private IUserPrincipalFactory userPrincipalFactory;
     @Mock private IRefreshTokenService refreshTokenService;
+    @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private LoginServiceImpl service;
@@ -48,7 +49,7 @@ class LoginServiceImplTest {
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("john.doe");
-        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entrepriseId, null, "john.doe", "OWNER", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entrepriseId, null, "john.doe", null, null, "OWNER", List.of());
 
         when(accountService.findByUsername("john.doe")).thenReturn(account);
         when(userPrincipalFactory.build(account)).thenReturn(principal);
@@ -69,7 +70,7 @@ class LoginServiceImplTest {
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("admin");
-        UserPrincipal principal = new UserPrincipal(account.getId(), null, null, null, "admin", "ADMIN", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), null, null, "admin", null, null, "ADMIN", List.of());
 
         when(accountService.findByUsername("admin")).thenReturn(account);
         when(userPrincipalFactory.build(account)).thenReturn(principal);
@@ -89,7 +90,7 @@ class LoginServiceImplTest {
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("john.doe");
-        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entrepriseId, null, "john.doe", "OWNER", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entrepriseId, null, "john.doe", null, null, "OWNER", List.of());
 
         when(accountService.findByUsername("john.doe")).thenReturn(account);
         when(userPrincipalFactory.build(account)).thenReturn(principal);

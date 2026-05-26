@@ -47,6 +47,9 @@ class AdminAccountServiceImplTest {
     @Mock
     private ValidatorService validatorService;
 
+    @Mock
+    private org.store.users.domain.service.UtilisateurDomainService utilisateurDomainService;
+
     @InjectMocks
     private AdminAccountServiceImpl service;
 
@@ -97,7 +100,7 @@ class AdminAccountServiceImplTest {
 
     @Test
     void create_should_validate_then_create_account_and_return_response() {
-        AdminAccountRequest request = new AdminAccountRequest("new-admin", "securePass123");
+        AdminAccountRequest request = new AdminAccountRequest("new-admin", "securePass123", "Admin", "Test", "admin@test.com", "+221770000000");
 
         when(accountDomainService.existsByUsername("new-admin")).thenReturn(false);
         when(roleService.findByLibelle("ADMIN")).thenReturn(adminRole);
@@ -125,7 +128,7 @@ class AdminAccountServiceImplTest {
 
     @Test
     void create_should_throw_BadArgumentException_when_username_already_exists() {
-        AdminAccountRequest request = new AdminAccountRequest("existing-admin", "securePass123");
+        AdminAccountRequest request = new AdminAccountRequest("existing-admin", "securePass123", "Admin", "Existing", "admin2@test.com", "+221770000001");
 
         when(accountDomainService.existsByUsername("existing-admin")).thenReturn(true);
 

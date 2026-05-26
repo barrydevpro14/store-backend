@@ -66,12 +66,12 @@ class ClientServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER",
                 List.of("CLIENT_CREATE", "CLIENT_READ", "CLIENT_UPDATE", "CLIENT_DELETE"));
     }
 
     private UserPrincipal vendeur() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "seller", "SELLER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "seller", null, null, "SELLER",
                 List.of("CLIENT_CREATE", "CLIENT_READ"));
     }
 
@@ -106,7 +106,7 @@ class ClientServiceImplTest {
 
     @Test
     void create_should_propagate_forbidden_when_magasin_not_accessible() {
-        ClientRequest request = new ClientRequest("Diallo", null, null, null, null, magasinId);
+        ClientRequest request = new ClientRequest("Diallo", null, null, magasinId);
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin))
@@ -174,7 +174,7 @@ class ClientServiceImplTest {
 
     @Test
     void findAllForCurrentUser_should_scope_to_magasin_for_employe() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, 0, 10);
         ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
@@ -189,7 +189,7 @@ class ClientServiceImplTest {
 
     @Test
     void findAllForCurrentUser_should_scope_to_entreprise_for_proprietaire() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, 0, 10);
         ClientResponse item = new ClientResponse(clientId, "Diallo", "Mamadou", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
@@ -242,7 +242,7 @@ class ClientServiceImplTest {
         newMagasin.setId(newMagasinId);
         newMagasin.setEntreprise(entreprise);
 
-        ClientRequest request = new ClientRequest("Diallo", null, null, null, null, newMagasinId);
+        ClientRequest request = new ClientRequest("Diallo", null, null, newMagasinId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(clientDomainService.findById(clientId)).thenReturn(client);
@@ -268,7 +268,7 @@ class ClientServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(vendeur());
         when(clientDomainService.findById(clientId)).thenReturn(foreignClient);
 
-        ClientRequest updateReq = new ClientRequest("x", null, null, null, null, magasinId);
+        ClientRequest updateReq = new ClientRequest("x", null, null, magasinId);
 
         assertThatThrownBy(() -> service.update(clientId, updateReq))
                 .isInstanceOf(ForbiddenException.class);

@@ -83,7 +83,7 @@ class FournisseurControllerTest {
 
     @Test
     void should_return_400_when_nom_blank() throws Exception {
-        FournisseurRequest body = new FournisseurRequest("", null, null, null, null, null, null);
+        FournisseurRequest body = new FournisseurRequest("", null, null, null);
 
         mockMvc.perform(post(FournisseurController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -93,7 +93,7 @@ class FournisseurControllerTest {
 
     @Test
     void should_return_400_when_email_invalid() throws Exception {
-        FournisseurRequest body = new FournisseurRequest("Nom OK", null, "not-an-email", null, null, null, null);
+        FournisseurRequest body = new FournisseurRequest("Nom OK", null, "not-an-email", null, null, null);
 
         mockMvc.perform(post(FournisseurController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -124,7 +124,7 @@ class FournisseurControllerTest {
     @Test
     void should_return_200_when_updated() throws Exception {
         FournisseurRequest body = new FournisseurRequest(
-                "Updated", null, null, null, null, "FRN-001", null
+                "Updated", null, null, "FRN-001", null
         );
         FournisseurResponse updated = new FournisseurResponse(fournisseurId, "Updated", null,
                 null, null, null, "FRN-001", null, entrepriseId);

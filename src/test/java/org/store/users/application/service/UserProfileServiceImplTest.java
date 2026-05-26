@@ -80,7 +80,7 @@ class UserProfileServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(account.getId(), userId, UUID.randomUUID(), magasinId,
-                "john.emp", "SELLER", List.of("AUTH_CHANGE_PASSWORD"));
+                "john.emp", null, null, "SELLER", List.of("AUTH_CHANGE_PASSWORD"));
     }
 
     @Test

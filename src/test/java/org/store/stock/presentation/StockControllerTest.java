@@ -56,7 +56,7 @@ class StockControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new StockController(stockService, expiringLotsService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new StockController(stockService, expiringLotsService), new org.store.reporting.presentation.StockValuationController(stockService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();

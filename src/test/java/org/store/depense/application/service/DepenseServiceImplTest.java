@@ -87,7 +87,7 @@ class DepenseServiceImplTest {
     }
 
     private UserPrincipal user() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("EXPENSE_CREATE"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("EXPENSE_CREATE"));
     }
 
     @Test
@@ -123,7 +123,7 @@ class DepenseServiceImplTest {
 
     @Test
     void list_should_validate_and_delegate() {
-        DepenseFilter filter = new DepenseFilter(magasinId, null, null, null, null, null, null, 0, 10);
+        DepenseFilter filter = new DepenseFilter(magasinId, null, null, 0, 10);
         Page<DepenseResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(user());

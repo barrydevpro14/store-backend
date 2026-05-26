@@ -58,7 +58,7 @@ class MarginReportServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("REPORT_STOCK"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("REPORT_STOCK"));
     }
 
     @Test
@@ -81,7 +81,7 @@ class MarginReportServiceImplTest {
 
     @Test
     void compute_should_propagate_forbidden_when_magasin_not_accessible() {
-        MarginReportFilter filter = new MarginReportFilter(magasinId, null, null, null, null);
+        MarginReportFilter filter = new MarginReportFilter(magasinId, null, null, null);
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin))

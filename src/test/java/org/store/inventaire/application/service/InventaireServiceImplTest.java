@@ -123,7 +123,7 @@ class InventaireServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "owner", "OWNER", List.of("STOCK_INVENTORY"));
+                "owner", null, null, "OWNER", List.of("STOCK_INVENTORY"));
     }
 
     private EntreeStock lot(int quantiteRestante) {
@@ -468,7 +468,7 @@ class InventaireServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
-        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, null, null, 0, 10);
+        InventaireFilter filter = new InventaireFilter(magasinId, null, null, 0, 10);
         InventaireResponse response = new InventaireResponse(inventaireEnCours);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());

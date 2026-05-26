@@ -60,7 +60,7 @@ class CategoryDepenseServiceImplTest {
     }
 
     private UserPrincipal user() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", "OWNER", List.of("EXPENSE_CREATE"));
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("EXPENSE_CREATE"));
     }
 
     @Test

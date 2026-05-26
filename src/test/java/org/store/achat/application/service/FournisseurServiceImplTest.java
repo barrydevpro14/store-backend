@@ -56,7 +56,7 @@ class FournisseurServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, UUID.randomUUID(), "owner", null, null, "OWNER",
                 List.of("SUPPLIER_CREATE", "SUPPLIER_READ"));
     }
 
@@ -96,7 +96,7 @@ class FournisseurServiceImplTest {
     @Test
     void create_should_skip_unicity_check_when_reference_blank() {
         FournisseurRequest request = new FournisseurRequest(
-                "Sans Ref", null, null, null, null, "", null
+                "Sans Ref", null, null, "", null
         );
         Fournisseur created = sample(entreprise);
         created.setReference("");
@@ -113,7 +113,7 @@ class FournisseurServiceImplTest {
     @Test
     void create_should_throw_when_reference_already_exists() {
         FournisseurRequest request = new FournisseurRequest(
-                "Doublon", null, null, null, null, "FRN-DUP", null
+                "Doublon", null, null, "FRN-DUP", null
         );
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -152,7 +152,7 @@ class FournisseurServiceImplTest {
 
     @Test
     void findAll_should_paginate() {
-        FournisseurFilter filter = new FournisseurFilter(null, null, null, null, 0, 10);
+        FournisseurFilter filter = new FournisseurFilter(null, null, null, 0, 10);
         FournisseurResponse item = new FournisseurResponse(fournisseurId, "Pneus Maroc SARL",
                 null, "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
         Page<FournisseurResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
@@ -189,7 +189,7 @@ class FournisseurServiceImplTest {
     void update_should_check_unicity_when_reference_changes() {
         Fournisseur fournisseur = sample(entreprise);
         FournisseurRequest request = new FournisseurRequest(
-                "Pneus Maroc", null, null, null, null, "FRN-NEW", null
+                "Pneus Maroc", null, null, "FRN-NEW", null
         );
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -211,7 +211,7 @@ class FournisseurServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(fournisseurDomainService.findById(fournisseurId)).thenReturn(foreign);
 
-        FournisseurRequest updateReq = new FournisseurRequest("x", null, null, null, null, null, null);
+        FournisseurRequest updateReq = new FournisseurRequest("x", null, null, null);
 
         assertThatThrownBy(() -> service.update(fournisseurId, updateReq))
                 .isInstanceOf(ForbiddenException.class);

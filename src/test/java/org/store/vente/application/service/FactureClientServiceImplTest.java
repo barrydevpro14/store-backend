@@ -63,7 +63,7 @@ class FactureClientServiceImplTest {
 
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "vendeur1", "SELLER", List.of("SALE_READ"));
+                "vendeur1", null, null, "SELLER", List.of("SALE_READ"));
     }
 
     private FactureClientResponse sampleFacture(UUID id) {
@@ -76,7 +76,7 @@ class FactureClientServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_validate_filter_and_delegate() {
-        FactureClientFilter filter = new FactureClientFilter(magasinId, null, null, null, null, null, null, null, null, null, null, 0, 10);
+        FactureClientFilter filter = new FactureClientFilter(magasinId, null, null, 0, 10);
         Page<FactureClientResponse> page = new PageImpl<>(List.of(sampleFacture(UUID.randomUUID())));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
@@ -92,7 +92,7 @@ class FactureClientServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_propagate_forbidden_when_magasin_not_accessible() {
-        FactureClientFilter filter = new FactureClientFilter(magasinId, null, null, null, null, null, null, null, null, null, null, 0, 10);
+        FactureClientFilter filter = new FactureClientFilter(magasinId, null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);

@@ -69,6 +69,8 @@ class PaiementAbonnementServiceImplTest {
     @Mock private SubscriptionAmountCalculator amountCalculator;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
+    @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private PaiementAbonnementServiceImpl service;
@@ -83,6 +85,7 @@ class PaiementAbonnementServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         entrepriseId = UUID.randomUUID();
         abonnementId = UUID.randomUUID();
         paiementId = UUID.randomUUID();
@@ -109,12 +112,12 @@ class PaiementAbonnementServiceImplTest {
 
     private UserPrincipal proprietaire() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null,
-                "owner", "OWNER", List.of("SUBSCRIPTION_PAY", "SUBSCRIPTION_READ"));
+                "owner", null, null, "OWNER", List.of("SUBSCRIPTION_PAY", "SUBSCRIPTION_READ"));
     }
 
     private UserPrincipal admin() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null,
-                "admin", "ADMIN", List.of("ADMIN_ACCESS", "SUBSCRIPTION_VALIDATE", "SUBSCRIPTION_READ"));
+                "admin", null, null, "ADMIN", List.of("ADMIN_ACCESS", "SUBSCRIPTION_VALIDATE", "SUBSCRIPTION_READ"));
     }
 
     private SubscriptionAmountBreakdown sampleBreakdown() {

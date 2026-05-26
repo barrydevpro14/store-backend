@@ -58,7 +58,7 @@ class MagasinServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", null, null, "OWNER",
                 List.of("OWNER_ACCESS"));
     }
 
@@ -274,7 +274,7 @@ class MagasinServiceImplTest {
     void ensureAccessibleByCurrentUser_should_pass_when_non_proprietaire_targets_his_magasin() {
         Magasin magasin = magasinIn(entreprise);
         UserPrincipal manager = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "manager", "MANAGER", List.of("EMPLOYE_ACCESS"));
+                "manager", null, null, "MANAGER", List.of("EMPLOYE_ACCESS"));
         when(currentUserService.getCurrent()).thenReturn(manager);
 
         assertThat(service.ensureAccessibleByCurrentUser(magasin)).isSameAs(magasin);
@@ -285,7 +285,7 @@ class MagasinServiceImplTest {
         Magasin other = magasinIn(entreprise);
         other.setId(UUID.randomUUID());
         UserPrincipal manager = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
-                "manager", "MANAGER", List.of("EMPLOYE_ACCESS"));
+                "manager", null, null, "MANAGER", List.of("EMPLOYE_ACCESS"));
         when(currentUserService.getCurrent()).thenReturn(manager);
 
         assertThatThrownBy(() -> service.ensureAccessibleByCurrentUser(other))

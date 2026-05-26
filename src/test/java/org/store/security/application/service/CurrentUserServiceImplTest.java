@@ -29,7 +29,7 @@ class CurrentUserServiceImplTest {
     @Test
     void should_return_user_principal_when_authenticated() {
         UserPrincipal principal = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                "owner", "OWNER", List.of("OWNER_ACCESS"));
+                "owner", null, null, "OWNER", List.of("OWNER_ACCESS"));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("OWNER_ACCESS")))
         );

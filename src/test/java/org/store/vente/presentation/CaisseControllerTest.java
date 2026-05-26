@@ -6,6 +6,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.reporting.presentation.CaisseReportingController;
 import org.store.vente.application.dto.CaisseResumeResponse;
 import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.service.ICaisseService;
@@ -34,7 +35,7 @@ class CaisseControllerTest {
         caisseService = mock(ICaisseService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new CaisseController(caisseService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new CaisseReportingController(caisseService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .build();
 
@@ -59,8 +60,7 @@ class CaisseControllerTest {
         );
         when(caisseService.getResume(any())).thenReturn(response);
 
-        // to optionnel : appel avec from uniquement → résumé sur 1 jour
-        mockMvc.perform(get(CaisseController.BASE_PATH + "/resume")
+        mockMvc.perform(get(CaisseReportingController.BASE_PATH + "/resume")
                         .param("magasinId", magasinId.toString())
                         .param("from", "2026-05-16"))
                 .andExpect(status().isOk())
@@ -82,7 +82,7 @@ class CaisseControllerTest {
         );
         when(caisseService.getResume(any())).thenReturn(response);
 
-        mockMvc.perform(get(CaisseController.BASE_PATH + "/resume")
+        mockMvc.perform(get(CaisseReportingController.BASE_PATH + "/resume")
                         .param("magasinId", magasinId.toString())
                         .param("from", "2026-05-09")
                         .param("to", "2026-05-16"))
@@ -102,7 +102,7 @@ class CaisseControllerTest {
         );
         when(caisseService.findTopProduits(any())).thenReturn(top);
 
-        mockMvc.perform(get(CaisseController.BASE_PATH + "/top-produits")
+        mockMvc.perform(get(CaisseReportingController.BASE_PATH + "/top-produits")
                         .param("magasinId", magasinId.toString())
                         .param("date", "2026-05-16"))
                 .andExpect(status().isOk())
@@ -115,7 +115,7 @@ class CaisseControllerTest {
     void topProduits_should_accept_custom_nombre_and_omit_date() throws Exception {
         when(caisseService.findTopProduits(any())).thenReturn(List.of());
 
-        mockMvc.perform(get(CaisseController.BASE_PATH + "/top-produits")
+        mockMvc.perform(get(CaisseReportingController.BASE_PATH + "/top-produits")
                         .param("magasinId", magasinId.toString())
                         .param("nombre", "10"))
                 .andExpect(status().isOk());

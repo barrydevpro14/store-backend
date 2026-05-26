@@ -103,8 +103,8 @@ class CommandeVenteFilterTest {
     @Test
     void toPageable_should_return_pageable_with_correct_page_and_size() {
         CommandeVenteFilter filter = new CommandeVenteFilter(
-                MAGASIN_ID, null, null, null, null,
-                null, null, null, null, null, null, 3, 25);
+                MAGASIN_ID, null, null,
+                null, null, null, 3, 25);
 
         Pageable pageable = filter.toPageable();
 
@@ -116,8 +116,8 @@ class CommandeVenteFilterTest {
     @Test
     void toPageable_should_return_first_page_at_page_zero() {
         CommandeVenteFilter filter = new CommandeVenteFilter(
-                MAGASIN_ID, null, null, null, null,
-                null, null, null, null, null, null, 0, 10);
+                MAGASIN_ID, null, null,
+                null, null, null, 0, 10);
 
         Pageable pageable = filter.toPageable();
 
@@ -128,12 +128,12 @@ class CommandeVenteFilterTest {
     private static CommandeVenteFilter buildFilter(String statut) {
         return new CommandeVenteFilter(
                 MAGASIN_ID, null, null, statut, null,
-                null, null, null, null, null, null, 0, 10);
+                null, null, null, 0, 10);
     }
 
     private static CommandeVenteFilter filterWithDates(String startDate, String endDate) {
         return new CommandeVenteFilter(
-                MAGASIN_ID, null, null, null, null,
+                MAGASIN_ID, null, null,
                 BigDecimal.ZERO, new BigDecimal("99999"), startDate, endDate, null, null, 0, 10);
     }
 }

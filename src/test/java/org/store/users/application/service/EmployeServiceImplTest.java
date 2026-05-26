@@ -57,6 +57,7 @@ class EmployeServiceImplTest {
     @Mock private IMagasinService magasinService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private EmployeServiceImpl service;
@@ -83,12 +84,12 @@ class EmployeServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", "OWNER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "owner", null, null, "OWNER",
                 List.of("OWNER_ACCESS", "EMPLOYE_CREATE"));
     }
 
     private UserPrincipal manager() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "manager", "MANAGER",
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId, "manager", null, null, "MANAGER",
                 List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
     }
 
@@ -261,7 +262,7 @@ class EmployeServiceImplTest {
 
     @Test
     void findAll_should_force_magasinId_to_manager_own_store() {
-        EmployeFilter requested = new EmployeFilter(null, null, null, UUID.randomUUID(), null, null, null, 0, 10);
+        EmployeFilter requested = new EmployeFilter(null, null, null, UUID.randomUUID(), null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(manager());
         when(employeDomainService.findResponsesByFilter(any(EmployeFilter.class), eq(entrepriseId)))
@@ -277,7 +278,7 @@ class EmployeServiceImplTest {
     @Test
     void findAll_should_keep_filter_as_is_for_proprietaire() {
         UUID requestedMagasin = UUID.randomUUID();
-        EmployeFilter requested = new EmployeFilter(null, null, null, requestedMagasin, null, null, null, 0, 10);
+        EmployeFilter requested = new EmployeFilter(null, null, null, requestedMagasin, null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findResponsesByFilter(eq(requested), eq(entrepriseId)))
