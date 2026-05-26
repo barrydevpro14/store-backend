@@ -25,6 +25,9 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         entreprise.setNinea(entrepriseRequest.ninea());
         entreprise.setRccm(entrepriseRequest.rccm());
         entreprise.setAdresse(entrepriseRequest.adresse());
+        if (entrepriseRequest.currency() != null && !entrepriseRequest.currency().isBlank()) {
+            entreprise.setCurrency(entrepriseRequest.currency());
+        }
         entreprise.setTrialUsed(true);
         entreprise.setActif(true);
         return save(entreprise);

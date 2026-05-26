@@ -12,6 +12,7 @@ public record EntrepriseResponse(
         String ninea,
         String rccm,
         String adresse,
+        String currency,
         boolean actif,
         boolean trialUsed,
         String logo
@@ -24,6 +25,7 @@ public record EntrepriseResponse(
                 entreprise.getNinea(),
                 entreprise.getRccm(),
                 entreprise.getAdresse(),
+                entreprise.getCurrency(),
                 entreprise.isActif(),
                 entreprise.isTrialUsed(),
                 entreprise.getLogo() != null ? EntrepriseController.BASE_PATH + "/me/logo" : null
