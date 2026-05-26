@@ -297,6 +297,8 @@ roles:
       - SETTINGS_READ
       - AUDIT_READ
       - AUDIT_EXPORT
+      - CONTACT_READ
+      - CONTACT_RESPOND
 
   - libelle: OWNER
     description: Propriétaire d'une entreprise
