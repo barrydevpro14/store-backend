@@ -1,18 +1,20 @@
 package org.store.contact.application.service.impl;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
+import org.store.contact.application.dto.ContactMessageFilter;
 import org.store.contact.application.dto.ContactMessageRequest;
 import org.store.contact.application.dto.ContactMessageResponse;
 import org.store.contact.application.dto.ContactReplyRequest;
 import org.store.contact.application.service.IContactMessageService;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.contact.domain.enums.ContactStatut;
 import org.store.contact.domain.model.ContactMessage;
 import org.store.contact.domain.service.ContactMessageDomainService;
 import org.store.notification.application.event.ContactMessageReceivedEvent;
+import org.store.notification.application.event.ContactMessageRepliedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 
 import java.util.UUID;
@@ -57,8 +59,9 @@ public class ContactMessageServiceImpl implements IContactMessageService {
     }
 
     @Override
-    public Page<ContactMessageResponse> findAll(Pageable pageable) {
-        return contactMessageDomainService.findAll(pageable).map(ContactMessageResponse::new);
+    public Page<ContactMessageResponse> findAll(ContactMessageFilter filter) {
+        validatorService.validate(filter);
+        return contactMessageDomainService.findByFilter(filter);
     }
 
     @Override
@@ -76,9 +79,25 @@ public class ContactMessageServiceImpl implements IContactMessageService {
     @Transactional
     public ContactMessageResponse reply(UUID id, ContactReplyRequest contactReplyRequest) {
         validatorService.validate(contactReplyRequest);
+
         ContactMessage contactMessage = contactMessageDomainService.findById(id);
+
+        if (contactMessage.getStatut() == ContactStatut.REPONDU) {
+            throw new BadArgumentException("contact.alreadyReplied");
+        }
+
         contactMessage.setReponse(contactReplyRequest.reponse());
         contactMessage.setStatut(ContactStatut.REPONDU);
-        return new ContactMessageResponse(contactMessageDomainService.save(contactMessage));
+        ContactMessage saved = contactMessageDomainService.save(contactMessage);
+
+        notificationEventPublisher.publishContactMessageReplied(new ContactMessageRepliedEvent(
+                saved.getNom(),
+                saved.getEmail(),
+                saved.getSujet(),
+                saved.getMessage(),
+                saved.getReponse()
+        ));
+
+        return new ContactMessageResponse(saved);
     }
 }

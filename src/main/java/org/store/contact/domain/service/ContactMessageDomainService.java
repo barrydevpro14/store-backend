@@ -1,7 +1,10 @@
 package org.store.contact.domain.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.contact.application.dto.ContactMessageFilter;
+import org.store.contact.application.dto.ContactMessageResponse;
 import org.store.contact.domain.enums.ContactStatut;
 import org.store.contact.domain.model.ContactMessage;
 import org.store.contact.domain.repository.ContactMessageRepository;
@@ -15,5 +18,10 @@ public class ContactMessageDomainService extends GlobalService<ContactMessage, C
     /** Compte les messages de contact dans un statut donné. */
     public long countByStatut(ContactStatut statut) {
         return repository.countByStatut(statut);
+    }
+
+    /** Paginated + filtered listing. */
+    public Page<ContactMessageResponse> findByFilter(ContactMessageFilter filter) {
+        return repository.findResponsesByFilter(filter, filter.toPageable());
     }
 }

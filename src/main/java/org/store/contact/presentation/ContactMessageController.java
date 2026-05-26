@@ -2,8 +2,7 @@ package org.store.contact.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,11 +14,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.contact.application.dto.ContactMessageFilter;
 import org.store.contact.application.dto.ContactMessageRequest;
 import org.store.contact.application.dto.ContactMessageResponse;
 import org.store.contact.application.dto.ContactReplyRequest;
 import org.store.contact.application.service.IContactMessageService;
+import org.store.contact.domain.enums.ContactStatut;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -45,10 +47,15 @@ public class ContactMessageController {
     @GetMapping
     @PreAuthorize("hasAuthority('CONTACT_READ')")
     public ResponseEntity<Page<ContactMessageResponse>> list(
+            @RequestParam(required = false) String nom,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) ContactStatut statut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(contactMessageService.findAll(
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))));
+                new ContactMessageFilter(nom, email, statut, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")
