@@ -37,7 +37,7 @@ public class AdminAccountController {
     @PreAuthorize("hasAuthority('USER_READ')")
     public ResponseEntity<Page<AdminAccountResponse>> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(adminAccountService.findAll(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))));
     }
