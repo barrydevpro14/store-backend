@@ -18,11 +18,16 @@ import org.store.security.application.service.IPermissionsService;
 import org.store.security.application.service.IRoleService;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
+import org.store.users.application.dto.AssignRoleRequest;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateCommand;
 import org.store.users.application.dto.EmployeUpdateRequest;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
 import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.service.EmployeDomainService;
@@ -54,6 +59,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final IMagasinService magasinService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final IAuditEventPublisher auditEventPublisher;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
                               UtilisateurDomainService utilisateurDomainService,
@@ -62,7 +68,8 @@ public class EmployeServiceImpl implements IEmployeService {
                               IPermissionsService permissionsService,
                               IMagasinService magasinService,
                               ICurrentUserService currentUserService,
-                              ValidatorService validatorService) {
+                              ValidatorService validatorService,
+                              IAuditEventPublisher auditEventPublisher) {
         this.employeDomainService = employeDomainService;
         this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
@@ -71,6 +78,13 @@ public class EmployeServiceImpl implements IEmployeService {
         this.magasinService = magasinService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.auditEventPublisher = auditEventPublisher;
+    }
+
+    private void audit(AuditAction action, UUID entityId, String label) {
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(action, AuditEntityType.EMPLOYE, entityId, label,
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
     }
 
     /** Cree un employe (account + utilisateur + rattachement magasin) avec validation hierarchie role et unicite Manager. */
@@ -98,7 +112,9 @@ public class EmployeServiceImpl implements IEmployeService {
 
         Account account = accountService.create(employeRequest.account(), role);
 
-        return employeDomainService.create(employeRequest.utilisateur(), account, magasin);
+        EmployeResponse created = employeDomainService.create(employeRequest.utilisateur(), account, magasin);
+        audit(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.account().username());
+        return created;
     }
 
     /** Retourne l'Employe correspondant au user courant. Throw ForbiddenException si l'utilisateur connecte n'est pas un Employe (ex : un OWNER). */
@@ -160,7 +176,7 @@ public class EmployeServiceImpl implements IEmployeService {
     /** Change uniquement le rôle — les coordonnées et le magasin restent inchangés. */
     @Override
     @Transactional
-    public EmployeResponse assignRole(UUID id, org.store.users.application.dto.AssignRoleRequest request) {
+    public EmployeResponse assignRole(UUID id, AssignRoleRequest request) {
         validatorService.validate(request);
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
@@ -181,6 +197,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
         accountService.setEnabled(employe.getAccount(), false);
+        audit(AuditAction.EMPLOYE_DEACTIVATED, employe.getId(), employe.getAccount().getUsername());
     }
 
     /** Reactive un employe precedemment desactive. */
@@ -190,6 +207,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
         accountService.setEnabled(employe.getAccount(), true);
+        audit(AuditAction.EMPLOYE_ACTIVATED, employe.getId(), employe.getAccount().getUsername());
     }
 
     /** Force le mot de passe d'un employe (reset admin, sans verification de l'ancien). */

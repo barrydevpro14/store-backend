@@ -3,6 +3,12 @@ package org.store.achat.application.service.impl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.dto.AchatDetailsResponse;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
+import org.store.security.application.dto.UserPrincipal;
+import org.store.security.application.service.ICurrentUserService;
 import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatReceiveRequest;
@@ -86,6 +92,8 @@ public class AchatServiceImpl implements IAchatService {
     private final ICommandeAchatService commandeAchatService;
     private final ValidatorService validatorService;
     private final PurchaseProperties purchaseProperties;
+    private final ICurrentUserService currentUserService;
+    private final IAuditEventPublisher auditEventPublisher;
 
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
@@ -99,7 +107,9 @@ public class AchatServiceImpl implements IAchatService {
                             IProductFournisseurService productFournisseurService,
                             ICommandeAchatService commandeAchatService,
                             ValidatorService validatorService,
-                            PurchaseProperties purchaseProperties) {
+                            PurchaseProperties purchaseProperties,
+                            ICurrentUserService currentUserService,
+                            IAuditEventPublisher auditEventPublisher) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
@@ -113,6 +123,8 @@ public class AchatServiceImpl implements IAchatService {
         this.commandeAchatService = commandeAchatService;
         this.validatorService = validatorService;
         this.purchaseProperties = purchaseProperties;
+        this.currentUserService = currentUserService;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /** Crée la commande DRAFT et ses lignes (validations PF + prix), sans toucher au stock ni à la facture. */
@@ -401,6 +413,12 @@ public class AchatServiceImpl implements IAchatService {
 
         Optional<FactureAchat> facture = factureAchatDomainService.findByCommandeId(cancelled.getId());
         facture.ifPresent(factureAchatDomainService::cancel);
+
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.ACHAT_CANCELLED, AuditEntityType.COMMANDE_ACHAT,
+                cancelled.getId(), cancelled.getReference(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
 
         return new AnnulationAchatResponse(cancelled, retrait.totalQuantite(), retrait.nombreMouvements());
     }

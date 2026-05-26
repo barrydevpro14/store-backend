@@ -32,8 +32,13 @@ import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
+import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
 import org.store.security.application.service.ICurrentUserService;
@@ -61,6 +66,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final INotificationEventPublisher notificationEventPublisher;
+    private final IAuditEventPublisher auditEventPublisher;
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
@@ -72,7 +78,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                                          SubscriptionAmountCalculator amountCalculator,
                                          ICurrentUserService currentUserService,
                                          ValidatorService validatorService,
-                                         INotificationEventPublisher notificationEventPublisher) {
+                                         INotificationEventPublisher notificationEventPublisher,
+                                         IAuditEventPublisher auditEventPublisher) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
         this.abonnementService = abonnementService;
@@ -84,6 +91,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.notificationEventPublisher = notificationEventPublisher;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /**
@@ -107,7 +115,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 new PaiementAbonnementCreationContext(abonnement, paiementAbonnementRequest, breakdown, preuveImage));
 
         notificationEventPublisher.publishPaiementSubmitted(
-                new org.store.notification.application.event.PaiementAbonnementSubmittedEvent(paiement));
+                new PaiementAbonnementSubmittedEvent(paiement));
 
         return new PaiementAbonnementResponse(paiement);
     }
@@ -130,6 +138,12 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
         notificationEventPublisher.publishPaiementValidated(new PaiementAbonnementValidatedEvent(validatedPaiement));
 
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.PAIEMENT_ABONNEMENT_VALIDATED, AuditEntityType.PAIEMENT_ABONNEMENT,
+                validatedPaiement.getId(), abonnement.getEntreprise().getSigle(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+
         return new PaiementAbonnementResponse(validatedPaiement);
     }
 
@@ -148,6 +162,12 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         PaiementAbonnement rejectedPaiement = paiementAbonnementDomainService.markAsRejete(paiement, rejectPaiementRequest.motifRejet());
 
         notificationEventPublisher.publishPaiementRejected(new PaiementAbonnementRejectedEvent(rejectedPaiement));
+
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.PAIEMENT_ABONNEMENT_REJECTED, AuditEntityType.PAIEMENT_ABONNEMENT,
+                rejectedPaiement.getId(), rejectedPaiement.getAbonnement().getEntreprise().getSigle(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
 
         return new PaiementAbonnementResponse(rejectedPaiement);
     }

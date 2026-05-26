@@ -12,6 +12,11 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.property.SaleProperties;
 import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.IAccountService;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
+import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.SortieStockForVente;
@@ -97,6 +102,7 @@ public class VenteServiceImpl implements IVenteService {
     private final MouvementStockDomainService mouvementStockDomainService;
     private final SaleProperties saleProperties;
     private final INotificationEventPublisher notificationEventPublisher;
+    private final IAuditEventPublisher auditEventPublisher;
 
     public VenteServiceImpl(CommandeVenteDomainService commandeVenteDomainService,
                             LigneCommandeVenteDomainService ligneCommandeVenteDomainService,
@@ -114,7 +120,8 @@ public class VenteServiceImpl implements IVenteService {
                             StockDomainService stockDomainService,
                             MouvementStockDomainService mouvementStockDomainService,
                             SaleProperties saleProperties,
-                            INotificationEventPublisher notificationEventPublisher) {
+                            INotificationEventPublisher notificationEventPublisher,
+                            IAuditEventPublisher auditEventPublisher) {
         this.commandeVenteDomainService = commandeVenteDomainService;
         this.ligneCommandeVenteDomainService = ligneCommandeVenteDomainService;
         this.factureClientDomainService = factureClientDomainService;
@@ -132,6 +139,7 @@ public class VenteServiceImpl implements IVenteService {
         this.mouvementStockDomainService = mouvementStockDomainService;
         this.saleProperties = saleProperties;
         this.notificationEventPublisher = notificationEventPublisher;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /** Crée une commande de vente DRAFT + ses lignes (validations prix + scoping PF), sans toucher au stock. */
@@ -272,6 +280,12 @@ public class VenteServiceImpl implements IVenteService {
 
         Optional<FactureClient> facture = factureClientDomainService.findByCommandeId(cancelled.getId());
         facture.ifPresent(factureClientDomainService::cancel);
+
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.VENTE_CANCELLED, AuditEntityType.COMMANDE_VENTE,
+                cancelled.getId(), cancelled.getReference(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
 
         return new AnnulationVenteResponse(cancelled, reinjection.totalQuantite(), reinjection.nombreMouvements());
     }

@@ -15,6 +15,12 @@ import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.MouvementStockResponse;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
+import org.store.security.application.dto.UserPrincipal;
+import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.service.IAjustementStockService;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.MouvementStockType;
@@ -47,19 +53,31 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
     private final IMagasinService magasinService;
     private final IProductService productService;
     private final IProductFournisseurService productFournisseurService;
+    private final ICurrentUserService currentUserService;
+    private final IAuditEventPublisher auditEventPublisher;
 
     public AjustementStockServiceImpl(EntreeStockDomainService entreeStockDomainService,
                                       StockDomainService stockDomainService,
                                       MouvementStockDomainService mouvementStockDomainService,
                                       IMagasinService magasinService,
                                       IProductService productService,
-                                      IProductFournisseurService productFournisseurService) {
+                                      IProductFournisseurService productFournisseurService,
+                                      ICurrentUserService currentUserService,
+                                      IAuditEventPublisher auditEventPublisher) {
         this.entreeStockDomainService = entreeStockDomainService;
         this.stockDomainService = stockDomainService;
         this.mouvementStockDomainService = mouvementStockDomainService;
         this.magasinService = magasinService;
         this.productService = productService;
         this.productFournisseurService = productFournisseurService;
+        this.currentUserService = currentUserService;
+        this.auditEventPublisher = auditEventPublisher;
+    }
+
+    private void auditAdjustment(java.util.UUID entityId, String label) {
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(AuditAction.STOCK_ADJUSTMENT, AuditEntityType.STOCK, entityId, label,
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
     }
 
     /** Valide le motif/type, applique l'ajustement (positif ou négatif) et journalise le mouvement. */
@@ -86,6 +104,7 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
                 request.commentaire()
         ));
 
+        auditAdjustment(stock.getId(), produit.getNom());
         return new MouvementStockResponse(mouvement);
     }
 
