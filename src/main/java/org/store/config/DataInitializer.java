@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import org.store.users.domain.model.Utilisateur;
 import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Component
 public class DataInitializer implements ApplicationRunner {
@@ -171,11 +173,11 @@ public class DataInitializer implements ApplicationRunner {
 
         long existing = notificationDomainService.countUnread(adminAccount.getId())
                 + notificationDomainService.findByDestinataire(adminAccount.getId(),
-                        org.springframework.data.domain.PageRequest.of(0, 1))
+                        PageRequest.of(0, 1))
                         .getTotalElements();
         if (existing > 0) return;
 
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
         seedNotif(adminAccount, "Contact : Demande de démo",
                 "Amadou Diallo <amadou@example.com>\nBonjour, je souhaite une démonstration de votre solution ERP.",
@@ -201,7 +203,7 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void seedNotif(Account dest, String titre, String message,
-                           NotificationStatut statut, java.time.LocalDateTime dateEnvoi) {
+                           NotificationStatut statut, LocalDateTime dateEnvoi) {
         Notification n = new Notification();
         n.setDestinataire(dest);
         n.setTitre(titre);

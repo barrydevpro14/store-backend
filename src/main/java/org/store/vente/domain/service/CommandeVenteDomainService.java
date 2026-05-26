@@ -67,7 +67,7 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
     }
 
     /** Nombre de commandes VALIDATE créées aujourd'hui pour toute l'entreprise (toutes magasins). */
-    public long countByEntrepriseAndDay(UUID entrepriseId, java.time.LocalDateTime startOfDay, java.time.LocalDateTime endOfDay) {
+    public long countByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay) {
         return repository.countByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
     }
 

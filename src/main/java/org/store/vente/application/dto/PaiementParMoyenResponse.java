@@ -7,6 +7,6 @@ import java.math.BigDecimal;
 public record PaiementParMoyenResponse(
         MoyenPaiement moyen,
         BigDecimal total,
-        long nombre
+        Long nombre
 ) {
 }

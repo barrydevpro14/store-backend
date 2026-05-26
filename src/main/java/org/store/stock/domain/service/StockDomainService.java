@@ -8,6 +8,7 @@ import org.store.produit.domain.model.Product;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
+import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.repository.StockRepository;
 
@@ -35,7 +36,7 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         return repository.findResponsesBelowThreshold(filter, entrepriseId, filter.toPageable());
     }
 
-    public org.store.stock.application.dto.StockValuationResponse computeValuation(UUID magasinId, UUID entrepriseId) {
+    public StockValuationResponse computeValuation(UUID magasinId, UUID entrepriseId) {
         return repository.computeValuation(entrepriseId, magasinId);
     }
 

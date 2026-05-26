@@ -5,9 +5,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.vente.application.dto.PaiementParMoyenResponse;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.domain.model.PaiementVente;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,14 +36,14 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
               AND paiement.createdAt >= :startOfDay
               AND paiement.createdAt <= :endOfDay
             """)
-    java.math.BigDecimal sumMontantByMagasinAndDay(@Param("magasinId") UUID magasinId,
-                                                  @Param("entrepriseId") UUID entrepriseId,
-                                                  @Param("startOfDay") java.time.LocalDateTime startOfDay,
-                                                  @Param("endOfDay") java.time.LocalDateTime endOfDay);
+    BigDecimal sumMontantByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                                         @Param("entrepriseId") UUID entrepriseId,
+                                         @Param("startOfDay") LocalDateTime startOfDay,
+                                         @Param("endOfDay") LocalDateTime endOfDay);
 
     @Query("""
             SELECT new org.store.vente.application.dto.PaiementParMoyenResponse(
-                paiement.moyen, COALESCE(SUM(paiement.montant), 0), COUNT(paiement)
+                paiement.moyen, SUM(paiement.montant), COUNT(paiement)
             )
             FROM PaiementVente paiement
             WHERE paiement.facture.commande.magasin.entreprise.id = :entrepriseId
@@ -51,9 +54,9 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
             GROUP BY paiement.moyen
             ORDER BY SUM(paiement.montant) DESC
             """)
-    java.util.List<org.store.vente.application.dto.PaiementParMoyenResponse> ventilationParMoyenByMagasinAndDay(
+    List<PaiementParMoyenResponse> ventilationParMoyenByMagasinAndDay(
             @Param("magasinId") UUID magasinId,
             @Param("entrepriseId") UUID entrepriseId,
-            @Param("startOfDay") java.time.LocalDateTime startOfDay,
-            @Param("endOfDay") java.time.LocalDateTime endOfDay);
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay);
 }

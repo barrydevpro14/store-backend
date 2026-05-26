@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
+import org.store.vente.application.dto.VenteParVendeurResponse;
 import org.store.vente.domain.model.CommandeVente;
 
 import java.time.LocalDateTime;
@@ -111,7 +112,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             GROUP BY user.id, user.nom, user.prenom
             ORDER BY COUNT(commande) DESC
             """)
-    java.util.List<org.store.vente.application.dto.VenteParVendeurResponse> ventilationParVendeurByMagasinAndDay(
+    List<VenteParVendeurResponse> ventilationParVendeurByMagasinAndDay(
             @Param("magasinId") UUID magasinId,
             @Param("entrepriseId") UUID entrepriseId,
             @Param("startOfDay") LocalDateTime startOfDay,

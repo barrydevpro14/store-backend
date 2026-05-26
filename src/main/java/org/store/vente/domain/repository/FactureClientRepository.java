@@ -11,6 +11,7 @@ import org.store.vente.domain.model.FactureClient;
 
 import org.store.achat.domain.enums.StatutFacture;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -61,9 +62,9 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
               AND facture.commande.createdAt >= :startOfDay
               AND facture.commande.createdAt <= :endOfDay
             """)
-    java.math.BigDecimal sumMontantTotalByEntrepriseAndDay(@Param("entrepriseId") UUID entrepriseId,
-                                                           @Param("startOfDay") LocalDateTime startOfDay,
-                                                           @Param("endOfDay") LocalDateTime endOfDay);
+    BigDecimal sumMontantTotalByEntrepriseAndDay(@Param("entrepriseId") UUID entrepriseId,
+                                                 @Param("startOfDay") LocalDateTime startOfDay,
+                                                 @Param("endOfDay") LocalDateTime endOfDay);
 
     @Query("""
             SELECT COUNT(facture) FROM FactureClient facture
@@ -81,8 +82,8 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
               AND facture.commande.createdAt >= :startOfDay
               AND facture.commande.createdAt <= :endOfDay
             """)
-    java.math.BigDecimal sumMontantTotalByMagasinAndDay(@Param("magasinId") UUID magasinId,
-                                                       @Param("entrepriseId") UUID entrepriseId,
-                                                       @Param("startOfDay") java.time.LocalDateTime startOfDay,
-                                                       @Param("endOfDay") java.time.LocalDateTime endOfDay);
+    BigDecimal sumMontantTotalByMagasinAndDay(@Param("magasinId") UUID magasinId,
+                                              @Param("entrepriseId") UUID entrepriseId,
+                                              @Param("startOfDay") LocalDateTime startOfDay,
+                                              @Param("endOfDay") LocalDateTime endOfDay);
 }

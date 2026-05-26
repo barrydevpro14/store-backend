@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
+import org.store.stock.application.dto.StockValuationResponse;
 
 import java.util.UUID;
 
@@ -35,5 +36,5 @@ public interface IStockService {
      * Calcule la valorisation totale du stock d'un magasin (SUM(qty × prixAchatMoyen))
      * après vérification d'accès magasin.
      */
-    org.store.stock.application.dto.StockValuationResponse computeValuation(UUID magasinId);
+    StockValuationResponse computeValuation(UUID magasinId);
 }
