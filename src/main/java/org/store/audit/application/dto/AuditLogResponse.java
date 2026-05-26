@@ -16,7 +16,9 @@ public record AuditLogResponse(
         String performedBy,
         String performedByLabel,
         UUID entrepriseId,
+        String entrepriseLabel,
         UUID magasinId,
+        String magasinLabel,
         String details,
         String createdAt
 ) {
@@ -30,7 +32,9 @@ public record AuditLogResponse(
                 log.getPerformedBy(),
                 log.getPerformedByLabel(),
                 log.getEntrepriseId(),
+                log.getEntrepriseLabel(),
                 log.getMagasinId(),
+                log.getMagasinLabel(),
                 log.getDetails(),
                 DateHelper.format(log.getCreatedAt())
         );
