@@ -14,6 +14,8 @@ spring:
     username: ${DB_USERNAME:barrydevit}
     password: ${DB_PASSWORD:passer}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-init-sql: "SET client_encoding TO 'UTF8'"
   jpa:
     hibernate:
       ddl-auto: validate
@@ -22,6 +24,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 1
+    encoding: UTF-8
   mail:
     host: ${MAIL_HOST:}
     port: ${MAIL_PORT:587}

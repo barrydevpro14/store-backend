@@ -1,6 +1,7 @@
 package org.store.security.application.strategies;
 
 import org.springframework.stereotype.Component;
+import org.store.country.domain.model.Country;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.model.Utilisateur;
@@ -21,6 +22,9 @@ public class ProprietairePrincipalContextStrategy implements UserPrincipalContex
             return UserPrincipalContext.empty();
         }
 
-        return new UserPrincipalContext(entreprise.getId(), null);
+        Country country = entreprise.getCountry();
+        String currency = country != null ? country.getCurrency() : null;
+        String countryName = country != null ? country.getName() : null;
+        return new UserPrincipalContext(entreprise.getId(), null, currency, countryName);
     }
 }

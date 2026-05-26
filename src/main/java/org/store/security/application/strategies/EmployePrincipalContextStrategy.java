@@ -1,6 +1,7 @@
 package org.store.security.application.strategies;
 
 import org.springframework.stereotype.Component;
+import org.store.country.domain.model.Country;
 import org.store.magasin.domain.model.Magasin;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.model.Utilisateur;
@@ -20,6 +21,15 @@ public class EmployePrincipalContextStrategy implements UserPrincipalContextStra
         if (magasin == null) {
             return UserPrincipalContext.empty();
         }
-        return new UserPrincipalContext(magasin.getEntreprise().getId(), magasin.getId());
+        var entreprise = magasin.getEntreprise();
+        Country country = entreprise != null ? entreprise.getCountry() : null;
+        String currency = country != null ? country.getCurrency() : null;
+        String countryName = country != null ? country.getName() : null;
+        return new UserPrincipalContext(
+                entreprise != null ? entreprise.getId() : null,
+                magasin.getId(),
+                currency,
+                countryName
+        );
     }
 }

@@ -6,7 +6,9 @@ public enum Claim {
     MAGASIN("magasinId"),
     ROLE("role"),
     USERNAME("username"),
-    PERMISSIONS("permissions");
+    PERMISSIONS("permissions"),
+    CURRENCY("currency"),
+    COUNTRY_NAME("countryName");
 
     private final String key;
 

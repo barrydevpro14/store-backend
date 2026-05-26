@@ -42,6 +42,8 @@ public class UserPrincipalFactoryImpl implements IUserPrincipalFactory {
                 context.entrepriseId(),
                 context.magasinId(),
                 account.getUsername(),
+                context.currency(),
+                context.countryName(),
                 role.getLibelle(),
                 permissionsService.findAllByRoleId(role.getId())
         );
