@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.notification.application.dto.NotificationFilter;
 import org.store.notification.domain.enums.NotificationStatut;
 import org.store.notification.domain.model.Notification;
 import org.store.notification.domain.repository.NotificationRepository;
@@ -24,6 +25,10 @@ public class NotificationDomainService extends GlobalService<Notification, Notif
 
     public Page<Notification> findByDestinataire(UUID accountId, Pageable pageable) {
         return repository.findByDestinataire(accountId, pageable);
+    }
+
+    public Page<Notification> findByFilter(UUID accountId, NotificationFilter filter) {
+        return repository.findByFilter(accountId, filter, filter.toPageable());
     }
 
     public long countUnread(UUID accountId) {

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.common.base.AuditableEntity;
+import org.store.contact.domain.model.ContactMessage;
 import org.store.notification.domain.enums.CanalNotification;
 import org.store.notification.domain.enums.NotificationStatut;
 import org.store.security.domain.model.Account;
@@ -48,4 +49,8 @@ public class Notification extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Echeance echeance;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contact_message_id")
+    private ContactMessage contact;
 }

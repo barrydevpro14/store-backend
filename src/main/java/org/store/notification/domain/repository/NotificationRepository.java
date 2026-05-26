@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.notification.application.dto.NotificationFilter;
 import org.store.notification.domain.enums.NotificationStatut;
 import org.store.notification.domain.model.Notification;
 
@@ -28,6 +29,25 @@ public interface NotificationRepository extends BaseRepository<Notification> {
               AND n.statut IN :statuts
             """)
     long countUnread(@Param("accountId") UUID accountId, @Param("statuts") List<NotificationStatut> statuts);
+
+    @Query(value = """
+            SELECT n FROM Notification n
+            WHERE n.destinataire.id = :accountId
+              AND (:#{#filter.statut} IS NULL OR n.statut = :#{#filter.statut})
+              AND n.createdAt >= :#{#filter.createdStartDateTime()}
+              AND n.createdAt <  :#{#filter.createdEndDateTime()}
+            ORDER BY n.createdAt DESC
+            """,
+           countQuery = """
+            SELECT COUNT(n) FROM Notification n
+            WHERE n.destinataire.id = :accountId
+              AND (:#{#filter.statut} IS NULL OR n.statut = :#{#filter.statut})
+              AND n.createdAt >= :#{#filter.createdStartDateTime()}
+              AND n.createdAt <  :#{#filter.createdEndDateTime()}
+            """)
+    Page<Notification> findByFilter(@Param("accountId") UUID accountId,
+                                    @Param("filter") NotificationFilter filter,
+                                    Pageable pageable);
 
     @Modifying
     @Query("""

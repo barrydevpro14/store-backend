@@ -14,7 +14,8 @@ public record NotificationResponse(
         CanalNotification canal,
         NotificationStatut statut,
         String dateEnvoi,
-        String createdAt
+        String createdAt,
+        UUID contactMessageId
 ) {
     public NotificationResponse(Notification notification) {
         this(
@@ -24,7 +25,8 @@ public record NotificationResponse(
                 notification.getCanal(),
                 notification.getStatut(),
                 DateHelper.format(notification.getDateEnvoi()),
-                DateHelper.format(notification.getCreatedAt())
+                DateHelper.format(notification.getCreatedAt()),
+                notification.getContact() != null ? notification.getContact().getId() : null
         );
     }
 }

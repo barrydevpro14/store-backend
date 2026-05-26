@@ -1,14 +1,14 @@
 package org.store.notification.application.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.store.notification.application.dto.NotificationFilter;
 import org.store.notification.application.dto.NotificationResponse;
 
 import java.util.UUID;
 
 public interface INotificationService {
 
-    Page<NotificationResponse> findAllForCurrentUser(Pageable pageable);
+    Page<NotificationResponse> findAllForCurrentUser(NotificationFilter filter);
 
     long countUnreadForCurrentUser();
 

@@ -16,6 +16,7 @@ import org.store.notification.domain.enums.CanalNotification;
 import org.store.notification.domain.enums.NotificationStatut;
 import org.store.notification.domain.model.Notification;
 import org.store.notification.domain.service.NotificationDomainService;
+import org.store.contact.domain.model.ContactMessage;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.service.AccountDomainService;
 import org.store.users.domain.service.EmployeDomainService;
@@ -59,7 +60,7 @@ public class NotificationEventListener {
 
         employeDomainService
                 .findActiveAccountsByMagasinIdAndRoleLibelle(commande.getMagasin().getId(), "MANAGER")
-                .forEach(account -> createInApp(account, titre, message));
+                .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
         log.info("VenteValidated notification sent for commande {}", commande.getReference());
     }
@@ -75,7 +76,7 @@ public class NotificationEventListener {
 
         employeDomainService
                 .findActiveAccountsByMagasinIdAndRoleLibelle(stock.getMagasin().getId(), "MANAGER")
-                .forEach(account -> createInApp(account, titre, message));
+                .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
         log.info("StockBelowThreshold notification sent for product {}", nom);
     }
@@ -92,7 +93,7 @@ public class NotificationEventListener {
         accountDomainService
                 .findAllByRoleLibelle("ADMIN", org.springframework.data.domain.Pageable.ofSize(100))
                 .getContent()
-                .forEach(account -> createInApp(account, titre, message));
+                .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
         log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", paiement.getId());
     }
@@ -107,7 +108,7 @@ public class NotificationEventListener {
 
         proprietaireDomainService
                 .findAccountByEntrepriseId(paiement.getAbonnement().getEntreprise().getId())
-                .ifPresent(account -> createInApp(account, titre, message));
+                .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
         log.info("PaiementValidated notification sent for paiement {}", paiement.getId());
     }
@@ -122,7 +123,7 @@ public class NotificationEventListener {
 
         proprietaireDomainService
                 .findAccountByEntrepriseId(paiement.getAbonnement().getEntreprise().getId())
-                .ifPresent(account -> createInApp(account, titre, message));
+                .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
         log.info("PaiementRejected notification sent for paiement {}", paiement.getId());
     }
@@ -138,19 +139,22 @@ public class NotificationEventListener {
         accountDomainService
                 .findAllByRoleLibelle("ADMIN", org.springframework.data.domain.Pageable.ofSize(100))
                 .getContent()
-                .forEach(account -> createInApp(account, titre, body));
+                .forEach(account -> createInApp(account, new NotificationPayload(titre, body, contact)));
 
         log.info("ContactMessageReceived notification sent for contact from {}", contact.getEmail());
     }
 
-    private void createInApp(Account destinataire, String titre, String message) {
+    private void createInApp(Account destinataire, NotificationPayload payload) {
         Notification notification = new Notification();
         notification.setDestinataire(destinataire);
-        notification.setTitre(titre);
-        notification.setMessage(message);
+        notification.setTitre(payload.titre());
+        notification.setMessage(payload.message());
+        notification.setContact(payload.contact());
         notification.setCanal(CanalNotification.IN_APP);
         notification.setStatut(NotificationStatut.ENVOYEE);
         notification.setDateEnvoi(LocalDateTime.now());
         notificationDomainService.save(notification);
     }
+
+    private record NotificationPayload(String titre, String message, ContactMessage contact) {}
 }
