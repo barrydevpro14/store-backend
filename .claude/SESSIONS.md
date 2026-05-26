@@ -9,7 +9,18 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-25 — Convention sweeps, contact module, ApplicationEvent notifications, reporting consolidation, admin dashboard KPI strip
+**Date:** 2026-05-26 — Audit module, contact fixes, email service, notification UX, owner KPIs, country/currency module
+
+**Subject:** Major multi-feature day. Audit log module (13 actions, role-aware scoping ADMIN/OWNER/MANAGER, login/logout tracking with IP+UA+duration, structured details cell, history page). Contact: reply guard + paginate/filter API + email service via ApplicationEvent (JavaMailSender, NoOpEmailServiceImpl fallback) + one-reply-only guard. Notification UX: inline reply from notification page, unread-only dashboard, history page with filter bar, decouple expand from mark-as-read + auto-mark on reply. Owner dashboard: company-wide KPI strip from `/api/v1/reporting/owner-overview`. Country module: `Country` entity + V24 seed ~65 countries, `Entreprise.country` FK + V25, currency in JWT from `country.currency`, country selector on RegisterWizard, `useCurrency()` hook replaces hardcoded `'XOF'` across 27 components. Convention fixes: no inline FQNs (10 files), page size default 10, `AuditEntityType` enum replaces hardcoded strings. Multiple commit/push violations acknowledged.
+
+### Open follow-ups (parked)
+- Country module changes not yet committed/pushed — pending authorization
+- `application.yml` default credentials still to externalize
+- Frontend README.md still generic `create-next-app`
+
+---
+
+## 2026-05-25 — Convention sweeps, contact module, ApplicationEvent notifications, reporting consolidation, admin dashboard KPI strip
 
 **Subject:** Long multi-session day. Convention sweeps across frontend (rules 42, 46, 52) and backend (rules 27–42). Shipped a full Contact module (public form + admin CRUD), ApplicationEvent-driven notification system (6 triggers, fully i18n-safe), and consolidated all reporting code into `org.store.reporting`. Extended `AdminOverviewStatsResponse` with active/inactive breakdowns for entreprises and magasins. Built the admin-specific 6-card KPI strip on the dashboard home page. SonarQube Quality Gate passed (custom gate, overall coverage 75.9%). Multiple bug fixes: date filter zeros, navigation double-highlight, administration sub-tabs bleeding on reporting page, duplicate magasin card for ADMIN, missing active/inactive count display.
 
