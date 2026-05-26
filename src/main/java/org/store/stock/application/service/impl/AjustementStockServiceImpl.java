@@ -74,10 +74,10 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
         this.auditEventPublisher = auditEventPublisher;
     }
 
-    private void auditAdjustment(java.util.UUID entityId, String label) {
+    private void auditAdjustment(java.util.UUID entityId, String label, java.util.UUID magasinId) {
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(AuditAction.STOCK_ADJUSTMENT, AuditEntityType.STOCK, entityId, label,
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), magasinId, null));
     }
 
     /** Valide le motif/type, applique l'ajustement (positif ou négatif) et journalise le mouvement. */
@@ -104,7 +104,7 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
                 request.commentaire()
         ));
 
-        auditAdjustment(stock.getId(), produit.getNom());
+        auditAdjustment(stock.getId(), produit.getNom(), magasin.getId());
         return new MouvementStockResponse(mouvement);
     }
 

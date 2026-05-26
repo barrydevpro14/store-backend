@@ -31,12 +31,13 @@ public class AuditEventListener {
     public void onAuditEvent(AuditEvent event) {
         AuditLog auditLog = new AuditLog();
         auditLog.setAction(event.action());
-        auditLog.setEntityType(event.entityType());  // AuditEntityType enum → stored as STRING
+        auditLog.setEntityType(event.entityType());
         auditLog.setEntityId(event.entityId());
         auditLog.setEntityLabel(event.entityLabel());
         auditLog.setPerformedBy(event.performedBy());
         auditLog.setPerformedByLabel(event.performedByLabel());
         auditLog.setEntrepriseId(event.entrepriseId());
+        auditLog.setMagasinId(event.magasinId());
         auditLog.setDetails(event.details());
         auditLog.setCreatedAt(LocalDateTime.now());
 

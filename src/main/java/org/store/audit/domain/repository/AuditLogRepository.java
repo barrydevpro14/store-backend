@@ -18,6 +18,7 @@ public interface AuditLogRepository extends BaseRepository<AuditLog> {
             WHERE (:#{#filter.action} IS NULL OR log.action = :#{#filter.action})
               AND (:#{#filter.entityType} IS NULL OR log.entityType = :#{#filter.entityType})
               AND (:#{#filter.entrepriseId} IS NULL OR log.entrepriseId = :#{#filter.entrepriseId})
+              AND (:#{#filter.magasinId} IS NULL OR log.magasinId = :#{#filter.magasinId})
               AND (:#{#filter.performedByLabel} IS NULL
                    OR LOWER(log.performedByLabel) LIKE LOWER(CONCAT('%', :#{#filter.performedByLabel}, '%')))
               AND log.createdAt >= :#{#filter.createdStartDateTime()}
@@ -29,6 +30,7 @@ public interface AuditLogRepository extends BaseRepository<AuditLog> {
             WHERE (:#{#filter.action} IS NULL OR log.action = :#{#filter.action})
               AND (:#{#filter.entityType} IS NULL OR log.entityType = :#{#filter.entityType})
               AND (:#{#filter.entrepriseId} IS NULL OR log.entrepriseId = :#{#filter.entrepriseId})
+              AND (:#{#filter.magasinId} IS NULL OR log.magasinId = :#{#filter.magasinId})
               AND (:#{#filter.performedByLabel} IS NULL
                    OR LOWER(log.performedByLabel) LIKE LOWER(CONCAT('%', :#{#filter.performedByLabel}, '%')))
               AND log.createdAt >= :#{#filter.createdStartDateTime()}

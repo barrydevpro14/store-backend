@@ -18,4 +18,5 @@ public record AuditEvent(
         String performedBy,
         String performedByLabel,
         UUID entrepriseId,
+        UUID magasinId,
         String details) {}

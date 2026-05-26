@@ -41,6 +41,8 @@ public class AuditLog extends BaseEntity {
 
     private UUID entrepriseId;
 
+    private UUID magasinId;
+
     @Column(columnDefinition = "TEXT")
     private String details;
 

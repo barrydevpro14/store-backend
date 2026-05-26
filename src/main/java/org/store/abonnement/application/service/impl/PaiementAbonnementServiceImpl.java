@@ -142,7 +142,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.PAIEMENT_ABONNEMENT_VALIDATED, AuditEntityType.PAIEMENT_ABONNEMENT,
                 validatedPaiement.getId(), abonnement.getEntreprise().getSigle(),
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null, null));
 
         return new PaiementAbonnementResponse(validatedPaiement);
     }
@@ -167,7 +167,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.PAIEMENT_ABONNEMENT_REJECTED, AuditEntityType.PAIEMENT_ABONNEMENT,
                 rejectedPaiement.getId(), rejectedPaiement.getAbonnement().getEntreprise().getSigle(),
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null, null));
 
         return new PaiementAbonnementResponse(rejectedPaiement);
     }

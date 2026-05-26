@@ -418,7 +418,8 @@ public class AchatServiceImpl implements IAchatService {
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.ACHAT_CANCELLED, AuditEntityType.COMMANDE_ACHAT,
                 cancelled.getId(), cancelled.getReference(),
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(),
+                cancelled.getMagasin().getId(), null));
 
         return new AnnulationAchatResponse(cancelled, retrait.totalQuantite(), retrait.nombreMouvements());
     }

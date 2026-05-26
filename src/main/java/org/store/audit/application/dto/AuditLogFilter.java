@@ -15,6 +15,7 @@ public record AuditLogFilter(
         AuditAction action,
         AuditEntityType entityType,
         UUID entrepriseId,
+        UUID magasinId,
         String performedByLabel,
         LocalDate createdStartDate,
         LocalDate createdEndDate,

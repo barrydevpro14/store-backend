@@ -6,14 +6,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.audit.application.dto.AuditLogFilter;
 import org.store.audit.application.dto.AuditLogResponse;
 import org.store.audit.application.service.IAuditLogService;
-import org.store.audit.domain.enums.AuditAction;
-import org.store.audit.domain.enums.AuditEntityType;
 import org.store.audit.domain.service.AuditLogDomainService;
 import org.store.common.service.ValidatorService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
-
-import java.time.LocalDate;
 
 /**
  * Exposes the paginated audit log to the presentation layer.
@@ -45,9 +41,17 @@ public class AuditLogServiceImpl implements IAuditLogService {
 
     private AuditLogFilter scopeFilter(AuditLogFilter filter) {
         UserPrincipal caller = currentUserService.getCurrent();
-        if (caller.entrepriseId() == null) return filter; // ADMIN — no forced scoping
-        return new AuditLogFilter(
-                filter.action(), filter.entityType(), caller.entrepriseId(),
+        if (caller.entrepriseId() == null) return filter; // ADMIN — full access
+        if (caller.magasinId() != null) {
+            // MANAGER — scoped to their magasin
+            return new AuditLogFilter(filter.action(), filter.entityType(),
+                    caller.entrepriseId(), caller.magasinId(),
+                    filter.performedByLabel(), filter.createdStartDate(), filter.createdEndDate(),
+                    filter.page(), filter.size());
+        }
+        // OWNER — scoped to their entreprise
+        return new AuditLogFilter(filter.action(), filter.entityType(),
+                caller.entrepriseId(), null,
                 filter.performedByLabel(), filter.createdStartDate(), filter.createdEndDate(),
                 filter.page(), filter.size());
     }

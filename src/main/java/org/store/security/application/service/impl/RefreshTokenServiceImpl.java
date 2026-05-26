@@ -110,6 +110,6 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
                 AuditAction.LOGOUT, AuditEntityType.ACCOUNT,
                 principal.accountId(), principal.username(),
                 accountId, principal.username(),
-                principal.entrepriseId(), details));
+                principal.entrepriseId(), principal.magasinId(), details));
     }
 }

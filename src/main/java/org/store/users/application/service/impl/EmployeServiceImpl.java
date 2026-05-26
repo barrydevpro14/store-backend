@@ -84,7 +84,13 @@ public class EmployeServiceImpl implements IEmployeService {
     private void audit(AuditAction action, UUID entityId, String label) {
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(action, AuditEntityType.EMPLOYE, entityId, label,
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), caller.magasinId(), null));
+    }
+
+    private void auditWithMagasin(AuditAction action, UUID entityId, String label, UUID magasinId) {
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(action, AuditEntityType.EMPLOYE, entityId, label,
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(), magasinId, null));
     }
 
     /** Cree un employe (account + utilisateur + rattachement magasin) avec validation hierarchie role et unicite Manager. */
@@ -113,7 +119,7 @@ public class EmployeServiceImpl implements IEmployeService {
         Account account = accountService.create(employeRequest.account(), role);
 
         EmployeResponse created = employeDomainService.create(employeRequest.utilisateur(), account, magasin);
-        audit(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.account().username());
+        auditWithMagasin(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.account().username(), magasin.getId());
         return created;
     }
 
@@ -197,7 +203,8 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
         accountService.setEnabled(employe.getAccount(), false);
-        audit(AuditAction.EMPLOYE_DEACTIVATED, employe.getId(), employe.getAccount().getUsername());
+        UUID magasinId = employe.getMagasin() != null ? employe.getMagasin().getId() : null;
+        auditWithMagasin(AuditAction.EMPLOYE_DEACTIVATED, employe.getId(), employe.getAccount().getUsername(), magasinId);
     }
 
     /** Reactive un employe precedemment desactive. */
@@ -207,7 +214,8 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
         accountService.setEnabled(employe.getAccount(), true);
-        audit(AuditAction.EMPLOYE_ACTIVATED, employe.getId(), employe.getAccount().getUsername());
+        UUID magasinId = employe.getMagasin() != null ? employe.getMagasin().getId() : null;
+        auditWithMagasin(AuditAction.EMPLOYE_ACTIVATED, employe.getId(), employe.getAccount().getUsername(), magasinId);
     }
 
     /** Force le mot de passe d'un employe (reset admin, sans verification de l'ancien). */

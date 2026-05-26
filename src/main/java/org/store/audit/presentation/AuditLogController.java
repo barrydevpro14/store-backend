@@ -33,13 +33,14 @@ public class AuditLogController {
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) AuditEntityType entityType,
             @RequestParam(required = false) UUID entrepriseId,
+            @RequestParam(required = false) UUID magasinId,
             @RequestParam(required = false) String performedByLabel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(auditLogService.findAll(
-                new AuditLogFilter(action, entityType, entrepriseId, performedByLabel,
+                new AuditLogFilter(action, entityType, entrepriseId, magasinId, performedByLabel,
                         createdStartDate, createdEndDate, page, size)));
     }
 }

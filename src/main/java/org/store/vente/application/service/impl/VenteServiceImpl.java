@@ -285,7 +285,8 @@ public class VenteServiceImpl implements IVenteService {
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.VENTE_CANCELLED, AuditEntityType.COMMANDE_VENTE,
                 cancelled.getId(), cancelled.getReference(),
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null));
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(),
+                cancelled.getMagasin().getId(), null));
 
         return new AnnulationVenteResponse(cancelled, reinjection.totalQuantite(), reinjection.nombreMouvements());
     }

@@ -70,7 +70,7 @@ public class LoginServiceImpl implements ILoginService {
                 AuditAction.LOGIN, AuditEntityType.ACCOUNT,
                 principal.accountId(), principal.username(),
                 principal.accountId().toString(), principal.username(),
-                principal.entrepriseId(), details));
+                principal.entrepriseId(), principal.magasinId(), details));
 
         return new AuthResponse(accessToken, refreshToken);
     }
