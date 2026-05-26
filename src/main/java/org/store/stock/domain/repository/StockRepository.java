@@ -56,6 +56,15 @@ public interface StockRepository extends BaseRepository<Stock> {
     long countBelowThreshold(@Param("magasinId") UUID magasinId);
 
     @Query("""
+            SELECT COUNT(stock)
+            FROM Stock stock
+            WHERE stock.magasin.entreprise.id = :entrepriseId
+              AND stock.seuilApprovisionnement > 0
+              AND stock.quantiteDisponible <= stock.seuilApprovisionnement
+            """)
+    long countBelowThresholdByEntreprise(@Param("entrepriseId") UUID entrepriseId);
+
+    @Query("""
             SELECT new org.store.stock.application.dto.StockValuationResponse(
                 :magasinId,
                 SUM(stock.quantiteDisponible * COALESCE(stock.prixAchatMoyen, 0)),

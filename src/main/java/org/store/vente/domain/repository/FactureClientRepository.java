@@ -11,6 +11,8 @@ import org.store.vente.domain.model.FactureClient;
 
 import org.store.achat.domain.enums.StatutFacture;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +53,25 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
             """)
     Optional<FactureClientResponse> findResponseById(@Param("id") UUID id,
                                                     @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("""
+            SELECT COALESCE(SUM(facture.montantTotal), 0) FROM FactureClient facture
+            WHERE facture.commande.magasin.entreprise.id = :entrepriseId
+              AND facture.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
+              AND facture.commande.createdAt >= :startOfDay
+              AND facture.commande.createdAt <= :endOfDay
+            """)
+    java.math.BigDecimal sumMontantTotalByEntrepriseAndDay(@Param("entrepriseId") UUID entrepriseId,
+                                                           @Param("startOfDay") LocalDateTime startOfDay,
+                                                           @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("""
+            SELECT COUNT(facture) FROM FactureClient facture
+            WHERE facture.commande.magasin.entreprise.id = :entrepriseId
+              AND facture.statut IN :statuts
+            """)
+    long countByEntrepriseAndStatuts(@Param("entrepriseId") UUID entrepriseId,
+                                     @Param("statuts") List<StatutFacture> statuts);
 
     @Query("""
             SELECT COALESCE(SUM(facture.montantTotal), 0) FROM FactureClient facture

@@ -3,6 +3,10 @@ package org.store.vente.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.achat.domain.enums.StatutFacture;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
 import org.store.vente.application.dto.CaisseResumeFilter;
@@ -85,5 +89,17 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
     /** Compte les factures dans un statut donné pour un magasin. */
     public long countByMagasinIdAndStatut(UUID magasinId, StatutFacture statut) {
         return repository.countByMagasinIdAndStatut(magasinId, statut);
+    }
+
+    /** Revenue total des ventes VALIDATE aujourd'hui pour toute l'entreprise. */
+    public BigDecimal sumMontantByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay) {
+        BigDecimal result = repository.sumMontantTotalByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
+        return result != null ? result : BigDecimal.ZERO;
+    }
+
+    /** Nombre de factures non soldées (NON_PAYEE ou PARTIELLEMENT_PAYEE) pour toute l'entreprise. */
+    public long countUnpaidByEntreprise(UUID entrepriseId) {
+        return repository.countByEntrepriseAndStatuts(entrepriseId,
+                List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE));
     }
 }

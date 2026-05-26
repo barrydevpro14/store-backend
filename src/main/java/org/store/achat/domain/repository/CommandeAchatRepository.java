@@ -18,6 +18,9 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
     @Query("SELECT COUNT(commande) FROM CommandeAchat commande WHERE commande.magasin.id = :magasinId AND commande.statut = :statut")
     long countByMagasinIdAndStatut(@Param("magasinId") UUID magasinId, @Param("statut") CommandeAchatStatut statut);
 
+    @Query("SELECT COUNT(commande) FROM CommandeAchat commande WHERE commande.magasin.entreprise.id = :entrepriseId AND commande.statut = :statut")
+    long countByEntrepriseAndStatut(@Param("entrepriseId") UUID entrepriseId, @Param("statut") CommandeAchatStatut statut);
+
     @Query("""
             SELECT new org.store.achat.application.dto.CommandeAchatResponse(commande)
             FROM CommandeAchat commande

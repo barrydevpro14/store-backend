@@ -66,6 +66,11 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         return repository.ventilationParVendeurByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
+    /** Nombre de commandes VALIDATE créées aujourd'hui pour toute l'entreprise (toutes magasins). */
+    public long countByEntrepriseAndDay(UUID entrepriseId, java.time.LocalDateTime startOfDay, java.time.LocalDateTime endOfDay) {
+        return repository.countByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
+    }
+
     /** Bascule la commande en statut CANCEL avec motif, commentaire et timestamp d'annulation. */
     public CommandeVente cancel(CommandeVente commande, MotifAnnulationVente motif, String commentaire) {
         commande.setStatut(CommandeVenteStatut.CANCEL);

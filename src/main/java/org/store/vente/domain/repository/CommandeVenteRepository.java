@@ -10,6 +10,7 @@ import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.domain.model.CommandeVente;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -78,6 +79,17 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
                                           @Param("entrepriseId") UUID entrepriseId,
                                           @Param("startOfDay") LocalDateTime startOfDay,
                                           @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("""
+            SELECT COUNT(commande) FROM CommandeVente commande
+            WHERE commande.magasin.entreprise.id = :entrepriseId
+              AND commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
+              AND commande.createdAt >= :startOfDay
+              AND commande.createdAt <= :endOfDay
+            """)
+    long countByEntrepriseAndDay(@Param("entrepriseId") UUID entrepriseId,
+                                 @Param("startOfDay") LocalDateTime startOfDay,
+                                 @Param("endOfDay") LocalDateTime endOfDay);
 
     @Query("""
             SELECT new org.store.vente.application.dto.VenteParVendeurResponse(

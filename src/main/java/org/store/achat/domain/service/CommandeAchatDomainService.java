@@ -61,4 +61,9 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
     public long countByMagasinIdAndStatut(UUID magasinId, CommandeAchatStatut statut) {
         return repository.countByMagasinIdAndStatut(magasinId, statut);
     }
+
+    /** Compte les commandes d'achat dans un statut donné pour toute l'entreprise. */
+    public long countByEntrepriseAndStatut(UUID entrepriseId, CommandeAchatStatut statut) {
+        return repository.countByEntrepriseAndStatut(entrepriseId, statut);
+    }
 }

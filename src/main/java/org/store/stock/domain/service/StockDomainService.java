@@ -53,6 +53,11 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         return save(stock);
     }
 
+    /** Nombre de produits sous seuil pour toute l'entreprise (tous magasins confondus). */
+    public long countBelowThresholdByEntreprise(UUID entrepriseId) {
+        return repository.countBelowThresholdByEntreprise(entrepriseId);
+    }
+
     /**
      * Recrédite la quantité disponible du stock (ne touche pas au prix d'achat moyen).
      * Utilisé lors d'une annulation de vente pour compenser un {@code decrement} antérieur.
