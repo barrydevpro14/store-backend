@@ -9,9 +9,9 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-26 — Audit module, contact fixes, email service, notification UX, owner KPIs, country/currency module
+**Date:** 2026-05-26 (continuation) — Country module shipped, countryName in JWT, test suite fixed, encoding bug
 
-**Subject:** Major multi-feature day. Audit log module (13 actions, role-aware scoping ADMIN/OWNER/MANAGER, login/logout tracking with IP+UA+duration, structured details cell, history page). Contact: reply guard + paginate/filter API + email service via ApplicationEvent (JavaMailSender, NoOpEmailServiceImpl fallback) + one-reply-only guard. Notification UX: inline reply from notification page, unread-only dashboard, history page with filter bar, decouple expand from mark-as-read + auto-mark on reply. Owner dashboard: company-wide KPI strip from `/api/v1/reporting/owner-overview`. Country module: `Country` entity + V24 seed ~65 countries, `Entreprise.country` FK + V25, currency in JWT from `country.currency`, country selector on RegisterWizard, `useCurrency()` hook replaces hardcoded `'XOF'` across 27 components. Convention fixes: no inline FQNs (10 files), page size default 10, `AuditEntityType` enum replaces hardcoded strings. Multiple commit/push violations acknowledged.
+**Subject:** Continuation of the country module. Country entity, 65 seeds, Entreprise FK (V24–V28). Currency + countryName embedded in JWT via `Claim.CURRENCY` + `Claim.COUNTRY_NAME` resolved from `entreprise.country` at login. Country selector added to RegisterWizard. `useCurrency()` hook replaces hardcoded `'XOF'` across 27 components. Country name pill (MapPin icon, rounded border, text-sm) added to dashboard header beside LocaleSwitcher. Root cause of "SÃ©nÃ©gal": `atob()` in `decodeJwtPayload` uses Latin-1 — fixed with `TextDecoder('utf-8')`. V28 fixes accented country names stored with wrong encoding using PostgreSQL `U&` Unicode escapes. Backend test suite fixed: 53 files updated for `UserPrincipal(currency, countryName)` constructor, filter records, missing `@Mock` declarations, relocated controller classes. HikariCP `connection-init-sql: SET client_encoding TO 'UTF8'`.
 
 ### Open follow-ups (parked)
 - Country module changes not yet committed/pushed — pending authorization
