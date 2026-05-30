@@ -1466,6 +1466,27 @@ Repos involved : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLign
 
 ---
 
+## 59. Sale invoice PDF — `InvoicePdfServiceImpl`
+
+**Endpoint** : `GET /api/v1/factures-client/{id}/pdf` (`SALE_READ`) — returns `application/pdf` with `Content-Disposition: attachment; filename="FACT-....pdf"`
+
+**Library** : OpenPDF 2.0.3 (LGPL, no server-side rendering required).
+
+**Layout** :
+1. **Header** (2 columns): company block (raisonSociale, NINEA, RCCM, adresse) + invoice title block (FACTURE, FACT-... numero, date, dateEcheance) in blue.
+2. **Client section** : name, phone, email — or "Client anonyme" if no client.
+3. **Lines table** : product nom + ref, quantité, prix unitaire, total HT. Alternating row background.
+4. **Totals + payments** : total HT, one row per payment (moyen + date), remaining balance highlighted green (paid) or amber (due).
+5. **Footer** : `{entreprise.sigle} – Document généré par Store ERP`.
+
+**Scoping** : `OwnershipHelper.ensureOwnership` checks `facture.commande.magasin.entreprise.id` against current user's JWT `entrepriseId`.
+
+**Reference prefix** : `FactureClientDomainService.generateNumero()` switched from `FAC-VTE` → `FACT` prefix — format `FACT-yyyyMMdd-HHmmssSSS`.
+
+**Frontend** : Download button (Download icon) in `VenteFacturePaiementsSection` beside the invoice numero. `useDownloadFacturePdf` hook fetches with `responseType: 'blob'` and triggers browser file save.
+
+---
+
 ## Cross-cutting conventions
 
 - **i18n** : all error messages go through `IMessageSourceService` (keys in `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).

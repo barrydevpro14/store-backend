@@ -9,7 +9,17 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-05-26 (continuation) — Country module shipped, countryName in JWT, test suite fixed, encoding bug
+**Date:** 2026-05-27 — Rule 53, email HTML template, MailProperties, PDF invoice, FACT prefix
+
+**Subject:** Rule 53 added to conventions + applied codebase-wide (152 new *-props.ts files, 151 .tsx updated, 314/314 vitest green). Email HTML template in `templates/email/contact-reply.html` with `{{placeholder}}` substitution + MimeMessage. `MailProperties` consolidates all SMTP config in `email.yml` (imported by application.yml); `MailConfig` @Bean factory replaces unreliable @ConditionalOnBean on @Service. Locale fix: `LocaleContextHolder.getLocale()` captured at event publish time so async listener uses correct locale. PDF invoice: OpenPDF 2.0.3, `GET /api/v1/factures-client/{id}/pdf`, A4 layout with company header, lines table, totals+payments, client section. Facture reference prefix FAC-VTE → FACT. Download button in VenteFacturePaiementsSection. `ClientSummaryResponse` + `FactureClientResponse` gain telephone/client fields.
+
+### Open follow-ups (parked)
+- Backend test suite has compilation failures — app starts correctly, tests don't block runtime
+- application.yml default credentials still to externalize
+
+---
+
+## 2026-05-26 (continuation) — Country module shipped, countryName in JWT, test suite fixed, encoding bug
 
 **Subject:** Continuation of the country module. Country entity, 65 seeds, Entreprise FK (V24–V28). Currency + countryName embedded in JWT via `Claim.CURRENCY` + `Claim.COUNTRY_NAME` resolved from `entreprise.country` at login. Country selector added to RegisterWizard. `useCurrency()` hook replaces hardcoded `'XOF'` across 27 components. Country name pill (MapPin icon, rounded border, text-sm) added to dashboard header beside LocaleSwitcher. Root cause of "SÃ©nÃ©gal": `atob()` in `decodeJwtPayload` uses Latin-1 — fixed with `TextDecoder('utf-8')`. V28 fixes accented country names stored with wrong encoding using PostgreSQL `U&` Unicode escapes. Backend test suite fixed: 53 files updated for `UserPrincipal(currency, countryName)` constructor, filter records, missing `@Mock` declarations, relocated controller classes. HikariCP `connection-init-sql: SET client_encoding TO 'UTF8'`.
 

@@ -305,6 +305,7 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | GET | `/api/v1/factures-client/{id}` | `SALE_READ` | OWNER/MANAGER/SELLER |
 | GET | `/api/v1/factures-client/{id}/paiements` | `SALE_READ` | OWNER/MANAGER/SELLER |
 | POST | `/api/v1/factures-client/{id}/paiements` | `SALE_PAY` | OWNER/MANAGER/SELLER |
+| GET | `/api/v1/factures-client/{id}/pdf` | `SALE_READ` | OWNER/MANAGER/SELLER |
 | **Cash register** | | | |
 | GET | `/api/v1/ventes/caisse/resume?magasinId=&date=` | `SALE_READ` | OWNER/MANAGER/SELLER |
 | GET | `/api/v1/ventes/caisse/top-produits?magasinId=&date=&nombre=` | `SALE_READ` | OWNER/MANAGER/SELLER |
@@ -508,7 +509,7 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | stock | 10 | `STOCK_READ`, `STOCK_ENTRY`, `STOCK_ADJUSTMENT`, `REPORT_STOCK` |
 | inventaire | 11 | `STOCK_INVENTORY`, `STOCK_READ` |
 | achat | 19 | `SUPPLIER_*`, `PURCHASE_*` |
-| vente | 19 | `CLIENT_*`, `SALE_*` |
+| vente | 20 | `CLIENT_*`, `SALE_*` |
 | depense | 11 | `EXPENSE_*`, `EXPENSE_CATEGORY_*` |
 | abonnement | 40 | `PLAN_*`, `SUBSCRIPTION_TYPE_*`, `COUPON_*`, `PROMOTION_*`, `SUBSCRIPTION_*` |
 | notification | 4 | authenticated |
@@ -516,7 +517,7 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | audit | 1 | `AUDIT_READ` |
 | reporting | 7 | `ADMIN_ACCESS`, `OWNER_ACCESS`, `SALES_ACCESS`, `STOCK_READ` |
 | country | 1 | (public) |
-| **TOTAL** | **~203** | **80+ permissions** |
+| **TOTAL** | **~204** | **80+ permissions** |
 
 ---
 
