@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{subject}}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#2563eb;border-radius:12px 12px 0 0;padding:28px 36px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
+              {{appName}}
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;padding:36px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+
+            <p style="margin:0 0 16px;font-size:16px;color:#111827;font-weight:600;">
+              {{greeting}}
+            </p>
+
+            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+              {{intro}}
+            </p>
+
+            <!-- Original message -->
+            <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;">
+              {{labelYourMessage}}
+            </p>
+            <div style="background:#f9fafb;border-left:4px solid #d1d5db;border-radius:0 6px 6px 0;padding:16px 20px;margin-bottom:24px;">
+              <p style="margin:0;font-size:14px;color:#4b5563;line-height:1.7;">{{originalMessage}}</p>
+            </div>
+
+            <!-- Reply -->
+            <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#2563eb;text-transform:uppercase;letter-spacing:.5px;">
+              {{labelOurReply}}
+            </p>
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 6px 6px 0;padding:16px 20px;">
+              <p style="margin:0;font-size:15px;color:#1e3a8a;line-height:1.7;">{{reply}}</p>
+            </div>
+
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9fafb;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:20px 36px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">{{footer}}</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

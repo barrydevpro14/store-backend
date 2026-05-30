@@ -17,7 +17,10 @@ import org.store.notification.application.event.ContactMessageReceivedEvent;
 import org.store.notification.application.event.ContactMessageRepliedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 
+import java.util.Locale;
 import java.util.UUID;
+
+import org.springframework.context.i18n.LocaleContextHolder;
 
 /**
  * Handles the full contact-message lifecycle: public submission, admin listing,
@@ -90,12 +93,14 @@ public class ContactMessageServiceImpl implements IContactMessageService {
         contactMessage.setStatut(ContactStatut.REPONDU);
         ContactMessage saved = contactMessageDomainService.save(contactMessage);
 
+        Locale locale = LocaleContextHolder.getLocale();
         notificationEventPublisher.publishContactMessageReplied(new ContactMessageRepliedEvent(
                 saved.getNom(),
                 saved.getEmail(),
                 saved.getSujet(),
                 saved.getMessage(),
-                saved.getReponse()
+                saved.getReponse(),
+                locale
         ));
 
         return new ContactMessageResponse(saved);

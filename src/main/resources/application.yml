@@ -2,6 +2,8 @@ server:
   port: 8081
 
 spring:
+  config:
+    import: classpath:email.yml
   application:
     name: store
   servlet:
@@ -25,22 +27,6 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
     encoding: UTF-8
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:barrydevpro@gmail.com}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-app:
-  mail:
-    from: ${MAIL_FROM:barrydevpro@gmail.com}
-
 management:
   endpoints:
     web:
