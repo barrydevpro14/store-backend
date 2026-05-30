@@ -13,7 +13,7 @@
 {
   "account":    { "username", "password" },
   "utilisateur":{ "nom", "prenom", "email", "telephone", "adresse" },
-  "entreprise": { "sigle", "raisonSociale", "ninea", "rccm", "adresse" },
+  "entreprise": { "sigle", "raisonSociale", "ninea", "rccm", "adresse", "countryId" },
   "magasin":    { "nom", "adresse" }
 }
 ```
@@ -45,8 +45,9 @@
 **Flow** :
 1. `AuthenticationManager.authenticate(...)` checks credentials via `UserDetailsServiceImpl`.
 2. If OK, reloads the `Account` via `IAccountService.findByUsername`.
-3. Builds `UserPrincipal` via `IUserPrincipalFactory.build(account)`.
-4. Generates access JWT + persisted refresh token.
+3. Builds `UserPrincipal` via `IUserPrincipalFactory.build(account)` — resolves `entrepriseId`, `magasinId`, `currency`, `countryName` from `entreprise.country` via strategy pattern.
+4. Generates access JWT (claims: `userId`, `entrepriseId`, `magasinId`, `username`, `currency`, `countryName`, `role`, `permissions`) + persisted refresh token.
+5. Publishes `AuditEvent(LOGIN)` with IP (X-Forwarded-For aware) + User-Agent via `RequestHelper`.
 
 **Rules** :
 - `BadCredentialsException` (Spring Security) if wrong password.
@@ -1355,6 +1356,113 @@ Repos involved : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLign
 **Listing ordering** (bonus) : added `ORDER BY createdAt DESC` on `ClientRepository` (both list queries) and `FournisseurRepository`. Without an explicit ORDER BY, PostgreSQL returned rows in undefined order — newly-created records landed on page 2 / 3 by accident and users believed the save had failed.
 
 **Tests** : full backend suite **774 / 774 green**.
+
+---
+
+## 53. Contact module — `ContactMessageServiceImpl`
+
+**Endpoints** :
+- `POST /api/v1/contact` (permitAll) — public form submission
+- `GET /api/v1/contact` (`CONTACT_READ`) — paginated + filtered admin listing
+- `GET /api/v1/contact/{id}` (`CONTACT_READ`) — detail, auto-marks as LU on first access
+- `PATCH /api/v1/contact/{id}/reply` (`CONTACT_RESPOND`) — save reply, mark REPONDU, send email
+
+**Flow** :
+1. `submit()` : saves `ContactMessage`, publishes `ContactMessageReceivedEvent` → ADMIN notified.
+2. `findAll(ContactMessageFilter)` : paginated JPQL with nom/email/statut LIKE + sentinel date range.
+3. `findById()` : auto-transitions `NOUVEAU → LU` on first admin access.
+4. `reply()` : guard `contact.alreadyReplied` (throws `BadArgumentException` if statut == REPONDU). Sets `reponse` + `REPONDU`. Publishes `ContactMessageRepliedEvent` → `EmailEventListener` sends reply email to sender.
+
+**Rules** : one reply only (idempotency guard). Email sent async via `IAuditEventPublisher` pattern.
+
+**Filter** : `ContactMessageFilter(nom, email, statut, createdStartDate, createdEndDate, page=0, size=10)` with sentinel dates.
+
+---
+
+## 54. Email service — `EmailServiceImpl` / `NoOpEmailServiceImpl`
+
+**Trigger** : `ContactMessageRepliedEvent` published on reply.
+
+**Flow** : `@Async @EventListener EmailEventListener.onContactMessageReplied()` → `IEmailService.sendContactReply(event)`.
+
+**Implementation** :
+- `EmailServiceImpl` — `@ConditionalOnProperty(spring.mail.host)` — uses `JavaMailSender` + `IMessageSourceService` for subject/body i18n. `MailException` caught and logged, never re-thrown.
+- `NoOpEmailServiceImpl` — `@ConditionalOnMissingBean` fallback — logs a warning when SMTP not configured.
+
+**Config** : `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` env vars (SMTP port 587, STARTTLS).
+
+---
+
+## 55. ApplicationEvent notification system — `NotificationEventListener`
+
+**Events wired** :
+
+| Event | Trigger service | Recipients |
+|-------|----------------|------------|
+| `VenteValidatedEvent` | `VenteServiceImpl.validate()` | MANAGERs of the magasin |
+| `StockBelowThresholdEvent` | `AjustementStockServiceImpl` | MANAGERs of the magasin |
+| `PaiementAbonnementSubmittedEvent` | `PaiementAbonnementServiceImpl.create()` | All ADMINs |
+| `PaiementAbonnementValidatedEvent` | `PaiementAbonnementServiceImpl.validate()` | OWNER of the entreprise |
+| `PaiementAbonnementRejectedEvent` | `PaiementAbonnementServiceImpl.reject()` | OWNER of the entreprise |
+| `ContactMessageReceivedEvent` | `ContactMessageServiceImpl.submit()` | All ADMINs |
+
+**Flow** : each handler is `@Async @EventListener` — persists `Notification(IN_APP)` via `NotificationDomainService`. All titles/bodies resolved via `IMessageSourceService` (zero hardcoded strings). `contactMessage FK` stored on the notification for inline-reply from the notifications page.
+
+**Notification API** : `GET /api/v1/notifications?statut=&page=&size=` + `GET /count-unread` + `PATCH /{id}/lue` + `PATCH /lue-tout`. Auto-scoped to current user. History page at `/dashboard/notifications/historique`.
+
+---
+
+## 56. Audit log module — `AuditLogServiceImpl` + `AuditEventListener`
+
+**Endpoint** : `GET /api/v1/audit-logs` (`AUDIT_READ`) — paginated filtered listing.
+
+**Filter** : `AuditLogFilter(action, entityType, entrepriseId, magasinId, performedByLabel LIKE, createdStart/EndDate, page=0, size=10)`.
+
+**Scoping** (server-side, `AuditLogServiceImpl.scopeFilter`) :
+- ADMIN → full access (no forced filter)
+- OWNER → forced `entrepriseId` from JWT
+- MANAGER → forced `magasinId` from JWT
+
+**Actions wired** :
+
+| Action | Service |
+|--------|---------|
+| `LOGIN` / `LOGOUT` | `LoginServiceImpl` / `RefreshTokenServiceImpl` |
+| `EMPLOYE_CREATED/ACTIVATED/DEACTIVATED` | `EmployeServiceImpl` |
+| `STOCK_ADJUSTMENT` | `AjustementStockServiceImpl` |
+| `VENTE_CANCELLED` | `VenteServiceImpl.cancel()` |
+| `ACHAT_CANCELLED` | `AchatServiceImpl.cancel()` |
+| `PAIEMENT_ABONNEMENT_VALIDATED/REJECTED` | `PaiementAbonnementServiceImpl` |
+
+**Details stored** : LOGIN/LOGOUT → `"IP: x.x.x.x | UA: Chrome"` / `"IP: x.x.x.x | Duration: 2h 15m"` (session duration computed from last LOGIN entry).
+
+**Labels** : `entrepriseLabel` (sigle) + `magasinLabel` (nom) resolved at write time by `AuditEventListener` — self-contained rows, no lookup needed at read time.
+
+**`AuditEvent` record** : carries `performedBy`, `performedByLabel`, `entrepriseId`, `magasinId`, `currency`, `countryName` — all captured in the main thread before `@Async` listener runs.
+
+---
+
+## 57. Admin + Owner + Magasin reporting — `AdminReportingServiceImpl`, `OwnerReportingServiceImpl`
+
+**Admin overview** : `GET /api/v1/admin/reporting/overview` (`ADMIN_ACCESS`) — single `@Transactional(readOnly=true)` call: totalEntreprises/Actives/Inactives, totalMagasins/Actifs/Inactifs, totalEmployes, abonnements by statut, pending/rejected payments, new contact messages, revenueYtd.
+
+**Owner overview** : `GET /api/v1/reporting/owner-overview` (`OWNER_ACCESS`) — company-wide KPIs from JWT `entrepriseId`: ventesTodayCount + ventesTodayTotal, stockBelowThresholdCount, achatsEnAttente (DRAFT), facturesImpayees (NON_PAYEE | PARTIELLEMENT_PAYEE).
+
+**Magasin overview** : `GET /api/v1/reporting/magasin-overview` — per-store KPIs for MANAGER/SELLER.
+
+---
+
+## 58. Country module — `CountryDomainService` + JWT claims
+
+**Endpoint** : `GET /api/v1/countries` (permitAll) — active countries sorted by name.
+
+**Entity** : `Country(name VARCHAR(100), countryCode VARCHAR(5), currency VARCHAR(5), actif)`. 65 countries seeded (V24). V28 fixes accented names using PostgreSQL `U&` Unicode escapes.
+
+**Entreprise FK** : `country_id NOT NULL` (V25 — backfills existing rows to Senegal). `EntrepriseRequest.@NotNull UUID countryId` — owner picks country at registration.
+
+**JWT claims** : at login, both strategies (`ProprietairePrincipalContextStrategy`, `EmployePrincipalContextStrategy`) resolve `entreprise.country.currency` and `entreprise.country.getName()` → stored as `Claim.CURRENCY` + `Claim.COUNTRY_NAME` in the access token. ADMIN (no entreprise) receives null for both.
+
+**Frontend** : `decodeJwtPayload` uses `TextDecoder('utf-8')` (not `atob()` which is Latin-1) to correctly decode accented characters. `useCurrency()` hook reads `user.currency` from auth-store. Country name displayed as a pill (MapPin icon, rounded border) beside the locale switcher in the dashboard header.
 
 ---
 

@@ -4,21 +4,22 @@
 > For per-use-case detail (input/flow/rules/output), see `FEATURES.md`.
 > For package architecture, see `.claude/ARCHITECTURE.md`.
 
-**Last updated**: 2026-05-21
-**Total modules**: 11 business modules delivered + 1 skeleton (notification)
-**Total REST endpoints**: ~167
-**Total YAML permissions**: 71+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`). Note: 2026-05-20 split `STORE_READ` into `STORE_READ` (list, OWNER/ADMIN) + `STORE_READ_ONE` (single magasin, employees too).
-**Roles**: ADMIN, OWNER (was PROPRIETAIRE), MANAGER, SELLER (was VENDEUR). Renamed FR → EN via V3 Flyway migration on 2026-05-20 — DB rows updated in place, all `PROPRIETAIRE_ACCESS` references renamed to `OWNER_ACCESS`. **2026-05-21**: `OWNER_ACCESS` retired from ADMIN — SaaS super-admin no longer carries the tenant-owner module marker (Entreprise module hidden in ADMIN UI; OWNER_ACCESS is strictly for company self-service).
+**Last updated**: 2026-05-26
+**Total modules**: 16 business modules delivered
+**Total REST endpoints**: ~200+
+**Total YAML permissions**: 80+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`).
+**Roles**: ADMIN, OWNER (was PROPRIETAIRE), MANAGER, SELLER (was VENDEUR). Renamed FR → EN via V3 Flyway migration on 2026-05-20.
+**JWT claims**: `userId`, `entrepriseId`, `magasinId`, `username`, `role`, `permissions`, `currency`, `countryName` — currency and countryName resolved from `entreprise.country` at login time.
 
 ---
 
 ## 1. SECURITY (auth) module
 
 **Delivered use cases:**
-- Owner registration (atomic creation of Account + Proprietaire + Entreprise + first Magasin + trial subscription)
-- Login (login + JWT + refresh token)
+- Owner registration (Account + Proprietaire + Entreprise + first Magasin + trial subscription). `EntrepriseRequest` now requires `countryId`.
+- Login (JWT with `currency` + `countryName` from `entreprise.country`). LOGIN audit event published with IP + User-Agent.
 - JWT refresh
-- Logout (refresh token revocation)
+- Logout (refresh token revocation). LOGOUT audit event with session duration.
 
 | Method | Path | Permission | Actor |
 |---------|------|------------|--------|
@@ -405,12 +406,93 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 
 ---
 
-## 12. NOTIFICATION module (skeleton)
+## 12. NOTIFICATION module
 
-> DDD structure in place but **no controller implemented**. Entities present: `Notification`, `Echeance`, `TemplateNotification`.
-> Planned use case: a worker that walks `Echeance` (overdue invoices approaching, expiring subscriptions…) and sends via `EMAIL` / `SMS` channel.
+**Delivered use cases:**
+- IN_APP notifications via ApplicationEvent (6 triggers wired: vente validated, stock below threshold, paiement submitted/validated/rejected, contact received)
+- Inline reply from notification page for contact notifications
+- Unread count badge (bell, 60 s poll)
+- Mark single / all as read
 
-**Total endpoints**: 0
+| Method | Path | Permission | Actor |
+|---------|------|------------|--------|
+| GET | `/api/v1/notifications?statut=&createdStartDate=&createdEndDate=&page=&size=` | authenticated | all |
+| GET | `/api/v1/notifications/count-unread` | authenticated | all |
+| PATCH | `/api/v1/notifications/{id}/lue` | authenticated | all |
+| PATCH | `/api/v1/notifications/lue-tout` | authenticated | all |
+
+**Total endpoints**: 4
+
+---
+
+## 13. CONTACT module
+
+**Delivered use cases:**
+- Public contact form submission (permitAll)
+- Admin listing with paginated filter (nom, email, statut, dates)
+- Admin detail view (auto-marks NOUVEAU → LU)
+- Admin reply (one reply only guard, email sent via `EmailEventListener`)
+
+| Method | Path | Permission | Actor |
+|---------|------|------------|--------|
+| POST | `/api/v1/contact` | permitAll | public |
+| GET | `/api/v1/contact?nom=&email=&statut=&dates=&page=&size=` | `CONTACT_READ` | ADMIN |
+| GET | `/api/v1/contact/{id}` | `CONTACT_READ` | ADMIN |
+| PATCH | `/api/v1/contact/{id}/reply` | `CONTACT_RESPOND` | ADMIN |
+
+**Total endpoints**: 4
+
+---
+
+## 14. AUDIT module
+
+**Delivered use cases:**
+- Paginated filtered audit log (action, entityType, entrepriseId/magasinId, performedByLabel LIKE, dates)
+- Role-aware auto-scoping: ADMIN = all, OWNER = entreprise, MANAGER = magasin
+- 11 actions tracked: LOGIN, LOGOUT, EMPLOYE_CREATED/ACTIVATED/DEACTIVATED, STOCK_ADJUSTMENT, VENTE_CANCELLED, ACHAT_CANCELLED, PAIEMENT_ABONNEMENT_VALIDATED/REJECTED
+
+| Method | Path | Permission | Actor |
+|---------|------|------------|--------|
+| GET | `/api/v1/audit-logs?action=&entityType=&performedByLabel=&dates=&page=&size=` | `AUDIT_READ` | ADMIN, OWNER, MANAGER |
+
+**Total endpoints**: 1
+
+---
+
+## 15. REPORTING module
+
+**Delivered use cases:**
+- Admin overview KPIs (entreprises, magasins, abonnements, payments, contacts, revenue YTD)
+- Owner overview KPIs (ventes today, stock below threshold, pending purchases, unpaid invoices)
+- Magasin overview (caisse résumé, top produits, valeur stock, ventilation)
+- Margin report, stock valuation
+
+| Method | Path | Permission | Actor |
+|---------|------|------------|--------|
+| GET | `/api/v1/admin/reporting/overview` | `ADMIN_ACCESS` | ADMIN |
+| GET | `/api/v1/reporting/owner-overview` | `OWNER_ACCESS` | OWNER |
+| GET | `/api/v1/reporting/magasin-overview` | `SALES_ACCESS` | OWNER, MANAGER |
+| GET | `/api/v1/ventes/caisse/resume` | `SALE_READ` | MANAGER, SELLER |
+| GET | `/api/v1/ventes/caisse/top-produits` | `SALE_READ` | MANAGER, SELLER |
+| GET | `/api/v1/reports/margins` | `REPORT_STOCK` | OWNER, MANAGER |
+| GET | `/api/v1/stocks/valuation` | `STOCK_READ` | OWNER, MANAGER |
+
+**Total endpoints**: 7
+
+---
+
+## 16. COUNTRY module
+
+**Delivered use cases:**
+- Public list of active countries (used in registration form)
+- Country linked to each Entreprise (mandatory FK, backfilled to Senegal for existing rows)
+- `currency` + `countryName` embedded in JWT at login
+
+| Method | Path | Permission | Actor |
+|---------|------|------------|--------|
+| GET | `/api/v1/countries` | permitAll | public / registration |
+
+**Total endpoints**: 1
 
 ---
 
@@ -429,8 +511,12 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | vente | 19 | `CLIENT_*`, `SALE_*` |
 | depense | 11 | `EXPENSE_*`, `EXPENSE_CATEGORY_*` |
 | abonnement | 40 | `PLAN_*`, `SUBSCRIPTION_TYPE_*`, `COUPON_*`, `PROMOTION_*`, `SUBSCRIPTION_*` |
-| notification | 0 | — |
-| **TOTAL** | **176** | **70+ permissions** |
+| notification | 4 | authenticated |
+| contact | 4 | `CONTACT_READ`, `CONTACT_RESPOND` |
+| audit | 1 | `AUDIT_READ` |
+| reporting | 7 | `ADMIN_ACCESS`, `OWNER_ACCESS`, `SALES_ACCESS`, `STOCK_READ` |
+| country | 1 | (public) |
+| **TOTAL** | **~203** | **80+ permissions** |
 
 ---
 
@@ -438,18 +524,21 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 
 | Role | Main capabilities |
 |------|----------------------|
-| **ADMIN** | CRUD on companies (other than their own), CRUD on subscription plans/types/coupons/promotions, validation/rejection of subscription payments, global subscription listing |
-| **OWNER** | Everything on their own company (stores, employees, products, stock, sales, purchases, expenses), subscription, subscription payment, current status |
-| **MANAGER** | Same as OWNER but scoped to their store (employees, stock, sales, purchases, expenses, inventories) |
+| **ADMIN** | CRUD companies, subscription plans/types/coupons/promotions, payment validation/rejection, contact management + reply, audit log (all), reporting (admin overview) |
+| **OWNER** | Full company scope: stores, employees, products, stock, sales, purchases, expenses, subscription, payments. Audit log (company). Reporting (owner + magasin overview) |
+| **MANAGER** | Store-scoped: employees, stock, sales, purchases, expenses, inventories. Audit log (store). Reporting (magasin overview) |
 | **SELLER** | Products read + search, client management, sales (create/read/pay), cash register |
 
 ---
 
 ## 🗂️ Cross-cutting modules (non-business)
 
-- **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `LocalizedRuntimeException` + 12 custom exceptions, `IMessageSourceService`, `PieceJointe`, custom validators (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper`/`EnumHelper`/`UuidHelper`/`SubscriptionRules`/`NameHelper`/`ReferenceHelper`/`LotConsumptionContext`.
+- **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `IEmailService` + `EmailServiceImpl` (JavaMailSender, `@ConditionalOnProperty`) + `NoOpEmailServiceImpl`, `LocalizedRuntimeException` + custom exceptions, `IMessageSourceService`, `PieceJointe`, custom validators (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper` (sentinel dates) / `EnumHelper` / `UuidHelper` / `LikePatternHelper` / `RequestHelper` (IP + UA extraction) / `SubscriptionRules` / `NameHelper` / `ReferenceHelper` / `LotConsumptionContext`.
 - **`config/`** — `StoreApplication`, `I18nConfig`, `AuditorAwareImpl`, `DataInitializer`, `HttpRequestLoggingFilter`.
-- **`property/`** — `JwtProperties`, `RbacProperties` (records `@ConfigurationProperties`).
+- **`property/`** — `JwtProperties`, `RbacProperties`, `SaleProperties`, `PurchaseProperties` (records `@ConfigurationProperties`).
+- **`audit/`** — `AuditLog` entity, `AuditAction` + `AuditEntityType` enums, `AuditEventListener` (@Async), `IAuditEventPublisher`, `AuditLogController`.
+- **`country/`** — `Country` entity (65 seeds), `CountryDomainService`, `CountryController` (permitAll).
+- **`reporting/`** — `AdminReportingController`, `OwnerReportingController`, `MagasinReportingController`, `CaisseReportingController`, `MarginReportingController`, `StockValuationController`, `EntrepriseStatsController`.
 
 ---
 
