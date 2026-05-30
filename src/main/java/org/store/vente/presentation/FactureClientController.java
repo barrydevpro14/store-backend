@@ -17,7 +17,10 @@ import org.store.vente.application.dto.FactureClientFilter;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.store.vente.application.service.IFactureClientService;
+import org.store.vente.application.service.IInvoicePdfService;
 import org.store.vente.application.service.IPaiementVenteService;
 
 import java.math.BigDecimal;
@@ -32,11 +35,14 @@ public class FactureClientController {
 
     private final IFactureClientService factureClientService;
     private final IPaiementVenteService paiementVenteService;
+    private final IInvoicePdfService invoicePdfService;
 
     public FactureClientController(IFactureClientService factureClientService,
-                                   IPaiementVenteService paiementVenteService) {
+                                   IPaiementVenteService paiementVenteService,
+                                   IInvoicePdfService invoicePdfService) {
         this.factureClientService = factureClientService;
         this.paiementVenteService = paiementVenteService;
+        this.invoicePdfService = invoicePdfService;
     }
 
     @GetMapping
@@ -77,5 +83,15 @@ public class FactureClientController {
     public ResponseEntity<PaiementVenteResponse> createPaiement(@PathVariable UUID id,
                                                                 @Valid @RequestBody PaiementVenteRequest paiementVenteRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(paiementVenteService.create(id, paiementVenteRequest));
+    }
+
+    @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAuthority('SALE_READ')")
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id) {
+        byte[] pdf = invoicePdfService.generateFactureClientPdf(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"facture-" + id + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

@@ -39,9 +39,9 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
         return save(facture);
     }
 
-    /** Génère un numéro de facture unique au format FAC-VTE-yyyyMMdd-HHmmssSSS. */
+    /** Génère un numéro de facture unique au format FACT-yyyyMMdd-HHmmssSSS. */
     public String generateNumero() {
-        return ReferenceHelper.generate("FAC-VTE");
+        return ReferenceHelper.generate("FACT");
     }
 
     public Optional<FactureClient> findByCommandeId(UUID commandeId) {
