@@ -630,6 +630,49 @@ features/vente/application/useUnpaidInvoicesCount.ts    ← one hook
 
 ---
 
+### 53. Types and constants in their own files — no inline definitions in component files
+
+**Every TypeScript type / interface used as component props, and every constant array / object used by multiple files, lives in its own dedicated `.ts` file.**
+
+**Forbidden:**
+- Defining `type XxxProps = { ... }` inside the same `.tsx` file as the component.
+- Defining a constant array (e.g. `PERIODS`, `COLUMNS`) inside a component or page file.
+- Defining an `enum` inside a component file.
+
+**Required pattern:**
+```
+// ✓ — types file
+// kpi-card-props.ts
+export type KpiCardVariant = 'default' | 'success' | 'warning' | 'info'
+export type KpiCardProps = { label: string; value: string | number; icon: ReactNode; variant?: KpiCardVariant }
+
+// ✓ — component file imports the type
+// KpiCard.tsx
+import type { KpiCardProps } from './kpi-card-props'
+export function KpiCard({ label, value, icon, variant = 'default' }: KpiCardProps) { ... }
+
+// ✗ — forbidden: type defined inside component file
+// KpiCard.tsx
+type KpiCardProps = { ... }   ← extract to kpi-card-props.ts
+export function KpiCard(...) { ... }
+```
+
+**Naming convention:**
+- Prop type file: `kebab-case-props.ts` (e.g. `kpi-card-props.ts`, `period-selector-props.ts`)
+- Shared constant file: `kebab-case-constants.ts` or collocated with its type file
+- Enum file: `kebab-case.ts` (e.g. `audit-action.ts`)
+
+**Scope:**
+- Component-specific prop types → same directory as the component
+- Domain types (DTOs, API responses) → `features/<feature>/domain/dtos/<name>.ts`
+- Shared utility types → `common/domain/dtos/<name>.ts`
+
+**Why:** inline types bind the type definition to the implementation file. Extracting them makes types importable independently, prevents circular imports, and enables testing type contracts in isolation.
+
+**Mirror rules:** rule 41 (DTOs in `dtos/`, one per file), rule 46 (one component per file), rule 52 (one hook per file).
+
+---
+
 ## Logs / debug
 
 - **No `console.log` in production**. Temporarily acceptable in dev, remove before committing.
