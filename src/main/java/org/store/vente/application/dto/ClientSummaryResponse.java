@@ -7,9 +7,12 @@ import java.util.UUID;
 
 public record ClientSummaryResponse(
         UUID id,
-        String nomComplet
+        String nomComplet,
+        String telephone
 ) {
     public ClientSummaryResponse(Client client) {
-        this(client.getId(), NameHelper.formatNomComplet(client.getNom(), client.getPrenom()));
+        this(client.getId(),
+                NameHelper.formatNomComplet(client.getNom(), client.getPrenom()),
+                client.getTelephone());
     }
 }

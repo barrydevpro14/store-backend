@@ -16,7 +16,9 @@ public record FactureClientResponse(
         BigDecimal montantRestant,
         LocalDate date,
         LocalDate dateEcheance,
-        UUID commandeId
+        UUID commandeId,
+        String clientNom,
+        String clientTelephone
 ) {
     public FactureClientResponse(FactureClient facture) {
         this(facture,
@@ -33,7 +35,22 @@ public record FactureClientResponse(
                 facture.getMontantTotal().subtract(montantPaye),
                 facture.getDate(),
                 facture.getDateEcheance(),
-                facture.getCommande() != null ? facture.getCommande().getId() : null
+                facture.getCommande() != null ? facture.getCommande().getId() : null,
+                resolveClientNom(facture),
+                resolveClientTelephone(facture)
         );
+    }
+
+    private static String resolveClientNom(FactureClient facture) {
+        if (facture.getCommande() == null || facture.getCommande().getClient() == null) return null;
+        var c = facture.getCommande().getClient();
+        String nom = c.getNom() != null ? c.getNom() : "";
+        String prenom = c.getPrenom() != null ? " " + c.getPrenom() : "";
+        return (nom + prenom).isBlank() ? null : (nom + prenom).trim();
+    }
+
+    private static String resolveClientTelephone(FactureClient facture) {
+        if (facture.getCommande() == null || facture.getCommande().getClient() == null) return null;
+        return facture.getCommande().getClient().getTelephone();
     }
 }
