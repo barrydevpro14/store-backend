@@ -94,11 +94,14 @@ public class InventaireServiceImpl implements IInventaireService {
         this.messageSourceService = messageSourceService;
     }
 
-    /** Cree un inventaire au statut EN_COURS pour le magasin demande (verifie acces du caller). */
+    /** Cree un inventaire au statut EN_COURS pour le magasin demande (verifie acces du caller). Rejette si un inventaire EN_COURS ou BILAN existe deja. */
     @Override
     @Transactional
     public InventaireResponse create(UUID magasinId) {
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
+        if (inventaireDomainService.hasActiveInventaire(magasin.getId())) {
+            throw new BadArgumentException("inventaire.already.open");
+        }
         Inventaire inventaire = inventaireDomainService.create(magasin, LocalDate.now());
         return new InventaireResponse(inventaire);
     }

@@ -12,6 +12,7 @@ import org.store.magasin.domain.model.Magasin;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,6 +20,14 @@ import java.util.UUID;
 public class InventaireDomainService extends GlobalService<Inventaire, InventaireRepository> {
     public InventaireDomainService(InventaireRepository repository) {
         super(repository);
+    }
+
+    /** Retourne true si ce magasin possède déjà un inventaire non terminal (EN_COURS ou BILAN). */
+    public boolean hasActiveInventaire(UUID magasinId) {
+        return repository.existsByMagasinIdAndStatutIn(
+                magasinId,
+                List.of(InventaireStatut.EN_COURS, InventaireStatut.BILAN)
+        );
     }
 
     /** Crée un inventaire au statut EN_COURS pour un magasin et une date donnée. */

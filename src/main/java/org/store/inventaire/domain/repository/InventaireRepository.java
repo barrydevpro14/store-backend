@@ -7,12 +7,17 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
+import org.store.inventaire.domain.enums.InventaireStatut;
 import org.store.inventaire.domain.model.Inventaire;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface InventaireRepository extends BaseRepository<Inventaire> {
+
+    boolean existsByMagasinIdAndStatutIn(UUID magasinId, Collection<InventaireStatut> statuts);
+
 
     @Query("""
             SELECT new org.store.inventaire.application.dto.InventaireResponse(inventaire)
