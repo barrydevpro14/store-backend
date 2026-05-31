@@ -9,8 +9,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 1MB
+      max-request-size: 1536KB
   datasource:
     url: jdbc:postgresql://${URL_DATABASE}/${DB_NAME}
     username: ${DB_USERNAME}
