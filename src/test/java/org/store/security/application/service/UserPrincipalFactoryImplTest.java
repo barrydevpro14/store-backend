@@ -60,7 +60,7 @@ class UserPrincipalFactoryImplTest {
         Role role = roleWith("OWNER");
         Account account = accountWith("john.doe", proprietaire, role);
         when(proprietaireStrategy.resolve(any(Utilisateur.class)))
-                .thenReturn(new UserPrincipalContext(entrepriseId, magasinId, null));
+                .thenReturn(new UserPrincipalContext(entrepriseId, magasinId, null, null));
         when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of("OWNER_ACCESS"));
 
         UserPrincipal principal = factory.build(account);
@@ -81,7 +81,7 @@ class UserPrincipalFactoryImplTest {
         Role role = roleWith("MANAGER");
         Account account = accountWith("emp", employe, role);
         when(employeStrategy.resolve(any(Utilisateur.class)))
-                .thenReturn(new UserPrincipalContext(entrepriseId, magasinId, null));
+                .thenReturn(new UserPrincipalContext(entrepriseId, magasinId, null, null));
         when(permissionsService.findAllByRoleId(role.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
 
         UserPrincipal principal = factory.build(account);

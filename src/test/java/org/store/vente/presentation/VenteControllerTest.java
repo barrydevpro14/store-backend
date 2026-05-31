@@ -117,7 +117,7 @@ class VenteControllerTest {
         return new FactureClientResponse(
                 UUID.randomUUID(), "FAC-VTE-AUTO", StatutFacture.NON_PAYEE,
                 new BigDecimal("150.00"), BigDecimal.ZERO, new BigDecimal("150.00"),
-                LocalDate.of(2026, 5, 18), null, commandeId
+                LocalDate.of(2026, 5, 18), null, commandeId, null, null
         );
     }
 

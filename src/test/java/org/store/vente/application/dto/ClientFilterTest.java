@@ -23,7 +23,7 @@ class ClientFilterTest {
 
     @Test
     void createdStartDateTime_should_return_null_when_no_start_date() {
-        ClientFilter filter = new ClientFilter(null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
 
         assertThat(filter.createdStartDateTime()).isNull();
     }
@@ -40,7 +40,7 @@ class ClientFilterTest {
 
     @Test
     void createdEndDateTime_should_return_null_when_no_end_date() {
-        ClientFilter filter = new ClientFilter(null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
 
         assertThat(filter.createdEndDateTime()).isNull();
     }
@@ -58,7 +58,7 @@ class ClientFilterTest {
 
     @Test
     void toPageable_should_return_first_page_at_page_zero() {
-        ClientFilter filter = new ClientFilter(null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
 
         Pageable pageable = filter.toPageable();
 

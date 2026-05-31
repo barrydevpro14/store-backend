@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -75,7 +76,7 @@ class AjustementStockServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        when(currentUserService.getCurrent()).thenReturn(new org.store.security.application.dto.UserPrincipal(java.util.UUID.randomUUID(), null, java.util.UUID.randomUUID(), null, "test", null, null, "OWNER", java.util.List.of()));
+        lenient().when(currentUserService.getCurrent()).thenReturn(new org.store.security.application.dto.UserPrincipal(java.util.UUID.randomUUID(), null, java.util.UUID.randomUUID(), null, "test", null, null, "OWNER", java.util.List.of()));
         magasinId = UUID.randomUUID();
         productId = UUID.randomUUID();
         productFournisseurId = UUID.randomUUID();

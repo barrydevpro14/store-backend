@@ -334,7 +334,7 @@ class AbonnementServiceImplTest {
 
     @Test
     void findAll_should_delegate_unchanged_for_admin() {
-        AbonnementFilter filter = new AbonnementFilter(null, "ACTIF", null, null, null, null, null, 0, 10);
+        AbonnementFilter filter = new AbonnementFilter(null, "ACTIF", null, null, null, 0, 10);
         Page<AbonnementResponse> page = new PageImpl<>(java.util.List.of());
         when(abonnementDomainService.findResponses(filter)).thenReturn(page);
 
@@ -343,7 +343,7 @@ class AbonnementServiceImplTest {
 
     @Test
     void findMyHistory_should_force_entrepriseId_from_current_user() {
-        AbonnementFilter filter = new AbonnementFilter(null, "EN_ATTENTE", null, null, null, null, null, 0, 10);
+        AbonnementFilter filter = new AbonnementFilter(null, "EN_ATTENTE", null, null, null, 0, 10);
         Page<AbonnementResponse> page = new PageImpl<>(java.util.List.of());
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());

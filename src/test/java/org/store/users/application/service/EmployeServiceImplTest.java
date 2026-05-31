@@ -262,7 +262,7 @@ class EmployeServiceImplTest {
 
     @Test
     void findAll_should_force_magasinId_to_manager_own_store() {
-        EmployeFilter requested = new EmployeFilter(null, null, null, UUID.randomUUID(), null, null, 0, 10);
+        EmployeFilter requested = new EmployeFilter(null, null, null, UUID.randomUUID(), null, null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(manager());
         when(employeDomainService.findResponsesByFilter(any(EmployeFilter.class), eq(entrepriseId)))
@@ -278,7 +278,7 @@ class EmployeServiceImplTest {
     @Test
     void findAll_should_keep_filter_as_is_for_proprietaire() {
         UUID requestedMagasin = UUID.randomUUID();
-        EmployeFilter requested = new EmployeFilter(null, null, null, requestedMagasin, null, null, 0, 10);
+        EmployeFilter requested = new EmployeFilter(null, null, null, requestedMagasin, null, null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findResponsesByFilter(eq(requested), eq(entrepriseId)))

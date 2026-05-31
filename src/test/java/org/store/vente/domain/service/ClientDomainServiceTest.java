@@ -120,7 +120,7 @@ class ClientDomainServiceTest {
 
     @Test
     void findResponsesByMagasinId_should_use_sentinel_when_dates_are_null() {
-        ClientFilter filter = new ClientFilter(null, null, null, 0, 20);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 20);
 
         Page<ClientResponse> empty = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
 
@@ -169,7 +169,7 @@ class ClientDomainServiceTest {
 
     @Test
     void findResponsesByEntrepriseId_should_use_sentinel_when_dates_are_null() {
-        ClientFilter filter = new ClientFilter(null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
 
         Page<ClientResponse> empty = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 

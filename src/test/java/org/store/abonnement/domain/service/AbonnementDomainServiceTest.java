@@ -175,7 +175,7 @@ class AbonnementDomainServiceTest {
 
     @Test
     void findResponses_should_delegate_with_filter_pageable() {
-        AbonnementFilter filter = new AbonnementFilter(entrepriseId, "ACTIF", null, null, null, null, 0, 10);
+        AbonnementFilter filter = new AbonnementFilter(entrepriseId, "ACTIF", null, null, null, 0, 10);
         Page<AbonnementResponse> page = new PageImpl<>(List.of());
         when(repository.findResponsesByFilter(eq(filter), any(Pageable.class))).thenReturn(page);
 

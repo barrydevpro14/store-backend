@@ -24,6 +24,7 @@ import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.service.IFactureClientService;
+import org.store.vente.application.service.IInvoicePdfService;
 import org.store.vente.application.service.IPaiementVenteService;
 
 import java.math.BigDecimal;
@@ -47,6 +48,7 @@ class FactureClientControllerTest {
     private MockMvc mockMvc;
     private IFactureClientService factureClientService;
     private IPaiementVenteService paiementVenteService;
+    private IInvoicePdfService invoicePdfService;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID magasinId;
@@ -55,12 +57,13 @@ class FactureClientControllerTest {
     void setUp() {
         factureClientService = mock(IFactureClientService.class);
         paiementVenteService = mock(IPaiementVenteService.class);
+        invoicePdfService = mock(IInvoicePdfService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new FactureClientController(factureClientService, paiementVenteService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new FactureClientController(factureClientService, paiementVenteService, invoicePdfService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setValidator(validator)
@@ -73,7 +76,7 @@ class FactureClientControllerTest {
         return new FactureClientResponse(
                 id, "FAC-VTE-001", StatutFacture.NON_PAYEE,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("1000.00"),
-                LocalDate.of(2026, 5, 16), LocalDate.of(2026, 5, 30), UUID.randomUUID()
+                LocalDate.of(2026, 5, 16), LocalDate.of(2026, 5, 30), UUID.randomUUID(), null, null
         );
     }
 

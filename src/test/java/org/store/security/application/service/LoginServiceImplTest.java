@@ -70,7 +70,7 @@ class LoginServiceImplTest {
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("admin");
-        UserPrincipal principal = new UserPrincipal(account.getId(), null, null, "admin", null, null, "ADMIN", List.of());
+        UserPrincipal principal = new UserPrincipal(account.getId(), null, null, null, "admin", null, null, "ADMIN", List.of());
 
         when(accountService.findByUsername("admin")).thenReturn(account);
         when(userPrincipalFactory.build(account)).thenReturn(principal);
