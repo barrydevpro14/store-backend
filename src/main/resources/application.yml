@@ -3,9 +3,7 @@ server:
 
 spring:
   config:
-    import:
-      - optional:classpath:email.yml
-      - optional:classpath:allowed_ip.yml
+    import: optional:classpath:email.yml
   application:
     name: store
   servlet:
