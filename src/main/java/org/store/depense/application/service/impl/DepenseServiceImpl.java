@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.depense.application.dto.DepenseFilter;
+import org.store.depense.application.dto.DepenseParCategorieResponse;
 import org.store.depense.application.dto.DepenseRequest;
 import org.store.depense.application.dto.DepenseResponse;
 import org.store.depense.application.dto.DepenseTotalResponse;
@@ -17,6 +18,7 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.service.ICurrentUserService;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -73,6 +75,13 @@ public class DepenseServiceImpl implements IDepenseService {
     public DepenseTotalResponse computeTotal(DepenseFilter depenseFilter) {
         validatorService.validate(depenseFilter);
         return depenseDomainService.computeTotal(depenseFilter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    /** Répartition par catégorie sur la période filtrée, triée par montant décroissant. */
+    @Override
+    public List<DepenseParCategorieResponse> computeByCategory(DepenseFilter depenseFilter) {
+        validatorService.validate(depenseFilter);
+        return depenseDomainService.computeByCategory(depenseFilter, currentUserService.getCurrent().entrepriseId());
     }
 
     /** Met à jour la dépense après contrôle d'accès magasin (et magasin/category cible si changés). */

@@ -15,12 +15,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.depense.application.dto.DepenseFilter;
+import org.store.depense.application.dto.DepenseParCategorieResponse;
 import org.store.depense.application.dto.DepenseRequest;
 import org.store.depense.application.dto.DepenseResponse;
 import org.store.depense.application.dto.DepenseTotalResponse;
 import org.store.depense.application.service.IDepenseService;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -70,6 +72,17 @@ public class DepenseController {
         return ResponseEntity.ok(depenseService.computeTotal(
                 new DepenseFilter(magasinId, categoryId, modePaiement, startDate, endDate,
                         createdStartDate, createdEndDate, 0, 1)
+        ));
+    }
+
+    @GetMapping("/by-category")
+    @PreAuthorize("hasAuthority('EXPENSE_READ')")
+    public ResponseEntity<List<DepenseParCategorieResponse>> computeByCategory(
+            @RequestParam UUID magasinId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(depenseService.computeByCategory(
+                new DepenseFilter(magasinId, null, null, startDate, endDate, null, null, 0, 1)
         ));
     }
 

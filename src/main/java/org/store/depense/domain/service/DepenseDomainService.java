@@ -4,14 +4,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.depense.application.dto.DepenseFilter;
+import org.store.depense.application.dto.DepenseParCategorieResponse;
 import org.store.depense.application.dto.DepenseRequest;
 import org.store.depense.application.dto.DepenseResponse;
 import org.store.depense.application.dto.DepenseTotalResponse;
+import org.store.common.tools.DateHelper;
+import org.store.depense.domain.repository.DepenseParCategorieProjection;
 import org.store.depense.domain.model.CategoryDepense;
 import org.store.depense.domain.model.Depense;
 import org.store.depense.domain.repository.DepenseRepository;
 import org.store.magasin.domain.model.Magasin;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -39,5 +43,15 @@ public class DepenseDomainService extends GlobalService<Depense, DepenseReposito
 
     public DepenseTotalResponse computeTotal(DepenseFilter filter, UUID entrepriseId) {
         return repository.computeTotal(filter, entrepriseId);
+    }
+
+    /** Répartition des dépenses par catégorie, triée par montant décroissant. */
+    public List<DepenseParCategorieResponse> computeByCategory(DepenseFilter filter, UUID entrepriseId) {
+        String start = DateHelper.format(filter.fromDateSentinel());
+        String end   = DateHelper.format(filter.toDateSentinel());
+        List<DepenseParCategorieProjection> rows = repository.computeByCategory(filter.magasinId(), start, end, entrepriseId);
+        return rows.stream()
+                .map(p -> new DepenseParCategorieResponse(p.getCategoryId(), p.getCategoryNom(), p.getMontantTotal(), p.getNombreDepenses()))
+                .toList();
     }
 }
