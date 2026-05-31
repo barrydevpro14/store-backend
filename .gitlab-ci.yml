@@ -1,0 +1,78 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dmaven.color=false"
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# ── Cache Maven dependencies across jobs ─────────────────────────────────────
+.maven-cache: &maven-cache
+  cache:
+    key: "$CI_PROJECT_ID-maven"
+    paths:
+      - .m2/repository/
+    policy: pull-push
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 1 — test
+# ─────────────────────────────────────────────────────────────────────────────
+test:
+  stage: test
+  image: eclipse-temurin:21-jdk-alpine
+  <<: *maven-cache
+  script:
+    - ./mvnw compile -q
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 2 — build Docker image → GitLab Container Registry
+# ─────────────────────────────────────────────────────────────────────────────
+build:
+  stage: build
+  image: docker:26-cli
+  services:
+    - docker:26-dind
+  <<: *maven-cache
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - |
+      docker build \
+        --cache-from "$DOCKER_IMAGE:latest" \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        -t "$DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA" \
+        -t "$DOCKER_IMAGE:latest" \
+        .
+    - docker push "$DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$DOCKER_IMAGE:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 3 — deploy (manual trigger — works with Railway / Render / VPS webhook)
+# Set DEPLOY_HOOK_URL in GitLab → Settings → CI/CD → Variables
+# ─────────────────────────────────────────────────────────────────────────────
+deploy:
+  stage: deploy
+  image: alpine:3.19
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      if [ -n "$DEPLOY_HOOK_URL" ]; then
+        curl -fsSL -X POST "$DEPLOY_HOOK_URL" \
+          -H "Content-Type: application/json" \
+          -d "{\"image\":\"$DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA\"}"
+        echo "Deploy triggered for $CI_COMMIT_SHORT_SHA"
+      else
+        echo "DEPLOY_HOOK_URL not set — skipping deploy"
+      fi
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  environment:
+    name: production
