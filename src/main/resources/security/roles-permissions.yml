@@ -493,6 +493,7 @@ roles:
       - REPORT_SALES
       - REPORT_FINANCIAL
       - AUDIT_READ
+      - SUBSCRIPTION_READ
 
   - libelle: SELLER
     description: Vendeur d'un magasin
