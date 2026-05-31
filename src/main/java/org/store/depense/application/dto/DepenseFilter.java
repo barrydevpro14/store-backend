@@ -39,6 +39,18 @@ public record DepenseFilter(
                 ? DateHelper.parseEndOfDay(endDate).toLocalDate() : null;
     }
 
+    /** Sentinel lower bound — avoids IS NULL type-inference issues with PostgreSQL. */
+    public LocalDate fromDateSentinel() {
+        LocalDate d = fromDate();
+        return d != null ? d : LocalDate.of(2000, 1, 1);
+    }
+
+    /** Sentinel upper bound — avoids IS NULL type-inference issues with PostgreSQL. */
+    public LocalDate toDateSentinel() {
+        LocalDate d = toDate();
+        return d != null ? d : LocalDate.of(2099, 12, 31);
+    }
+
     public LocalDateTime createdStartDateTime() {
         return createdStartDate == null ? DateHelper.SENTINEL_START : createdStartDate.atStartOfDay();
     }
