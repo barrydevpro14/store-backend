@@ -9,6 +9,76 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-05-31 — Deployment, PWA, Railway UX, responsive fixes, expense reporting, inventory guard
+
+**Subject:** Full-day session covering DevOps, UX, mobile responsiveness, and two new features (expense reporting + inventory guard). Both repos pushed to `dev`.
+
+### DevOps & Configuration
+
+- **Dockerfile** — multi-stage (eclipse-temurin:21-jdk-alpine → jre-alpine), layered JAR extraction (4 layers), non-root `store` user, `JarLauncher`, container-aware JVM flags.
+- **Spring Boot profiles** — `application.yml` (common), `application-dev.yml` (defaults), `application-prod.yml` (env vars only), `application-test.yml`.
+- **`.gitlab-ci.yml`** — backend: test + build (Docker push to GitLab registry) + deploy (manual webhook). Frontend: lint + build + Vercel deploy (manual). Both trigger on `main` only.
+- **CORS** — `CorsProperties @ConfigurationProperties("cors")`. Dev: localhost:3000/3001 in `application-dev.yml`. Prod: `${CORS_ALLOWED_ORIGINS}`. `CorsOriginFilter` reflects exact origin, adds `Vary: Origin`.
+- **Upload limit** — 5 MB → 1 MB in backend + all frontend upload components + i18n.
+
+### Frontend — PWA + Theme
+
+- **PWA** — `@ducanh2912/next-pwa`, `manifest.ts`, `icon.tsx` (192×192), `apple-icon.tsx` (180×180). Service worker disabled in dev.
+- **Dark theme default** — `next-themes`, `defaultTheme="dark"`, `ThemeToggle` in Navbar.
+- **Font preload** — `display: 'swap'` + `preload: false` for `Geist_Mono` and `Fraunces`.
+- **`themeColor` → `viewport`** — moved out of `generateMetadata` to fix Next.js warning.
+
+### Frontend — Public pages (Railway-inspired, no color changes)
+
+- Hero: ping badge, gradient title, single radial glow, inline reassurance strip.
+- Features: unified border grid, monospace numbering, card order changed (multiStore first), "Stock et inventaire" rename.
+- FinalCtaSection: contained bordered panel replaces solid blue bg.
+- Navbar: h-14, simplified logo, ThemeToggle added.
+
+### Frontend — Mobile responsiveness
+
+- `DataTable` — `overflow-x-auto` + `meta.className` for responsive columns.
+- `CommandeVenteTable` — `dateVente` hidden `<sm`, `montantPaye` hidden `<md`.
+- `PageHeader` — `text-2xl sm:text-3xl`.
+- `CreateVenteDialog` — `max-h-[95dvh]`, product row stacked on mobile.
+- All 12 feature dialogs — `max-h-[95dvh] overflow-y-auto`.
+- `EditLigneVenteDialog` + `AjustementDialog` — `grid-cols-1 sm:grid-cols-2`.
+- `VenteDetailsContent`, `VenteFacturePaiementsSection`, `AchatLineTable` — `overflow-x-auto` wrapper.
+- Expense module — `layout.tsx` + `_tabs.ts` + `/reporting` sub-tab.
+
+### Backend — Inventory guard (one open per store)
+
+- `existsByMagasinIdAndStatutIn` on `InventaireRepository`. `hasActiveInventaire(UUID)` on domain service. Guard in `InventaireServiceImpl.create` — rejects if EN_COURS or BILAN exists. `inventaire.already.open` FR/EN. 2 new tests.
+
+### Backend — Expense reporting
+
+- `GET /api/v1/depenses/by-category` — `DepenseParCategorieResponse`, native SQL via `DepenseParCategorieProjection` (bypasses Hibernate 6 + PostgreSQL 16 `$N` type inference). Dates as ISO strings with `CAST(:date AS DATE)`.
+- `DepenseFilter.fromDateSentinel()` / `toDateSentinel()` (2000-01-01 / 2099-12-31) applied to `findResponsesByFilter` and `computeTotal` — eliminates `IS NULL OR` pattern.
+
+### Frontend — Features
+
+- **Expense reporting sub-tab** — `/dashboard/depenses/reporting` with period selector + `ExpenseReportSection` (2 KPIs + category breakdown with progress bars).
+- **Recent activity** — `RecentActivitySection` on dashboard home (last 5 audit entries, gated `AUDIT_READ`, relative time).
+
+### RBAC
+
+- `SUBSCRIPTION_READ` added to MANAGER — fixes 403 on `GET /abonnements/me/current`.
+
+### Test suite
+
+- 24 stale test files fixed (DTO constructor args + `lenient()` setUp stubs). **860 / 860 green**.
+
+### Open follow-ups (parked)
+
+- Backend needs restart (`ERR_CONNECTION_REFUSED` at end of session).
+- Stale JWT: MANAGER may need `/auth/refresh` to pick up `SUBSCRIPTION_READ`.
+- Production `flyway:repair` still pending before prod deploy.
+- `FormField.test.tsx` RHF resolver typing error — pre-existing, parked.
+
+---
+
+## Previous session
+
 **Date:** 2026-05-27 — Rule 53, email HTML template, MailProperties, PDF invoice, FACT prefix
 
 **Subject:** Rule 53 added to conventions + applied codebase-wide (152 new *-props.ts files, 151 .tsx updated, 314/314 vitest green). Email HTML template in `templates/email/contact-reply.html` with `{{placeholder}}` substitution + MimeMessage. `MailProperties` consolidates all SMTP config in `email.yml` (imported by application.yml); `MailConfig` @Bean factory replaces unreliable @ConditionalOnBean on @Service. Locale fix: `LocaleContextHolder.getLocale()` captured at event publish time so async listener uses correct locale. PDF invoice: OpenPDF 2.0.3, `GET /api/v1/factures-client/{id}/pdf`, A4 layout with company header, lines table, totals+payments, client section. Facture reference prefix FAC-VTE → FACT. Download button in VenteFacturePaiementsSection. `ClientSummaryResponse` + `FactureClientResponse` gain telephone/client fields.
