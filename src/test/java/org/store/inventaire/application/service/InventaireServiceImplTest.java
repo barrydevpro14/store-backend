@@ -152,6 +152,7 @@ class InventaireServiceImplTest {
     void create_should_create_inventaire_en_cours_for_current_date() {
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(false);
         when(inventaireDomainService.create(eq(magasin), any(LocalDate.class))).thenReturn(inventaireEnCours);
 
         InventaireResponse response = service.create(magasinId);
@@ -159,6 +160,32 @@ class InventaireServiceImplTest {
         assertThat(response.id()).isEqualTo(inventaireId);
         assertThat(response.statut()).isEqualTo(InventaireStatut.EN_COURS);
         verify(inventaireDomainService).create(eq(magasin), any(LocalDate.class));
+    }
+
+    @Test
+    void create_should_throw_when_active_inventaire_already_exists_en_cours() {
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(magasinId))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(inventaireDomainService, never()).create(any(), any());
+    }
+
+    @Test
+    void create_should_throw_when_active_inventaire_already_exists_bilan() {
+        inventaireEnCours.setStatut(InventaireStatut.BILAN);
+
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(magasinId))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(inventaireDomainService, never()).create(any(), any());
     }
 
     @Test
@@ -468,7 +495,7 @@ class InventaireServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
-        InventaireFilter filter = new InventaireFilter(magasinId, null, null, 0, 10);
+        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, null, null, 0, 10);
         InventaireResponse response = new InventaireResponse(inventaireEnCours);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
