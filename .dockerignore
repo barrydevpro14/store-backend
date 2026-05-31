@@ -1,0 +1,7 @@
+target/
+.git/
+.gitignore
+*.md
+.mvn/wrapper/maven-wrapper.jar
+src/test/
+email.yml
