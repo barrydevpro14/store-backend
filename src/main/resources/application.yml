@@ -3,7 +3,7 @@ server:
 
 spring:
   config:
-    import: classpath:email.yml
+    import: optional:classpath:email.yml
   application:
     name: store
   servlet:
@@ -12,9 +12,9 @@ spring:
       max-file-size: 5MB
       max-request-size: 6MB
   datasource:
-    url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
-    username: ${DB_USERNAME:barrydevit}
-    password: ${DB_PASSWORD:passer}
+    url: jdbc:postgresql://${URL_DATABASE}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-init-sql: "SET client_encoding TO 'UTF8'"
@@ -27,6 +27,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
     encoding: UTF-8
+
 management:
   endpoints:
     web:
@@ -41,7 +42,7 @@ logging:
 
 security:
   jwt:
-    secret: ${JWT_SECRET:ou2FiLzTm0GTFqbSGOG1kJf0Qe7kGDdOQmRU8t7Csgi35C17SSET83HMY75BS61ujph877iw8y6VEVdsMEp14A==}
+    secret: ${JWT_SECRET}
     header: Authorization
     prefix: "Bearer "
     expiration:
@@ -50,7 +51,7 @@ security:
   rbac:
     sync: ${RBAC_SYNC:false}
     file: ${RBAC_FILE:classpath:security/roles-permissions.yml}
-    admin-password: ${RBAC_ADMIN_PASSWORD:passer123}
+    admin-password: ${RBAC_ADMIN_PASSWORD}
 
 upload:
   allowed-image-types:

@@ -1,34 +1,12 @@
-server:
-  port: 8081
-
 spring:
-  application:
-    name: store
   datasource:
     url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
     username: ${DB_USERNAME:barrydevit}
     password: ${DB_PASSWORD:passer}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 1
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
 
 security:
+  jwt:
+    secret: ${JWT_SECRET:ou2FiLzTm0GTFqbSGOG1kJf0Qe7kGDdOQmRU8t7Csgi35C17SSET83HMY75BS61ujph877iw8y6VEVdsMEp14A==}
   rbac:
-    # En dev on synchronise systématiquement le YAML à chaque boot — sinon
-    # les permissions/rôles ajoutés au YAML restent invisibles tant qu'on
-    # ne pense pas à exporter RBAC_SYNC=true. En prod on garde un opt-in
-    # explicite (cf. application-prod.yml).
     sync: ${RBAC_SYNC:true}
-    file: ${RBAC_FILE:classpath:security/roles-permissions.yml}
+    admin-password: ${RBAC_ADMIN_PASSWORD:passer123}
