@@ -10,3 +10,8 @@ security:
   rbac:
     sync: ${RBAC_SYNC:true}
     admin-password: ${RBAC_ADMIN_PASSWORD:passer123}
+
+cors:
+  allowed-origins:
+    - http://localhost:3000
+    - http://localhost:3001
