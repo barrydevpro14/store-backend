@@ -9,6 +9,51 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-02 (evening) — Inventory, stock model, purchase, sale improvements
+
+**Subject:** Long session. Multiple improvements across inventory inline add row, stock model restructure (per PF), category/quality on tables, sale UX, purchase filters + combobox, pricing rules.
+
+### Inventory inline add row
+- `AddLigneDialog` replaced by inline `[Combobox][Qty w-40][+]` row in `InventaireDetailsContent`.
+- Uses `useProductFournisseurList` (all PF, not just with stock) + `excludedPfIds` filter.
+- Quality + Fournisseur columns added to lines table.
+- Backend `LigneInventaireResponse` extended with `fournisseur` + `quality`.
+
+### Stock model — per ProductFournisseur (V29 migration)
+- `stock` table: `UNIQUE(magasin_id, produit_id)` → `UNIQUE(magasin_id, product_fournisseur_id)`.
+- `Stock` entity: `produit` FK → `productFournisseur` FK.
+- `StockResponse` gains `quality: QualitySummaryResponse`.
+- All callers updated (AchatServiceImpl, VenteServiceImpl, SortieStockServiceImpl, AjustementStockServiceImpl, EntreeStockServiceImpl, NotificationEventListener, MouvementStockRepository JPQL).
+- `StockTable` gains Category + Quality columns.
+- `DemoProductSeeder` uses find-or-create for products by reference.
+
+### Category on line tables
+- `ProductSummaryResponse` + `categoryLibelle` field.
+- Category column on sale lines, purchase lines, inventory lines.
+
+### Sale UX
+- Add-line row: selector + qty + price on one row.
+- Same product twice → qty summed in one line.
+- Available qty shown in combobox label: `(10 dispo)`.
+
+### Purchase improvements
+- Reference search filter on both sale and purchase lists.
+- Duplicate `(product, quality)` guard in `handleAddLine`.
+- Supplier selector → `Combobox` (searchable).
+- `prixAchat` on PF updated to weighted average on each reception.
+
+### Combobox UX
+- `z-[200]`, `collisionAvoidance={{ side: 'shift', fallbackAxisSide: 'none' }}`, `max-h-60` — popup always below trigger, scrollable, visible above dialogs. Applied to both `Combobox` and `Select`.
+
+### Open follow-ups
+- All changes uncommitted — pending commit + push authorization.
+- Stock data cleared by V29 — backend needs fresh start for re-seed.
+- Duplicate demo products (pre-V29 DB) need manual cleanup.
+
+---
+
+## Previous session
+
 **Date:** 2026-06-02 — CI/CD fix, deployment decision, DEPLOY_PROCESS.md
 
 **Subject:** Short session. Fixed the false CI failure on `dev` pushes, finalized the deployment stack (Vercel + Railway), and wrote the full deployment guide.
