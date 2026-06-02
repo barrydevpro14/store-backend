@@ -34,6 +34,7 @@ import org.store.inventaire.domain.service.LigneInventaireDomainService;
 import org.store.inventaire.domain.service.RapportInventaireDomainService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
+import org.store.achat.domain.model.Fournisseur;
 import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -109,9 +110,14 @@ class InventaireServiceImplTest {
         product.setId(productId);
         product.setEntreprise(entreprise);
 
+        Fournisseur fournisseur = new Fournisseur();
+        fournisseur.setId(UUID.randomUUID());
+        fournisseur.setNom("Fournisseur Test");
+
         productFournisseur = new ProductFournisseur();
         productFournisseur.setId(productFournisseurId);
         productFournisseur.setProduct(product);
+        productFournisseur.setFournisseur(fournisseur);
         productFournisseur.setPrixAchat(new BigDecimal("10.00"));
 
         inventaireEnCours = new Inventaire();
