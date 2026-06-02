@@ -9,6 +9,34 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-02 — CI/CD fix, deployment decision, DEPLOY_PROCESS.md
+
+**Subject:** Short session. Fixed the false CI failure on `dev` pushes, finalized the deployment stack (Vercel + Railway), and wrote the full deployment guide.
+
+### CI/CD fix
+
+- Root cause: all jobs had `rules: if: main` only — GitLab was creating an empty pipeline on `dev` pushes and marking it failed ("No stages / jobs for this pipeline").
+- Fix: added `workflow: rules: - if: $CI_COMMIT_BRANCH == "main"` to both `.gitlab-ci.yml` files.
+- Committed + pushed to `dev` on both repos.
+
+### Deployment decision
+
+- **Frontend**: Vercel Hobby (free) — native Next.js, HTTPS, CDN, preview URLs on `dev`.
+- **Backend + DB**: Railway Trial → Hobby ($5/month) — managed PostgreSQL, Docker from GitLab registry, deploy webhook already wired in CI.
+- **Target deploy date: Saturday 2026-06-07.**
+
+### DEPLOY_PROCESS.md
+
+- Created `.claude/DEPLOY_PROCESS.md` — full step-by-step guide: Railway setup, Vercel setup (Option A direct / Option B CI), first deploy steps, smoke tests, cost table, rollback.
+
+### Open follow-ups
+
+- Deployment on Saturday — no code changes pending.
+
+---
+
+## Previous session
+
 **Date:** 2026-05-31 — Deployment, PWA, Railway UX, responsive fixes, expense reporting, inventory guard
 
 **Subject:** Full-day session covering DevOps, UX, mobile responsiveness, and two new features (expense reporting + inventory guard). Both repos pushed to `dev`.
