@@ -9,9 +9,47 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-06-02 (evening) — Inventory, stock model, purchase, sale improvements
+**Date:** 2026-06-03 — Invoice status filters, orphan DRAFT fix, all-Combobox filters, light theme
 
-**Subject:** Long session. Multiple improvements across inventory inline add row, stock model restructure (per PF), category/quality on tables, sale UX, purchase filters + combobox, pricing rules.
+**Subject:** UX + data session. Invoice status on sale/purchase tables and filters, orphan DRAFT cleanup, all 16 filter dropdowns converted to searchable Combobox, light theme as default.
+
+### Invoice status (sale + purchase)
+
+- `CommandeVenteResponse` + `CommandeAchatResponse` — `statutFacture` added via LEFT JOIN on facture.
+- Sale + purchase tables: **Invoice** badge column (NON_PAYEE red / PARTIELLEMENT_PAYEE amber / PAYEE emerald / ANNULEE muted).
+- Sale filter: `statutFacture` Combobox. Purchase filter: `statut` + `statutFacture` Comboboxes.
+- `CommandeVenteFilter` + `CommandeAchatFilter` — `statutFacture` field + JPQL clause.
+- **"Factures impayées" KPI** on reporting page → clickable link to `/dashboard/ventes?statutFacture=NON_PAYEE`. `VentesPage` reads URL param and pre-applies filter.
+- Missing i18n `ANNULEE` key fixed.
+
+### Orphan DRAFT fix
+
+- `DELETE /api/v1/ventes/{commandeId}` endpoint (SALE_DELETE, DRAFT only).
+- `useDeleteDraftVente` hook — called in `CreateVenteDialog` `onError` callback after validation failure to clean up orphan.
+
+### All 16 filter dropdowns → Combobox
+
+- AuditFilters, InventaireFilters, MouvementStockFilters, DepenseFilters, EmployeFilters, AbonnementAdminFilters, CouponFilters, OwnerPaiementFilters, PaiementAbonnementFilters, SubscriptionTypeFilters, PlanAdminFilters, PromotionFilters, MagasinFilters, EntrepriseFilters, CategoryDepenseFilters, CommandeVenteFilters all converted.
+
+### Combobox/Select UX
+
+- `z-[200]`, `collisionAvoidance={{ side: 'shift', fallbackAxisSide: 'none' }}`, `max-h-60` — popup always below, scrollable, above dialogs.
+- Sale add-line row: `[Combobox flex-1][Qty w-16][Price w-24][+]` — no horizontal scroll.
+
+### Theme
+
+- Default theme: `dark` → `light`.
+
+### Open follow-ups
+
+- Backend tests may need updating for new `CommandeVenteResponse` / `CommandeAchatResponse` constructors.
+- Deployment Saturday 2026-06-07.
+
+---
+
+## Previous session
+
+**Date:** 2026-06-02 (evening) — Inventory, stock model, purchase, sale improvements
 
 ### Inventory inline add row
 - `AddLigneDialog` replaced by inline `[Combobox][Qty w-40][+]` row in `InventaireDetailsContent`.
