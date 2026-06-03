@@ -6,6 +6,7 @@ import org.store.produit.application.dto.ProductSummaryResponse;
 import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.domain.model.Quality;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record LigneInventaireResponse(
@@ -17,7 +18,8 @@ public record LigneInventaireResponse(
         QualitySummaryResponse quality,
         int quantiteTheorique,
         int quantiteReelle,
-        int ecart
+        int ecart,
+        BigDecimal prixUnitaire
 ) {
     public LigneInventaireResponse(LigneInventaire ligne) {
         this(
@@ -29,7 +31,10 @@ public record LigneInventaireResponse(
                 toQualitySummary(ligne.getProductFournisseur().getQuality()),
                 ligne.getQuantiteTheorique(),
                 ligne.getQuantiteReelle(),
-                ligne.getEcart()
+                ligne.getEcart(),
+                ligne.getPrixUnitaire() != null
+                        ? ligne.getPrixUnitaire()
+                        : ligne.getProductFournisseur().getPrixAchat()
         );
     }
 

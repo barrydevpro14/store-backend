@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.store.common.base.BaseEntity;
 import org.store.produit.domain.model.ProductFournisseur;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Entity
@@ -29,4 +31,8 @@ public class LigneInventaire extends BaseEntity {
 
     @Column(nullable = false)
     private int ecart;
+
+    /** Prix unitaire saisi par l'utilisateur (par défaut : prixAchat du PF). Nullable pour rétrocompatibilité. */
+    @Column(name = "prix_unitaire", precision = 19, scale = 2)
+    private BigDecimal prixUnitaire;
 }

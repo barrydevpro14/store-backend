@@ -40,10 +40,12 @@ import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.TypeAjustement;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.service.EntreeStockDomainService;
+import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -66,6 +68,7 @@ public class InventaireServiceImpl implements IInventaireService {
     private final IMagasinService magasinService;
     private final IProductFournisseurService productFournisseurService;
     private final IAjustementStockService ajustementStockService;
+    private final StockDomainService stockDomainService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final IMessageSourceService messageSourceService;
@@ -78,6 +81,7 @@ public class InventaireServiceImpl implements IInventaireService {
                                  IMagasinService magasinService,
                                  IProductFournisseurService productFournisseurService,
                                  IAjustementStockService ajustementStockService,
+                                 StockDomainService stockDomainService,
                                  ICurrentUserService currentUserService,
                                  ValidatorService validatorService,
                                  IMessageSourceService messageSourceService) {
@@ -89,6 +93,7 @@ public class InventaireServiceImpl implements IInventaireService {
         this.magasinService = magasinService;
         this.productFournisseurService = productFournisseurService;
         this.ajustementStockService = ajustementStockService;
+        this.stockDomainService = stockDomainService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.messageSourceService = messageSourceService;
@@ -119,11 +124,19 @@ public class InventaireServiceImpl implements IInventaireService {
         ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
                 productFournisseurService.findById(request.productFournisseurId()));
 
-        ensureNotDuplicate(inventaireId, productFournisseur.getId());
+        Optional<LigneInventaire> existing = ligneInventaireDomainService
+                .findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseur.getId());
+
+        if (existing.isPresent()) {
+            LigneInventaire ligne = existing.get();
+            int nouvQte = ligne.getQuantiteReelle() + request.quantiteReelle();
+            ligne.setPrixUnitaire(request.prixUnitaire());
+            return new LigneInventaireResponse(ligneInventaireDomainService.updateQuantiteReelle(ligne, nouvQte));
+        }
 
         int quantiteTheorique = computeQuantiteTheorique(inventaire.getMagasin().getId(), productFournisseur.getId());
         LigneInventaire ligne = ligneInventaireDomainService.create(
-                inventaire, productFournisseur, quantiteTheorique, request.quantiteReelle()
+                inventaire, productFournisseur, quantiteTheorique, request.quantiteReelle(), request.prixUnitaire()
         );
         return new LigneInventaireResponse(ligne);
     }
@@ -294,18 +307,30 @@ public class InventaireServiceImpl implements IInventaireService {
                 .sum();
     }
 
-    /** Delegue a IAjustementStockService.create pour une ligne d'inventaire avec ecart != 0 (POSITIF si surplus, NEGATIF si manque). */
+    /**
+     * Delegue a IAjustementStockService.create pour une ligne d'inventaire avec ecart != 0.
+     * POSITIF si surplus (plus compté que théorique), NEGATIF si manque.
+     * Pour un NEGATIF, si aucun enregistrement Stock n'existe (incohérence de données),
+     * l'ajustement est ignoré — l'écart reste visible dans la ligne d'inventaire.
+     */
     public void appliquerAjustement(Inventaire inventaire, LigneInventaire ligne) {
         int ecart = ligne.getEcart();
         ProductFournisseur productFournisseur = ligne.getProductFournisseur();
         TypeAjustement type = ecart > 0 ? TypeAjustement.POSITIF : TypeAjustement.NEGATIF;
+
+        if (type == TypeAjustement.NEGATIF) {
+            boolean stockExists = stockDomainService
+                    .findByMagasinIdAndProductFournisseurId(inventaire.getMagasin().getId(), productFournisseur.getId())
+                    .isPresent();
+            if (!stockExists) return;
+        }
         AjustementStockRequest request = new AjustementStockRequest(
                 inventaire.getMagasin().getId(),
                 productFournisseur.getProduct().getId(),
                 type,
                 Math.abs(ecart),
                 productFournisseur.getId(),
-                ecart > 0 ? productFournisseur.getPrixAchat() : null,
+                ecart > 0 ? (ligne.getPrixUnitaire() != null ? ligne.getPrixUnitaire() : productFournisseur.getPrixAchat()) : null,
                 MotifAjustement.INVENTAIRE_PHYSIQUE,
                 messageSourceService.getMessage("inventaire.cloture.commentaire", new Object[]{inventaire.getId()})
         );
@@ -329,13 +354,15 @@ public class InventaireServiceImpl implements IInventaireService {
         rapportInventaireDomainService.create(inventaire, command);
     }
 
-    /** Valorise les lignes en prixAchat (theorique si true, physique sinon). */
+    /** Valorise les lignes au prix saisi par l'utilisateur (fallback : prixAchat PF). */
     public BigDecimal computeMontantStock(List<LigneInventaire> lignes, boolean theorique) {
         return lignes.stream()
                 .map(ligne -> {
                     int qte = theorique ? ligne.getQuantiteTheorique() : ligne.getQuantiteReelle();
-                    BigDecimal prixAchat = ligne.getProductFournisseur().getPrixAchat();
-                    return prixAchat.multiply(BigDecimal.valueOf(qte));
+                    BigDecimal prix = ligne.getPrixUnitaire() != null
+                            ? ligne.getPrixUnitaire()
+                            : ligne.getProductFournisseur().getPrixAchat();
+                    return prix.multiply(BigDecimal.valueOf(qte));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
