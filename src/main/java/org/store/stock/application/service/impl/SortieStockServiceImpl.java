@@ -6,6 +6,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
+import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -44,7 +45,7 @@ public class SortieStockServiceImpl implements ISortieStockService {
     private final StockDomainService stockDomainService;
     private final MouvementStockDomainService mouvementStockDomainService;
     private final IMagasinService magasinService;
-    private final IProductService productService;
+    private final IProductFournisseurService productFournisseurService;
     private final INotificationEventPublisher notificationEventPublisher;
 
     public SortieStockServiceImpl(EntreeStockDomainService entreeStockDomainService,
@@ -52,14 +53,14 @@ public class SortieStockServiceImpl implements ISortieStockService {
                                   StockDomainService stockDomainService,
                                   MouvementStockDomainService mouvementStockDomainService,
                                   IMagasinService magasinService,
-                                  IProductService productService,
+                                  IProductFournisseurService productFournisseurService,
                                   INotificationEventPublisher notificationEventPublisher) {
         this.entreeStockDomainService = entreeStockDomainService;
         this.sortieStockDomainService = sortieStockDomainService;
         this.stockDomainService = stockDomainService;
         this.mouvementStockDomainService = mouvementStockDomainService;
         this.magasinService = magasinService;
-        this.productService = productService;
+        this.productFournisseurService = productFournisseurService;
         this.notificationEventPublisher = notificationEventPublisher;
     }
 
@@ -68,16 +69,17 @@ public class SortieStockServiceImpl implements ISortieStockService {
     @Transactional
     public List<SortieStockResponse> create(SortieStockRequest sortieStockRequest) {
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(sortieStockRequest.magasinId()));
-        Product produit = productService.ensureBelongsToCurrentEntreprise(productService.findById(sortieStockRequest.productId()));
+        ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
+                productFournisseurService.findById(sortieStockRequest.productFournisseurId()));
 
-        Stock stock = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         int stockAvant = stock.getQuantiteDisponible();
         if (stockAvant < sortieStockRequest.quantite()) {
             throw new BadArgumentException("stock.exit.insufficientQuantity", stockAvant, sortieStockRequest.quantite());
         }
 
-        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifo(magasin.getId(), produit.getId());
+        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasin.getId(), productFournisseur.getId());
         List<SortieStockResponse> sorties = consumeFifo(lots,
                 new LotConsumptionContext(sortieStockRequest.quantite(), sortieStockRequest.prixVente(), null));
 
@@ -107,7 +109,7 @@ public class SortieStockServiceImpl implements ISortieStockService {
         ProductFournisseur productFournisseur = sortieStockForVente.productFournisseur();
         Product produit = productFournisseur.getProduct();
 
-        Stock stock = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         int stockAvant = stock.getQuantiteDisponible();
 

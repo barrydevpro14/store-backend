@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public record SortieStockRequest(
         @NotNull UUID magasinId,
-        @NotNull UUID productId,
+        @NotNull UUID productFournisseurId,
         @NotNull @Positive Integer quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixVente,
         @Size(max = 500) String commentaire

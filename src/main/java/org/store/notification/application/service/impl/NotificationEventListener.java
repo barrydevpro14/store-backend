@@ -70,7 +70,7 @@ public class NotificationEventListener {
     @EventListener
     public void onStockBelowThreshold(StockBelowThresholdEvent event) {
         var stock      = event.stock();
-        String nom     = stock.getProduit().getNom();
+        String nom     = stock.getProductFournisseur().getProduct().getNom();
         String titre   = messageSourceService.getMessage("notification.stock.belowThreshold.titre", new Object[]{nom});
         String message = messageSourceService.getMessage("notification.stock.belowThreshold.message",
                 new Object[]{nom, stock.getQuantiteDisponible()});

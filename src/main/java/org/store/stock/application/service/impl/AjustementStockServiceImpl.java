@@ -126,19 +126,21 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
                 null, null,
                 null));
 
-        return stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, request.quantite(), request.prixAchat()));
+        return stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, request.quantite(), request.prixAchat()));
     }
 
     /** Vérifie la disponibilité, consomme les lots FIFO (sans SortieStock), décrémente le stock et retourne le stock à jour. */
     public Stock applyNegatif(AjustementStockRequest request, Magasin magasin, Product produit) {
-        Stock stock = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+        ProductFournisseur pf = productFournisseurService.ensureBelongsToCurrentEntreprise(
+                productFournisseurService.findById(request.productFournisseurId()));
+        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), pf.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         if (stock.getQuantiteDisponible() < request.quantite()) {
             throw new BadArgumentException("stock.adjustment.insufficientQuantity",
                     stock.getQuantiteDisponible(), request.quantite());
         }
 
-        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifo(magasin.getId(), produit.getId());
+        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasin.getId(), pf.getId());
         consumeLotsFifoForAdjustment(lots, request.quantite());
 
         return stockDomainService.decrement(stock, request.quantite());

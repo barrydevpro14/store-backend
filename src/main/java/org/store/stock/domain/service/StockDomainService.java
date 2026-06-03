@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.magasin.domain.model.Magasin;
-import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
@@ -24,8 +24,8 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         super(repository);
     }
 
-    public Optional<Stock> findByMagasinIdAndProduitId(UUID magasinId, UUID produitId) {
-        return repository.findByMagasinIdAndProduitId(magasinId, produitId);
+    public Optional<Stock> findByMagasinIdAndProductFournisseurId(UUID magasinId, UUID productFournisseurId) {
+        return repository.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId);
     }
 
     public Page<StockResponse> findResponsesByFilter(StockFilter filter, UUID entrepriseId) {
@@ -75,8 +75,8 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
      * (scale 2, arrondi HALF_UP). Si aucun stock n'existe pour la paire, il est initialisé à zéro avant le calcul.
      */
     public Stock createOrUpdateEntry(StockEntryContext context) {
-        Stock stock = findByMagasinIdAndProduitId(context.magasin().getId(), context.produit().getId())
-                .orElseGet(() -> initStock(context.magasin(), context.produit()));
+        Stock stock = findByMagasinIdAndProductFournisseurId(context.magasin().getId(), context.productFournisseur().getId())
+                .orElseGet(() -> initStock(context.magasin(), context.productFournisseur()));
 
         int qtyAvant = stock.getQuantiteDisponible();
         int qtyApres = qtyAvant + context.quantite();
@@ -92,10 +92,10 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         return save(stock);
     }
 
-    private Stock initStock(Magasin magasin, Product produit) {
+    private Stock initStock(Magasin magasin, ProductFournisseur productFournisseur) {
         Stock stock = new Stock();
         stock.setMagasin(magasin);
-        stock.setProduit(produit);
+        stock.setProductFournisseur(productFournisseur);
         stock.setQuantiteDisponible(0);
         stock.setPrixAchatMoyen(BigDecimal.ZERO);
         return stock;

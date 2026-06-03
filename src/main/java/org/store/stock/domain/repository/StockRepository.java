@@ -15,17 +15,17 @@ import java.util.UUID;
 
 public interface StockRepository extends BaseRepository<Stock> {
 
-    Optional<Stock> findByMagasinIdAndProduitId(UUID magasinId, UUID produitId);
+    Optional<Stock> findByMagasinIdAndProductFournisseurId(UUID magasinId, UUID productFournisseurId);
 
     @Query("""
             SELECT new org.store.stock.application.dto.StockResponse(stock)
             FROM Stock stock
             WHERE stock.magasin.entreprise.id = :entrepriseId
               AND stock.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR stock.produit.id = :#{#filter.productId})
+              AND (:#{#filter.productId} IS NULL OR stock.productFournisseur.product.id = :#{#filter.productId})
               AND (:#{#filter.productNamePattern()} IS NULL
-                   OR LOWER(stock.produit.nom) LIKE :#{#filter.productNamePattern()}
-                   OR LOWER(COALESCE(stock.produit.reference, '')) LIKE :#{#filter.productNamePattern()})
+                   OR LOWER(stock.productFournisseur.product.nom) LIKE :#{#filter.productNamePattern()}
+                   OR LOWER(COALESCE(stock.productFournisseur.product.reference, '')) LIKE :#{#filter.productNamePattern()})
               AND stock.createdAt >= :#{#filter.createdStartDateTime()}
               AND stock.createdAt <  :#{#filter.createdEndDateTime()}
             ORDER BY stock.createdAt DESC

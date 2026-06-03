@@ -18,7 +18,7 @@ public interface MouvementStockRepository extends BaseRepository<MouvementStock>
             FROM MouvementStock mouvement
             WHERE mouvement.stock.magasin.entreprise.id = :entrepriseId
               AND mouvement.stock.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR mouvement.stock.produit.id = :#{#filter.productId})
+              AND (:#{#filter.productId} IS NULL OR mouvement.stock.productFournisseur.product.id = :#{#filter.productId})
               AND (:#{#filter.stockId} IS NULL OR mouvement.stock.id = :#{#filter.stockId})
               AND (:#{#filter.typeAsEnum()} IS NULL OR mouvement.type = :#{#filter.typeAsEnum()})
               AND (:#{#filter.fromDateTime()} IS NULL OR mouvement.createdAt >= :#{#filter.fromDateTime()})

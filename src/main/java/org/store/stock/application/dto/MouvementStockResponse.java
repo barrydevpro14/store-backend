@@ -21,7 +21,7 @@ public record MouvementStockResponse(
                 mouvement.getId(),
                 mouvement.getStock().getId(),
                 new MagasinSummaryResponse(mouvement.getStock().getMagasin()),
-                new ProductSummaryResponse(mouvement.getStock().getProduit()),
+                new ProductSummaryResponse(mouvement.getStock().getProductFournisseur().getProduct()),
                 new MouvementDetailResponse(
                         mouvement.getType(),
                         mouvement.getQuantite(),

@@ -60,7 +60,7 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 productFournisseurService.findById(entreeStockRequest.productFournisseurId()));
         Product produit = productFournisseur.getProduct();
 
-        int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+        int stockAvant = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
                 .map(Stock::getQuantiteDisponible)
                 .orElse(0);
 
@@ -71,7 +71,7 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 null));
 
         Stock stock = stockDomainService.createOrUpdateEntry(
-                new StockEntryContext(magasin, produit, entreeStockRequest.quantite(), entreeStockRequest.prixAchat()));
+                new StockEntryContext(magasin, productFournisseur, entreeStockRequest.quantite(), entreeStockRequest.prixAchat()));
 
         mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,

@@ -415,7 +415,7 @@ public class VenteServiceImpl implements IVenteService {
         }
 
         EntreeStock firstLot = sorties.get(0).getEntreeStock();
-        Stock stock = stockDomainService.findByMagasinIdAndProduitId(firstLot.getMagasin().getId(), firstLot.getProduit().getId())
+        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(firstLot.getMagasin().getId(), firstLot.getProductFournisseur().getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
 
         int totalQuantite = sorties.stream()

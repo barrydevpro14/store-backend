@@ -240,7 +240,7 @@ public class AchatServiceImpl implements IAchatService {
         Product produit = productFournisseur.getProduct();
         int quantite = ligne.getQuantite();
 
-        int stockAvant = stockDomainService.findByMagasinIdAndProduitId(magasin.getId(), produit.getId())
+        int stockAvant = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
                 .map(Stock::getQuantiteDisponible).orElse(0);
 
         entreeStockDomainService.create(new EntreeStockCreate(
@@ -250,7 +250,7 @@ public class AchatServiceImpl implements IAchatService {
                 commande
         ));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, produit, quantite, ligne.getPrixAchat()));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, quantite, ligne.getPrixAchat()));
 
         mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,
@@ -260,6 +260,7 @@ public class AchatServiceImpl implements IAchatService {
         ));
 
         productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.getPrixVente());
+        productFournisseurService.applyPrixAchatMoyenFromStock(productFournisseur, stock.getPrixAchatMoyen());
         ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, quantite);
     }
 
@@ -482,7 +483,7 @@ public class AchatServiceImpl implements IAchatService {
     public RetraitStockResult withdrawStockForLot(CommandeAchat commande, EntreeStock lot) {
         int quantite = lot.getQuantiteRestante();
 
-        Stock stock = stockDomainService.findByMagasinIdAndProduitId(lot.getMagasin().getId(), lot.getProduit().getId())
+        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(lot.getMagasin().getId(), lot.getProductFournisseur().getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         int stockAvant = stock.getQuantiteDisponible();
 

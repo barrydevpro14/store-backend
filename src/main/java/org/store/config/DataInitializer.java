@@ -49,6 +49,7 @@ public class DataInitializer implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final UtilisateurDomainService utilisateurDomainService;
     private final NotificationDomainService notificationDomainService;
+    private final DemoProductSeeder demoProductSeeder;
 
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
@@ -58,7 +59,8 @@ public class DataInitializer implements ApplicationRunner {
                            RoleDomainService roleDomainService,
                            PasswordEncoder passwordEncoder,
                            UtilisateurDomainService utilisateurDomainService,
-                           NotificationDomainService notificationDomainService) {
+                           NotificationDomainService notificationDomainService,
+                           DemoProductSeeder demoProductSeeder) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
@@ -68,6 +70,7 @@ public class DataInitializer implements ApplicationRunner {
         this.passwordEncoder = passwordEncoder;
         this.utilisateurDomainService = utilisateurDomainService;
         this.notificationDomainService = notificationDomainService;
+        this.demoProductSeeder = demoProductSeeder;
     }
 
     @Override
@@ -82,6 +85,7 @@ public class DataInitializer implements ApplicationRunner {
         ensureTrialPlan();
         if (rbacProperties.sync()) {
             seedSampleNotifications();
+            demoProductSeeder.seed();
         }
     }
 
