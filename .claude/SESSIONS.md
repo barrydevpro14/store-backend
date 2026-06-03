@@ -9,6 +9,61 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-04 — E2E tests, UX redesign, inventory price, product images, all selectors searchable
+
+**Subject:** Two-part session. First half: backend — e2e lifecycle tests for purchase/sale/inventory, inventory improvements (duplicate count aggregation, prix_unitaire, clôture guard). Second half: frontend — full UX redesign (4 areas), product image management with carousel + lightbox, all remaining Select → Combobox.
+
+### Backend — E2E process flow tests
+
+- `AchatProcessFlowTest` — 7 scenarios: DRAFT→RECEIVE, edit line, receive+payment, cancel+rollback, delete DRAFT, guards.
+- `VenteProcessFlowTest` — 7 scenarios: DRAFT→VALIDATE, edit line, validate+payment, CANCEL+reinjection, delete DRAFT, guards.
+- `InventaireProcessFlowTest` — 8 scenarios: EN_COURS→BILAN→CLOTURE with adjustment, update/delete ligne, annuler, aggregate count, guards.
+- All broken tests fixed after Stock→ProductFournisseur refactor and `CommandeVente` DTO changes.
+
+### Backend — Inventory improvements
+
+- Allow counting same product multiple times: removed `ensureNotDuplicate`, added `findByInventaireIdAndProductFournisseurId` to aggregate `quantiteReelle` on second scan.
+- **`prix_unitaire`** on `LigneInventaire`: user sets price per line (default = `productFournisseur.prixAchat`). Used in `computeMontantStock` (bilan valuation) and `appliquerAjustement` (POSITIF entries). V30 migration adds nullable column.
+- `cloturer` guard: skips NEGATIF adjustment when no `Stock` aggregate record exists (prevents 406 on data inconsistency). `StockDomainService` injected.
+- `BilanDialog` `dateDebutPeriode` restricted to past/today (`max={today}` + Zod refine).
+
+### Frontend — UX redesign (4 areas)
+
+1. **Dashboard & KPIs**: Nav section labels, per-item colors (emerald=sales, amber=purchases, violet=stock…), page name + icon in header, user mini-row at sidebar bottom. MetricCard clickable via `href` + `variant` (warning/danger/success). KpiCard + MetricCard responsive (2-col mobile, scaled font). Currency label in KPI via `Intl.NumberFormat.formatToParts`.
+2. **Tables**: `DataTable` mobile card view (<sm), clickable rows, result count. Pagination chevron icons. `CommandeVenteTable` row-clickable.
+3. **Forms & dialogs**: `FormField` `required` prop. `ErrorBanner` icon. `DialogContent` `size` prop (sm/md/lg/xl/full). `CreateVenteDialog` sticky footer.
+4. **Sidebar & nav**: 6 section groups, per-item colors, active state stronger, user mini-row pinned bottom.
+
+### Frontend — Product image management
+
+- 6 hooks: `useProductMainImage` (blob URL), `useUploadProductMainImage`, `useDeleteProductMainImage`, `useProductGallery`, `useUploadProductImages`, `useDeleteProductImage`.
+- `ProductImageSection`: unified panel, carousel (main image first + gallery), thumbnail strip, `ZoomIn` on hover, `readOnly` mode.
+- `ImageLightbox`: full-screen overlay, prev/next arrows, keyboard nav (←/→/Esc), thumbnail strip, lazy blob fetch per slide.
+- `ProductDetailsDialog`: read-only product view (fields dl + images carousel).
+- `ProductTable`: Eye button + row click → view dialog; ⋯ menu for edit/delete; thumbnail column.
+- `ProductFormDialog`: sticky Cancel footer via `DialogFooter`, images section appears after creation.
+- `ProductForm` category selector converted to `Combobox` (searchable).
+
+### Frontend — All selectors searchable (rule enforcement)
+
+- 8 remaining `<Select>` in forms converted to `<Combobox>`: `ClientForm` (magasinId), `EmployeForm` (role + magasinId), `DepenseForm` (categoryId + modePaiement), `SubscriptionTypeForm` (reductionType), `PromotionForm` + `CouponForm` (planId + reductionType), `CancelAchatDialog` + `CancelVenteDialog` (motif).
+- `PhoneField` country selector: custom `CountryCombobox` on Base UI primitives. Compact trigger (🇸🇳 +221), searchable by name or dial code, 240+ countries.
+
+### Commits pushed (frontend only this session)
+
+- `feat(product)`: images system (carousel, lightbox, view dialog, table thumbnail)
+- `feat(forms)`: all remaining Select → Combobox
+- `feat(ui)`: PhoneField searchable country selector
+- `chore(i18n)`: new keys
+
+### Open follow-ups
+
+- Deployment Saturday 2026-06-07 (Railway + Vercel — see `DEPLOY_PROCESS.md`).
+
+---
+
+## Previous session
+
 **Date:** 2026-06-03 — Invoice status filters, orphan DRAFT fix, all-Combobox filters, light theme
 
 **Subject:** UX + data session. Invoice status on sale/purchase tables and filters, orphan DRAFT cleanup, all 16 filter dropdowns converted to searchable Combobox, light theme as default.
