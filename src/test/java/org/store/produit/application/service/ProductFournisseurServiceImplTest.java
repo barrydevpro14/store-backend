@@ -246,7 +246,7 @@ class ProductFournisseurServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         ProductFournisseurResponse item = new ProductFournisseurResponse(
                 productFournisseurId,
-                new ProductSummaryResponse(productId, "Pneu", "PN-195"),
+                new ProductSummaryResponse(productId, "Pneu", "PN-195", null),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc"),
                 new QualitySummaryResponse(qualityId, "Premium"),
                 new BigDecimal("12.50"), new BigDecimal("18.00"), "REF-FRN-001", "Maroc"

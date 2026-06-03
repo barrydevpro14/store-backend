@@ -65,7 +65,7 @@ class MouvementStockControllerTest {
         return new MouvementStockResponse(
                 mouvementId, stockId,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
                 new MouvementDetailResponse(MouvementStockType.ENTREE_ACHAT, 100, 0, 100, "LOT-001", "achat manuel"),
                 "2026-05-14 10:00:00", UUID.randomUUID().toString()
         );

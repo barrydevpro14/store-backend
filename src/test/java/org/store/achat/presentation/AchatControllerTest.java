@@ -184,7 +184,7 @@ class AchatControllerTest {
     void should_return_200_when_get_purchase_details() throws Exception {
         LigneCommandeAchatResponse ligne = new LigneCommandeAchatResponse(
                 UUID.randomUUID(),
-                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 10, 0, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
                 "LOT-001", null
@@ -204,7 +204,7 @@ class AchatControllerTest {
     void should_return_200_when_update_ligne() throws Exception {
         LigneCommandeAchatResponse updated = new LigneCommandeAchatResponse(
                 ligneId,
-                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 200, 0, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
                 "LOT-002", null

@@ -72,7 +72,7 @@ class ProductFournisseurControllerTest {
     private ProductFournisseurResponse sample() {
         return new ProductFournisseurResponse(
                 productFournisseurId,
-                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195"),
+                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195", "Auto"),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc SARL"),
                 new QualitySummaryResponse(qualityId, "Premium"),
                 new BigDecimal("12.50"), new BigDecimal("18.00"), "REF-FRN-001", "Maroc"
@@ -167,7 +167,7 @@ class ProductFournisseurControllerTest {
     void should_return_200_when_updated() throws Exception {
         ProductFournisseurResponse updated = new ProductFournisseurResponse(
                 productFournisseurId,
-                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195"),
+                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195", "Auto"),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc SARL"),
                 new QualitySummaryResponse(qualityId, "Premium"),
                 new BigDecimal("20.00"), new BigDecimal("30.00"), "REF-NEW", "France"
@@ -189,7 +189,7 @@ class ProductFournisseurControllerTest {
     void should_return_200_when_prix_vente_updated() throws Exception {
         ProductFournisseurResponse updated = new ProductFournisseurResponse(
                 productFournisseurId,
-                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195"),
+                new ProductSummaryResponse(productId, "Pneu 195/65 R15", "PN-195", "Auto"),
                 new FournisseurSummaryResponse(fournisseurId, "Pneus Maroc SARL"),
                 new QualitySummaryResponse(qualityId, "Premium"),
                 new BigDecimal("12.50"), new BigDecimal("25.00"), "REF-FRN-001", "Maroc"

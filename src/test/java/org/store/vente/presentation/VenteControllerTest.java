@@ -184,7 +184,7 @@ class VenteControllerTest {
     void should_return_200_when_update_ligne() throws Exception {
         LigneCommandeVenteResponse updated = new LigneCommandeVenteResponse(
                 ligneId,
-                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1"),
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", null),
                 new FournisseurSummaryResponse(UUID.randomUUID(), "F-1"),
                 null,
                 20, new BigDecimal("18.00"), new BigDecimal("360.00")

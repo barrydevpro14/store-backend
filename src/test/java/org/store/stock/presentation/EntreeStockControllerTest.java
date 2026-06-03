@@ -64,7 +64,7 @@ class EntreeStockControllerTest {
         return new EntreeStockResponse(
                 entreeStockId,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 100, 100,
                 new BigDecimal("10.00"), "LOT-001",

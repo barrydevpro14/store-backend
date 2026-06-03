@@ -87,7 +87,7 @@ class InventaireControllerTest {
     private LigneInventaireResponse sampleLigne() {
         return new LigneInventaireResponse(
                 UUID.randomUUID(), inventaireId, productFournisseurId,
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", "Visserie"),
                 new org.store.achat.application.dto.FournisseurSummaryResponse(UUID.randomUUID(), "Fournisseur Test"),
                 null,
                 10, 8, -2

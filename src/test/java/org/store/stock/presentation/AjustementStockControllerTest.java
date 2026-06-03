@@ -72,7 +72,7 @@ class AjustementStockControllerTest {
         return new MouvementStockResponse(
                 UUID.randomUUID(), UUID.randomUUID(),
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
                 new MouvementDetailResponse(MouvementStockType.AJUSTEMENT, 20, 100, 120, "RETROUVAILLE", "retrouvé"),
                 "2026-05-14 10:00:00", UUID.randomUUID().toString()
         );
