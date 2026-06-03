@@ -121,6 +121,12 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
         return productFournisseurDomainService.updatePrixVente(productFournisseur, newPrixVente);
     }
 
+    @Override
+    @Transactional
+    public ProductFournisseur applyPrixAchatMoyenFromStock(ProductFournisseur productFournisseur, BigDecimal prixAchatMoyen) {
+        return productFournisseurDomainService.updatePrixAchat(productFournisseur, prixAchatMoyen);
+    }
+
     /** Supprime le lien après contrôle d'appartenance à l'entreprise du caller. */
     @Override
     @Transactional

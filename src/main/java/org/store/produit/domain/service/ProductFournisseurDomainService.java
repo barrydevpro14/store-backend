@@ -38,6 +38,12 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
         return save(productFournisseur);
     }
 
+    /** Met à jour le prix d'achat de référence du PF avec le coût moyen pondéré issu du stock. */
+    public ProductFournisseur updatePrixAchat(ProductFournisseur productFournisseur, BigDecimal prixAchatMoyen) {
+        productFournisseur.setPrixAchat(prixAchatMoyen);
+        return save(productFournisseur);
+    }
+
     public Page<ProductFournisseurResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
         return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
     }

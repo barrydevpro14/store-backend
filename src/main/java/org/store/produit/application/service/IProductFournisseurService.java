@@ -66,6 +66,9 @@ public interface IProductFournisseurService {
      */
     ProductFournisseur applyPrixVenteFromPurchase(ProductFournisseur productFournisseur, BigDecimal newPrixVente);
 
+    /** Met à jour le prix d'achat du PF avec le coût moyen pondéré issu du Stock (réutilisé par AchatServiceImpl). */
+    ProductFournisseur applyPrixAchatMoyenFromStock(ProductFournisseur productFournisseur, BigDecimal prixAchatMoyen);
+
     /**
      * Vérifie la règle métier prixVente > prixAchat (marge strictement positive). Throw `BadArgumentException("productFournisseur.prixVente.belowOrEqualAchat")` sinon.
      */
