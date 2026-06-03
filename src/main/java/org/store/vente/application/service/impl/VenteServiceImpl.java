@@ -236,6 +236,15 @@ public class VenteServiceImpl implements IVenteService {
         ligneCommandeVenteDomainService.delete(ligne);
     }
 
+    /** Supprime une commande DRAFT sans effet stock (abandon de saisie). */
+    @Override
+    @Transactional
+    public void deleteDraft(UUID commandeId) {
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+        commandeVenteDomainService.delete(commande);
+    }
+
     /** Retourne le détail d'une vente : commande + facture (null si DRAFT) + lignes + paiements (user résolu via createdBy). */
     @Override
     public VenteDetailsResponse findDetailsById(UUID commandeId) {

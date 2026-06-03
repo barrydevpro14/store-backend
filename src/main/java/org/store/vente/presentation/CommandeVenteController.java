@@ -34,6 +34,7 @@ public class CommandeVenteController {
                                                             @RequestParam(required = false) UUID clientId,
                                                             @RequestParam(required = false) UUID vendeurId,
                                                             @RequestParam(required = false) String statut,
+                                                            @RequestParam(required = false) String statutFacture,
                                                             @RequestParam(required = false) String reference,
                                                             @RequestParam(required = false) BigDecimal montantMin,
                                                             @RequestParam(required = false) BigDecimal montantMax,
@@ -44,7 +45,7 @@ public class CommandeVenteController {
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(commandeVenteService.findAllByCurrentEntreprise(
-                new CommandeVenteFilter(magasinId, clientId, vendeurId, statut, reference,
+                new CommandeVenteFilter(magasinId, clientId, vendeurId, statut, statutFacture, reference,
                         montantMin, montantMax, startDate, endDate, createdStartDate, createdEndDate, page, size)
         ));
     }

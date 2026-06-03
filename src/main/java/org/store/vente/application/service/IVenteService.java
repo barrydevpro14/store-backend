@@ -22,6 +22,9 @@ public interface IVenteService {
      */
     VenteDraftResponse create(VenteRequest venteRequest);
 
+    /** Supprime une commande DRAFT (abandon sans effet stock). Lève BadArgument si pas en DRAFT. */
+    void deleteDraft(UUID commandeId);
+
     /**
      * Matérialise une commande DRAFT : consomme le stock FIFO par ligne (sorties + journal SORTIE_VENTE),
      * crée la FactureClient (numéro auto + {@code dateEcheance} saisie), applique un éventuel premier paiement,

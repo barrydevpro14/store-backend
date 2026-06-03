@@ -27,6 +27,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
               AND (:#{#filter.clientId} IS NULL OR commande.client.id = :#{#filter.clientId})
               AND (:#{#filter.vendeurId} IS NULL OR account.user.id = :#{#filter.vendeurId})
               AND (:#{#filter.statutAsEnum()} IS NULL OR commande.statut = :#{#filter.statutAsEnum()})
+              AND (:#{#filter.statutFactureAsEnum()} IS NULL OR facture.statut = :#{#filter.statutFactureAsEnum()})
               AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
               AND (:#{#filter.montantMin} IS NULL OR facture.montantTotal >= :#{#filter.montantMin})
               AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})

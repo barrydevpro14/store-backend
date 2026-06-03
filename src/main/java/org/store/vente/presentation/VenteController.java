@@ -72,6 +72,13 @@ public class VenteController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{commandeId}")
+    @PreAuthorize("hasAuthority('SALE_DELETE')")
+    public ResponseEntity<Void> deleteDraft(@PathVariable UUID commandeId) {
+        venteService.deleteDraft(commandeId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{commandeId}/annuler")
     @PreAuthorize("hasAuthority('SALE_CANCEL')")
     public ResponseEntity<AnnulationVenteResponse> cancel(@PathVariable UUID commandeId,

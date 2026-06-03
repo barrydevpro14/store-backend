@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.store.common.tools.DateHelper;
+import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.tools.EnumHelper;
 import org.store.common.validation.DatePattern;
 import org.store.common.validation.EnumValue;
@@ -21,6 +22,7 @@ public record CommandeVenteFilter(
         UUID clientId,
         UUID vendeurId,
         @EnumValue(enumClass = CommandeVenteStatut.class) String statut,
+        @EnumValue(enumClass = StatutFacture.class) String statutFacture,
         String reference,
         @DecimalMin(value = "0.0") BigDecimal montantMin,
         @DecimalMin(value = "0.0") BigDecimal montantMax,
@@ -33,6 +35,10 @@ public record CommandeVenteFilter(
 ) {
     public CommandeVenteStatut statutAsEnum() {
         return EnumHelper.parse(CommandeVenteStatut.class, statut);
+    }
+
+    public StatutFacture statutFactureAsEnum() {
+        return EnumHelper.parse(StatutFacture.class, statutFacture);
     }
 
     public LocalDateTime fromDateTime() {
