@@ -18,7 +18,7 @@ import java.util.UUID;
 public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
 
     @Query("""
-            SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.montantTotal, facture.montantPaye)
+            SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.statut, facture.montantTotal, facture.montantPaye)
             FROM CommandeVente commande
             LEFT JOIN commande.facture facture
             LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
