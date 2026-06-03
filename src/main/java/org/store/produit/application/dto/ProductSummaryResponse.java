@@ -7,9 +7,15 @@ import java.util.UUID;
 public record ProductSummaryResponse(
         UUID id,
         String nom,
-        String reference
+        String reference,
+        String categoryLibelle
 ) {
     public ProductSummaryResponse(Product product) {
-        this(product.getId(), product.getNom(), product.getReference());
+        this(
+                product.getId(),
+                product.getNom(),
+                product.getReference(),
+                product.getCategoryProduct() != null ? product.getCategoryProduct().getLibelle() : null
+        );
     }
 }
