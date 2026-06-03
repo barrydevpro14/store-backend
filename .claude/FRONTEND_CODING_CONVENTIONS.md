@@ -671,6 +671,70 @@ export function KpiCard(...) { ... }
 
 **Mirror rules:** rule 41 (DTOs in `dtos/`, one per file), rule 46 (one component per file), rule 52 (one hook per file).
 
+### 54. All form/dialog selectors must use `<Combobox>` — never `<Select>`
+
+**Any dropdown that lets the user pick one item from a list inside a form or dialog MUST use the shared `<Combobox>` component** (`common/presentation/ui/combobox.tsx`). The plain `<Select>` is allowed only in **filter bars** (where the list is short and fixed, e.g. a 3-value status filter) and in the system-level page-size selector in `<Pagination>`.
+
+**Why:** `<Select>` lists do not have a search input — any list longer than ~10 items forces the user to scroll through everything. `<Combobox>` adds a search input automatically and is API-compatible for single-value picks.
+
+**Forbidden in forms:**
+```tsx
+// ❌ 40+ countries, 10+ categories, 5+ roles — all unscrollable without search
+<Select value={field.value} onValueChange={field.onChange}>
+  <SelectTrigger>…</SelectTrigger>
+  <SelectContent>
+    {items.map(item => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}
+  </SelectContent>
+</Select>
+```
+
+**Required in forms:**
+```tsx
+// ✓ — same list, now searchable
+<Combobox
+  items={items.map(item => ({ value: item.id, label: item.label }))}
+  value={field.value}
+  onValueChange={(v) => field.onChange(v ?? '')}
+  placeholder={t('fields.placeholder')}
+  ariaLabel={t('fields.label')}
+  emptyLabel={t('fields.empty')}
+/>
+```
+
+**Special case — custom trigger display:** when the trigger must show compact text that differs from the full label (e.g. the `PhoneField` country selector shows `🇸🇳 +221` while the dropdown shows `🇸🇳 Sénégal +221`), build a `CountryCombobox`-style wrapper using Base UI's `Combobox.*` primitives directly — same pattern as `common/presentation/ui/combobox.tsx` but with a custom trigger render.
+
+**Scope:** every `<form>`, every `<Dialog>` that contains a form, every `<Sheet>` form. Filter sidebars / filter rows are exempt when the list ≤ 5 fixed values (status selectors, boolean filters).
+
+**Applied:** ClientForm magasinId, EmployeForm role + magasinId, DepenseForm categoryId + modePaiement, SubscriptionTypeForm reductionType, PromotionForm + CouponForm planId + reductionType, CancelAchatDialog motif, CancelVenteDialog motif, ProductForm categoryProductId.
+
+---
+
+### 55. Authenticated images must be fetched via `apiClient` as blob URLs
+
+Images served by authenticated API endpoints (e.g. `GET /api/v1/products/{id}/image`) cannot be loaded via a plain `<img src="...">` because the browser does not attach the `Authorization: Bearer` header to image requests.
+
+**Pattern:** fetch via `apiClient.get<ArrayBuffer>(url, { responseType: 'arraybuffer' })` inside a `useEffect` or `useQuery`, build a `URL.createObjectURL(blob)`, pass the result to `<img src={blobUrl}>`.
+
+```ts
+// useBlobUrl.ts (or inline in a component)
+useEffect(() => {
+  if (!url) return
+  let cancelled = false
+  apiClient.get<ArrayBuffer>(url, { responseType: 'arraybuffer' }).then(response => {
+    if (cancelled) return
+    const ct = (response.headers['content-type'] as string) ?? 'image/jpeg'
+    setBlobUrl(URL.createObjectURL(new Blob([response.data], { type: ct })))
+  }).catch(() => {})
+  return () => { cancelled = true }
+}, [url])
+```
+
+React Query variant (preferred for shared images): `useQuery({ queryKey: [...], queryFn: async () => { ... URL.createObjectURL(...) }, enabled: hasImage, staleTime: 5 * 60_000 })`.
+
+**Clean up**: the blob URL is managed by the browser GC on tab close — short-lived blobs (carousel/lightbox slides) are acceptable inline. Long-lived cached blobs (profile photo, product main image) should use `gcTime` in React Query to let TanStack clean up the cache entry.
+
+**Scope:** profile photo (`useProfilePhotoBlob`), magasin logo (`useMagasinLogoBlob`), product main image (`useProductMainImage`), gallery thumbnails (`useGalleryBlobUrl` in `ProductImageSection`), lightbox slides (`useBlobUrl` in `ImageLightbox`). Any future authenticated image endpoint follows the same pattern.
+
 ---
 
 ## Logs / debug
