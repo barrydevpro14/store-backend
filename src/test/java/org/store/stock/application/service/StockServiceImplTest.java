@@ -15,6 +15,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.ProductFournisseur;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.StockFilter;
@@ -49,11 +50,13 @@ class StockServiceImplTest {
     private UUID entrepriseId;
     private UUID magasinId;
     private UUID productId;
+    private UUID productFournisseurId;
     private UUID stockId;
 
     private Entreprise entreprise;
     private Magasin magasin;
     private Product produit;
+    private ProductFournisseur productFournisseur;
     private Stock stock;
 
     @BeforeEach
@@ -61,6 +64,7 @@ class StockServiceImplTest {
         entrepriseId = UUID.randomUUID();
         magasinId = UUID.randomUUID();
         productId = UUID.randomUUID();
+        productFournisseurId = UUID.randomUUID();
         stockId = UUID.randomUUID();
 
         entreprise = new Entreprise();
@@ -77,10 +81,14 @@ class StockServiceImplTest {
         produit.setReference("CL-10");
         produit.setEntreprise(entreprise);
 
+        productFournisseur = new ProductFournisseur();
+        productFournisseur.setId(productFournisseurId);
+        productFournisseur.setProduct(produit);
+
         stock = new Stock();
         stock.setId(stockId);
         stock.setMagasin(magasin);
-        stock.setProduit(produit);
+        stock.setProductFournisseur(productFournisseur);
         stock.setQuantiteDisponible(150);
         stock.setSeuilApprovisionnement(20);
         stock.setPrixAchatMoyen(new BigDecimal("13.33"));
@@ -149,7 +157,7 @@ class StockServiceImplTest {
         Stock updated = new Stock();
         updated.setId(stockId);
         updated.setMagasin(magasin);
-        updated.setProduit(produit);
+        updated.setProductFournisseur(productFournisseur);
         updated.setQuantiteDisponible(150);
         updated.setSeuilApprovisionnement(30);
         updated.setPrixAchatMoyen(new BigDecimal("13.33"));

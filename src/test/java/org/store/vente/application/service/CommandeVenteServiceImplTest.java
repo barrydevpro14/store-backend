@@ -74,13 +74,13 @@ class CommandeVenteServiceImplTest {
                 null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 null, LocalDate.of(2026, 5, 16),
                 new BigDecimal("1300.00"), BigDecimal.ZERO,
-                "2026-05-16 10:00:00"
+                null, "2026-05-16 10:00:00"
         );
     }
 
     @Test
     void findAllByCurrentEntreprise_should_validate_filter_and_delegate_to_domain() {
-        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, null, 0, 10);
+        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, null, null, 0, 10);
         Page<CommandeVenteResponse> page = new PageImpl<>(List.of(sampleResponse()));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
@@ -96,7 +96,7 @@ class CommandeVenteServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_propagate_forbidden_when_magasin_not_accessible() {
-        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, null, 0, 10);
+        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -116,7 +116,7 @@ class CommandeVenteServiceImplTest {
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),
                 new BigDecimal("1300.00"), BigDecimal.ZERO,
-                "2026-05-16 10:00:00"
+                null, "2026-05-16 10:00:00"
         );
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());

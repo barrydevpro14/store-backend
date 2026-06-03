@@ -572,6 +572,7 @@ class VenteServiceImplTest {
         lot.setId(UUID.randomUUID());
         lot.setMagasin(magasin);
         lot.setProduit(produit);
+        lot.setProductFournisseur(productFournisseur);
         lot.setQuantiteRestante(0);
 
         SortieStock sortie = new SortieStock();
@@ -586,7 +587,7 @@ class VenteServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(saleProperties.cancelWindowHours()).thenReturn(24);
         when(sortieStockDomainService.findActiveByLigneVenteId(localLigneId)).thenReturn(List.of(sortie));
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.of(stock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
         when(stockDomainService.creditQuantite(eq(stock), eq(8))).thenAnswer(inv -> {
             stock.setQuantiteDisponible(stock.getQuantiteDisponible() + 8);
             return stock;

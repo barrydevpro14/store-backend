@@ -254,7 +254,7 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseur.getId())).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
         when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenAnswer(inv -> {
@@ -300,7 +300,7 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.empty());
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseur.getId())).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
         when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
@@ -325,7 +325,7 @@ class AchatServiceImplTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
         when(factureAchatDomainService.applyPaiement(eq(facture), eq(new BigDecimal("400.00")))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProduitId(any(), any())).thenReturn(Optional.empty());
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(any(), any())).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
         when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
@@ -603,7 +603,7 @@ class AchatServiceImplTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
         when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, produit.getId())).thenReturn(Optional.of(stock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseur.getId())).thenReturn(Optional.of(stock));
         when(stockDomainService.decrement(stock, 100)).thenAnswer(inv -> {
             stock.setQuantiteDisponible(0);
             return stock;

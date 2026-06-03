@@ -104,7 +104,7 @@ class AjustementStockServiceImplTest {
         stock = new Stock();
         stock.setId(UUID.randomUUID());
         stock.setMagasin(magasin);
-        stock.setProduit(produit);
+        stock.setProductFournisseur(productFournisseur);
         stock.setQuantiteDisponible(100);
     }
 
@@ -115,7 +115,7 @@ class AjustementStockServiceImplTest {
 
     private AjustementStockRequest negatifRequest(int qty, MotifAjustement motif) {
         return new AjustementStockRequest(magasinId, productId, TypeAjustement.NEGATIF, qty,
-                null, null, motif, "perte rayon");
+                productFournisseurId, null, motif, "perte rayon");
     }
 
     private MouvementStock buildMouvement() {
@@ -197,8 +197,10 @@ class AjustementStockServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(productService.findById(productId)).thenReturn(produit);
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(stockDomainService.decrement(stock, 30)).thenReturn(updated);
         when(mouvementStockDomainService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvement());
@@ -217,7 +219,9 @@ class AjustementStockServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(productService.findById(productId)).thenReturn(produit);
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.empty());
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(EntityException.class);
@@ -232,7 +236,9 @@ class AjustementStockServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(productService.findById(productId)).thenReturn(produit);
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
@@ -273,8 +279,10 @@ class AjustementStockServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(productService.findById(productId)).thenReturn(produit);
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(stockDomainService.decrement(stock, 30)).thenReturn(updated);
         when(mouvementStockDomainService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvement());

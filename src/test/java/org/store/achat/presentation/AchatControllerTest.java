@@ -96,7 +96,7 @@ class AchatControllerTest {
                 commandeId, "CMD-AUTO", CommandeAchatStatut.DRAFT,
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                LocalDate.of(2026, 5, 15), List.of(), "2026-05-15 10:00:00"
+                LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00"
         );
     }
 
@@ -105,7 +105,7 @@ class AchatControllerTest {
                 commandeId, "CMD-AUTO", CommandeAchatStatut.RECEPTIONNEE,
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                LocalDate.of(2026, 5, 15), List.of(), "2026-05-15 10:00:00"
+                LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00"
         );
     }
 

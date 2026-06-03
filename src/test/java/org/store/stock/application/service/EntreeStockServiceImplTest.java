@@ -121,7 +121,7 @@ class EntreeStockServiceImplTest {
         Stock upsertedStock = new Stock();
         upsertedStock.setId(UUID.randomUUID());
         upsertedStock.setMagasin(magasin);
-        upsertedStock.setProduit(produit);
+        upsertedStock.setProductFournisseur(productFournisseur);
         upsertedStock.setQuantiteDisponible(100);
         upsertedStock.setPrixAchatMoyen(new BigDecimal("10.00"));
 
@@ -129,7 +129,7 @@ class EntreeStockServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.empty());
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.empty());
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(savedLot);
         when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upsertedStock);
 
@@ -157,13 +157,13 @@ class EntreeStockServiceImplTest {
         Stock existingStock = new Stock();
         existingStock.setId(UUID.randomUUID());
         existingStock.setMagasin(magasin);
-        existingStock.setProduit(produit);
+        existingStock.setProductFournisseur(productFournisseur);
         existingStock.setQuantiteDisponible(100);
         existingStock.setPrixAchatMoyen(new BigDecimal("10.00"));
         Stock upsertedStock = new Stock();
         upsertedStock.setId(existingStock.getId());
         upsertedStock.setMagasin(magasin);
-        upsertedStock.setProduit(produit);
+        upsertedStock.setProductFournisseur(productFournisseur);
         upsertedStock.setQuantiteDisponible(150);
         upsertedStock.setPrixAchatMoyen(new BigDecimal("13.33"));
 
@@ -171,7 +171,7 @@ class EntreeStockServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(existingStock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(existingStock));
         when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(savedLot);
         when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upsertedStock);
 

@@ -13,7 +13,8 @@ import org.store.common.exceptions.ForbiddenException;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
-import org.store.produit.application.service.IProductService;
+import org.store.notification.application.service.INotificationEventPublisher;
+import org.store.produit.application.service.IProductFournisseurService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.MouvementJournalize;
@@ -53,22 +54,26 @@ class SortieStockServiceImplTest {
     @Mock private StockDomainService stockDomainService;
     @Mock private MouvementStockDomainService mouvementStockDomainService;
     @Mock private IMagasinService magasinService;
-    @Mock private IProductService productService;
+    @Mock private IProductFournisseurService productFournisseurService;
+    @Mock private INotificationEventPublisher notificationEventPublisher;
 
     @InjectMocks
     private SortieStockServiceImpl service;
 
     private UUID magasinId;
     private UUID productId;
+    private UUID productFournisseurId;
     private Entreprise entreprise;
     private Magasin magasin;
     private Product produit;
+    private ProductFournisseur productFournisseur;
     private Stock stock;
 
     @BeforeEach
     void setUp() {
         magasinId = UUID.randomUUID();
         productId = UUID.randomUUID();
+        productFournisseurId = UUID.randomUUID();
 
         entreprise = new Entreprise();
         entreprise.setId(UUID.randomUUID());
@@ -81,15 +86,19 @@ class SortieStockServiceImplTest {
         produit.setId(productId);
         produit.setEntreprise(entreprise);
 
+        productFournisseur = new ProductFournisseur();
+        productFournisseur.setId(productFournisseurId);
+        productFournisseur.setProduct(produit);
+
         stock = new Stock();
         stock.setId(UUID.randomUUID());
         stock.setMagasin(magasin);
-        stock.setProduit(produit);
+        stock.setProductFournisseur(productFournisseur);
         stock.setQuantiteDisponible(300);
     }
 
     private SortieStockRequest request(int quantite, BigDecimal prixVente) {
-        return new SortieStockRequest(magasinId, productId, quantite, prixVente, "vente comptoir");
+        return new SortieStockRequest(magasinId, productFournisseurId, quantite, prixVente, "vente comptoir");
     }
 
     private EntreeStock lot(int qtyRestante, BigDecimal prixAchat) {
@@ -121,10 +130,10 @@ class SortieStockServiceImplTest {
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productService.findById(productId)).thenReturn(produit);
-        when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 50, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l1, 50, new BigDecimal("30.00")));
@@ -149,10 +158,10 @@ class SortieStockServiceImplTest {
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productService.findById(productId)).thenReturn(produit);
-        when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1, l2, l3));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1, l2, l3));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 100, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l1, 100, new BigDecimal("30.00")));
@@ -180,9 +189,9 @@ class SortieStockServiceImplTest {
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productService.findById(productId)).thenReturn(produit);
-        when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.empty());
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(EntityException.class);
@@ -198,9 +207,9 @@ class SortieStockServiceImplTest {
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productService.findById(productId)).thenReturn(produit);
-        when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
@@ -216,10 +225,10 @@ class SortieStockServiceImplTest {
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productService.findById(productId)).thenReturn(produit);
-        when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifo(magasinId, productId)).thenReturn(List.of(l1));
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 50, new BigDecimal("30.00"), null))))
                 .thenReturn(buildSortie(l1, 50, new BigDecimal("30.00")));
@@ -259,7 +268,7 @@ class SortieStockServiceImplTest {
         EntreeStock l1 = lot(100, new BigDecimal("10.00"));
         SortieStockForVente sortieForVente = new SortieStockForVente(magasin, pf, 30, new BigDecimal("25.00"), ligne);
 
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, pf.getId())).thenReturn(Optional.of(stock));
         when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pf.getId())).thenReturn(List.of(l1));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 30, new BigDecimal("25.00"), ligne))))
@@ -284,7 +293,7 @@ class SortieStockServiceImplTest {
         EntreeStock l2 = lot(50, new BigDecimal("12.00"));
         SortieStockForVente sortieForVente = new SortieStockForVente(magasin, pf, 80, new BigDecimal("25.00"), ligne);
 
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, pf.getId())).thenReturn(Optional.of(stock));
         when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pf.getId())).thenReturn(List.of(l1, l2));
         when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
         when(sortieStockDomainService.create(eq(new SortieStockCreate(l1, 50, new BigDecimal("25.00"), ligne))))
@@ -310,7 +319,7 @@ class SortieStockServiceImplTest {
         EntreeStock l1 = lot(20, new BigDecimal("10.00"));
         SortieStockForVente sortieForVente = new SortieStockForVente(magasin, pf, 50, new BigDecimal("25.00"), ligne);
 
-        when(stockDomainService.findByMagasinIdAndProduitId(magasinId, productId)).thenReturn(Optional.of(stock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, pf.getId())).thenReturn(Optional.of(stock));
         when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pf.getId())).thenReturn(List.of(l1));
 
         assertThatThrownBy(() -> service.consumeForVente(sortieForVente))
