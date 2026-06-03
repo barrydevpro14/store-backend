@@ -27,6 +27,7 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.fournisseurId} IS NULL OR commande.fournisseur.id = :#{#filter.fournisseurId})
+              AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
               AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})
               AND commande.createdAt >= :#{#filter.createdStartDateTime()}

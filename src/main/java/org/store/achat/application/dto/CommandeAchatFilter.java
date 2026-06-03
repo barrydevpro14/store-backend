@@ -14,6 +14,7 @@ import java.util.UUID;
 public record CommandeAchatFilter(
         @NotNull UUID magasinId,
         UUID fournisseurId,
+        String reference,
         @DatePattern String startDate,
         @DatePattern String endDate,
         LocalDate createdStartDate,

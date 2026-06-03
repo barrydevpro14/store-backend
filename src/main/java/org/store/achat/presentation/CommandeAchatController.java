@@ -31,6 +31,7 @@ public class CommandeAchatController {
     @PreAuthorize("hasAuthority('PURCHASE_READ')")
     public ResponseEntity<Page<CommandeAchatResponse>> list(@RequestParam UUID magasinId,
                                                             @RequestParam(required = false) UUID fournisseurId,
+                                                            @RequestParam(required = false) String reference,
                                                             @RequestParam(required = false) String startDate,
                                                             @RequestParam(required = false) String endDate,
                                                             @RequestParam(required = false) LocalDate createdStartDate,
@@ -38,7 +39,7 @@ public class CommandeAchatController {
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(commandeAchatService.findAllByCurrentEntreprise(
-                new CommandeAchatFilter(magasinId, fournisseurId, startDate, endDate,
+                new CommandeAchatFilter(magasinId, fournisseurId, reference, startDate, endDate,
                         createdStartDate, createdEndDate, page, size)
         ));
     }
