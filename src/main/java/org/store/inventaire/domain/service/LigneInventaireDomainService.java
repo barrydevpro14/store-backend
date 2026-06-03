@@ -11,7 +11,9 @@ import org.store.inventaire.domain.model.LigneInventaire;
 import org.store.inventaire.domain.repository.LigneInventaireRepository;
 import org.store.produit.domain.model.ProductFournisseur;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,13 +24,14 @@ public class LigneInventaireDomainService extends GlobalService<LigneInventaire,
 
     /** Crée une ligne d'inventaire avec écart = quantiteReelle - quantiteTheorique. */
     public LigneInventaire create(Inventaire inventaire, ProductFournisseur productFournisseur,
-                                  int quantiteTheorique, int quantiteReelle) {
+                                  int quantiteTheorique, int quantiteReelle, BigDecimal prixUnitaire) {
         LigneInventaire ligne = new LigneInventaire();
         ligne.setInventaire(inventaire);
         ligne.setProductFournisseur(productFournisseur);
         ligne.setQuantiteTheorique(quantiteTheorique);
         ligne.setQuantiteReelle(quantiteReelle);
         ligne.setEcart(quantiteReelle - quantiteTheorique);
+        ligne.setPrixUnitaire(prixUnitaire);
         return save(ligne);
     }
 
@@ -42,6 +45,10 @@ public class LigneInventaireDomainService extends GlobalService<LigneInventaire,
 
     public boolean existsByInventaireIdAndProductFournisseurId(UUID inventaireId, UUID productFournisseurId) {
         return repository.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId);
+    }
+
+    public Optional<LigneInventaire> findByInventaireIdAndProductFournisseurId(UUID inventaireId, UUID productFournisseurId) {
+        return repository.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId);
     }
 
     /** Recherche d'une ligne par son id avec message d'erreur metier dedie. */

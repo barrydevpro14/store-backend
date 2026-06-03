@@ -9,6 +9,7 @@ import org.store.inventaire.application.dto.LigneInventaireResponse;
 import org.store.inventaire.domain.model.LigneInventaire;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface LigneInventaireRepository extends BaseRepository<LigneInventaire> {
@@ -28,4 +29,6 @@ public interface LigneInventaireRepository extends BaseRepository<LigneInventair
     List<LigneInventaire> findAllByInventaireId(@Param("inventaireId") UUID inventaireId);
 
     boolean existsByInventaireIdAndProductFournisseurId(UUID inventaireId, UUID productFournisseurId);
+
+    Optional<LigneInventaire> findByInventaireIdAndProductFournisseurId(UUID inventaireId, UUID productFournisseurId);
 }

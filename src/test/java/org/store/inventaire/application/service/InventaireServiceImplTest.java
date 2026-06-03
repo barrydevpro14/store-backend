@@ -73,6 +73,7 @@ class InventaireServiceImplTest {
     @Mock private IMagasinService magasinService;
     @Mock private IProductFournisseurService productFournisseurService;
     @Mock private IAjustementStockService ajustementStockService;
+    @Mock private org.store.stock.domain.service.StockDomainService stockDomainService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private IMessageSourceService messageSourceService;
@@ -140,6 +141,10 @@ class InventaireServiceImplTest {
     }
 
     private LigneInventaire ligne(int qteTheorique, int qteReelle) {
+        return ligne(qteTheorique, qteReelle, productFournisseur.getPrixAchat());
+    }
+
+    private LigneInventaire ligne(int qteTheorique, int qteReelle, BigDecimal prixUnitaire) {
         LigneInventaire ligne = new LigneInventaire();
         ligne.setId(UUID.randomUUID());
         ligne.setInventaire(inventaireEnCours);
@@ -147,6 +152,7 @@ class InventaireServiceImplTest {
         ligne.setQuantiteTheorique(qteTheorique);
         ligne.setQuantiteReelle(qteReelle);
         ligne.setEcart(qteReelle - qteTheorique);
+        ligne.setPrixUnitaire(prixUnitaire);
         return ligne;
     }
 
@@ -196,47 +202,32 @@ class InventaireServiceImplTest {
 
     @Test
     void addLigne_should_compute_quantiteTheorique_from_lots_and_persist_ligne() {
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 8);
+        BigDecimal prix = new BigDecimal("10.00");
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 8, prix);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(ligneInventaireDomainService.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
-                .thenReturn(false);
+        when(ligneInventaireDomainService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
+                .thenReturn(Optional.empty());
         when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId))
                 .thenReturn(List.of(lot(5), lot(5)));
-        when(ligneInventaireDomainService.create(inventaireEnCours, productFournisseur, 10, 8)).thenReturn(ligne(10, 8));
+        when(ligneInventaireDomainService.create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix)))
+                .thenReturn(ligne(10, 8));
 
         LigneInventaireResponse response = service.addLigne(inventaireId, request);
 
         assertThat(response.quantiteTheorique()).isEqualTo(10);
         assertThat(response.quantiteReelle()).isEqualTo(8);
         assertThat(response.ecart()).isEqualTo(-2);
-        verify(ligneInventaireDomainService).create(inventaireEnCours, productFournisseur, 10, 8);
-    }
-
-    @Test
-    void addLigne_should_throw_when_duplicate_product_fournisseur() {
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3);
-
-        when(currentUserService.getCurrent()).thenReturn(currentUser());
-        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
-        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(ligneInventaireDomainService.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
-                .thenReturn(true);
-
-        assertThatThrownBy(() -> service.addLigne(inventaireId, request))
-                .isInstanceOf(BadArgumentException.class);
-
-        verify(ligneInventaireDomainService, never()).create(any(), any(), eq(0), eq(0));
+        verify(ligneInventaireDomainService).create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix));
     }
 
     @Test
     void addLigne_should_throw_when_inventaire_not_en_cours() {
         inventaireEnCours.setStatut(InventaireStatut.BILAN);
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3);
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3, new BigDecimal("10.00"));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -250,7 +241,7 @@ class InventaireServiceImplTest {
         Entreprise autre = new Entreprise();
         autre.setId(UUID.randomUUID());
         magasin.setEntreprise(autre);
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3);
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3, new BigDecimal("10.00"));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -349,7 +340,7 @@ class InventaireServiceImplTest {
 
     @Test
     void passerEnBilan_should_transition_and_delegate_rapport_creation_with_computed_command() {
-        LigneInventaire ligne = ligne(10, 12);
+        LigneInventaire ligne = ligne(10, 12, new BigDecimal("15.00"));
         Inventaire bilan = new Inventaire();
         bilan.setId(inventaireId);
         bilan.setMagasin(magasin);
@@ -370,8 +361,10 @@ class InventaireServiceImplTest {
         ArgumentCaptor<RapportInventaireCommand> captor = ArgumentCaptor.forClass(RapportInventaireCommand.class);
         verify(rapportInventaireDomainService).create(eq(bilan), captor.capture());
         RapportInventaireCommand command = captor.getValue();
-        assertThat(command.montantAutomatique()).isEqualByComparingTo("100.00");
-        assertThat(command.montantPhysique()).isEqualByComparingTo("120.00");
+        // 10 × 15.00 = 150.00 (théorique × prixUnitaire saisi)
+        assertThat(command.montantAutomatique()).isEqualByComparingTo("150.00");
+        // 12 × 15.00 = 180.00 (réelle × prixUnitaire saisi)
+        assertThat(command.montantPhysique()).isEqualByComparingTo("180.00");
         assertThat(command.montantCaisse()).isEqualByComparingTo("500.00");
         assertThat(command.depense()).isEqualByComparingTo("50.00");
         assertThat(command.montantRoulement()).isEqualByComparingTo("400.00");
@@ -407,9 +400,15 @@ class InventaireServiceImplTest {
         cloture.setStatut(InventaireStatut.CLOTURE);
         cloture.setDate(LocalDate.now());
 
+        org.store.stock.domain.model.Stock stock = new org.store.stock.domain.model.Stock();
+        stock.setMagasin(magasin);
+        stock.setQuantiteDisponible(20);
+
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
         when(ligneInventaireDomainService.findAllByInventaireId(inventaireId)).thenReturn(List.of(surplus, neutre, manque));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(eq(magasinId), any()))
+                .thenReturn(Optional.of(stock));
         when(messageSourceService.getMessage(eq("inventaire.cloture.commentaire"), any(Object[].class))).thenReturn("Cloture " + inventaireId);
         when(inventaireDomainService.transitionStatut(inventaireEnCours, InventaireStatut.CLOTURE)).thenReturn(cloture);
 

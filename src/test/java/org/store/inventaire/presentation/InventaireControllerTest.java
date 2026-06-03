@@ -90,7 +90,8 @@ class InventaireControllerTest {
                 new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", "Visserie"),
                 new org.store.achat.application.dto.FournisseurSummaryResponse(UUID.randomUUID(), "Fournisseur Test"),
                 null,
-                10, 8, -2
+                10, 8, -2,
+                new java.math.BigDecimal("10.00")
         );
     }
 
@@ -106,7 +107,7 @@ class InventaireControllerTest {
 
     @Test
     void should_return_201_when_ligne_added() throws Exception {
-        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, 8);
+        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, 8, new java.math.BigDecimal("10.00"));
         when(inventaireService.addLigne(eq(inventaireId), any(LigneInventaireRequest.class))).thenReturn(sampleLigne());
 
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes")
@@ -119,7 +120,7 @@ class InventaireControllerTest {
 
     @Test
     void should_return_400_when_ligne_missing_fields() throws Exception {
-        LigneInventaireRequest body = new LigneInventaireRequest(null, null);
+        LigneInventaireRequest body = new LigneInventaireRequest(null, null, null);
 
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,7 +130,7 @@ class InventaireControllerTest {
 
     @Test
     void should_return_400_when_quantiteReelle_negative() throws Exception {
-        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, -1);
+        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, -1, new java.math.BigDecimal("10.00"));
 
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes")
                         .contentType(MediaType.APPLICATION_JSON)
