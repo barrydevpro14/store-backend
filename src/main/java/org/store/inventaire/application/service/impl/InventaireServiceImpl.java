@@ -14,6 +14,7 @@ import org.store.depense.application.dto.DepenseFilter;
 import org.store.depense.application.dto.DepenseTotalResponse;
 import org.store.depense.domain.service.DepenseDomainService;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
+import org.store.inventaire.application.dto.CloturerRequest;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
@@ -202,11 +203,15 @@ public class InventaireServiceImpl implements IInventaireService {
     /** Transition BILAN -> CLOTURE : genere un ajustement stock pour chaque ligne avec ecart != 0, puis pose statut CLOTURE + date de validation. */
     @Override
     @Transactional
-    public InventaireResponse cloturer(UUID inventaireId) {
+    public InventaireResponse cloturer(UUID inventaireId, CloturerRequest request) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Inventaire inventaire = inventaireDomainService.findById(inventaireId);
         ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
         ensureStatutBilan(inventaire);
+
+        if (request != null && request.commentaire() != null && !request.commentaire().isBlank()) {
+            inventaire.setCommentaire(request.commentaire().trim());
+        }
 
         List<LigneInventaire> lignes = ligneInventaireDomainService.findAllByInventaireId(inventaireId);
         lignes.stream()

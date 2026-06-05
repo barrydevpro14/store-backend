@@ -3,6 +3,7 @@ package org.store.inventaire.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
+import org.store.inventaire.application.dto.CloturerRequest;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
@@ -26,7 +27,7 @@ public interface IInventaireService {
 
     InventaireResponse passerEnBilan(UUID inventaireId, BilanInventaireRequest request);
 
-    InventaireResponse cloturer(UUID inventaireId);
+    InventaireResponse cloturer(UUID inventaireId, CloturerRequest request);
 
     InventaireResponse annuler(UUID inventaireId);
 

@@ -14,6 +14,7 @@ public record InventaireResponse(
         InventaireStatut statut,
         LocalDate date,
         String dateValidation,
+        String commentaire,
         String createdAt
 ) {
     public InventaireResponse(Inventaire inventaire) {
@@ -23,6 +24,7 @@ public record InventaireResponse(
                 inventaire.getStatut(),
                 inventaire.getDate(),
                 DateHelper.format(inventaire.getDateValidation()),
+                inventaire.getCommentaire(),
                 DateHelper.format(inventaire.getCreatedAt())
         );
     }

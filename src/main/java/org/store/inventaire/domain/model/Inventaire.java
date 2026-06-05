@@ -32,6 +32,9 @@ public class Inventaire extends AuditableEntity {
     @Column(name = "date_validation")
     private LocalDateTime dateValidation;
 
+    @Column(columnDefinition = "TEXT")
+    private String commentaire;
+
     @OneToMany(mappedBy = "inventaire", cascade = CascadeType.ALL)
     private List<LigneInventaire> lignes;
 

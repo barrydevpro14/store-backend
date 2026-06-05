@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
+import org.store.inventaire.application.dto.CloturerRequest;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
@@ -82,8 +83,9 @@ public class InventaireController {
 
     @PostMapping("/{id}/cloturer")
     @PreAuthorize("hasAuthority('INVENTORY_CLOSE')")
-    public ResponseEntity<InventaireResponse> cloturer(@PathVariable UUID id) {
-        return ResponseEntity.ok(inventaireService.cloturer(id));
+    public ResponseEntity<InventaireResponse> cloturer(@PathVariable UUID id,
+                                                       @RequestBody(required = false) CloturerRequest request) {
+        return ResponseEntity.ok(inventaireService.cloturer(id, request));
     }
 
     @GetMapping("/{id}/rapport")
