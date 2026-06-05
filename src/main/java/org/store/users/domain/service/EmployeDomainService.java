@@ -39,10 +39,6 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
                 ));
     }
 
-    public boolean existsByMagasinIdAndRolePermissionCode(UUID magasinId, String permissionCode) {
-        return repository.existsByMagasinIdAndRolePermissionCode(magasinId, permissionCode);
-    }
-
     public Optional<Employe> findOptionalById(UUID id) {
         return repository.findById(id);
     }

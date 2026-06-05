@@ -109,8 +109,6 @@ public class EmployeServiceImpl implements IEmployeService {
                 magasinService.findById(employeRequest.magasinId())
         );
 
-        ensureMagasinDoesNotAlreadyHaveManager(magasin.getId(), rolePermissions);
-
         utilisateurDomainService.ensureContactsAvailable(
                 employeRequest.utilisateur().email(),
                 employeRequest.utilisateur().telephone()
@@ -163,10 +161,6 @@ public class EmployeServiceImpl implements IEmployeService {
         ensureCallerCanAssignRole(currentUser, newRolePermissions);
 
         Magasin newMagasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(request.magasinId()));
-
-        if (estMontageVersManagerSurAutreMagasin(employe, newRole, newMagasin)) {
-            ensureMagasinDoesNotAlreadyHaveManager(newMagasin.getId(), newRolePermissions);
-        }
 
         utilisateurDomainService.ensureContactsAvailableForUpdate(request.email(), request.telephone(), employe.getId());
 
@@ -280,25 +274,12 @@ public class EmployeServiceImpl implements IEmployeService {
         }
     }
 
-    /** Verifie que le caller a l'autorite pour assigner un role "eleve" (qui inclut EMPLOYE_CREATE) — reserve OWNER. */
+    /** Vérifie que le caller peut assigner un rôle « élevé » (contenant EMPLOYE_CREATE).
+     *  Seul un OWNER peut assigner le rôle MANAGER — un MANAGER ne peut pas en créer d'autres. */
     public void ensureCallerCanAssignRole(UserPrincipal currentUser, List<String> rolePermissions) {
         boolean elevatedRole = rolePermissions.contains(PermissionCode.EMPLOYE_CREATE.name());
         if (elevatedRole && !currentUser.hasPermission(PermissionCode.OWNER_ACCESS)) {
             throw new ForbiddenException("employe.create.elevatedRole.forbidden");
         }
-    }
-
-    /** Empeche la nomination d'un second MANAGER sur un magasin qui en a deja un. */
-    public void ensureMagasinDoesNotAlreadyHaveManager(UUID magasinId, List<String> rolePermissions) {
-        boolean elevatedRole = rolePermissions.contains(PermissionCode.EMPLOYE_CREATE.name());
-        if (elevatedRole && employeDomainService.existsByMagasinIdAndRolePermissionCode(magasinId, PermissionCode.EMPLOYE_CREATE.name())) {
-            throw new ForbiddenException("magasin.alreadyHasManager");
-        }
-    }
-
-    /** Detecte si on promeut un employe en MANAGER (ou change le magasin d'un MANAGER vers un autre magasin) → declenche la verif d'unicite. */
-    public boolean estMontageVersManagerSurAutreMagasin(Employe employe, Role newRole, Magasin newMagasin) {
-        return !employe.getAccount().getRole().getId().equals(newRole.getId())
-                || !employe.getMagasin().getId().equals(newMagasin.getId());
     }
 }

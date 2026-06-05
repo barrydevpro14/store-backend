@@ -125,7 +125,6 @@ class EmployeServiceImplTest {
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(employeDomainService.existsByMagasinIdAndRolePermissionCode(magasinId, "EMPLOYE_CREATE")).thenReturn(false);
         when(accountService.create(eq(validAccount), eq(managerRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
@@ -197,37 +196,14 @@ class EmployeServiceImplTest {
     }
 
     @Test
-    void manager_should_be_forbidden_to_create_role_with_employe_create() {
+    void manager_should_be_forbidden_to_create_another_manager() {
         Role managerRole = roleWithId();
         when(currentUserService.getCurrent()).thenReturn(manager());
         when(roleService.findByLibelle("MANAGER")).thenReturn(managerRole);
         when(permissionsService.findAllByRoleId(managerRole.getId()))
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
 
-        EmployeRequest req = request("MANAGER", magasinId);
-
-        assertThatThrownBy(() -> service.create(req))
-                .isInstanceOf(ForbiddenException.class);
-
-        verify(magasinService, never()).findById(any());
-        verify(accountService, never()).create(any(), any());
-        verify(employeDomainService, never()).create(any(), any(), any());
-    }
-
-    @Test
-    void proprietaire_should_be_forbidden_when_magasin_already_has_a_manager() {
-        Role managerRole = roleWithId();
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("MANAGER")).thenReturn(managerRole);
-        when(permissionsService.findAllByRoleId(managerRole.getId()))
-                .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(employeDomainService.existsByMagasinIdAndRolePermissionCode(magasinId, "EMPLOYE_CREATE")).thenReturn(true);
-
-        EmployeRequest req = request("MANAGER", magasinId);
-
-        assertThatThrownBy(() -> service.create(req))
+        assertThatThrownBy(() -> service.create(request("MANAGER", magasinId)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());

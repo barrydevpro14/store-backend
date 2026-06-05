@@ -19,14 +19,6 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     @Query("SELECT employe.magasin.entreprise.id, COUNT(employe) FROM Employe employe GROUP BY employe.magasin.entreprise.id")
     List<Object[]> countAllGroupByEntrepriseId();
 
-    @Query("""
-            SELECT COUNT(employe) > 0 FROM Employe employe
-            JOIN employe.account account JOIN account.role role JOIN role.permissions permission
-            WHERE employe.magasin.id = :magasinId AND permission.code = :permissionCode
-            """)
-    boolean existsByMagasinIdAndRolePermissionCode(@Param("magasinId") UUID magasinId,
-                                                   @Param("permissionCode") String permissionCode);
-
     @Query(value = """
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
             FROM Employe employe
