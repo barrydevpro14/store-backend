@@ -450,4 +450,90 @@ class VenteProcessFlowTest {
         verify(sortieStockService, never()).consumeForVente(any());
         verify(factureClientDomainService, never()).create(any());
     }
+
+    // ── Scenario 8: DRAFT — addLigne to existing draft ───────────────────────
+
+    @Test
+    void process_add_ligne_to_existing_draft_persists_ligne_and_updates_total() {
+        draftCommande.setLignes(new java.util.ArrayList<>());
+        draftCommande.setMontantTotal(BigDecimal.ZERO);
+
+        LigneCommandeVente newLigne = new LigneCommandeVente();
+        newLigne.setId(UUID.randomUUID());
+        newLigne.setCommande(draftCommande);
+        newLigne.setProductFournisseur(productFournisseur);
+        newLigne.setQuantite(5);
+        newLigne.setPrixUnitaire(new BigDecimal("12000.00"));
+        newLigne.setMontantTotal(new BigDecimal("60000.00"));
+
+        when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
+        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(newLigne);
+
+        LigneCommandeVenteResponse result = service.addLigne(commandeId,
+                new LigneVenteRequest(productFournisseurId, 5, new BigDecimal("12000.00")));
+
+        assertThat(result.quantite()).isEqualTo(5);
+        assertThat(result.prixUnitaire()).isEqualByComparingTo("12000.00");
+
+        verify(ligneCommandeVenteDomainService).create(any());
+        verify(commandeVenteDomainService).updateMontantTotal(draftCommande, new BigDecimal("60000.00"));
+    }
+
+    // ── Scenario 9: DRAFT — deleteLigne during creation ──────────────────────
+
+    @Test
+    void process_delete_ligne_during_draft_creation_removes_ligne_and_updates_total() {
+        UUID ligne2Id = UUID.randomUUID();
+
+        LigneCommandeVente ligne1 = new LigneCommandeVente();
+        ligne1.setId(ligneId);
+        ligne1.setCommande(draftCommande);
+        ligne1.setProductFournisseur(productFournisseur);
+        ligne1.setQuantite(10);
+        ligne1.setPrixUnitaire(new BigDecimal("12000.00"));
+        ligne1.setMontantTotal(new BigDecimal("120000.00"));
+
+        LigneCommandeVente ligne2 = new LigneCommandeVente();
+        ligne2.setId(ligne2Id);
+        ligne2.setCommande(draftCommande);
+        ligne2.setProductFournisseur(productFournisseur);
+        ligne2.setQuantite(3);
+        ligne2.setPrixUnitaire(new BigDecimal("8000.00"));
+        ligne2.setMontantTotal(new BigDecimal("24000.00"));
+
+        draftCommande.setLignes(new java.util.ArrayList<>(List.of(ligne1, ligne2)));
+        draftCommande.setMontantTotal(new BigDecimal("144000.00"));
+
+        when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
+        when(ligneCommandeVenteDomainService.findById(ligneId)).thenReturn(ligne1);
+
+        service.deleteLigne(commandeId, ligneId);
+
+        verify(ligneCommandeVenteDomainService).delete(ligne1);
+        verify(commandeVenteDomainService).updateMontantTotal(
+                draftCommande, new BigDecimal("24000.00"));
+    }
+
+    @Test
+    void process_delete_last_ligne_during_creation_is_rejected() {
+        LigneCommandeVente ligne = new LigneCommandeVente();
+        ligne.setId(ligneId);
+        ligne.setCommande(draftCommande);
+        ligne.setProductFournisseur(productFournisseur);
+        ligne.setQuantite(10);
+        ligne.setPrixUnitaire(new BigDecimal("12000.00"));
+        ligne.setMontantTotal(new BigDecimal("120000.00"));
+
+        draftCommande.setLignes(List.of(ligne));
+
+        when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
+        when(ligneCommandeVenteDomainService.findById(ligneId)).thenReturn(ligne);
+
+        assertThatThrownBy(() -> service.deleteLigne(commandeId, ligneId))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(ligneCommandeVenteDomainService, never()).delete(any());
+    }
 }
