@@ -3,7 +3,6 @@ package org.store.vente.application.dto;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.dto.UserSummaryResponse;
 import org.store.common.tools.DateHelper;
-import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
@@ -17,7 +16,6 @@ public record CommandeVenteResponse(
         String reference,
         CommandeVenteStatut statut,
         ClientSummaryResponse client,
-        MagasinSummaryResponse magasin,
         UserSummaryResponse user,
         LocalDate dateVente,
         BigDecimal montantTotal,
@@ -25,29 +23,31 @@ public record CommandeVenteResponse(
         StatutFacture statutFacture,
         String createdAt
 ) {
-    /** Constructeur applicatif : la facture porte les montants et le statut. */
+    /** Constructeur applicatif : la facture porte montantPaye et le statut ; montantTotal vient de la commande. */
     public CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user, FactureClient facture) {
         this(commande, user,
                 facture != null ? facture.getStatut() : null,
-                facture != null ? facture.getMontantTotal() : BigDecimal.ZERO,
+                commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
                 facture != null && facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO);
     }
 
-    /** Projection JPQL listing : user null, montants + statutFacture viennent de FactureClient via JOIN. */
-    public CommandeVenteResponse(CommandeVente commande, StatutFacture statutFacture,
-                                 BigDecimal montantTotal, BigDecimal montantPaye) {
-        this(commande, null, statutFacture, montantTotal, montantPaye);
+    /** Projection JPQL listing : user null, statutFacture + montantPaye de la facture, montantTotal de la commande. */
+    public CommandeVenteResponse(CommandeVente commande, StatutFacture statutFacture, BigDecimal montantPaye) {
+        this(commande, null, statutFacture,
+                commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
+                montantPaye);
     }
 
-    /** Projection JPQL listing (sans statutFacture — rétrocompat). */
-    public CommandeVenteResponse(CommandeVente commande, BigDecimal montantTotal, BigDecimal montantPaye) {
-        this(commande, (StatutFacture) null, montantTotal, montantPaye);
+    /** Projection JPQL listing rétrocompat (sans statutFacture). */
+    public CommandeVenteResponse(CommandeVente commande, BigDecimal montantPaye) {
+        this(commande, (StatutFacture) null, montantPaye);
     }
 
-    /** Projection JPQL GET by id : user résolu via CAST/JOIN sur Account, montants via JOIN sur FactureClient. */
-    public CommandeVenteResponse(CommandeVente commande, UUID userId, String nomComplet,
-                                 BigDecimal montantTotal, BigDecimal montantPaye) {
-        this(commande, userId != null ? new UserSummaryResponse(userId, nomComplet) : null, null, montantTotal, montantPaye);
+    /** Projection JPQL GET by id. */
+    public CommandeVenteResponse(CommandeVente commande, UUID userId, String nomComplet, BigDecimal montantPaye) {
+        this(commande, userId != null ? new UserSummaryResponse(userId, nomComplet) : null, null,
+                commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
+                montantPaye);
     }
 
     private CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user,
@@ -58,7 +58,6 @@ public record CommandeVenteResponse(
                 commande.getReference(),
                 commande.getStatut(),
                 commande.getClient() != null ? new ClientSummaryResponse(commande.getClient()) : null,
-                new MagasinSummaryResponse(commande.getMagasin()),
                 user,
                 commande.getDate(),
                 montantTotal != null ? montantTotal : BigDecimal.ZERO,

@@ -18,7 +18,7 @@ import java.util.UUID;
 public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
 
     @Query("""
-            SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.statut, facture.montantTotal, facture.montantPaye)
+            SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.statut, facture.montantPaye)
             FROM CommandeVente commande
             LEFT JOIN commande.facture facture
             LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
@@ -29,8 +29,8 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
               AND (:#{#filter.statutAsEnum()} IS NULL OR commande.statut = :#{#filter.statutAsEnum()})
               AND (:#{#filter.statutFactureAsEnum()} IS NULL OR facture.statut = :#{#filter.statutFactureAsEnum()})
               AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
-              AND (:#{#filter.montantMin} IS NULL OR facture.montantTotal >= :#{#filter.montantMin})
-              AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})
+              AND (:#{#filter.montantMin} IS NULL OR commande.montantTotal >= :#{#filter.montantMin})
+              AND (:#{#filter.montantMax} IS NULL OR commande.montantTotal <= :#{#filter.montantMax})
               AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})
               AND commande.createdAt >= :#{#filter.createdStartDateTime()}
@@ -44,7 +44,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
     @Query("""
             SELECT new org.store.vente.application.dto.CommandeVenteResponse(
                 commande, user.id, TRIM(BOTH FROM CONCAT(COALESCE(user.nom, ''), ' ', COALESCE(user.prenom, ''))),
-                facture.montantTotal, facture.montantPaye
+                facture.montantPaye
             )
             FROM CommandeVente commande
             LEFT JOIN commande.facture facture

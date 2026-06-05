@@ -8,6 +8,7 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 import org.store.vente.domain.enums.MotifAnnulationVente;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,4 +48,7 @@ public class CommandeVente extends AuditableEntity {
     private String commentaireAnnulation;
 
     private LocalDateTime dateAnnulation;
+
+    @Column(name = "montant_total", precision = 19, scale = 2, nullable = false)
+    private BigDecimal montantTotal = BigDecimal.ZERO;
 }

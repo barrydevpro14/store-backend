@@ -85,4 +85,10 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         commande.setStatut(CommandeVenteStatut.VALIDATE);
         return save(commande);
     }
+
+    /** Met à jour le montant total dénormalisé de la commande. */
+    public CommandeVente updateMontantTotal(CommandeVente commande, java.math.BigDecimal montantTotal) {
+        commande.setMontantTotal(montantTotal.max(java.math.BigDecimal.ZERO));
+        return save(commande);
+    }
 }
