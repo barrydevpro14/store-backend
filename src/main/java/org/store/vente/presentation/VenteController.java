@@ -84,7 +84,7 @@ public class VenteController {
     }
 
     @DeleteMapping("/orders/{commandeId}/lignes/{ligneId}")
-    @PreAuthorize("hasAuthority('SALE_DELETE')")
+    @PreAuthorize("hasAuthority('SALE_UPDATE')")
     public ResponseEntity<Void> deleteLigne(@PathVariable UUID commandeId,
                                             @PathVariable UUID ligneId) {
         venteService.deleteLigne(commandeId, ligneId);
