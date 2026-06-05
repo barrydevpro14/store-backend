@@ -737,6 +737,47 @@ React Query variant (preferred for shared images): `useQuery({ queryKey: [...], 
 
 ---
 
+### 56. Currency belongs in the column header, not in every cell value
+
+In any table (DataTable or raw `<table>`) that contains monetary amounts, **the currency symbol or code must appear once in the column header — never repeated on every cell value**.
+
+**Forbidden:**
+```tsx
+// ❌ "1 500 000 F CFA" repeated on every row
+header: t('montantTotal'),
+cell: ({ row }) => format.number(row.original.montantTotal, { style: 'currency', currency })
+```
+
+**Required:**
+```tsx
+// ✓ header carries the label; cells show plain numbers
+header: `${t('montantTotal')} (${currencyLabel})`,
+cell: ({ row }) => <span className="tabular-nums">{format.number(row.original.montantTotal)}</span>
+```
+
+**How to build `currencyLabel`:** use `Intl.NumberFormat.formatToParts` with the app locale to extract the currency symbol. This resolves `XOF → F CFA`, `EUR → €`, etc. Add it as a `useMemo` in the component:
+
+```ts
+const locale = useLocale()
+const currency = useCurrency()
+const currencyLabel = useMemo(() => {
+  try {
+    const parts = new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'symbol' }).formatToParts(0)
+    return parts.find((p) => p.type === 'currency')?.value ?? currency
+  } catch { return currency }
+}, [locale, currency])
+```
+
+Add `currencyLabel` to the `useMemo` deps array for the columns definition.
+
+**Scope:** every `<th>` / `header:` that corresponds to a monetary column. Non-table inline uses (summary sentences, KPI cards, dialog totals) may keep `{ style: 'currency', currency }` formatting — this rule applies to **table columns only**.
+
+**Why:** repeating "F CFA" on every row is visual noise and wastes horizontal space. The header communicates the unit once; rows stay clean and scannable.
+
+**Applied:** CommandeAchatTable (totalHt), CommandeVenteTable (montantTotal, montantPaye), AchatDetailsContent (prixAchat, prixVente, montant), VenteDetailsContent (prixUnitaire, montantTotal), StockTable (prixMoyen, valeur), AchatLineTable (prixAchat, prixVente, subtotal), DepenseTable (montant), PaiementAbonnementTable (montant), ExpiringLotsTable (prixAchat), PlanAdminTable (prix), OwnerPaiementTable (montant), InventaireDetailsContent (prixUnitaire, total).
+
+---
+
 ## Logs / debug
 
 - **No `console.log` in production**. Temporarily acceptable in dev, remove before committing.
