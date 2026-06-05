@@ -12,6 +12,7 @@ import org.store.achat.domain.repository.CommandeAchatRepository;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -65,5 +66,11 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
     /** Compte les commandes d'achat dans un statut donné pour toute l'entreprise. */
     public long countByEntrepriseAndStatut(UUID entrepriseId, CommandeAchatStatut statut) {
         return repository.countByEntrepriseAndStatut(entrepriseId, statut);
+    }
+
+    /** Met à jour le montant total dénormalisé de la commande. */
+    public CommandeAchat updateMontantTotal(CommandeAchat commande, BigDecimal montantTotal) {
+        commande.setMontantTotal(montantTotal.max(BigDecimal.ZERO));
+        return save(commande);
     }
 }

@@ -8,6 +8,7 @@ import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.common.base.AuditableEntity;
 import org.store.magasin.domain.model.Magasin;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,4 +46,10 @@ public class CommandeAchat extends AuditableEntity {
 
     @Column(name = "date_annulation")
     private LocalDateTime dateAnnulation;
+
+    @Column(name = "montant_total", precision = 19, scale = 2, nullable = false)
+    private BigDecimal montantTotal = BigDecimal.ZERO;
+
+    @OneToOne(mappedBy = "commande", fetch = FetchType.LAZY)
+    private FactureAchat facture;
 }

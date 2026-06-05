@@ -10,9 +10,7 @@ import java.util.UUID;
 public record LigneCommandeAchatResponse(
         UUID id,
         ProductSummaryResponse produit,
-        FournisseurSummaryResponse fournisseur,
         int quantite,
-        int quantiteRecue,
         BigDecimal prixAchat,
         BigDecimal prixVente,
         BigDecimal montantLigne,
@@ -23,9 +21,7 @@ public record LigneCommandeAchatResponse(
         this(
                 ligne.getId(),
                 new ProductSummaryResponse(ligne.getProductFournisseur().getProduct()),
-                new FournisseurSummaryResponse(ligne.getProductFournisseur().getFournisseur()),
                 ligne.getQuantite(),
-                ligne.getQuantiteRecue(),
                 ligne.getPrixAchat(),
                 ligne.getPrixVente(),
                 ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite())),

@@ -146,6 +146,11 @@ public class AchatServiceImpl implements IAchatService {
 
         persistLignes(achatRequest, commande, productFournisseurs);
 
+        BigDecimal montantTotal = achatRequest.lignes().stream()
+                .map(l -> l.prixAchat().multiply(BigDecimal.valueOf(l.quantite())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        commandeAchatDomainService.updateMontantTotal(commande, montantTotal);
+
         return new AchatDraftResponse(new CommandeAchatResponse(commandeAchatDomainService.findById(commande.getId())));
     }
 
@@ -261,7 +266,6 @@ public class AchatServiceImpl implements IAchatService {
 
         productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.getPrixVente());
         productFournisseurService.applyPrixAchatMoyenFromStock(productFournisseur, stock.getPrixAchatMoyen());
-        ligneCommandeAchatDomainService.incrementQuantiteRecue(ligne, quantite);
     }
 
     /** Édite une ligne d'une commande DRAFT (quantité, prix, traçabilité lot) après validations publiques. */
@@ -276,6 +280,9 @@ public class AchatServiceImpl implements IAchatService {
         LigneCommandeAchat ligne = ensureLigneBelongsToCommande(ligneCommandeAchatDomainService.findById(ligneId), commande);
         productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligneAchatUpdateRequest.prixVente(), ligneAchatUpdateRequest.prixAchat());
 
+        BigDecimal oldLineTotal = ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()));
+        BigDecimal newLineTotal = ligneAchatUpdateRequest.prixAchat().multiply(BigDecimal.valueOf(ligneAchatUpdateRequest.quantite()));
+
         LigneCommandeAchat updated = ligneCommandeAchatDomainService.update(
                 ligne,
                 new LigneCommandeAchatUpdate(
@@ -286,6 +293,9 @@ public class AchatServiceImpl implements IAchatService {
                         ligneAchatUpdateRequest.dateExpiration()
                 )
         );
+
+        BigDecimal updatedTotal = commande.getMontantTotal().subtract(oldLineTotal).add(newLineTotal);
+        commandeAchatDomainService.updateMontantTotal(commande, updatedTotal);
 
         return new LigneCommandeAchatResponse(updated);
     }
@@ -300,7 +310,9 @@ public class AchatServiceImpl implements IAchatService {
         LigneCommandeAchat ligne = ensureLigneBelongsToCommande(ligneCommandeAchatDomainService.findById(ligneId), commande);
         ensureNotLastLigne(commande);
 
+        BigDecimal lineTotal = ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()));
         ligneCommandeAchatDomainService.delete(ligne);
+        commandeAchatDomainService.updateMontantTotal(commande, commande.getMontantTotal().subtract(lineTotal));
     }
 
     /**

@@ -36,9 +36,4 @@ public class LigneCommandeAchatDomainService extends GlobalService<LigneCommande
         return save(ligne);
     }
 
-    /** Incrémente la quantité déjà reçue sur une ligne lors d'une réception partielle. */
-    public LigneCommandeAchat incrementQuantiteRecue(LigneCommandeAchat ligne, int quantite) {
-        ligne.setQuantiteRecue(ligne.getQuantiteRecue() + quantite);
-        return save(ligne);
-    }
 }

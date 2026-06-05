@@ -22,14 +22,13 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
     long countByEntrepriseAndStatut(@Param("entrepriseId") UUID entrepriseId, @Param("statut") CommandeAchatStatut statut);
 
     @Query("""
-            SELECT new org.store.achat.application.dto.CommandeAchatResponse(commande, facture.statut)
+            SELECT new org.store.achat.application.dto.CommandeAchatResponse(commande)
             FROM CommandeAchat commande
-            LEFT JOIN org.store.achat.domain.model.FactureAchat facture ON facture.commande = commande
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.fournisseurId} IS NULL OR commande.fournisseur.id = :#{#filter.fournisseurId})
               AND (:#{#filter.statutAsEnum()} IS NULL OR commande.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.statutFactureAsEnum()} IS NULL OR facture.statut = :#{#filter.statutFactureAsEnum()})
+              AND (:#{#filter.statutFactureAsEnum()} IS NULL OR commande.facture.statut = :#{#filter.statutFactureAsEnum()})
               AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
               AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})
