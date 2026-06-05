@@ -367,10 +367,13 @@ public class VenteServiceImpl implements IVenteService {
         }
     }
 
-    /** Lève ForbiddenException si la commande n'a pas été créée par l'utilisateur courant. */
+    /** Lève ForbiddenException si la commande n'a pas été créée par l'utilisateur courant.
+     *  Les MANAGER et ADMIN peuvent éditer tous les brouillons de leur entreprise. */
     public void ensureCurrentUserOwnsCommande(CommandeVente commande) {
-        String currentAccountId = currentUserService.getCurrent().accountId().toString();
-        if (!currentAccountId.equals(commande.getCreatedBy())) {
+        UserPrincipal caller = currentUserService.getCurrent();
+        String role = caller.role();
+        if ("MANAGER".equals(role) || "ADMIN".equals(role)) return;
+        if (!caller.accountId().toString().equals(commande.getCreatedBy())) {
             throw new ForbiddenException("commandeVente.notOwner");
         }
     }
