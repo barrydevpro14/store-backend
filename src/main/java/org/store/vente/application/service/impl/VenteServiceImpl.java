@@ -6,6 +6,7 @@ import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.dto.UserSummaryResponse;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
+import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
@@ -191,6 +192,7 @@ public class VenteServiceImpl implements IVenteService {
 
         CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
         ensureCommandeIsDraft(commande);
+        ensureCurrentUserOwnsCommande(commande);
 
         ProductFournisseur productFournisseur = resolveAndValidateLine(ligneVenteRequest);
 
@@ -248,6 +250,7 @@ public class VenteServiceImpl implements IVenteService {
 
         CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
         ensureCommandeIsDraft(commande);
+        ensureCurrentUserOwnsCommande(commande);
 
         LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
         ensurePrixUnitaireAboveFloor(ligneVenteUpdateRequest.prixUnitaire(), ligne.getProductFournisseur());
@@ -266,6 +269,7 @@ public class VenteServiceImpl implements IVenteService {
     public void deleteLigne(UUID commandeId, UUID ligneId) {
         CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
         ensureCommandeIsDraft(commande);
+        ensureCurrentUserOwnsCommande(commande);
 
         LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
         ensureNotLastLigne(commande);
@@ -360,6 +364,14 @@ public class VenteServiceImpl implements IVenteService {
     public void ensureCommandeIsDraft(CommandeVente commande) {
         if (commande.getStatut() != CommandeVenteStatut.DRAFT) {
             throw new BadArgumentException("commandeVente.notDraft", commande.getStatut().name());
+        }
+    }
+
+    /** Lève ForbiddenException si la commande n'a pas été créée par l'utilisateur courant. */
+    public void ensureCurrentUserOwnsCommande(CommandeVente commande) {
+        String currentAccountId = currentUserService.getCurrent().accountId().toString();
+        if (!currentAccountId.equals(commande.getCreatedBy())) {
+            throw new ForbiddenException("commandeVente.notOwner");
         }
     }
 

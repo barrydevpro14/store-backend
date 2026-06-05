@@ -105,6 +105,7 @@ class VenteServiceImplTest {
     private UUID entrepriseId;
     private UUID magasinId;
     private UUID employeId;
+    private UUID vendeurAccountId;
     private UUID productFournisseurId;
     private UUID commandeId;
     private UUID ligneId;
@@ -121,6 +122,7 @@ class VenteServiceImplTest {
         entrepriseId = UUID.randomUUID();
         magasinId = UUID.randomUUID();
         employeId = UUID.randomUUID();
+        vendeurAccountId = UUID.randomUUID();
         productFournisseurId = UUID.randomUUID();
         commandeId = UUID.randomUUID();
         ligneId = UUID.randomUUID();
@@ -165,6 +167,7 @@ class VenteServiceImplTest {
         commande.setReference("VTE-AUTO");
         commande.setStatut(CommandeVenteStatut.DRAFT);
         commande.setMagasin(magasin);
+        commande.setCreatedBy(vendeurAccountId.toString());
         commande.setLignes(new ArrayList<>());
 
         facture = new FactureClient();
@@ -177,7 +180,7 @@ class VenteServiceImplTest {
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("SALE_READ"));
+        return new UserPrincipal(vendeurAccountId, UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("SALE_READ"));
     }
 
     private VenteRequest sampleRequest() {

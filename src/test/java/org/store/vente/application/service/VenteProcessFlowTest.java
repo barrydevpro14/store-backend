@@ -161,6 +161,8 @@ class VenteProcessFlowTest {
         vendeur.setPrenom("Awa");
         vendeur.setMagasin(magasin);
 
+        UUID vendeurAccountId = UUID.randomUUID();
+
         draftCommande = new CommandeVente();
         draftCommande.setId(commandeId);
         draftCommande.setReference("VTE-TEST-001");
@@ -168,6 +170,7 @@ class VenteProcessFlowTest {
         draftCommande.setMagasin(magasin);
         draftCommande.setDate(LocalDate.of(2026, 6, 4));
         draftCommande.setCreatedAt(LocalDateTime.now());
+        draftCommande.setCreatedBy(vendeurAccountId.toString());
         draftCommande.setLignes(new ArrayList<>());
 
         facture = new FactureClient();
@@ -181,7 +184,7 @@ class VenteProcessFlowTest {
         facture.setCommande(draftCommande);
 
         lenient().when(currentUserService.getCurrent()).thenReturn(new UserPrincipal(
-                UUID.randomUUID(), null, entrepriseId, magasinId,
+                vendeurAccountId, null, entrepriseId, magasinId,
                 "vendeur1", null, null, "SELLER", List.of()));
     }
 
