@@ -1,8 +1,10 @@
 package org.store.vente.presentation;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.vente.application.dto.AnnulationVenteRequest;
 import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
+import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
 import org.store.vente.application.dto.VenteDraftResponse;
@@ -54,6 +57,22 @@ public class VenteController {
     public ResponseEntity<VenteResponse> validate(@PathVariable UUID commandeId,
                                                   @Valid @RequestBody VenteValidateRequest venteValidateRequest) {
         return ResponseEntity.ok(venteService.validate(commandeId, venteValidateRequest));
+    }
+
+    @GetMapping("/orders/{commandeId}/lignes")
+    @PreAuthorize("hasAuthority('SALE_UPDATE')")
+    public ResponseEntity<Page<LigneCommandeVenteResponse>> findLignes(
+            @PathVariable UUID commandeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(venteService.findLignesByCommandeId(commandeId, page, size));
+    }
+
+    @PostMapping("/orders/{commandeId}/lignes")
+    @PreAuthorize("hasAuthority('SALE_UPDATE')")
+    public ResponseEntity<LigneCommandeVenteResponse> addLigne(@PathVariable UUID commandeId,
+                                                               @Valid @RequestBody LigneVenteRequest ligneVenteRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(venteService.addLigne(commandeId, ligneVenteRequest));
     }
 
     @PutMapping("/orders/{commandeId}/lignes/{ligneId}")

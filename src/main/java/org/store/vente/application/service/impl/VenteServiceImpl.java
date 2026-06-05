@@ -2,6 +2,7 @@ package org.store.vente.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.dto.UserSummaryResponse;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
@@ -64,6 +65,8 @@ import org.store.vente.domain.service.LigneCommandeVenteDomainService;
 import org.store.notification.application.event.VenteValidatedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.vente.domain.service.PaiementVenteDomainService;
+
+import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -161,12 +164,43 @@ public class VenteServiceImpl implements IVenteService {
                 CommandeVenteStatut.DRAFT
         ));
 
-        persistLignes(venteRequest, commande, productFournisseurs);
+        List<LigneCommandeVente> savedLignes = persistLignes(venteRequest, commande, productFournisseurs);
+
+        BigDecimal montantTotal = venteRequest.lignes().stream()
+                .map(l -> l.prixUnitaire().multiply(java.math.BigDecimal.valueOf(l.quantite())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        commandeVenteDomainService.updateMontantTotal(commande, montantTotal);
 
         CommandeVente refreshed = commandeVenteDomainService.findById(commande.getId());
+
+        List<LigneCommandeVenteResponse> lignesResponse = savedLignes.stream()
+                .map(LigneCommandeVenteResponse::new)
+                .toList();
+
         return new VenteDraftResponse(
-                new CommandeVenteResponse(refreshed, BigDecimal.ZERO, BigDecimal.ZERO)
+                new CommandeVenteResponse(refreshed, (StatutFacture) null, BigDecimal.ZERO),
+                lignesResponse
         );
+    }
+
+    /** Ajoute une ligne à une commande DRAFT existante (scoping PF + prix plancher + delta montantTotal). */
+    @Override
+    @Transactional
+    public LigneCommandeVenteResponse addLigne(UUID commandeId, LigneVenteRequest ligneVenteRequest) {
+        validatorService.validate(ligneVenteRequest);
+
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+
+        ProductFournisseur productFournisseur = resolveAndValidateLine(ligneVenteRequest);
+
+        LigneCommandeVente ligne = ligneCommandeVenteDomainService.create(new LigneCommandeVenteCreate(
+                commande, productFournisseur, ligneVenteRequest.quantite(), ligneVenteRequest.prixUnitaire()
+        ));
+
+        commandeVenteDomainService.updateMontantTotal(commande, commande.getMontantTotal().add(ligne.getMontantTotal()));
+
+        return new LigneCommandeVenteResponse(ligne);
     }
 
     /** Matérialise une commande DRAFT : consomme le stock FIFO par ligne, crée facture + paiement initial, bascule DELIVERED. */
@@ -218,7 +252,10 @@ public class VenteServiceImpl implements IVenteService {
         LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
         ensurePrixUnitaireAboveFloor(ligneVenteUpdateRequest.prixUnitaire(), ligne.getProductFournisseur());
 
+        BigDecimal ancienTotal = ligne.getMontantTotal();
         LigneCommandeVente updated = ligneCommandeVenteDomainService.update(ligne, ligneVenteUpdateRequest.quantite(), ligneVenteUpdateRequest.prixUnitaire());
+        BigDecimal delta = updated.getMontantTotal().subtract(ancienTotal);
+        commandeVenteDomainService.updateMontantTotal(commande, commande.getMontantTotal().add(delta));
 
         return new LigneCommandeVenteResponse(updated);
     }
@@ -233,6 +270,7 @@ public class VenteServiceImpl implements IVenteService {
         LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
         ensureNotLastLigne(commande);
 
+        commandeVenteDomainService.updateMontantTotal(commande, commande.getMontantTotal().subtract(ligne.getMontantTotal()));
         ligneCommandeVenteDomainService.delete(ligne);
     }
 
@@ -269,6 +307,14 @@ public class VenteServiceImpl implements IVenteService {
                 lignes,
                 paiementsResponse
         );
+    }
+
+    /** Retourne les lignes d'une commande paginées — scoping entreprise du caller. */
+    @Override
+    public Page<LigneCommandeVenteResponse> findLignesByCommandeId(UUID commandeId, int page, int size) {
+        ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        return ligneCommandeVenteDomainService.findPagedByCommandeId(commandeId, page, size)
+                .map(LigneCommandeVenteResponse::new);
     }
 
     /** Annule une vente DELIVERED dans la fenêtre autorisée, ré-injecte le stock et bascule commande + facture en ANNULEE. */
@@ -363,14 +409,16 @@ public class VenteServiceImpl implements IVenteService {
         return productFournisseur;
     }
 
-    /** Persiste chaque ligne de la commande DRAFT (snapshot prixUnitaire + montantTotal calculé). */
-    public void persistLignes(VenteRequest request, CommandeVente commande, List<ProductFournisseur> productFournisseurs) {
+    /** Persiste chaque ligne de la commande DRAFT (snapshot prixUnitaire + montantTotal calculé) et retourne les entités sauvegardées. */
+    public List<LigneCommandeVente> persistLignes(VenteRequest request, CommandeVente commande, List<ProductFournisseur> productFournisseurs) {
         List<LigneVenteRequest> lignes = request.lignes();
         Iterator<ProductFournisseur> productFournisseurIterator = productFournisseurs.iterator();
 
-        lignes.forEach(ligne -> ligneCommandeVenteDomainService.create(new LigneCommandeVenteCreate(
-                commande, productFournisseurIterator.next(), ligne.quantite(), ligne.prixUnitaire()
-        )));
+        return lignes.stream()
+                .map(ligne -> ligneCommandeVenteDomainService.create(new LigneCommandeVenteCreate(
+                        commande, productFournisseurIterator.next(), ligne.quantite(), ligne.prixUnitaire()
+                )))
+                .toList();
     }
 
     /** Consomme les lots FIFO du PF d'une ligne validée (sorties stock + decrement Stock + journal SORTIE_VENTE). */

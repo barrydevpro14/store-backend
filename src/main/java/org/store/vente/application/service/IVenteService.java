@@ -2,7 +2,9 @@ package org.store.vente.application.service;
 
 import org.store.vente.application.dto.AnnulationVenteRequest;
 import org.store.vente.application.dto.AnnulationVenteResponse;
+import org.springframework.data.domain.Page;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
+import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
 import org.store.vente.application.dto.VenteDraftResponse;
@@ -31,6 +33,15 @@ public interface IVenteService {
      * bascule le statut → DELIVERED. Lève BadArgument si la commande n'est pas en DRAFT.
      */
     VenteResponse validate(UUID commandeId, VenteValidateRequest venteValidateRequest);
+
+    /** Retourne les lignes d'une commande paginées (draft en cours de saisie). Scoping entreprise du caller. */
+    Page<LigneCommandeVenteResponse> findLignesByCommandeId(UUID commandeId, int page, int size);
+
+    /**
+     * Ajoute une ligne à une commande DRAFT existante. Mêmes validations que {@code create} :
+     * scoping PF + {@code prixUnitaire ≥ pf.prixVente}. Met à jour {@code montantTotal}.
+     */
+    LigneCommandeVenteResponse addLigne(UUID commandeId, LigneVenteRequest ligneVenteRequest);
 
     /**
      * Édite une ligne d'une commande DRAFT (quantité, prixUnitaire). Garde stricte :

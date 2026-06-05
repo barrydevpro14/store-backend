@@ -1,5 +1,7 @@
 package org.store.vente.domain.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -33,6 +35,11 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         ligne.setPrixUnitaire(prixUnitaire);
         ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
         return save(ligne);
+    }
+
+    /** Retourne les lignes d'une commande paginées (utilisé par le formulaire de saisie brouillon). */
+    public Page<LigneCommandeVente> findPagedByCommandeId(UUID commandeId, int page, int size) {
+        return repository.findPagedByCommandeId(commandeId, PageRequest.of(page, size));
     }
 
     /** Top N produits les plus vendus (par quantité) dans le magasin sur la journée du filter. */

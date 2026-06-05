@@ -1,5 +1,6 @@
 package org.store.vente.domain.repository;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface LigneCommandeVenteRepository extends BaseRepository<LigneCommandeVente> {
+
+    @Query("SELECT l FROM LigneCommandeVente l WHERE l.commande.id = :commandeId ORDER BY l.id ASC")
+    Page<LigneCommandeVente> findPagedByCommandeId(@Param("commandeId") UUID commandeId, Pageable pageable);
 
     @Query("""
             SELECT new org.store.vente.application.dto.TopProduitResponse(
