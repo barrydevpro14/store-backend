@@ -56,8 +56,7 @@ class CommandeVenteControllerTest {
     private CommandeVenteResponse sampleListItem() {
         return new CommandeVenteResponse(
                 UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.VALIDATE,
-                null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                null, LocalDate.of(2026, 5, 16),
+                null, null, LocalDate.of(2026, 5, 16),
                 new BigDecimal("150.00"), BigDecimal.ZERO,
                 null, "2026-05-16 10:00:00"
         );
@@ -66,7 +65,7 @@ class CommandeVenteControllerTest {
     private CommandeVenteResponse sampleDetailWithUser(UUID id) {
         return new CommandeVenteResponse(
                 id, "VTE-AUTO-002", CommandeVenteStatut.VALIDATE,
-                null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
+                null,
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),
                 new BigDecimal("150.00"), BigDecimal.ZERO,

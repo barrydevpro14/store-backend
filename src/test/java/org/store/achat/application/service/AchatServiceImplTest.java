@@ -284,7 +284,6 @@ class AchatServiceImplTest {
         assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("FAC-001");
 
         verify(productFournisseurService).applyPrixVenteFromPurchase(productFournisseur, new BigDecimal("15.00"));
-        verify(ligneCommandeAchatDomainService).incrementQuantiteRecue(ligne, 100);
         verify(commandeAchatDomainService).markReceptionnee(commande);
     }
 

@@ -71,8 +71,7 @@ class CommandeVenteServiceImplTest {
     private CommandeVenteResponse sampleResponse() {
         return new CommandeVenteResponse(
                 UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.VALIDATE,
-                null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                null, LocalDate.of(2026, 5, 16),
+                null, null, LocalDate.of(2026, 5, 16),
                 new BigDecimal("1300.00"), BigDecimal.ZERO,
                 null, "2026-05-16 10:00:00"
         );
@@ -112,8 +111,7 @@ class CommandeVenteServiceImplTest {
         UUID commandeId = UUID.randomUUID();
         CommandeVenteResponse responseWithUser = new CommandeVenteResponse(
                 commandeId, "VTE-AUTO-002", CommandeVenteStatut.VALIDATE,
-                null, new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
+                null, new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),
                 new BigDecimal("1300.00"), BigDecimal.ZERO,
                 null, "2026-05-16 10:00:00"

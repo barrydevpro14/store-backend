@@ -228,7 +228,7 @@ class InventaireProcessFlowTest {
         when(messageSourceService.getMessage(any(String.class), any(Object[].class))).thenReturn("Clôture inventaire");
         when(inventaireDomainService.transitionStatut(bilanInventaire, InventaireStatut.CLOTURE)).thenReturn(clotureInventaire);
 
-        InventaireResponse clotureResult = service.cloturer(inventaireId);
+        InventaireResponse clotureResult = service.cloturer(inventaireId, null);
 
         assertThat(clotureResult.statut()).isEqualTo(InventaireStatut.CLOTURE);
         // Adjustment must have been triggered for the line with ecart = -1

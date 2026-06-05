@@ -212,7 +212,7 @@ class VenteServiceImplTest {
         when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
-        when(ligneCommandeVenteDomainService.create(any())).thenReturn(new LigneCommandeVente());
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(100, new BigDecimal("10.00")));
 
         VenteDraftResponse response = service.create(req);
 
@@ -236,7 +236,7 @@ class VenteServiceImplTest {
         when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
-        when(ligneCommandeVenteDomainService.create(any())).thenReturn(new LigneCommandeVente());
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(100, new BigDecimal("10.00")));
 
         ArgumentCaptor<CommandeVenteCreate> commandeCaptor = ArgumentCaptor.forClass(CommandeVenteCreate.class);
         service.create(sampleRequest());

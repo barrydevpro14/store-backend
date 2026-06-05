@@ -93,7 +93,6 @@ class VenteControllerTest {
         return new CommandeVenteResponse(
                 commandeId, "VTE-AUTO", CommandeVenteStatut.DRAFT,
                 null,
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 null,
                 LocalDate.of(2026, 5, 18),
                 BigDecimal.ZERO, BigDecimal.ZERO,
@@ -105,7 +104,6 @@ class VenteControllerTest {
         return new CommandeVenteResponse(
                 commandeId, "VTE-AUTO", CommandeVenteStatut.VALIDATE,
                 null,
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 18),
                 new BigDecimal("150.00"), BigDecimal.ZERO,
@@ -123,7 +121,7 @@ class VenteControllerTest {
 
     @Test
     void should_return_201_when_draft_created() throws Exception {
-        when(venteService.create(any(VenteRequest.class))).thenReturn(new VenteDraftResponse(draftCommandeResponse()));
+        when(venteService.create(any(VenteRequest.class))).thenReturn(new VenteDraftResponse(draftCommandeResponse(), List.of()));
 
         mockMvc.perform(post(VenteController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -185,7 +183,6 @@ class VenteControllerTest {
         LigneCommandeVenteResponse updated = new LigneCommandeVenteResponse(
                 ligneId,
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", null),
-                new FournisseurSummaryResponse(UUID.randomUUID(), "F-1"),
                 null,
                 20, new BigDecimal("18.00"), new BigDecimal("360.00")
         );

@@ -95,8 +95,8 @@ class AchatControllerTest {
         return new CommandeAchatResponse(
                 commandeId, "CMD-AUTO", CommandeAchatStatut.DRAFT,
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00"
+                LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00",
+                java.math.BigDecimal.ZERO
         );
     }
 
@@ -104,8 +104,8 @@ class AchatControllerTest {
         return new CommandeAchatResponse(
                 commandeId, "CMD-AUTO", CommandeAchatStatut.RECEPTIONNEE,
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00"
+                LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00",
+                new java.math.BigDecimal("1000.00")
         );
     }
 
@@ -185,8 +185,7 @@ class AchatControllerTest {
         LigneCommandeAchatResponse ligne = new LigneCommandeAchatResponse(
                 UUID.randomUUID(),
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
-                new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
-                10, 0, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
+                10, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
                 "LOT-001", null
         );
         AchatDetailsResponse details = new AchatDetailsResponse(receptionneeCommandeResponse(), sampleFacture(), List.of(ligne));
@@ -205,8 +204,7 @@ class AchatControllerTest {
         LigneCommandeAchatResponse updated = new LigneCommandeAchatResponse(
                 ligneId,
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
-                new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
-                200, 0, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
+                200, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
                 "LOT-002", null
         );
         when(achatService.updateLigne(eq(commandeId), eq(ligneId), any(LigneAchatUpdateRequest.class)))

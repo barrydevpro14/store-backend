@@ -80,7 +80,7 @@ class InventaireControllerTest {
         return new InventaireResponse(
                 inventaireId,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                statut, LocalDate.now(), null, "2026-05-16 10:00:00"
+                statut, LocalDate.now(), null, null, "2026-05-16 10:00:00"
         );
     }
 
@@ -175,7 +175,7 @@ class InventaireControllerTest {
 
     @Test
     void should_return_200_when_cloturer() throws Exception {
-        when(inventaireService.cloturer(inventaireId)).thenReturn(sample(InventaireStatut.CLOTURE));
+        when(inventaireService.cloturer(inventaireId, null)).thenReturn(sample(InventaireStatut.CLOTURE));
 
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/cloturer"))
                 .andExpect(status().isOk())

@@ -412,7 +412,7 @@ class InventaireServiceImplTest {
         when(messageSourceService.getMessage(eq("inventaire.cloture.commentaire"), any(Object[].class))).thenReturn("Cloture " + inventaireId);
         when(inventaireDomainService.transitionStatut(inventaireEnCours, InventaireStatut.CLOTURE)).thenReturn(cloture);
 
-        InventaireResponse response = service.cloturer(inventaireId);
+        InventaireResponse response = service.cloturer(inventaireId, null);
 
         assertThat(response.statut()).isEqualTo(InventaireStatut.CLOTURE);
         ArgumentCaptor<AjustementStockRequest> captor = ArgumentCaptor.forClass(AjustementStockRequest.class);
@@ -432,7 +432,7 @@ class InventaireServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
 
-        assertThatThrownBy(() -> service.cloturer(inventaireId))
+        assertThatThrownBy(() -> service.cloturer(inventaireId, null))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(ajustementStockService, never()).create(any());
