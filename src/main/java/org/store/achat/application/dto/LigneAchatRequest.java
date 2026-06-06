@@ -10,7 +10,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record LigneAchatRequest(
-        @NotNull UUID productFournisseurId,
+        @NotNull UUID productId,
+        @NotNull UUID qualityId,
         @NotNull @Positive Integer quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixAchat,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixVente,

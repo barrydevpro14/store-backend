@@ -8,7 +8,9 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record LigneVenteRequest(
-        @NotNull UUID productFournisseurId,
+        @NotNull UUID productId,
+        @NotNull UUID qualityId,
+        @NotNull UUID fournisseurId,
         @NotNull @Positive Integer quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixUnitaire
 ) {

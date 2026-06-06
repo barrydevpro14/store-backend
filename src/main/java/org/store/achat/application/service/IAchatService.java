@@ -7,6 +7,8 @@ import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
+import org.springframework.data.domain.Page;
+import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
 import org.store.achat.application.dto.PaiementAchatRequest;
@@ -32,6 +34,12 @@ public interface IAchatService {
      * n'est pas en DRAFT.
      */
     AchatResponse receive(UUID commandeId, AchatReceiveRequest achatReceiveRequest);
+
+    /** Retourne les lignes d'une commande paginées (brouillon en cours de saisie). Scoping entreprise du caller. */
+    Page<LigneCommandeAchatResponse> findLignesByCommandeId(UUID commandeId, int page, int size);
+
+    /** Ajoute une ligne à une commande DRAFT existante. Mêmes validations que {@code create} (scoping PF + prix). */
+    LigneCommandeAchatResponse addLigne(UUID commandeId, LigneAchatRequest ligneAchatRequest);
 
     /**
      * Édite une ligne d'une commande DRAFT (quantité, prix, traçabilité lot). Garde stricte : commande

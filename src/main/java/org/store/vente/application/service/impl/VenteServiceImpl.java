@@ -392,10 +392,10 @@ public class VenteServiceImpl implements IVenteService {
         }
     }
 
-    /** Vérifie {@code prixUnitaire ≥ pf.prixVente} (plancher fournisseur). Lève BadArgument sinon. */
+    /** Vérifie {@code prixUnitaire > pf.prixAchat} (marge minimale). Lève BadArgument sinon. */
     public void ensurePrixUnitaireAboveFloor(BigDecimal prixUnitaire, ProductFournisseur productFournisseur) {
-        if (prixUnitaire.compareTo(productFournisseur.getPrixVente()) < 0) {
-            throw new BadArgumentException("vente.prixUnitaire.belowFloor", productFournisseur.getPrixVente().toString());
+        if (prixUnitaire.compareTo(productFournisseur.getPrixAchat()) <= 0) {
+            throw new BadArgumentException("vente.prixUnitaire.belowFloor", productFournisseur.getPrixAchat().toString());
         }
     }
 
@@ -414,10 +414,10 @@ public class VenteServiceImpl implements IVenteService {
                 .toList();
     }
 
-    /** Charge un ProductFournisseur scopé entreprise et valide que le prixUnitaire ne descend pas sous pf.prixVente. */
+    /** Résout le ProductFournisseur (productId + fournisseurId + qualityId) et valide prixUnitaire > prixAchat. */
     public ProductFournisseur resolveAndValidateLine(LigneVenteRequest ligne) {
         ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
-                productFournisseurService.findById(ligne.productFournisseurId()));
+                productFournisseurService.findByTriplet(ligne.productId(), ligne.fournisseurId(), ligne.qualityId()));
 
         ensurePrixUnitaireAboveFloor(ligne.prixUnitaire(), productFournisseur);
         return productFournisseur;

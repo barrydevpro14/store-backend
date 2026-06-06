@@ -2,6 +2,7 @@ package org.store.achat.application.dto;
 
 import org.store.achat.domain.model.LigneCommandeAchat;
 import org.store.produit.application.dto.ProductSummaryResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,6 +11,7 @@ import java.util.UUID;
 public record LigneCommandeAchatResponse(
         UUID id,
         ProductSummaryResponse produit,
+        QualitySummaryResponse quality,
         int quantite,
         BigDecimal prixAchat,
         BigDecimal prixVente,
@@ -21,6 +23,7 @@ public record LigneCommandeAchatResponse(
         this(
                 ligne.getId(),
                 new ProductSummaryResponse(ligne.getProductFournisseur().getProduct()),
+                new QualitySummaryResponse(ligne.getProductFournisseur().getQuality()),
                 ligne.getQuantite(),
                 ligne.getPrixAchat(),
                 ligne.getPrixVente(),

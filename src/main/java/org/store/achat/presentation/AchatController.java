@@ -1,8 +1,10 @@
 package org.store.achat.presentation;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.achat.application.dto.AchatDraftResponse;
+import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.AchatReceiveRequest;
 import org.store.achat.application.dto.AchatRequest;
 import org.store.achat.application.dto.AchatResponse;
@@ -63,6 +66,22 @@ public class AchatController {
         return ResponseEntity.ok(achatService.receive(commandeId, achatReceiveRequest));
     }
 
+    @GetMapping("/orders/{commandeId}/lignes")
+    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    public ResponseEntity<Page<LigneCommandeAchatResponse>> findLignes(
+            @PathVariable UUID commandeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(achatService.findLignesByCommandeId(commandeId, page, size));
+    }
+
+    @PostMapping("/orders/{commandeId}/lignes")
+    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    public ResponseEntity<LigneCommandeAchatResponse> addLigne(@PathVariable UUID commandeId,
+                                                               @Valid @RequestBody LigneAchatRequest ligneAchatRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(achatService.addLigne(commandeId, ligneAchatRequest));
+    }
+
     @PutMapping("/orders/{commandeId}/lignes/{ligneId}")
     @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
     public ResponseEntity<LigneCommandeAchatResponse> updateLigne(@PathVariable UUID commandeId,
@@ -72,7 +91,7 @@ public class AchatController {
     }
 
     @DeleteMapping("/orders/{commandeId}/lignes/{ligneId}")
-    @PreAuthorize("hasAuthority('PURCHASE_DELETE')")
+    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
     public ResponseEntity<Void> deleteLigne(@PathVariable UUID commandeId,
                                             @PathVariable UUID ligneId) {
         achatService.deleteLigne(commandeId, ligneId);

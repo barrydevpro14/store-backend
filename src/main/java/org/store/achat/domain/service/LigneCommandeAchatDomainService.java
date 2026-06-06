@@ -1,11 +1,15 @@
 package org.store.achat.domain.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.store.achat.application.dto.LigneCommandeAchatCreate;
 import org.store.achat.application.dto.LigneCommandeAchatUpdate;
 import org.store.achat.domain.model.LigneCommandeAchat;
 import org.store.achat.domain.repository.LigneCommandeAchatRepository;
 import org.store.common.service.GlobalService;
+
+import java.util.UUID;
 
 @Service
 public class LigneCommandeAchatDomainService extends GlobalService<LigneCommandeAchat, LigneCommandeAchatRepository> {
@@ -24,6 +28,11 @@ public class LigneCommandeAchatDomainService extends GlobalService<LigneCommande
         ligne.setNumeroLot(ligneCommandeAchatCreate.numeroLot());
         ligne.setDateExpiration(ligneCommandeAchatCreate.dateExpiration());
         return save(ligne);
+    }
+
+    /** Retourne les lignes d'une commande paginées (brouillon en cours de saisie). */
+    public Page<LigneCommandeAchat> findPagedByCommandeId(UUID commandeId, int page, int size) {
+        return repository.findPagedByCommandeId(commandeId, PageRequest.of(page, size));
     }
 
     /** Met à jour quantité + prix + traçabilité lot d'une ligne en DRAFT (snapshot avant matérialisation). */

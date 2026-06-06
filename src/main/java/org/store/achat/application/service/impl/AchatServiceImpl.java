@@ -60,6 +60,8 @@ import org.store.stock.domain.service.EntreeStockDomainService;
 import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
 
+import org.springframework.data.domain.Page;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Iterator;
@@ -144,14 +146,53 @@ public class AchatServiceImpl implements IAchatService {
                 CommandeAchatStatut.DRAFT
         ));
 
-        persistLignes(achatRequest, commande, productFournisseurs);
+        List<LigneCommandeAchat> savedLignes = persistLignes(achatRequest, commande, productFournisseurs);
 
         BigDecimal montantTotal = achatRequest.lignes().stream()
                 .map(l -> l.prixAchat().multiply(BigDecimal.valueOf(l.quantite())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         commandeAchatDomainService.updateMontantTotal(commande, montantTotal);
 
-        return new AchatDraftResponse(new CommandeAchatResponse(commandeAchatDomainService.findById(commande.getId())));
+        List<LigneCommandeAchatResponse> lignesResponse = savedLignes.stream()
+                .map(LigneCommandeAchatResponse::new)
+                .toList();
+
+        return new AchatDraftResponse(
+                new CommandeAchatResponse(commandeAchatDomainService.findById(commande.getId())),
+                lignesResponse
+        );
+    }
+
+    /** Retourne les lignes d'une commande paginées — scoping entreprise du caller. */
+    @Override
+    public Page<LigneCommandeAchatResponse> findLignesByCommandeId(UUID commandeId, int page, int size) {
+        commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        return ligneCommandeAchatDomainService.findPagedByCommandeId(commandeId, page, size)
+                .map(LigneCommandeAchatResponse::new);
+    }
+
+    /** Ajoute une ligne à une commande DRAFT existante (scoping PF + prix + delta montantTotal). */
+    @Override
+    @Transactional
+    public LigneCommandeAchatResponse addLigne(UUID commandeId, LigneAchatRequest ligneAchatRequest) {
+        validatorService.validate(ligneAchatRequest);
+
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        ensureCommandeIsDraft(commande);
+
+        Fournisseur fournisseur = commande.getFournisseur();
+        ProductFournisseur productFournisseur = resolveAndValidateLine(ligneAchatRequest, fournisseur);
+
+        LigneCommandeAchat ligne = ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
+                commande, productFournisseur,
+                ligneAchatRequest.quantite(), ligneAchatRequest.prixAchat(), ligneAchatRequest.prixVente(),
+                ligneAchatRequest.numeroLot(), ligneAchatRequest.dateExpiration()
+        ));
+
+        BigDecimal lineTotal = ligneAchatRequest.prixAchat().multiply(BigDecimal.valueOf(ligneAchatRequest.quantite()));
+        commandeAchatDomainService.updateMontantTotal(commande, commande.getMontantTotal().add(lineTotal));
+
+        return new LigneCommandeAchatResponse(ligne);
     }
 
     /**
@@ -376,29 +417,31 @@ public class AchatServiceImpl implements IAchatService {
                 .toList();
     }
 
-    /** Valide prixVente > prixAchat, résout le PF, vérifie son scoping entreprise et sa cohérence avec le fournisseur cible. */
+    /** Valide prixVente > prixAchat puis trouve ou crée le ProductFournisseur (productId + fournisseur + qualityId). */
     public ProductFournisseur resolveAndValidateLine(LigneAchatRequest ligne, Fournisseur fournisseur) {
         productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligne.prixVente(), ligne.prixAchat());
 
-        ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
-                productFournisseurService.findById(ligne.productFournisseurId()));
-
-        if (!productFournisseur.getFournisseur().getId().equals(fournisseur.getId())) {
-            throw new BadArgumentException("achat.fournisseur.productMismatch");
-        }
-        return productFournisseur;
+        org.store.produit.application.dto.ProductFournisseurResponse pf = productFournisseurService.findOrCreate(
+                new org.store.produit.application.dto.ProductFournisseurRequest(
+                        ligne.productId(), fournisseur.getId(), ligne.qualityId(),
+                        ligne.prixAchat(), ligne.prixVente(), null, null
+                )
+        );
+        return productFournisseurService.findById(pf.id());
     }
 
-    /** Persiste chaque ligne de la commande DRAFT (snapshot prix + traçabilité lot). */
-    public void persistLignes(AchatRequest request, CommandeAchat commande, List<ProductFournisseur> productFournisseurs) {
+    /** Persiste chaque ligne de la commande DRAFT (snapshot prix + traçabilité lot) et retourne les entités sauvegardées. */
+    public List<LigneCommandeAchat> persistLignes(AchatRequest request, CommandeAchat commande, List<ProductFournisseur> productFournisseurs) {
         List<LigneAchatRequest> lignes = request.lignes();
         Iterator<ProductFournisseur> productFournisseurIterator = productFournisseurs.iterator();
 
-        lignes.forEach(ligne -> ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
-                commande, productFournisseurIterator.next(),
-                ligne.quantite(), ligne.prixAchat(), ligne.prixVente(),
-                ligne.numeroLot(), ligne.dateExpiration()
-        )));
+        return lignes.stream()
+                .map(ligne -> ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
+                        commande, productFournisseurIterator.next(),
+                        ligne.quantite(), ligne.prixAchat(), ligne.prixVente(),
+                        ligne.numeroLot(), ligne.dateExpiration()
+                )))
+                .toList();
     }
 
     /**
