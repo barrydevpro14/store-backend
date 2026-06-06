@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.BaseEntity;
+import org.store.entreprise.domain.model.Entreprise;
 
 import java.util.Set;
 
@@ -18,13 +19,21 @@ public class Role extends BaseEntity {
     private String description;
 
     /**
-     * Marqueur explicite : ce rôle peut-il être attribué à un employé via
-     * `EmployeServiceImpl.create` ? `true` pour MANAGER, SELLER ; `false`
-     * pour OWNER (créé par l'inscription) et ADMIN (super-admin SaaS).
-     * Mappé sur la colonne `assignable_to_employe` (DEFAULT FALSE).
+     * Marqueur explicite : ce rôle peut-il être attribué à un employé ?
+     * `true` pour MANAGER, SELLER et tous les rôles personnalisés ;
+     * `false` pour OWNER et ADMIN (rôles système non délégables).
      */
     @Column(name = "assignable_to_employe", nullable = false)
     private boolean assignableToEmploye;
+
+    /** `null` = rôle système global. Non-null = rôle personnalisé scoped à une entreprise. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "entreprise_id")
+    private Entreprise entreprise;
+
+    /** Seuls les rôles personnalisés peuvent être désactivés. Les rôles système sont toujours actifs. */
+    @Column(nullable = false)
+    private boolean actif = true;
 
     @ManyToMany
     @JoinTable(
@@ -33,4 +42,9 @@ public class Role extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
     private Set<Permissions> permissions;
+
+    /** Returns true if this is a system (global) role — entreprise is null. */
+    public boolean isSystemRole() {
+        return entreprise == null;
+    }
 }

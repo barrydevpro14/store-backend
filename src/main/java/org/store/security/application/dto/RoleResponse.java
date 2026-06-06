@@ -7,16 +7,18 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Lecture-seule d'un {@link Role} (référentiel RBAC). Inclut la liste
- * triée des codes de permissions et le flag explicite
- * `assignableToEmploye` (mirroir DB) que le frontend utilise pour filtrer
- * ses selectors "rôle d'un employé" sans heuristique permission-based.
+ * Lecture-seule d'un {@link Role}. Inclut la liste triée des codes de
+ * permissions, le flag {@code assignableToEmploye}, et les champs
+ * multi-tenant ajoutés en V36 : {@code entrepriseId} (null = rôle
+ * système) et {@code actif}.
  */
 public record RoleResponse(
         UUID id,
         String libelle,
         String description,
         boolean assignableToEmploye,
+        UUID entrepriseId,
+        boolean actif,
         List<String> permissions
 ) {
     public RoleResponse(Role role) {
@@ -25,6 +27,8 @@ public record RoleResponse(
                 role.getLibelle(),
                 role.getDescription(),
                 role.isAssignableToEmploye(),
+                role.getEntreprise() != null ? role.getEntreprise().getId() : null,
+                role.isActif(),
                 role.getPermissions().stream()
                         .map(Permissions::getCode)
                         .sorted()

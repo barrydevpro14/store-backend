@@ -15,6 +15,11 @@ permissions:
   - CONTACT_READ
   - CONTACT_RESPOND
 
+  # ROLE management (custom per-company roles)
+  - ROLE_CREATE
+  - ROLE_UPDATE
+  - ROLE_DELETE
+
   # Module-level access tickets — gate the sidebar entry and the module shell.
   # Per-screen CRUD permissions still filter sub-nav tabs and row actions.
   - ENTREPRISE_ACCESS
@@ -213,6 +218,9 @@ roles:
       - USER_LOCK
       - USER_UNLOCK
       - USER_ASSIGN_ROLE
+      - ROLE_CREATE
+      - ROLE_UPDATE
+      - ROLE_DELETE
       - COMPANY_CREATE
       - COMPANY_UPDATE
       - COMPANY_READ
@@ -335,6 +343,9 @@ roles:
       - USER_LOCK
       - USER_UNLOCK
       - USER_ASSIGN_ROLE
+      - ROLE_CREATE
+      - ROLE_UPDATE
+      - ROLE_DELETE
       - COMPANY_READ
       - COMPANY_UPDATE
       - STORE_CREATE

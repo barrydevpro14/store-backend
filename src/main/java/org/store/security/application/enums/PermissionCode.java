@@ -10,6 +10,10 @@ public enum PermissionCode {
     EMPLOYE_RESET_PASSWORD,
     ADMIN_ACCESS,
 
+    ROLE_CREATE,
+    ROLE_UPDATE,
+    ROLE_DELETE,
+
     CONTACT_READ,
     CONTACT_RESPOND,
 

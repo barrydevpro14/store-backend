@@ -4,15 +4,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.store.security.application.dto.RoleRequest;
 import org.store.security.application.dto.RoleResponse;
+import org.store.security.application.dto.RoleUpdateRequest;
 import org.store.security.application.service.IRoleService;
 
 import java.util.List;
@@ -33,19 +28,45 @@ public class RoleController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<RoleResponse>> list() {
-        return ResponseEntity.ok(roleService.findAll());
+        return ResponseEntity.ok(roleService.findAllScoped());
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('USER_ASSIGN_ROLE')")
+    @PreAuthorize("hasAuthority('ROLE_CREATE')")
     public ResponseEntity<RoleResponse> create(@Valid @RequestBody RoleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(request));
     }
 
-    @PutMapping("/{id}/permissions")
-    @PreAuthorize("hasAuthority('USER_ASSIGN_ROLE')")
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_UPDATE')")
+    public ResponseEntity<RoleResponse> update(@PathVariable UUID id,
+                                               @Valid @RequestBody RoleUpdateRequest request) {
+        return ResponseEntity.ok(roleService.update(id, request));
+    }
+
+    @PatchMapping("/{id}/permissions")
+    @PreAuthorize("hasAuthority('ROLE_UPDATE')")
     public ResponseEntity<RoleResponse> updatePermissions(@PathVariable UUID id,
                                                           @RequestBody List<String> permissionCodes) {
         return ResponseEntity.ok(roleService.updatePermissions(id, permissionCodes));
+    }
+
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('ROLE_UPDATE')")
+    public ResponseEntity<RoleResponse> activate(@PathVariable UUID id) {
+        return ResponseEntity.ok(roleService.activate(id));
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasAuthority('ROLE_UPDATE')")
+    public ResponseEntity<RoleResponse> deactivate(@PathVariable UUID id) {
+        return ResponseEntity.ok(roleService.deactivate(id));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_DELETE')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        roleService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
