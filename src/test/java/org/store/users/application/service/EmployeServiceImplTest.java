@@ -58,6 +58,7 @@ class EmployeServiceImplTest {
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
+    @Mock private org.store.common.service.IEmailService emailService;
 
     @InjectMocks
     private EmployeServiceImpl service;
@@ -66,7 +67,7 @@ class EmployeServiceImplTest {
     private UUID magasinId;
     private Magasin magasin;
     private UtilisateurRequest validUtilisateur;
-    private AccountRequest validAccount;
+    private static final String VALID_USERNAME = "john.emp";
 
     @BeforeEach
     void setUp() {
@@ -80,7 +81,6 @@ class EmployeServiceImplTest {
         magasin.setEntreprise(entreprise);
 
         validUtilisateur = new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar");
-        validAccount = new AccountRequest("john.emp", "S3cretPwd!");
     }
 
     private UserPrincipal proprietaire() {
@@ -94,7 +94,7 @@ class EmployeServiceImplTest {
     }
 
     private EmployeRequest request(String role, UUID requestedMagasinId) {
-        return new EmployeRequest(validAccount, validUtilisateur, role, requestedMagasinId);
+        return new EmployeRequest(VALID_USERNAME, validUtilisateur, role, requestedMagasinId);
     }
 
     private EmployeResponse sampleResponse(String role) {
@@ -125,7 +125,7 @@ class EmployeServiceImplTest {
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(accountService.create(eq(validAccount), eq(managerRole))).thenReturn(account);
+        when(accountService.create(any(AccountRequest.class), eq(managerRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
         EmployeResponse response = service.create(request("MANAGER", magasinId));
@@ -146,7 +146,7 @@ class EmployeServiceImplTest {
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(accountService.create(eq(validAccount), eq(vendeurRole))).thenReturn(account);
+        when(accountService.create(any(AccountRequest.class), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
         EmployeResponse response = service.create(request("SELLER", magasinId));
@@ -167,7 +167,7 @@ class EmployeServiceImplTest {
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(accountService.create(eq(validAccount), eq(vendeurRole))).thenReturn(account);
+        when(accountService.create(any(AccountRequest.class), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
         EmployeResponse response = service.create(request("SELLER", magasinId));

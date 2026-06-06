@@ -25,6 +25,8 @@ public class EmailServiceImpl implements IEmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailServiceImpl.class);
     private static final String TEMPLATE_PATH = "templates/email/contact-reply.html";
+    private static final String RESET_TEMPLATE_PATH = "templates/email/password-reset.html";
+    private static final String WELCOME_TEMPLATE_PATH = "templates/email/employee-welcome.html";
 
     private final JavaMailSender mailSender;
     private final IMessageSourceService messageSourceService;
@@ -68,6 +70,71 @@ public class EmailServiceImpl implements IEmailService {
             log.info("Contact reply email sent to {}", event.email());
         } catch (MailException | MessagingException e) {
             log.error("Failed to send contact reply email to {}: {}", event.email(), e.getMessage());
+        }
+    }
+
+    @Override
+    public void sendPasswordReset(String toEmail, String recipientName, String resetLink) {
+        java.util.Locale locale = java.util.Locale.FRENCH;
+        String subject = messageSourceService.getMessage("email.passwordReset.subject", null, locale);
+        String appName = messageSourceService.getMessage("email.appName", null, locale);
+
+        String html = renderTemplate(RESET_TEMPLATE_PATH, Map.of(
+                "subject",   subject,
+                "appName",   appName,
+                "greeting",  messageSourceService.getMessage("email.passwordReset.greeting",  new Object[]{recipientName}, locale),
+                "intro",     messageSourceService.getMessage("email.passwordReset.intro",     null, locale),
+                "btnLabel",  messageSourceService.getMessage("email.passwordReset.btnLabel",  null, locale),
+                "resetLink", resetLink,
+                "expiry",    messageSourceService.getMessage("email.passwordReset.expiry",    null, locale),
+                "noRequest", messageSourceService.getMessage("email.passwordReset.noRequest", null, locale),
+                "footer",    messageSourceService.getMessage("email.passwordReset.footer",    new Object[]{appName}, locale)
+        ));
+
+        try {
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
+            helper.setFrom(mailProperties.from());
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(mime);
+            log.info("Password reset email sent to {}", toEmail);
+        } catch (MailException | MessagingException e) {
+            log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    @Override
+    public void sendWelcomeEmploye(String toEmail, String recipientName, String username, String password) {
+        java.util.Locale locale = java.util.Locale.FRENCH;
+        String subject = messageSourceService.getMessage("email.employeWelcome.subject", null, locale);
+        String appName = messageSourceService.getMessage("email.appName", null, locale);
+
+        String html = renderTemplate(WELCOME_TEMPLATE_PATH, Map.of(
+                "subject",           subject,
+                "appName",           appName,
+                "greeting",          messageSourceService.getMessage("email.employeWelcome.greeting",          new Object[]{recipientName}, locale),
+                "intro",             messageSourceService.getMessage("email.employeWelcome.intro",             new Object[]{appName},       locale),
+                "labelUsername",     messageSourceService.getMessage("email.employeWelcome.labelUsername",     null, locale),
+                "username",          username,
+                "labelPassword",     messageSourceService.getMessage("email.employeWelcome.labelPassword",     null, locale),
+                "password",          password,
+                "changePasswordNote",messageSourceService.getMessage("email.employeWelcome.changePasswordNote",null, locale),
+                "footer",            messageSourceService.getMessage("email.passwordReset.footer",             new Object[]{appName}, locale)
+        ));
+
+        try {
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
+            helper.setFrom(mailProperties.from());
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(mime);
+            log.info("Welcome email sent to new employee {}", toEmail);
+        } catch (MailException | MessagingException e) {
+            log.error("Failed to send welcome email to {}: {}", toEmail, e.getMessage());
         }
     }
 

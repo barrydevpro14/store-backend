@@ -61,7 +61,7 @@ class EmployeControllerTest {
 
     private EmployeRequest validBody(UUID magasinId, String role) {
         return new EmployeRequest(
-                new AccountRequest("john.emp", "S3cretPwd!"),
+                "john.emp",
                 new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
                 role,
                 magasinId

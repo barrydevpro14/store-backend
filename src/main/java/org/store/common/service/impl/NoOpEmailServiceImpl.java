@@ -17,4 +17,14 @@ public class NoOpEmailServiceImpl implements IEmailService {
     public void sendContactReply(ContactMessageRepliedEvent event) {
         log.warn("Email service not configured (app.mail.password missing) — reply to {} not sent", event.email());
     }
+
+    @Override
+    public void sendPasswordReset(String toEmail, String recipientName, String resetLink) {
+        log.warn("Email service not configured — password reset link for {} not sent: {}", toEmail, resetLink);
+    }
+
+    @Override
+    public void sendWelcomeEmploye(String toEmail, String recipientName, String username, String password) {
+        log.warn("Email service not configured — welcome email for {} not sent (username={}, password={})", toEmail, username, password);
+    }
 }

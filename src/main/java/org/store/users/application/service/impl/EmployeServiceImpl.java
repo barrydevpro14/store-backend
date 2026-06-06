@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.common.service.IEmailService;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.magasin.application.service.IMagasinService;
@@ -35,6 +36,7 @@ import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 
 /**
@@ -51,6 +53,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class EmployeServiceImpl implements IEmployeService {
 
+    private static final Random RANDOM = new Random();
+
     private final EmployeDomainService employeDomainService;
     private final UtilisateurDomainService utilisateurDomainService;
     private final IAccountService accountService;
@@ -60,6 +64,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final IAuditEventPublisher auditEventPublisher;
+    private final IEmailService emailService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
                               UtilisateurDomainService utilisateurDomainService,
@@ -69,7 +74,8 @@ public class EmployeServiceImpl implements IEmployeService {
                               IMagasinService magasinService,
                               ICurrentUserService currentUserService,
                               ValidatorService validatorService,
-                              IAuditEventPublisher auditEventPublisher) {
+                              IAuditEventPublisher auditEventPublisher,
+                              IEmailService emailService) {
         this.employeDomainService = employeDomainService;
         this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
@@ -79,6 +85,7 @@ public class EmployeServiceImpl implements IEmployeService {
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.auditEventPublisher = auditEventPublisher;
+        this.emailService = emailService;
     }
 
     private void audit(AuditAction action, UUID entityId, String label) {
@@ -114,10 +121,22 @@ public class EmployeServiceImpl implements IEmployeService {
                 employeRequest.utilisateur().telephone()
         );
 
-        Account account = accountService.create(employeRequest.account(), role);
+        String generatedPassword = "APP" + String.format("%05d", RANDOM.nextInt(100_000));
+        Account account = accountService.create(
+                new org.store.security.application.dto.AccountRequest(employeRequest.username(), generatedPassword),
+                role
+        );
 
         EmployeResponse created = employeDomainService.create(employeRequest.utilisateur(), account, magasin);
-        auditWithMagasin(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.account().username(), magasin.getId());
+
+        emailService.sendWelcomeEmploye(
+                employeRequest.utilisateur().email(),
+                employeRequest.utilisateur().prenom() + " " + employeRequest.utilisateur().nom(),
+                employeRequest.username(),
+                generatedPassword
+        );
+
+        auditWithMagasin(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.username(), magasin.getId());
         return created;
     }
 
