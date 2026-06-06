@@ -21,6 +21,7 @@ import org.store.abonnement.application.dto.RenouvellementAutoRequest;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.security.application.service.ICurrentUserService;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -32,9 +33,12 @@ public class AbonnementController {
     public static final String BASE_PATH = "/api/v1/abonnements";
 
     private final IAbonnementService abonnementService;
+    private final ICurrentUserService currentUserService;
 
-    public AbonnementController(IAbonnementService abonnementService) {
+    public AbonnementController(IAbonnementService abonnementService,
+                                ICurrentUserService currentUserService) {
         this.abonnementService = abonnementService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping("/subscribe")
@@ -78,6 +82,10 @@ public class AbonnementController {
     @GetMapping("/me/current")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<CurrentAbonnementResponse> findMyCurrent() {
+        // ADMIN has no company → no subscription to return
+        if (currentUserService.getCurrent().entrepriseId() == null) {
+            return ResponseEntity.noContent().build();
+        }
         return ResponseEntity.ok(abonnementService.findMyCurrent());
     }
 }
