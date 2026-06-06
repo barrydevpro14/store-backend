@@ -11,7 +11,10 @@ import org.store.security.application.dto.AuthResponse;
 import org.store.security.application.dto.LoginRequest;
 import org.store.security.application.dto.RefreshTokenRequest;
 import org.store.security.application.dto.RegisterPropertyRequest;
+import org.store.security.application.dto.ForgotPasswordRequest;
+import org.store.security.application.dto.ResetPasswordConfirmRequest;
 import org.store.security.application.service.ILoginService;
+import org.store.security.application.service.IPasswordResetService;
 import org.store.security.application.service.IRefreshTokenService;
 import org.store.security.application.service.IRegisterPropertyService;
 
@@ -24,13 +27,16 @@ public class AuthController {
     private final IRegisterPropertyService registerPropertyService;
     private final ILoginService loginService;
     private final IRefreshTokenService refreshTokenService;
+    private final IPasswordResetService passwordResetService;
 
     public AuthController(IRegisterPropertyService registerPropertyService,
                           ILoginService loginService,
-                          IRefreshTokenService refreshTokenService) {
+                          IRefreshTokenService refreshTokenService,
+                          IPasswordResetService passwordResetService) {
         this.registerPropertyService = registerPropertyService;
         this.loginService = loginService;
         this.refreshTokenService = refreshTokenService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -52,6 +58,18 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
         refreshTokenService.revoke(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordConfirmRequest request) {
+        passwordResetService.confirmReset(request);
         return ResponseEntity.noContent().build();
     }
 }

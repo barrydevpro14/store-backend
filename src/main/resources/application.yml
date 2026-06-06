@@ -1,6 +1,10 @@
 server:
   port: 8081
 
+app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
+
 spring:
   config:
     import: optional:classpath:email.yml

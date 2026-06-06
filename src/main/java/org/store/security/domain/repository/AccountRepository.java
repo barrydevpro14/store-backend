@@ -13,6 +13,9 @@ public interface AccountRepository extends BaseRepository<Account> {
 
     Optional<Account> findByUsername(String username);
 
+    @Query("SELECT a FROM Account a LEFT JOIN a.user u WHERE a.username = :identifier OR u.email = :identifier")
+    Optional<Account> findByUsernameOrEmail(@Param("identifier") String identifier);
+
     boolean existsByUsername(String username);
 
     @Query(value = """

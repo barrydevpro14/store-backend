@@ -48,7 +48,7 @@ class AuthControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(registerPropertyService, loginService, refreshTokenService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(registerPropertyService, loginService, refreshTokenService, mock(org.store.security.application.service.IPasswordResetService.class)))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();
