@@ -1,7 +1,11 @@
 package org.store.security.application.service;
 
 import org.store.security.application.dto.RoleResponse;
+import org.store.security.application.dto.UserPrincipal;
+import org.store.security.application.enums.PermissionCode;
+import org.store.security.application.service.ICurrentUserService;
 import org.store.security.application.service.impl.RoleServiceImpl;
+import org.store.entreprise.domain.service.EntrepriseDomainService;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +34,8 @@ class RoleServiceImplTest {
 
     @Mock private RoleDomainService roleDomainService;
     @Mock private PermissionsDomainService permissionsDomainService;
+    @Mock private EntrepriseDomainService entrepriseDomainService;
+    @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
 
     @InjectMocks
@@ -54,13 +60,19 @@ class RoleServiceImplTest {
     }
 
     @Test
-    void findAll_should_project_each_role_with_permissions_sorted_by_code() {
+    void findAllScoped_should_project_each_role_with_permissions_sorted_by_code_for_admin() {
         Permissions saleCreate = buildPermission("SALE_CREATE");
         Permissions employeRead = buildPermission("EMPLOYE_READ");
         Role vendeur = buildRole("SELLER", "Vendeur de magasin", Set.of(saleCreate, employeRead));
-        when(roleDomainService.findAll()).thenReturn(List.of(vendeur));
+        when(roleDomainService.findAllWithPermissions()).thenReturn(List.of(vendeur));
 
-        List<RoleResponse> result = service.findAll();
+        UserPrincipal adminPrincipal = new UserPrincipal(
+                UUID.randomUUID(), null, null, null, "admin", "XOF", "Sénégal",
+                "ADMIN", List.of(PermissionCode.ADMIN_ACCESS.name())
+        );
+        when(currentUserService.getCurrent()).thenReturn(adminPrincipal);
+
+        List<RoleResponse> result = service.findAllScoped();
 
         assertThat(result).hasSize(1);
         RoleResponse projected = result.get(0);

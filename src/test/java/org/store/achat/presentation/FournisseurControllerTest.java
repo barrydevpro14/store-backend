@@ -60,7 +60,7 @@ class FournisseurControllerTest {
 
     private FournisseurResponse sample() {
         return new FournisseurResponse(fournisseurId, "Pneus Maroc SARL", null,
-                "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
+                "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", false, entrepriseId);
     }
 
     @Test
@@ -127,7 +127,7 @@ class FournisseurControllerTest {
                 "Updated", null, null, null, null, "FRN-001", null
         );
         FournisseurResponse updated = new FournisseurResponse(fournisseurId, "Updated", null,
-                null, null, null, "FRN-001", null, entrepriseId);
+                null, null, null, "FRN-001", null, false, entrepriseId);
         when(fournisseurService.update(eq(fournisseurId), any(FournisseurRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put(FournisseurController.BASE_PATH + "/" + fournisseurId)

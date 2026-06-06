@@ -154,7 +154,7 @@ class FournisseurServiceImplTest {
     void findAll_should_paginate() {
         FournisseurFilter filter = new FournisseurFilter(null, null, null, null, 0, 10);
         FournisseurResponse item = new FournisseurResponse(fournisseurId, "Pneus Maroc SARL",
-                null, "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", entrepriseId);
+                null, "contact@pneus-maroc.ma", "+221770000000", "Casablanca", "FRN-001", "Maroc", false, entrepriseId);
         Page<FournisseurResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
