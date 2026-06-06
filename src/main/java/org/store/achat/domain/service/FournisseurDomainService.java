@@ -32,6 +32,19 @@ public class FournisseurDomainService extends GlobalService<Fournisseur, Fournis
         return save(fournisseur);
     }
 
+    /** Crée (ou retrouve) le fournisseur système global "Anonyme" — unique pour toute la plateforme (entreprise = null). */
+    public Fournisseur ensureGlobalAnonymous() {
+        return repository.findGlobalByReference(Fournisseur.ANONYMOUS_REFERENCE)
+                .orElseGet(() -> {
+                    Fournisseur f = new Fournisseur();
+                    f.setNom("Fournisseur anonyme");
+                    f.setReference(Fournisseur.ANONYMOUS_REFERENCE);
+                    f.setEntreprise(null);
+                    f.setSysteme(true);
+                    return save(f);
+                });
+    }
+
     public Page<FournisseurResponse> findResponsesByFilter(FournisseurFilter filter, UUID entrepriseId) {
         return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
     }

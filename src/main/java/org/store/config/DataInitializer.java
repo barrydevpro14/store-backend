@@ -13,6 +13,7 @@ import org.store.abonnement.application.dto.SubscriptionTypeRequest;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
+import org.store.achat.domain.service.FournisseurDomainService;
 import org.store.notification.domain.enums.CanalNotification;
 import org.store.notification.domain.enums.NotificationStatut;
 import org.store.notification.domain.model.Notification;
@@ -49,6 +50,7 @@ public class DataInitializer implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final UtilisateurDomainService utilisateurDomainService;
     private final NotificationDomainService notificationDomainService;
+    private final FournisseurDomainService fournisseurDomainService;
     private final DemoProductSeeder demoProductSeeder;
 
     public DataInitializer(RbacProperties rbacProperties,
@@ -60,6 +62,7 @@ public class DataInitializer implements ApplicationRunner {
                            PasswordEncoder passwordEncoder,
                            UtilisateurDomainService utilisateurDomainService,
                            NotificationDomainService notificationDomainService,
+                           FournisseurDomainService fournisseurDomainService,
                            DemoProductSeeder demoProductSeeder) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
@@ -70,6 +73,7 @@ public class DataInitializer implements ApplicationRunner {
         this.passwordEncoder = passwordEncoder;
         this.utilisateurDomainService = utilisateurDomainService;
         this.notificationDomainService = notificationDomainService;
+        this.fournisseurDomainService = fournisseurDomainService;
         this.demoProductSeeder = demoProductSeeder;
     }
 
@@ -83,6 +87,7 @@ public class DataInitializer implements ApplicationRunner {
             log.info("DataInitializer: RBAC sync skipped (security.rbac.sync=false)");
         }
         ensureTrialPlan();
+        fournisseurDomainService.ensureGlobalAnonymous();
         if (rbacProperties.sync()) {
             seedSampleNotifications();
             demoProductSeeder.seed();

@@ -13,6 +13,7 @@ public record FournisseurResponse(
         String adresse,
         String reference,
         String origine,
+        boolean systeme,
         UUID entrepriseId
 ) {
     public FournisseurResponse(Fournisseur fournisseur) {
@@ -25,7 +26,8 @@ public record FournisseurResponse(
                 fournisseur.getAdresse(),
                 fournisseur.getReference(),
                 fournisseur.getOrigine(),
-                fournisseur.getEntreprise().getId()
+                fournisseur.isSysteme(),
+                fournisseur.getEntreprise() != null ? fournisseur.getEntreprise().getId() : null
         );
     }
 }

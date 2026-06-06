@@ -15,14 +15,13 @@ import java.util.UUID;
 public interface FournisseurRepository extends BaseRepository<Fournisseur> {
 
     /**
-     * Listing entreprise-scope avec filtres optionnels sur `nom`,
-     * `reference` et fenêtre de création. ORDER BY createdAt DESC pour
-     * que les nouveaux fournisseurs apparaissent en haut de page 1.
+     * Listing scoped to a company + global system suppliers (entreprise IS NULL).
+     * System suppliers appear first (systeme DESC), then by createdAt DESC.
      */
     @Query(value = """
             SELECT new org.store.achat.application.dto.FournisseurResponse(fournisseur)
             FROM Fournisseur fournisseur
-            WHERE fournisseur.entreprise.id = :entrepriseId
+            WHERE (fournisseur.entreprise.id = :entrepriseId OR fournisseur.entreprise IS NULL)
               AND (
                   :#{#filter.nom} IS NULL
                   OR :#{#filter.nom} = ''
@@ -35,12 +34,12 @@ public interface FournisseurRepository extends BaseRepository<Fournisseur> {
               )
               AND (:#{#filter.createdStartDateTime()} IS NULL OR fournisseur.createdAt >= :#{#filter.createdStartDateTime()})
               AND (:#{#filter.createdEndDateTime()}   IS NULL OR fournisseur.createdAt <  :#{#filter.createdEndDateTime()})
-            ORDER BY fournisseur.createdAt DESC
+            ORDER BY fournisseur.systeme DESC, fournisseur.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(fournisseur)
             FROM Fournisseur fournisseur
-            WHERE fournisseur.entreprise.id = :entrepriseId
+            WHERE (fournisseur.entreprise.id = :entrepriseId OR fournisseur.entreprise IS NULL)
               AND (
                   :#{#filter.nom} IS NULL
                   OR :#{#filter.nom} = ''
@@ -58,7 +57,12 @@ public interface FournisseurRepository extends BaseRepository<Fournisseur> {
                                                    @Param("entrepriseId") UUID entrepriseId,
                                                    Pageable pageable);
 
+    /** Finds a fournisseur by reference scoped to a company. */
     Optional<Fournisseur> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 
     boolean existsByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
+
+    /** Finds the unique global system supplier by reference (entreprise = null). */
+    @Query("SELECT f FROM Fournisseur f WHERE f.reference = :reference AND f.entreprise IS NULL")
+    Optional<Fournisseur> findGlobalByReference(@Param("reference") String reference);
 }

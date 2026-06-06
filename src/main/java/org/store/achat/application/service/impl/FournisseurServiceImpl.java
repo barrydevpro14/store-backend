@@ -70,6 +70,7 @@ public class FournisseurServiceImpl implements IFournisseurService {
     @Transactional
     public FournisseurResponse update(UUID id, FournisseurRequest fournisseurRequest) {
         Fournisseur fournisseur = ensureBelongsToCurrentEntreprise(fournisseurDomainService.findById(id));
+        if (fournisseur.isSysteme()) throw new org.store.common.exceptions.BadArgumentException("fournisseur.systemImmutable");
         if (!java.util.Objects.equals(fournisseur.getReference(), fournisseurRequest.reference())) {
             ensureReferenceAvailable(fournisseurRequest.reference(), fournisseur.getEntreprise().getId());
         }
@@ -83,17 +84,19 @@ public class FournisseurServiceImpl implements IFournisseurService {
         return new FournisseurResponse(fournisseurDomainService.save(fournisseur));
     }
 
-    /** Supprime le fournisseur après contrôle d'appartenance à l'entreprise du caller. */
+    /** Supprime le fournisseur après contrôle d'appartenance à l'entreprise du caller. Les fournisseurs système sont non-supprimables. */
     @Override
     @Transactional
     public void delete(UUID id) {
         Fournisseur fournisseur = ensureBelongsToCurrentEntreprise(fournisseurDomainService.findById(id));
+        if (fournisseur.isSysteme()) throw new org.store.common.exceptions.BadArgumentException("fournisseur.systemImmutable");
         fournisseurDomainService.delete(fournisseur);
     }
 
     /** Lève `ForbiddenException` si le fournisseur n'appartient pas à l'entreprise du caller. */
     @Override
     public Fournisseur ensureBelongsToCurrentEntreprise(Fournisseur fournisseur) {
+        if (fournisseur.isSysteme() && fournisseur.getEntreprise() == null) return fournisseur;
         return OwnershipHelper.ensureOwnership(
                 fournisseur,
                 fournisseur.getEntreprise().getId(),
