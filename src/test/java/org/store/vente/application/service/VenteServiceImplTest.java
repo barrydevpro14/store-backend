@@ -186,7 +186,7 @@ class VenteServiceImplTest {
     private VenteRequest sampleRequest() {
         return new VenteRequest(
                 null,
-                List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("10.00")))
+                List.of(new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 100, new BigDecimal("10.00")))
         );
     }
 
@@ -210,7 +210,7 @@ class VenteServiceImplTest {
         VenteRequest req = sampleRequest();
 
         when(employeService.findCurrentUser()).thenReturn(vendeur);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
@@ -234,7 +234,7 @@ class VenteServiceImplTest {
     @Test
     void create_should_set_dateVente_to_today() {
         when(employeService.findCurrentUser()).thenReturn(vendeur);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
@@ -264,11 +264,11 @@ class VenteServiceImplTest {
     void create_should_throw_when_prix_below_floor() {
         VenteRequest req = new VenteRequest(
                 null,
-                List.of(new LigneVenteRequest(productFournisseurId, 100, new BigDecimal("5.00")))
+                List.of(new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 100, new BigDecimal("5.00")))
         );
 
         when(employeService.findCurrentUser()).thenReturn(vendeur);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
 
         assertThatThrownBy(() -> service.create(req))

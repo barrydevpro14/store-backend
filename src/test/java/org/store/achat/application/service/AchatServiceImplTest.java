@@ -133,10 +133,15 @@ class AchatServiceImplTest {
         produit.setId(UUID.randomUUID());
         produit.setEntreprise(entreprise);
 
+        org.store.produit.domain.model.Quality quality = new org.store.produit.domain.model.Quality();
+        quality.setId(UUID.randomUUID());
+        quality.setLibelle("Original");
+
         productFournisseur = new ProductFournisseur();
         productFournisseur.setId(productFournisseurId);
         productFournisseur.setProduct(produit);
         productFournisseur.setFournisseur(fournisseur);
+        productFournisseur.setQuality(quality);
         productFournisseur.setPrixAchat(new BigDecimal("10.00"));
 
         commande = new CommandeAchat();
@@ -159,7 +164,7 @@ class AchatServiceImplTest {
     private AchatRequest sampleRequest() {
         return new AchatRequest(
                 magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-1", null))
+                List.of(new LigneAchatRequest(produit.getId(), productFournisseur.getQuality().getId(), 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-1", null))
         );
     }
 
@@ -189,12 +194,18 @@ class AchatServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
         when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
+        when(productFournisseurService.findOrCreate(any())).thenReturn(new org.store.produit.application.dto.ProductFournisseurResponse(productFournisseur));
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
-        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(commandeAchatDomainService.generateReference()).thenReturn("CMD-AUTO");
         when(commandeAchatDomainService.create(any(CommandeAchatCreate.class))).thenReturn(commande);
         when(commandeAchatDomainService.findById(commande.getId())).thenReturn(commande);
-        when(ligneCommandeAchatDomainService.create(any(LigneCommandeAchatCreate.class))).thenReturn(new LigneCommandeAchat());
+        LigneCommandeAchat mockLigne = new LigneCommandeAchat();
+        mockLigne.setId(ligneId);
+        mockLigne.setProductFournisseur(productFournisseur);
+        mockLigne.setQuantite(5);
+        mockLigne.setPrixAchat(new BigDecimal("10.00"));
+        mockLigne.setPrixVente(new BigDecimal("15.00"));
+        when(ligneCommandeAchatDomainService.create(any(LigneCommandeAchatCreate.class))).thenReturn(mockLigne);
 
         AchatDraftResponse response = service.create(req);
 
@@ -211,26 +222,6 @@ class AchatServiceImplTest {
         verify(productFournisseurService, never()).applyPrixVenteFromPurchase(any(), any());
     }
 
-    @Test
-    void create_should_throw_when_productFournisseur_does_not_belong_to_supplier() {
-        Fournisseur autreFournisseur = new Fournisseur();
-        autreFournisseur.setId(UUID.randomUUID());
-        productFournisseur.setFournisseur(autreFournisseur);
-
-        AchatRequest req = sampleRequest();
-
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
-        when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
-        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-
-        assertThatThrownBy(() -> service.create(req))
-                .isInstanceOf(BadArgumentException.class);
-
-        verify(commandeAchatDomainService, never()).create(any(CommandeAchatCreate.class));
-    }
 
     @Test
     void create_should_propagate_forbidden_when_magasin_not_accessible() {

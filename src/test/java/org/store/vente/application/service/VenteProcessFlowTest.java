@@ -194,10 +194,10 @@ class VenteProcessFlowTest {
     void process_create_draft_then_validate_produces_validate_commande_with_facture_and_stock() {
         // ── STEP 1: Create DRAFT ─────────────────────────────────────────────
         VenteRequest createRequest = new VenteRequest(null, List.of(
-                new LigneVenteRequest(productFournisseurId, 10, new BigDecimal("12000.00"))));
+                new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 10, new BigDecimal("12000.00"))));
 
         when(employeService.findCurrentUser()).thenReturn(vendeur);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(commandeVenteDomainService.create(any())).thenReturn(draftCommande);
         when(ligneCommandeVenteDomainService.create(any())).thenAnswer(inv -> {
@@ -467,12 +467,12 @@ class VenteProcessFlowTest {
         newLigne.setMontantTotal(new BigDecimal("60000.00"));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(ligneCommandeVenteDomainService.create(any())).thenReturn(newLigne);
 
         LigneCommandeVenteResponse result = service.addLigne(commandeId,
-                new LigneVenteRequest(productFournisseurId, 5, new BigDecimal("12000.00")));
+                new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 5, new BigDecimal("12000.00")));
 
         assertThat(result.quantite()).isEqualTo(5);
         assertThat(result.prixUnitaire()).isEqualByComparingTo("12000.00");

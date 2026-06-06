@@ -30,6 +30,7 @@ import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -82,7 +83,7 @@ class AchatControllerTest {
 
     private AchatRequest validDraftBody() {
         return new AchatRequest(magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(productFournisseurId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", null)));
+                List.of(new LigneAchatRequest(UUID.randomUUID(), UUID.randomUUID(), 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", null)));
     }
 
     private AchatReceiveRequest validReceiveBody() {
@@ -119,7 +120,7 @@ class AchatControllerTest {
 
     @Test
     void should_return_201_when_draft_created() throws Exception {
-        when(achatService.create(any(AchatRequest.class))).thenReturn(new AchatDraftResponse(draftCommandeResponse()));
+        when(achatService.create(any(AchatRequest.class))).thenReturn(new AchatDraftResponse(draftCommandeResponse(), List.of()));
 
         mockMvc.perform(post(AchatController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -185,6 +186,7 @@ class AchatControllerTest {
         LigneCommandeAchatResponse ligne = new LigneCommandeAchatResponse(
                 UUID.randomUUID(),
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
+                new QualitySummaryResponse(UUID.randomUUID(), "Original"),
                 10, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
                 "LOT-001", null
         );
@@ -204,6 +206,7 @@ class AchatControllerTest {
         LigneCommandeAchatResponse updated = new LigneCommandeAchatResponse(
                 ligneId,
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
+                new QualitySummaryResponse(UUID.randomUUID(), "Original"),
                 200, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
                 "LOT-002", null
         );

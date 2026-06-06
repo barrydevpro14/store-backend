@@ -132,10 +132,15 @@ class AchatProcessFlowTest {
         produit.setNom("Moteur");
         produit.setEntreprise(entreprise);
 
+        org.store.produit.domain.model.Quality quality = new org.store.produit.domain.model.Quality();
+        quality.setId(java.util.UUID.randomUUID());
+        quality.setLibelle("Original");
+
         productFournisseur = new ProductFournisseur();
         productFournisseur.setId(productFournisseurId);
         productFournisseur.setProduct(produit);
         productFournisseur.setFournisseur(fournisseur);
+        productFournisseur.setQuality(quality);
         productFournisseur.setPrixAchat(new BigDecimal("50000.00"));
         productFournisseur.setPrixVente(new BigDecimal("75000.00"));
 
@@ -167,15 +172,15 @@ class AchatProcessFlowTest {
         // ── STEP 1: Create DRAFT ─────────────────────────────────────────────
         AchatRequest createRequest = new AchatRequest(
                 magasinId, fournisseurId, LocalDate.of(2026, 6, 3),
-                List.of(new LigneAchatRequest(productFournisseurId, 10,
+                List.of(new LigneAchatRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), 10,
                         new BigDecimal("50000.00"), new BigDecimal("75000.00"), "LOT-001", null)));
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
         when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
+        when(productFournisseurService.findOrCreate(any())).thenReturn(new org.store.produit.application.dto.ProductFournisseurResponse(productFournisseur));
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
-        when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(commandeAchatDomainService.create(any())).thenReturn(draftCommande);
         when(commandeAchatDomainService.findById(commandeId)).thenReturn(draftCommande);
         when(ligneCommandeAchatDomainService.create(any())).thenAnswer(inv -> {

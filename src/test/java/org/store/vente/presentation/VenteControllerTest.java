@@ -81,7 +81,7 @@ class VenteControllerTest {
     private VenteRequest validDraftBody() {
         return new VenteRequest(
                 null,
-                List.of(new LigneVenteRequest(productFournisseurId, 10, new BigDecimal("15.00")))
+                List.of(new LigneVenteRequest(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 10, new BigDecimal("15.00")))
         );
     }
 

@@ -73,7 +73,7 @@ public class GlobalException {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> dataIntegrityViolation(DataIntegrityViolationException ex) {
         String constraintName = extractConstraintName(ex);
-        String messageKey = CONSTRAINT_MESSAGE_KEYS.get(constraintName);
+        String messageKey = constraintName != null ? CONSTRAINT_MESSAGE_KEYS.get(constraintName) : null;
 
         if (messageKey != null) {
             String message = messageSourceService.getMessage(messageKey);
@@ -91,7 +91,11 @@ public class GlobalException {
      * par cas quand un nouveau cas de race condition apparaît.
      */
     private static final Map<String, String> CONSTRAINT_MESSAGE_KEYS = Map.of(
-            "facture_achat_numero_key", "factureAchat.numero.alreadyExists"
+            "facture_achat_numero_key",   "factureAchat.numero.alreadyExists",
+            "person_telephone_unique",    "person.telephone.alreadyExists",
+            "person_email_unique",        "person.email.alreadyExists",
+            "account_username_key",             "account.username.alreadyExists",
+            "pf_product_fournisseur_quality_unique", "productFournisseur.alreadyExists"
     );
 
     private String extractConstraintName(DataIntegrityViolationException ex) {
