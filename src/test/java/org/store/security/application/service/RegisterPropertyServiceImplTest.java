@@ -51,6 +51,9 @@ class RegisterPropertyServiceImplTest {
     @Mock private IJwtService jwtService;
     @Mock private IUserPrincipalFactory userPrincipalFactory;
     @Mock private IRefreshTokenService refreshTokenService;
+    @Mock private org.store.achat.domain.service.FournisseurDomainService fournisseurDomainService;
+    @Mock private org.store.common.service.IEmailService emailService;
+    @Mock private org.store.property.AppProperties appProperties;
 
     @InjectMocks
     private RegisterPropertyServiceImpl service;

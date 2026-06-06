@@ -11,4 +11,7 @@ public interface IEmailService {
 
     /** Envoie les identifiants de connexion générés au nouvel employé. */
     void sendWelcomeEmploye(String toEmail, String recipientName, String username, String password);
+
+    /** Envoie un email de bienvenue au propriétaire qui vient de s'inscrire. */
+    void sendWelcomeOwner(String toEmail, String recipientName, String username, String entrepriseName, String loginUrl);
 }

@@ -59,7 +59,12 @@ class AbonnementControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new AbonnementController(abonnementService))
+        org.store.security.application.service.ICurrentUserService currentUserService = mock(org.store.security.application.service.ICurrentUserService.class);
+        org.store.security.application.dto.UserPrincipal adminPrincipal = new org.store.security.application.dto.UserPrincipal(
+                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), null,
+                "admin", "XOF", "Sénégal", "ADMIN", java.util.List.of());
+        when(currentUserService.getCurrent()).thenReturn(adminPrincipal);
+        mockMvc = MockMvcBuilders.standaloneSetup(new AbonnementController(abonnementService, currentUserService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();

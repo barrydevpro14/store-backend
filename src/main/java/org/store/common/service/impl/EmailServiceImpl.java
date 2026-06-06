@@ -27,6 +27,7 @@ public class EmailServiceImpl implements IEmailService {
     private static final String TEMPLATE_PATH = "templates/email/contact-reply.html";
     private static final String RESET_TEMPLATE_PATH = "templates/email/password-reset.html";
     private static final String WELCOME_TEMPLATE_PATH = "templates/email/employee-welcome.html";
+    private static final String OWNER_WELCOME_TEMPLATE_PATH = "templates/email/owner-welcome.html";
 
     private final JavaMailSender mailSender;
     private final IMessageSourceService messageSourceService;
@@ -135,6 +136,41 @@ public class EmailServiceImpl implements IEmailService {
             log.info("Welcome email sent to new employee {}", toEmail);
         } catch (MailException | MessagingException e) {
             log.error("Failed to send welcome email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    @Override
+    public void sendWelcomeOwner(String toEmail, String recipientName, String username, String entrepriseName, String loginUrl) {
+        java.util.Locale locale = java.util.Locale.FRENCH;
+        String subject = messageSourceService.getMessage("email.ownerWelcome.subject", new Object[]{entrepriseName}, locale);
+        String appName = messageSourceService.getMessage("email.appName", null, locale);
+
+        java.util.Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("subject",        subject);
+        vars.put("appName",        appName);
+        vars.put("entrepriseName", entrepriseName);
+        vars.put("greeting",       messageSourceService.getMessage("email.ownerWelcome.greeting",      new Object[]{recipientName}, locale));
+        vars.put("intro",          messageSourceService.getMessage("email.ownerWelcome.intro",         new Object[]{appName}, locale));
+        vars.put("labelUsername",  messageSourceService.getMessage("email.ownerWelcome.labelUsername", null, locale));
+        vars.put("username",       username);
+        vars.put("ctaText",        messageSourceService.getMessage("email.ownerWelcome.ctaText",       null, locale));
+        vars.put("btnLabel",       messageSourceService.getMessage("email.ownerWelcome.btnLabel",      null, locale));
+        vars.put("loginUrl",       loginUrl);
+        vars.put("footer",         messageSourceService.getMessage("email.passwordReset.footer",       new Object[]{appName}, locale));
+
+        String html = renderTemplate(OWNER_WELCOME_TEMPLATE_PATH, vars);
+
+        try {
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, "UTF-8");
+            helper.setFrom(mailProperties.from());
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(mime);
+            log.info("Owner welcome email sent to {}", toEmail);
+        } catch (MailException | MessagingException e) {
+            log.error("Failed to send owner welcome email to {}: {}", toEmail, e.getMessage());
         }
     }
 
