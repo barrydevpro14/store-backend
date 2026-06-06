@@ -180,7 +180,7 @@ public class AchatServiceImpl implements IAchatService {
         CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
         ensureCommandeIsDraft(commande);
 
-        Fournisseur fournisseur = commande.getFournisseur();
+        Fournisseur fournisseur = commande.getFournisseur(); // null for anonymous purchases
         ProductFournisseur productFournisseur = resolveAndValidateLine(ligneAchatRequest, fournisseur);
 
         LigneCommandeAchat ligne = ligneCommandeAchatDomainService.create(new LigneCommandeAchatCreate(
@@ -417,7 +417,7 @@ public class AchatServiceImpl implements IAchatService {
                 .toList();
     }
 
-    /** Valide prixVente > prixAchat puis trouve ou crée le ProductFournisseur (productId + fournisseur + qualityId). */
+    /** Valide prixVente > prixAchat puis trouve ou crée le ProductFournisseur. */
     public ProductFournisseur resolveAndValidateLine(LigneAchatRequest ligne, Fournisseur fournisseur) {
         productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligne.prixVente(), ligne.prixAchat());
 
