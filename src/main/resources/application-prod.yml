@@ -3,31 +3,31 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
-    username: ${DB_USERNAME:barrydevit}
-    password: ${DB_PASSWORD:passer}
+    url: jdbc:postgresql://${URL_DATABASE}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   flyway:
     enabled: true
 
 security:
   rbac:
-    sync: ${RBAC_SYNC:true}
-    admin-password: ${RBAC_ADMIN_PASSWORD:passer123}
+    sync: ${RBAC_SYNC:false}
+    admin-password: ${RBAC_ADMIN_PASSWORD}
   jwt:
-    secret: ${JWT_SECRET:ou2FiLzTm0GTFqbSGOG1kJf0Qe7kGDdOQmRU8t7Csgi35C17SSET83HMY75BS61ujph877iw8y6VEVdsMEp14A==}
+    secret: ${JWT_SECRET}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
 app:
   frontend:
-    url: ${FRONTEND_URL:http://localhost:3000}
+    url: ${FRONTEND_URL}
   mail:
-    host:     ${MAIL_HOST:smtp.gmail.com}
+    host:     ${MAIL_HOST:}
     port:     ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:barrydevpro@gmail.com}
+    username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
-    from:     ${MAIL_FROM:barrydevpro@gmail.com}
+    from:     ${MAIL_FROM:}
     auth:     true
     starttls: true
