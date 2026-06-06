@@ -70,6 +70,18 @@ public interface IProductFournisseurService {
     ProductFournisseur applyPrixAchatMoyenFromStock(ProductFournisseur productFournisseur, BigDecimal prixAchatMoyen);
 
     /**
+     * Retourne le lien existant (productId, fournisseurId, qualityId). Lève EntityException s'il n'existe pas.
+     * Utilisé pour les ventes où le PF doit obligatoirement déjà exister dans le catalogue.
+     */
+    ProductFournisseur findByTriplet(UUID productId, UUID fournisseurId, UUID qualityId);
+
+    /**
+     * Retourne le lien existant (productId, fournisseurId, qualityId) ou le crée s'il n'existe pas encore.
+     * Utilisé par le formulaire d'achat pour résoudre le PF en une seule transaction serveur.
+     */
+    ProductFournisseurResponse findOrCreate(ProductFournisseurRequest request);
+
+    /**
      * Vérifie la règle métier prixVente > prixAchat (marge strictement positive). Throw `BadArgumentException("productFournisseur.prixVente.belowOrEqualAchat")` sinon.
      */
     void ensurePrixVenteGreaterThanPrixAchat(BigDecimal prixVente, BigDecimal prixAchat);

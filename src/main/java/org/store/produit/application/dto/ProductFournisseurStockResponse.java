@@ -10,6 +10,7 @@ public record ProductFournisseurStockResponse(
         UUID id,
         QualitySummaryResponse quality,
         FournisseurSummaryResponse fournisseur,
+        BigDecimal prixAchat,
         BigDecimal prixVente,
         Integer quantiteEnStock
 ) {
@@ -18,6 +19,7 @@ public record ProductFournisseurStockResponse(
                 productFournisseur.getId(),
                 new QualitySummaryResponse(productFournisseur.getQuality()),
                 new FournisseurSummaryResponse(productFournisseur.getFournisseur()),
+                productFournisseur.getPrixAchat(),
                 productFournisseur.getPrixVente(),
                 quantiteEnStock
         );

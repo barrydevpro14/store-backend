@@ -27,4 +27,6 @@ public interface ProductFournisseurRepository extends BaseRepository<ProductFour
     Page<ProductFournisseurResponse> findResponsesByProductId(@Param("productId") UUID productId, Pageable pageable);
 
     boolean existsByProductIdAndFournisseurIdAndQualityId(UUID productId, UUID fournisseurId, UUID qualityId);
+
+    java.util.Optional<ProductFournisseur> findTop1ByProductIdAndFournisseurIdAndQualityId(UUID productId, UUID fournisseurId, UUID qualityId);
 }

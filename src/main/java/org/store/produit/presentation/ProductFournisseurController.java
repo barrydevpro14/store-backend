@@ -40,6 +40,12 @@ public class ProductFournisseurController {
         return ResponseEntity.status(HttpStatus.CREATED).body(productFournisseurService.create(productFournisseurRequest));
     }
 
+    @PostMapping("/find-or-create")
+    @PreAuthorize("hasAuthority('PURCHASE_CREATE')")
+    public ResponseEntity<ProductFournisseurResponse> findOrCreate(@Valid @RequestBody ProductFournisseurRequest request) {
+        return ResponseEntity.ok(productFournisseurService.findOrCreate(request));
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('SUPPLIER_READ')")
     public ResponseEntity<Page<ProductFournisseurResponse>> list(@RequestParam(required = false) UUID productId,

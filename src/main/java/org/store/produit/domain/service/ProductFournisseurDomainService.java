@@ -13,6 +13,7 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.repository.ProductFournisseurRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -54,5 +55,9 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
 
     public boolean existsByProductIdAndFournisseurIdAndQualityId(UUID productId, UUID fournisseurId, UUID qualityId) {
         return repository.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId);
+    }
+
+    public Optional<ProductFournisseur> findByTriplet(UUID productId, UUID fournisseurId, UUID qualityId) {
+        return repository.findTop1ByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId);
     }
 }

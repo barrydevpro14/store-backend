@@ -64,6 +64,45 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
                 new ProductFournisseurCreate(productFournisseurRequest, product, fournisseur, quality)));
     }
 
+    /** Retourne le lien existant (productId, fournisseurId, qualityId), lève EntityException s'il n'existe pas. */
+    @Override
+    public ProductFournisseur findByTriplet(UUID productId, UUID fournisseurId, UUID qualityId) {
+        return productFournisseurDomainService.findByTriplet(productId, fournisseurId, qualityId)
+                .orElseThrow(() -> new org.store.common.exceptions.EntityException("productFournisseur.notFound", productId));
+    }
+
+    /**
+     * Retourne le lien existant (productId, fournisseurId, qualityId) ou le crée.
+     * En cas de violation de contrainte unique (race condition), relit l'enregistrement
+     * déjà persisté plutôt que de propager une erreur.
+     */
+    @Override
+    @Transactional
+    public ProductFournisseurResponse findOrCreate(ProductFournisseurRequest request) {
+        Product product = productService.ensureBelongsToCurrentEntreprise(productService.findById(request.productId()));
+        Fournisseur fournisseur = fournisseurService.ensureBelongsToCurrentEntreprise(fournisseurService.findById(request.fournisseurId()));
+        Quality quality = qualityService.ensureBelongsToCurrentEntreprise(qualityService.findById(request.qualityId()));
+
+        java.util.Optional<ProductFournisseur> existing =
+                productFournisseurDomainService.findByTriplet(product.getId(), fournisseur.getId(), quality.getId());
+
+        if (existing.isPresent()) {
+            return new ProductFournisseurResponse(existing.get());
+        }
+
+        ensurePrixVenteGreaterThanPrixAchat(request.prixVente(), request.prixAchat());
+
+        try {
+            return new ProductFournisseurResponse(productFournisseurDomainService.create(
+                    new ProductFournisseurCreate(request, product, fournisseur, quality)));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return productFournisseurDomainService
+                    .findByTriplet(product.getId(), fournisseur.getId(), quality.getId())
+                    .map(ProductFournisseurResponse::new)
+                    .orElseThrow(() -> e);
+        }
+    }
+
     /** Retourne le lien ou lève `EntityException`. */
     @Override
     public ProductFournisseur findById(UUID id) {
