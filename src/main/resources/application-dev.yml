@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
+    username: ${DB_USERNAME:barrydevit}
+    password: ${DB_PASSWORD:passer}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:ou2FiLzTm0GTFqbSGOG1kJf0Qe7kGDdOQmRU8t7Csgi35C17SSET83HMY75BS61ujph877iw8y6VEVdsMEp14A==}
+  rbac:
+    sync: ${RBAC_SYNC:true}
+    admin-password: ${RBAC_ADMIN_PASSWORD:passer123}
+
+cors:
+  allowed-origins:
+    - http://localhost:3000
+    - http://localhost:3001

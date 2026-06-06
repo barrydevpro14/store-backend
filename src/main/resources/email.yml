@@ -1,0 +1,9 @@
+app:
+  mail:
+    host:     ${MAIL_HOST:smtp.gmail.com}
+    port:     ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:barrydevpro@gmail.com}
+    password: ${MAIL_PASSWORD:vlcanyoqhkjopafa}
+    from:     ${MAIL_FROM:barrydevpro@gmail.com}
+    auth:     true
+    starttls: true

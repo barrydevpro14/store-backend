@@ -1,0 +1,53 @@
+# SonarQube self-hosted (LTS Community) + PostgreSQL.
+# Démarrage :  docker compose -f docker-compose.sonar.yml up -d
+# UI         :  http://localhost:9000  (premier login admin/admin → forcer changement)
+# Voir docs/SONAR.md pour la procédure complète.
+
+services:
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: store-sonarqube
+    depends_on:
+      sonarqube-db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonarqube
+      SONAR_JDBC_PASSWORD: sonarqube
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+    networks:
+      - sonar-net
+    restart: unless-stopped
+
+  sonarqube-db:
+    image: postgres:16-alpine
+    container_name: store-sonarqube-db
+    environment:
+      POSTGRES_DB: sonarqube
+      POSTGRES_USER: sonarqube
+      POSTGRES_PASSWORD: sonarqube
+    volumes:
+      - sonar_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube -d sonarqube"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sonar-net
+    restart: unless-stopped
+
+volumes:
+  sonar_data:
+  sonar_extensions:
+  sonar_logs:
+  sonar_db_data:
+
+networks:
+  sonar-net:
+    driver: bridge

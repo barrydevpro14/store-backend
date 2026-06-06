@@ -1,0 +1,12 @@
+package org.store.users.infrastructure.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.store.users.domain.model.Employe;
+import org.store.users.domain.repository.EmployeRepository;
+
+import java.util.UUID;
+
+@Repository
+public interface EmployeJpaRepository extends JpaRepository<Employe, UUID>, EmployeRepository {
+}

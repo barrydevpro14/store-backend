@@ -1,0 +1,2 @@
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS entreprise_label VARCHAR(255);
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS magasin_label    VARCHAR(255);

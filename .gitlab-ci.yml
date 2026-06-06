@@ -1,0 +1,30 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+stages:
+  - test
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dmaven.color=false"
+
+# ── Cache Maven dependencies across jobs ─────────────────────────────────────
+.maven-cache: &maven-cache
+  cache:
+    key: "$CI_PROJECT_ID-maven"
+    paths:
+      - .m2/repository/
+    policy: pull-push
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 1 — compile check
+# Railway builds and deploys the Docker image directly from the repo.
+# ─────────────────────────────────────────────────────────────────────────────
+test:
+  stage: test
+  image: eclipse-temurin:21-jdk-alpine
+  <<: *maven-cache
+  script:
+    - ./mvnw compile -q
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"

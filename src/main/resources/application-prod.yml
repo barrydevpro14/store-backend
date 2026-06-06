@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${URL_DATABASE}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  flyway:
+    enabled: true
+
+security:
+  rbac:
+    sync: ${RBAC_SYNC:false}
+    admin-password: ${RBAC_ADMIN_PASSWORD}
+  jwt:
+    secret: ${JWT_SECRET}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+app:
+  frontend:
+    url: ${FRONTEND_URL}
+  mail:
+    host:     ${MAIL_HOST:}
+    port:     ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from:     ${MAIL_FROM:}
+    auth:     true
+    starttls: true

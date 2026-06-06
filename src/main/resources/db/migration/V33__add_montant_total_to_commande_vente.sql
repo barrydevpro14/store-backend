@@ -1,0 +1,2 @@
+ALTER TABLE commande_vente
+    ADD COLUMN IF NOT EXISTS montant_total NUMERIC(19, 2) NOT NULL DEFAULT 0;
