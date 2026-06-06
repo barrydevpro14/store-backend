@@ -7,10 +7,13 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.store.common.service.IEmailService;
 import org.store.notification.application.event.ContactMessageRepliedEvent;
+import org.store.notification.application.event.EmployeWelcomeEvent;
+import org.store.notification.application.event.OwnerWelcomeEvent;
+import org.store.notification.application.event.PasswordResetRequestedEvent;
 
 /**
  * Listens to business events that require outbound emails and delegates to IEmailService.
- * Runs asynchronously — email failures never block the originating transaction.
+ * All handlers run @Async — email failures never block the originating transaction.
  */
 @Component
 public class EmailEventListener {
@@ -28,5 +31,26 @@ public class EmailEventListener {
     public void onContactMessageReplied(ContactMessageRepliedEvent event) {
         emailService.sendContactReply(event);
         log.info("ContactMessageReplied email dispatched to {}", event.email());
+    }
+
+    @Async
+    @EventListener
+    public void onPasswordResetRequested(PasswordResetRequestedEvent event) {
+        emailService.sendPasswordReset(event.toEmail(), event.recipientName(), event.resetLink());
+        log.info("PasswordReset email dispatched to {}", event.toEmail());
+    }
+
+    @Async
+    @EventListener
+    public void onEmployeWelcome(EmployeWelcomeEvent event) {
+        emailService.sendWelcomeEmploye(event.toEmail(), event.recipientName(), event.username(), event.password());
+        log.info("EmployeWelcome email dispatched to {}", event.toEmail());
+    }
+
+    @Async
+    @EventListener
+    public void onOwnerWelcome(OwnerWelcomeEvent event) {
+        emailService.sendWelcomeOwner(event.toEmail(), event.recipientName(), event.username(), event.entrepriseName(), event.loginUrl());
+        log.info("OwnerWelcome email dispatched to {}", event.toEmail());
     }
 }

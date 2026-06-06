@@ -1,8 +1,8 @@
 package org.store.security.application.service.impl;
 
 import org.store.security.application.service.*;
-import org.store.achat.domain.service.FournisseurDomainService;
-import org.store.common.service.IEmailService;
+import org.store.notification.application.event.OwnerWelcomeEvent;
+import org.store.notification.application.service.IEmailEventPublisher;
 import org.store.property.AppProperties;
 
 import org.springframework.stereotype.Service;
@@ -43,9 +43,8 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
     private final IJwtService jwtService;
     private final IUserPrincipalFactory userPrincipalFactory;
     private final IRefreshTokenService refreshTokenService;
-    private final FournisseurDomainService fournisseurDomainService;
-    private final IEmailService emailService;
     private final AppProperties appProperties;
+    private final IEmailEventPublisher emailEventPublisher;
 
     public RegisterPropertyServiceImpl(IAccountService accountService,
                                        IProprietaireService proprietaireService,
@@ -56,9 +55,8 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
                                        IJwtService jwtService,
                                        IUserPrincipalFactory userPrincipalFactory,
                                        IRefreshTokenService refreshTokenService,
-                                       FournisseurDomainService fournisseurDomainService,
-                                       IEmailService emailService,
-                                       AppProperties appProperties) {
+                                       AppProperties appProperties,
+                                       IEmailEventPublisher emailEventPublisher) {
         this.accountService = accountService;
         this.proprietaireService = proprietaireService;
         this.entrepriseService = entrepriseService;
@@ -68,9 +66,8 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
         this.jwtService = jwtService;
         this.userPrincipalFactory = userPrincipalFactory;
         this.refreshTokenService = refreshTokenService;
-        this.fournisseurDomainService = fournisseurDomainService;
-        this.emailService = emailService;
         this.appProperties = appProperties;
+        this.emailEventPublisher = emailEventPublisher;
     }
 
     /** Self-service signup for a new property owner: creates the full chain and returns access + refresh tokens. */
@@ -122,13 +119,13 @@ public class RegisterPropertyServiceImpl implements IRegisterPropertyService {
         abonnementService.createTrialForSignup(entreprise);
 
         String recipientName = registerPropertyRequest.utilisateur().prenom() + " " + registerPropertyRequest.utilisateur().nom();
-        emailService.sendWelcomeOwner(
+        emailEventPublisher.publishOwnerWelcome(new OwnerWelcomeEvent(
                 registerPropertyRequest.utilisateur().email(),
                 recipientName,
                 registerPropertyRequest.account().username(),
                 entreprise.getSigle(),
                 appProperties.url() + "/login"
-        );
+        ));
 
         return account;
     }

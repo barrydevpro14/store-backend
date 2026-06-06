@@ -58,7 +58,7 @@ class EmployeServiceImplTest {
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
-    @Mock private org.store.common.service.IEmailService emailService;
+    @Mock private org.store.notification.application.service.IEmailEventPublisher emailEventPublisher;
 
     @InjectMocks
     private EmployeServiceImpl service;
