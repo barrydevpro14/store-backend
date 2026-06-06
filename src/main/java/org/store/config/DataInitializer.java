@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,10 +13,6 @@ import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
 import org.store.achat.domain.service.FournisseurDomainService;
-import org.store.notification.domain.enums.CanalNotification;
-import org.store.notification.domain.enums.NotificationStatut;
-import org.store.notification.domain.model.Notification;
-import org.store.notification.domain.service.NotificationDomainService;
 import org.store.property.RbacProperties;
 import org.store.security.application.service.IRolesPermissionsSyncService;
 import org.store.security.domain.model.Role;
@@ -28,7 +23,6 @@ import org.store.users.domain.model.Utilisateur;
 import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Component
 public class DataInitializer implements ApplicationRunner {
@@ -49,7 +43,6 @@ public class DataInitializer implements ApplicationRunner {
     private final RoleDomainService roleDomainService;
     private final PasswordEncoder passwordEncoder;
     private final UtilisateurDomainService utilisateurDomainService;
-    private final NotificationDomainService notificationDomainService;
     private final FournisseurDomainService fournisseurDomainService;
     private final DemoProductSeeder demoProductSeeder;
 
@@ -61,7 +54,6 @@ public class DataInitializer implements ApplicationRunner {
                            RoleDomainService roleDomainService,
                            PasswordEncoder passwordEncoder,
                            UtilisateurDomainService utilisateurDomainService,
-                           NotificationDomainService notificationDomainService,
                            FournisseurDomainService fournisseurDomainService,
                            DemoProductSeeder demoProductSeeder) {
         this.rbacProperties = rbacProperties;
@@ -72,7 +64,6 @@ public class DataInitializer implements ApplicationRunner {
         this.roleDomainService = roleDomainService;
         this.passwordEncoder = passwordEncoder;
         this.utilisateurDomainService = utilisateurDomainService;
-        this.notificationDomainService = notificationDomainService;
         this.fournisseurDomainService = fournisseurDomainService;
         this.demoProductSeeder = demoProductSeeder;
     }
@@ -89,7 +80,6 @@ public class DataInitializer implements ApplicationRunner {
         ensureTrialPlan();
         fournisseurDomainService.ensureGlobalAnonymous();
         if (rbacProperties.sync()) {
-            seedSampleNotifications();
             demoProductSeeder.seed();
         }
     }
@@ -97,9 +87,7 @@ public class DataInitializer implements ApplicationRunner {
     /**
      * Idempotent : crée le compte ADMIN seedé s'il n'existe pas encore, puis
      * s'assure qu'un profil Utilisateur lui est attaché (pour que GET /users/me
-     * ne retourne pas 500 sur l'admin seedé). Chaque étape est indépendante :
-     * un redémarrage avec un compte déjà existant mais sans Utilisateur rattrapera
-     * le profil manquant.
+     * ne retourne pas 500 sur l'admin seedé).
      */
     private void ensureAdminAccount() {
         Account adminAccount = accountDomainService.findByUsername(ADMIN_USERNAME).orElse(null);
@@ -152,7 +140,6 @@ public class DataInitializer implements ApplicationRunner {
 
     /**
      * Seeds the default {@code TypePlanAbonnement} that the signup flow binds the TRIAL Abonnement to.
-     * Marked {@code trial=true} so {@code TypePlanAbonnementDomainService.findFirstActifTrial()} picks it up.
      */
     private void ensureTrialPlanHasDefaultType(PlanAbonnement trialPlan) {
         if (typePlanAbonnementDomainService.existsByPlanIdAndNom(trialPlan.getId(), TYPE_TRIAL_NOM)) {
@@ -170,56 +157,5 @@ public class DataInitializer implements ApplicationRunner {
         trialType.setTrial(true);
         typePlanAbonnementDomainService.save(trialType);
         log.info("DataInitializer: création type d'essai '{}' sur le plan '{}'", TYPE_TRIAL_NOM, trialPlan.getNom());
-    }
-
-    /**
-     * Seeds sample IN_APP notifications on the ADMIN account so the notification UI can be previewed.
-     * Idempotent: only seeds when the admin account has zero notifications.
-     */
-    private void seedSampleNotifications() {
-        Account adminAccount = accountDomainService.findByUsername(ADMIN_USERNAME).orElse(null);
-        if (adminAccount == null) return;
-
-        long existing = notificationDomainService.countUnread(adminAccount.getId())
-                + notificationDomainService.findByDestinataire(adminAccount.getId(),
-                        PageRequest.of(0, 1))
-                        .getTotalElements();
-        if (existing > 0) return;
-
-        LocalDateTime now = LocalDateTime.now();
-
-        seedNotif(adminAccount, "Contact : Demande de démo",
-                "Amadou Diallo <amadou@example.com>\nBonjour, je souhaite une démonstration de votre solution ERP.",
-                NotificationStatut.ENVOYEE, now.minusHours(2));
-
-        seedNotif(adminAccount, "Nouveau paiement à valider — SARL Alpha",
-                "L'entreprise « SARL Alpha » a soumis un paiement de 15 000 XOF. En attente de validation.",
-                NotificationStatut.ENVOYEE, now.minusHours(5));
-
-        seedNotif(adminAccount, "Contact : Problème de connexion",
-                "Fatou Ndiaye <fatou@store-client.sn>\nJe n'arrive pas à me connecter à mon espace. Mon username est fndaye.",
-                NotificationStatut.ENVOYEE, now.minusDays(1));
-
-        seedNotif(adminAccount, "Nouveau paiement à valider — GIE Soleil",
-                "L'entreprise « GIE Soleil » a soumis un paiement de 45 000 XOF. En attente de validation.",
-                NotificationStatut.LUE, now.minusDays(2));
-
-        seedNotif(adminAccount, "Contact : Question sur les tarifs",
-                "Omar Ba <oba@gmail.com>\nQuels sont vos tarifs pour une PME de 10 employés ?",
-                NotificationStatut.LUE, now.minusDays(3));
-
-        log.info("DataInitializer: 5 notifications de démo seedées pour le compte ADMIN");
-    }
-
-    private void seedNotif(Account dest, String titre, String message,
-                           NotificationStatut statut, LocalDateTime dateEnvoi) {
-        Notification n = new Notification();
-        n.setDestinataire(dest);
-        n.setTitre(titre);
-        n.setMessage(message);
-        n.setCanal(CanalNotification.IN_APP);
-        n.setStatut(statut);
-        n.setDateEnvoi(dateEnvoi);
-        notificationDomainService.save(n);
     }
 }
