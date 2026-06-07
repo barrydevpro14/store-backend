@@ -9,6 +9,35 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-08 — Per-store stats, alert system (scheduler + table + frontend), UX fixes
+
+**Subject:** New features day. Per-store statistics, full alert system (V40 + scheduler + REST + frontend), UX fixes.
+
+### Backend
+
+- **`GET /api/v1/magasins/{id}/stats`** (STORE_READ_ONE) — `nombreEmployes`, `nombreClients`, `nombreProduitsEnStock`, `valeurTotaleStock`, `revenuMoisCourant`.
+- **`AlertScheduler @Scheduled 08:00`** — abonnements expirant 1/3/5 jours, factures vente/achat impayées 1/3/5 jours. Persiste `Alerte` + publie events → `NotificationEventListener`.
+- **V40** — table `alerte` (type, statut NOUVELLE/LUE/RESOLUE, titre, message, entrepriseId, magasinId, entityId, joursInfo).
+- **`GET /api/v1/alertes`** filtré + **`GET /count`** (NOUVELLE) + **PATCH /lue** + **PATCH /resolue**.
+- **`AlerteRepository`** native query avec sentinels (workaround PostgreSQL null type inference).
+- **fix(achat)**: LEFT JOIN commande.facture — DRAFTs sans facture exclus par INNER JOIN implicite.
+- **`GET /abonnements/me/current`** → 204 pour ADMIN (no company).
+
+### Frontend
+
+- **`/dashboard/alertes`** — filtre type/statut, icônes par type, badge statut, marquer lue/résolue.
+- **Notification bell** — badge = notifs non lues + alertes NOUVELLES (`useNouvelleAlertesCount` poll 60s).
+- **KPI Employés + Clients** sur la page reporting via `useMagasinStats`.
+- **"Vente moyenne"** (ex ticket moyen). Auth no-scroll. Country combobox. Vente details footer pincé.
+- **Auto-load retiré** VentesPage + AchatsPage (retour au deferred search).
+
+### Open
+- Commits locaux prêts, pas encore poussés.
+
+---
+
+## Previous session
+
 **Date:** 2026-06-07 — Deployment (Railway + Vercel), UX overhaul, backend architecture fixes, email events
 
 **Subject:** Full-day deployment + feature session. Backend live on Railway via GitLab→GitHub mirror. Frontend on Vercel (dev branch auto-deploy). Major UX, architecture, and bug-fix sweep.

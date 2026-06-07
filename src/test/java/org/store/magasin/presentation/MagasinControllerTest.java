@@ -50,7 +50,13 @@ class MagasinControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new MagasinController(magasinService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new MagasinController(
+                magasinService,
+                mock(org.store.magasin.domain.service.MagasinDomainService.class),
+                mock(org.store.users.domain.service.EmployeDomainService.class),
+                mock(org.store.vente.domain.service.ClientDomainService.class),
+                mock(org.store.stock.application.service.IStockService.class),
+                mock(org.store.vente.domain.service.FactureClientDomainService.class)))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())

@@ -48,6 +48,9 @@ public interface EmployeRepository extends BaseRepository<Employe> {
                                                 @Param("entrepriseId") UUID entrepriseId,
                                                 Pageable pageable);
 
+    @Query("SELECT COUNT(e) FROM Employe e WHERE e.magasin.id = :magasinId")
+    long countByMagasinId(@Param("magasinId") UUID magasinId);
+
     @Query("SELECT e.account FROM Employe e WHERE e.magasin.id = :magasinId AND e.account.role.libelle = :roleLibelle AND e.account.enabled = true")
     List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(@Param("magasinId") UUID magasinId,
                                                               @Param("roleLibelle") String roleLibelle);

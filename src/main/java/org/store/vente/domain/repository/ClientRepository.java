@@ -71,4 +71,7 @@ public interface ClientRepository extends BaseRepository<Client> {
                                                      @Param("createdStart") LocalDateTime createdStart,
                                                      @Param("createdEnd") LocalDateTime createdEnd,
                                                      Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM Client c WHERE c.magasin.entreprise.id = :entrepriseId")
+    long countByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
 }

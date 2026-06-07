@@ -43,6 +43,10 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
                 filter.toPageable());
     }
 
+    public long countByEntrepriseId(UUID entrepriseId) {
+        return repository.countByEntrepriseId(entrepriseId);
+    }
+
     public Page<ClientResponse> findResponsesByEntrepriseId(UUID entrepriseId, ClientFilter filter) {
         return repository.findResponsesByEntrepriseId(
                 entrepriseId,
