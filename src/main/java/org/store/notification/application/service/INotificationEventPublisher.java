@@ -16,4 +16,7 @@ public interface INotificationEventPublisher {
     void publishPaiementRejected(PaiementAbonnementRejectedEvent event);
     void publishContactMessageReceived(ContactMessageReceivedEvent event);
     void publishContactMessageReplied(ContactMessageRepliedEvent event);
+
+    /** Generic publish — used by AlertScheduler for alert events. */
+    void publishEvent(Object event);
 }

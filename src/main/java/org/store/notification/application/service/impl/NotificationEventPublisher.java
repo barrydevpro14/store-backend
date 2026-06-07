@@ -58,4 +58,9 @@ public class NotificationEventPublisher implements INotificationEventPublisher {
     public void publishContactMessageReplied(ContactMessageRepliedEvent event) {
         publisher.publishEvent(event);
     }
+
+    @Override
+    public void publishEvent(Object event) {
+        publisher.publishEvent(event);
+    }
 }

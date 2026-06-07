@@ -105,4 +105,9 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     public long countByStatut(AbonnementStatut statut) {
         return repository.countByStatut(statut);
     }
+
+    /** Finds active/trial subscriptions expiring on the given date (for daily alert scheduler). */
+    public java.util.List<Abonnement> findExpiringOn(java.time.LocalDate date) {
+        return repository.findByDateFinAndStatutActifOrTrial(date);
+    }
 }

@@ -13,6 +13,7 @@ import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.common.repository.BaseRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -120,4 +121,8 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
               AND abonnement.createdAt <  :#{#filter.createdEndDateTime()}
             """)
     Page<AbonnementResponse> findResponsesByFilter(@Param("filter") AbonnementFilter filter, Pageable pageable);
+
+    /** Finds active/trial subscriptions expiring exactly on the given date (for 1/3/5-day alerts). */
+    @Query("SELECT a FROM Abonnement a WHERE a.dateFin = :date AND a.statut IN ('ACTIF', 'TRIAL')")
+    List<Abonnement> findByDateFinAndStatutActifOrTrial(@Param("date") LocalDate date);
 }
