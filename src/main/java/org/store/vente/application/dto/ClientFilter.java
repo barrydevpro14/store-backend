@@ -6,10 +6,12 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record ClientFilter(
         String nom,
         String prenom,
+        UUID magasinId,
         LocalDate createdStartDate,
         LocalDate createdEndDate,
         @Min(0) int page,
