@@ -15,6 +15,7 @@ import org.store.achat.domain.service.PaiementAchatDomainService;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.math.BigDecimal;
@@ -31,15 +32,18 @@ public class PaiementAchatServiceImpl implements IPaiementAchatService {
     private final PaiementAchatDomainService paiementAchatDomainService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final IMoyenPaiementService moyenPaiementService;
 
     public PaiementAchatServiceImpl(FactureAchatDomainService factureAchatDomainService,
                                     PaiementAchatDomainService paiementAchatDomainService,
                                     ICurrentUserService currentUserService,
-                                    ValidatorService validatorService) {
+                                    ValidatorService validatorService,
+                                    IMoyenPaiementService moyenPaiementService) {
         this.factureAchatDomainService = factureAchatDomainService;
         this.paiementAchatDomainService = paiementAchatDomainService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.moyenPaiementService = moyenPaiementService;
     }
 
     /** Vérifie l'accès facture, refuse l'overpaiement, crée le paiement et met à jour la facture. */
@@ -59,7 +63,8 @@ public class PaiementAchatServiceImpl implements IPaiementAchatService {
 
         PaiementAchat paiement = paiementAchatDomainService.create(new PaiementAchatCreate(
                 facture, paiementAchatRequest.montant(),
-                paiementAchatRequest.datePaiement(), paiementAchatRequest.moyen()
+                paiementAchatRequest.datePaiement(),
+                moyenPaiementService.findById(paiementAchatRequest.moyenPaiementId())
         ));
 
         factureAchatDomainService.applyPaiement(facture, paiementAchatRequest.montant());

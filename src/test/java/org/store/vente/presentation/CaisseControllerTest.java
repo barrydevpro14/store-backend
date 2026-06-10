@@ -50,7 +50,7 @@ class CaisseControllerTest {
                 new BigDecimal("145000.00"), new BigDecimal("98500.00"),
                 List.of(
                         new org.store.vente.application.dto.PaiementParMoyenResponse(
-                                org.store.achat.domain.enums.MoyenPaiement.CASH,
+                                buildMoyen("CASH", "Espèces"),
                                 new BigDecimal("60000.00"), 18L)
                 ),
                 List.of(
@@ -68,7 +68,7 @@ class CaisseControllerTest {
                 .andExpect(jsonPath("$.to").value("2026-05-16"))
                 .andExpect(jsonPath("$.nombreCommandes").value(27))
                 .andExpect(jsonPath("$.totalCommandes").value(145000.00))
-                .andExpect(jsonPath("$.paiementsParMoyen[0].moyen").value("CASH"))
+                .andExpect(jsonPath("$.paiementsParMoyen[0].moyen.code").value("CASH"))
                 .andExpect(jsonPath("$.ventesParVendeur[0].nomComplet").value("Diop Awa"));
     }
 
@@ -119,5 +119,13 @@ class CaisseControllerTest {
                         .param("magasinId", magasinId.toString())
                         .param("nombre", "10"))
                 .andExpect(status().isOk());
+    }
+
+    private static org.store.paiement.domain.model.MoyenPaiement buildMoyen(String code, String libelle) {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        m.setCode(code);
+        m.setLibelle(libelle);
+        return m;
     }
 }

@@ -25,7 +25,7 @@ import org.store.achat.application.dto.PaiementAchatRequest;
 import org.store.achat.application.service.impl.AchatServiceImpl;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.FactureAchat;
@@ -90,6 +90,15 @@ class AchatServiceImplTest {
     @Mock private PurchaseProperties purchaseProperties;
     @Mock private org.store.security.application.service.ICurrentUserService currentUserService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
+    @Mock private IMoyenPaiementService moyenPaiementService;
+
+    private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenCash() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_ID); m.setLibelle("Espèces"); m.setCode("CASH");
+        return m;
+    }
 
     @InjectMocks
     private AchatServiceImpl service;
@@ -322,7 +331,8 @@ class AchatServiceImplTest {
 
         AchatReceiveRequest body = new AchatReceiveRequest(
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
-                new PaiementAchatRequest(new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), MoyenPaiement.CASH));
+                new PaiementAchatRequest(new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), MOYEN_ID));
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
 
         service.receive(commandeId, body);
 
@@ -341,7 +351,7 @@ class AchatServiceImplTest {
 
         AchatReceiveRequest body = new AchatReceiveRequest(
                 new FactureAchatCreateRequest("FAC-001", LocalDate.of(2026, 5, 15), LocalDate.of(2026, 6, 15)),
-                new PaiementAchatRequest(new BigDecimal("2000.00"), LocalDate.of(2026, 5, 15), MoyenPaiement.CASH));
+                new PaiementAchatRequest(new BigDecimal("2000.00"), LocalDate.of(2026, 5, 15), MOYEN_ID));
 
         assertThatThrownBy(() -> service.receive(commandeId, body))
                 .isInstanceOf(BadArgumentException.class)

@@ -23,7 +23,7 @@ public interface DepenseRepository extends BaseRepository<Depense> {
             WHERE depense.magasin.entreprise.id = :entrepriseId
               AND depense.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
-              AND (:#{#filter.modePaiementAsEnum()} IS NULL OR depense.modePaiement = :#{#filter.modePaiementAsEnum()})
+              AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
               AND depense.dateDepense >= :#{#filter.fromDateSentinel()}
               AND depense.dateDepense <= :#{#filter.toDateSentinel()}
               AND depense.createdAt >= :#{#filter.createdStartDateTime()}
@@ -44,7 +44,7 @@ public interface DepenseRepository extends BaseRepository<Depense> {
             WHERE depense.magasin.entreprise.id = :entrepriseId
               AND depense.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
-              AND (:#{#filter.modePaiementAsEnum()} IS NULL OR depense.modePaiement = :#{#filter.modePaiementAsEnum()})
+              AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
               AND depense.dateDepense >= :#{#filter.fromDateSentinel()}
               AND depense.dateDepense <= :#{#filter.toDateSentinel()}
               AND depense.createdAt >= :#{#filter.createdStartDateTime()}

@@ -34,7 +34,7 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
                 .add(breakdown.reductionCoupon()));
         paiement.setMontantFinal(breakdown.montantAPayer());
         paiement.setDatePaiement(paiementAbonnementRequest.datePaiement());
-        paiement.setMoyen(paiementAbonnementRequest.moyenAsEnum());
+        paiement.setMoyen(context.moyen());
         paiement.setReferenceTransaction(paiementAbonnementRequest.referenceTransaction());
         paiement.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
         paiement.setPreuve(context.preuve());

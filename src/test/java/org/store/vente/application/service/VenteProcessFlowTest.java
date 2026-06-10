@@ -42,6 +42,7 @@ import org.store.vente.application.dto.VenteValidateRequest;
 import org.store.vente.application.service.impl.VenteServiceImpl;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 import org.store.vente.domain.enums.MotifAnnulationVente;
+import org.store.vente.domain.model.Client;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
@@ -100,9 +101,18 @@ class VenteProcessFlowTest {
     @Mock private SaleProperties saleProperties;
     @Mock private INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
+    @Mock private org.store.paiement.application.service.IMoyenPaiementService moyenPaiementService;
 
     @InjectMocks
     private VenteServiceImpl service;
+
+    private static final java.util.UUID MOYEN_ID = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenCash() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_ID); m.setLibelle("Espèces"); m.setCode("CASH");
+        return m;
+    }
 
     private UUID entrepriseId;
     private UUID magasinId;
@@ -163,11 +173,17 @@ class VenteProcessFlowTest {
 
         UUID vendeurAccountId = UUID.randomUUID();
 
+        Client testClient = new Client();
+        testClient.setId(UUID.randomUUID());
+        testClient.setNom("Test Client");
+        testClient.setMagasin(magasin);
+
         draftCommande = new CommandeVente();
         draftCommande.setId(commandeId);
         draftCommande.setReference("VTE-TEST-001");
         draftCommande.setStatut(CommandeVenteStatut.DRAFT);
         draftCommande.setMagasin(magasin);
+        draftCommande.setClient(testClient);
         draftCommande.setDate(LocalDate.of(2026, 6, 4));
         draftCommande.setCreatedAt(LocalDateTime.now());
         draftCommande.setCreatedBy(vendeurAccountId.toString());
@@ -314,9 +330,10 @@ class VenteProcessFlowTest {
 
         VenteValidateRequest validateRequest = new VenteValidateRequest(
                 LocalDate.of(2026, 7, 4),
-                new PaiementVenteRequest(new BigDecimal("50000.00"), "CASH", null));
+                new PaiementVenteRequest(new BigDecimal("50000.00"), MOYEN_ID, null));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(paiementVenteDomainService.create(any())).thenReturn(new org.store.vente.domain.model.PaiementVente());
         when(factureClientDomainService.applyPaiement(facture, new BigDecimal("50000.00"))).thenReturn(factureAvecPaiement);

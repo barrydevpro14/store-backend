@@ -82,6 +82,9 @@ public class AdminAccountServiceImpl implements IAdminAccountService {
     @Transactional
     public AdminAccountResponse setEnabled(UUID id, boolean enabled) {
         Account account = accountDomainService.findById(id);
+        if (account.isSysteme() && !enabled) {
+            throw new BadArgumentException("account.systeme.cannotDeactivate");
+        }
         return new AdminAccountResponse(accountDomainService.setEnabled(account, enabled));
     }
 }
