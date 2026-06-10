@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.depense.application.dto.DepenseFilter;
@@ -45,6 +45,15 @@ class DepenseServiceImplTest {
     @Mock private ICategoryDepenseService categoryDepenseService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private IMoyenPaiementService moyenPaiementService;
+
+    private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenCash() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_ID); m.setLibelle("Espèces"); m.setCode("CASH");
+        return m;
+    }
 
     @InjectMocks
     private DepenseServiceImpl service;
@@ -83,7 +92,7 @@ class DepenseServiceImplTest {
         depense.setLibelle("Loyer mai");
         depense.setDateDepense(LocalDate.of(2026, 5, 1));
         depense.setMontant(new BigDecimal("250000.00"));
-        depense.setModePaiement(MoyenPaiement.CASH);
+        depense.setModePaiement(moyenCash());
     }
 
     private UserPrincipal user() {
@@ -93,25 +102,27 @@ class DepenseServiceImplTest {
     @Test
     void create_should_persist_when_scoping_ok() {
         DepenseRequest req = new DepenseRequest(magasinId, categoryId, "Loyer mai", "desc",
-                LocalDate.of(2026, 5, 1), new BigDecimal("250000.00"), MoyenPaiement.CASH);
+                LocalDate.of(2026, 5, 1), new BigDecimal("250000.00"), MOYEN_ID);
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(categoryDepenseService.findById(categoryId)).thenReturn(category);
         when(categoryDepenseService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
-        when(depenseDomainService.create(eq(req), eq(magasin), eq(category))).thenReturn(depense);
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
+        when(depenseDomainService.create(eq(req), eq(magasin), eq(category), any())).thenReturn(depense);
 
         DepenseResponse response = service.create(req);
 
         assertThat(response.libelle()).isEqualTo("Loyer mai");
         assertThat(response.montant()).isEqualByComparingTo("250000.00");
-        assertThat(response.modePaiement()).isEqualTo(MoyenPaiement.CASH);
+        assertThat(response.modePaiement()).isNotNull();
+        assertThat(response.modePaiement().libelle()).isEqualTo("Espèces");
     }
 
     @Test
     void create_should_propagate_forbidden_when_magasin_not_accessible() {
         DepenseRequest req = new DepenseRequest(magasinId, categoryId, "Loyer", null,
-                LocalDate.now(), new BigDecimal("100.00"), MoyenPaiement.CASH);
+                LocalDate.now(), new BigDecimal("100.00"), MOYEN_ID);
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin))

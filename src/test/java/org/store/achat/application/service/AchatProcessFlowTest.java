@@ -20,7 +20,7 @@ import org.store.achat.application.dto.PaiementAchatRequest;
 import org.store.achat.application.service.impl.AchatServiceImpl;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.FactureAchat;
@@ -89,6 +89,15 @@ class AchatProcessFlowTest {
     @Mock private PurchaseProperties purchaseProperties;
     @Mock private org.store.security.application.service.ICurrentUserService currentUserService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
+    @Mock private IMoyenPaiementService moyenPaiementService;
+
+    private static final UUID MOYEN_WAVE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenWave() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_WAVE_ID); m.setLibelle("Wave"); m.setCode("WAVE");
+        return m;
+    }
 
     @InjectMocks
     private AchatServiceImpl service;
@@ -316,10 +325,11 @@ class AchatProcessFlowTest {
         AchatReceiveRequest receiveRequest = new AchatReceiveRequest(
                 new FactureAchatCreateRequest("FACT-2026-002",
                         LocalDate.of(2026, 6, 3), LocalDate.of(2026, 7, 3)),
-                new PaiementAchatRequest(new BigDecimal("200000.00"), LocalDate.of(2026, 6, 3), MoyenPaiement.WAVE));
+                new PaiementAchatRequest(new BigDecimal("200000.00"), LocalDate.of(2026, 6, 3), MOYEN_WAVE_ID));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(draftCommande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(draftCommande)).thenReturn(draftCommande);
+        when(moyenPaiementService.findById(MOYEN_WAVE_ID)).thenReturn(moyenWave());
         when(factureAchatDomainService.create(any())).thenReturn(factureAvecPaiement);
         when(paiementAchatDomainService.create(any())).thenReturn(new org.store.achat.domain.model.PaiementAchat());
         when(factureAchatDomainService.applyPaiement(any(), any())).thenReturn(factureAvecPaiement);

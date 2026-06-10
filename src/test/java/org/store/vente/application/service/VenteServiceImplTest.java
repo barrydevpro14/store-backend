@@ -7,7 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.common.dto.UserSummaryResponse;
@@ -98,6 +98,15 @@ class VenteServiceImplTest {
     @Mock private SaleProperties saleProperties;
     @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
+    @Mock private IMoyenPaiementService moyenPaiementService;
+
+    private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenCash() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_ID); m.setLibelle("Espèces"); m.setCode("CASH");
+        return m;
+    }
 
     @InjectMocks
     private VenteServiceImpl service;
@@ -309,7 +318,7 @@ class VenteServiceImplTest {
 
         VenteValidateRequest req = new VenteValidateRequest(
                 LocalDate.now().plusDays(30),
-                new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name(), null)
+                new PaiementVenteRequest(new BigDecimal("500.00"), MOYEN_ID, null)
         );
 
         FactureClient factureAfterPaiement = new FactureClient();
@@ -322,6 +331,7 @@ class VenteServiceImplTest {
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
         when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(factureClientDomainService.applyPaiement(facture, new BigDecimal("500.00"))).thenReturn(factureAfterPaiement);
@@ -334,7 +344,7 @@ class VenteServiceImplTest {
         verify(paiementVenteDomainService).create(paiementCaptor.capture());
         PaiementVenteCreate captured = paiementCaptor.getValue();
         assertThat(captured.montant()).isEqualByComparingTo(new BigDecimal("500.00"));
-        assertThat(captured.moyen()).isEqualTo(MoyenPaiement.CASH);
+        assertThat(captured.moyen().getCode()).isEqualTo("CASH");
         assertThat(captured.datePaiement()).isEqualTo(LocalDate.now());
     }
 
@@ -347,11 +357,12 @@ class VenteServiceImplTest {
         LocalDate datePaiementSaisi = LocalDate.of(2026, 5, 10);
         VenteValidateRequest req = new VenteValidateRequest(
                 LocalDate.now().plusDays(30),
-                new PaiementVenteRequest(new BigDecimal("500.00"), MoyenPaiement.CASH.name(), datePaiementSaisi)
+                new PaiementVenteRequest(new BigDecimal("500.00"), MOYEN_ID, datePaiementSaisi)
         );
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
         when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(factureClientDomainService.applyPaiement(facture, new BigDecimal("500.00"))).thenReturn(facture);
