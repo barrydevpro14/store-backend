@@ -107,7 +107,7 @@ public class EmployeServiceImpl implements IEmployeService {
     public EmployeResponse create(EmployeRequest employeRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
 
-        Role role = roleService.findByLibelle(employeRequest.role());
+        Role role = roleService.findById(employeRequest.roleId());
         List<String> rolePermissions = permissionsService.findAllByRoleId(role.getId());
 
         ensureRoleAllowed(role);
@@ -175,7 +175,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
 
-        Role newRole = roleService.findByLibelle(request.role());
+        Role newRole = roleService.findById(request.roleId());
         List<String> newRolePermissions = permissionsService.findAllByRoleId(newRole.getId());
         ensureRoleAllowed(newRole);
         ensureCallerCanAssignRole(currentUser, newRolePermissions);
@@ -201,7 +201,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
 
-        Role newRole = roleService.findByLibelle(request.role());
+        Role newRole = roleService.findById(request.roleId());
         List<String> newRolePermissions = permissionsService.findAllByRoleId(newRole.getId());
         ensureRoleAllowed(newRole);
         ensureCallerCanAssignRole(currentUser, newRolePermissions);

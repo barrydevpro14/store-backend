@@ -13,7 +13,7 @@ public record EmployeUpdateRequest(
         @NotBlank @Email String email,
         @NotBlank @Phone String telephone,
         String adresse,
-        @NotBlank String role,
+        @NotNull UUID roleId,
         @NotNull UUID magasinId
 ) {
 }
