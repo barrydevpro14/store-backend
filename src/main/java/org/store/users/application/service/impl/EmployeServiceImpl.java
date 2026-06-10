@@ -26,6 +26,7 @@ import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateCommand;
 import org.store.users.application.dto.EmployeUpdateRequest;
+import org.store.abonnement.application.service.AbonnementQuotaService;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
@@ -66,6 +67,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final ValidatorService validatorService;
     private final IAuditEventPublisher auditEventPublisher;
     private final IEmailEventPublisher emailEventPublisher;
+    private final AbonnementQuotaService quotaService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
                               UtilisateurDomainService utilisateurDomainService,
@@ -76,7 +78,8 @@ public class EmployeServiceImpl implements IEmployeService {
                               ICurrentUserService currentUserService,
                               ValidatorService validatorService,
                               IAuditEventPublisher auditEventPublisher,
-                              IEmailEventPublisher emailEventPublisher) {
+                              IEmailEventPublisher emailEventPublisher,
+                              AbonnementQuotaService quotaService) {
         this.employeDomainService = employeDomainService;
         this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
@@ -87,6 +90,7 @@ public class EmployeServiceImpl implements IEmployeService {
         this.validatorService = validatorService;
         this.auditEventPublisher = auditEventPublisher;
         this.emailEventPublisher = emailEventPublisher;
+        this.quotaService = quotaService;
     }
 
     private void audit(AuditAction action, UUID entityId, String label) {
@@ -106,6 +110,7 @@ public class EmployeServiceImpl implements IEmployeService {
     @Transactional
     public EmployeResponse create(EmployeRequest employeRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
+        quotaService.ensureEmployeQuota(currentUser.entrepriseId());
 
         Role role = roleService.findById(employeRequest.roleId());
         List<String> rolePermissions = permissionsService.findAllByRoleId(role.getId());
