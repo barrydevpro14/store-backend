@@ -12,8 +12,7 @@ public record EmployeResponse(
         String telephone,
         String adresse,
         String username,
-        UUID roleId,
-        String role,
+        RoleSummary role,
         UUID magasinId,
         boolean actif
 ) {
@@ -26,8 +25,7 @@ public record EmployeResponse(
                 employe.getTelephone(),
                 employe.getAdresse(),
                 employe.getAccount().getUsername(),
-                employe.getAccount().getRole().getId(),
-                employe.getAccount().getRole().getLibelle(),
+                new RoleSummary(employe.getAccount().getRole().getId(), employe.getAccount().getRole().getLibelle()),
                 employe.getMagasin().getId(),
                 employe.getAccount().isEnabled()
         );
