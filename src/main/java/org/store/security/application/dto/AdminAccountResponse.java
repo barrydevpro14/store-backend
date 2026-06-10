@@ -15,6 +15,7 @@ public record AdminAccountResponse(
         String telephone,
         boolean enabled,
         boolean locked,
+        boolean systeme,
         String createdAt
 ) {
     public AdminAccountResponse(Account account) {
@@ -31,6 +32,7 @@ public record AdminAccountResponse(
                 utilisateur != null ? utilisateur.getTelephone() : null,
                 account.isEnabled(),
                 account.isLocked(),
+                account.isSysteme(),
                 DateHelper.format(account.getCreatedAt())
         );
     }

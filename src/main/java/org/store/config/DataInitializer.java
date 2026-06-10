@@ -123,7 +123,12 @@ public class DataInitializer implements ApplicationRunner {
                             "Rôle ADMIN absent en base — la sync RBAC doit s'exécuter avant ensureAdminAccount."));
             adminAccount = accountDomainService.create(
                     ADMIN_USERNAME, passwordEncoder.encode(rbacProperties.adminPassword()), adminRole);
+            adminAccount.setSysteme(true);
+            accountDomainService.save(adminAccount);
             log.info("DataInitializer: compte ADMIN seedé (username={})", ADMIN_USERNAME);
+        } else if (!adminAccount.isSysteme()) {
+            adminAccount.setSysteme(true);
+            accountDomainService.save(adminAccount);
         }
 
         Account finalAdminAccount = adminAccount;

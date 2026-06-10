@@ -21,6 +21,10 @@ public class Account extends AuditableEntity {
     private boolean locked;
     private LocalDateTime creationDate = LocalDateTime.now();
 
+    /** Compte système seedé par DataInitializer — ne peut pas être désactivé via l'API. */
+    @Column(nullable = false, updatable = false)
+    private boolean systeme = false;
+
     @OneToOne(mappedBy = "account")
     private Utilisateur user;
 
