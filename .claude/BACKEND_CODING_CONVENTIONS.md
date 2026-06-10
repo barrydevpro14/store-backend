@@ -533,6 +533,36 @@ public ResponseEntity<EntrepriseResponse> update(...) { ... }
 
 ---
 
+### 43. Toujours résoudre une entité via son UUID — jamais via un champ métier
+
+**Tout DTO qui référence une entité externe doit porter un champ `UUID xxxId` (@NotNull). Le service résout l'entité via `findById(UUID)`, jamais via `findByLibelle`, `findByNom`, `findByCode` ou tout autre champ métier.**
+
+❌ Mauvais :
+```java
+// DTO
+@NotBlank String role   // libelle envoyé par le client
+
+// Service
+Role role = roleService.findByLibelle(request.role());
+// → ambiguïté scope entreprise/global, fragile au renommage
+```
+
+✅ Bon :
+```java
+// DTO
+@NotNull UUID roleId    // UUID stable
+
+// Service
+Role role = roleService.findById(request.roleId());
+// → lookup O(1) par clé primaire, scope non-ambigu
+```
+
+**Exceptions autorisées :** les opérations de seed/init où aucun UUID n'est encore disponible (ex : `DataInitializer`).
+
+**Why:** Les champs métier changent, peuvent être dupliqués (rôle global vs rôle d'entreprise), et sont sensibles à la casse. L'UUID est stable, non-ambigu et couvre tous les scopes sans logique supplémentaire.
+
+---
+
 ## Commit conventions
 
 Project style: direct title (no `feat:`/`fix:` prefix), description of the "why" in the body. **Language: English** (entire repo is English now).

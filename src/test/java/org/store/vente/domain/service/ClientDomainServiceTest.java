@@ -91,7 +91,7 @@ class ClientDomainServiceTest {
     void findResponsesByMagasinId_should_delegate_to_repository_with_correct_args() {
         LocalDate start = LocalDate.of(2025, 1, 1);
         LocalDate end = LocalDate.of(2025, 12, 31);
-        ClientFilter filter = new ClientFilter("Diallo", "Mama", start, end, 0, 10);
+        ClientFilter filter = new ClientFilter("Diallo", "Mama", null, start, end, 0, 10);
 
         ClientResponse response = new ClientResponse(UUID.randomUUID(), "Diallo", "Mama", null, "+221770000001", null);
         Page<ClientResponse> page = new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1);
@@ -120,7 +120,7 @@ class ClientDomainServiceTest {
 
     @Test
     void findResponsesByMagasinId_should_use_sentinel_when_dates_are_null() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 20);
+        ClientFilter filter = new ClientFilter(null, null, null, null, null, 0, 20);
 
         Page<ClientResponse> empty = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
 
@@ -142,7 +142,7 @@ class ClientDomainServiceTest {
     void findResponsesByEntrepriseId_should_delegate_to_repository_with_correct_args() {
         LocalDate start = LocalDate.of(2025, 3, 1);
         LocalDate end = LocalDate.of(2025, 6, 30);
-        ClientFilter filter = new ClientFilter("Ndiaye", null, start, end, 1, 5);
+        ClientFilter filter = new ClientFilter("Ndiaye", null, null, start, end, 1, 5);
 
         String expectedNomPattern = LikePatternHelper.toLikePattern("Ndiaye");
         LocalDateTime expectedStart = filter.createdStartDateTime();
@@ -169,7 +169,7 @@ class ClientDomainServiceTest {
 
     @Test
     void findResponsesByEntrepriseId_should_use_sentinel_when_dates_are_null() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, null, 0, 10);
 
         Page<ClientResponse> empty = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 

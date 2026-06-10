@@ -68,7 +68,7 @@ class CaisseControllerTest {
                 .andExpect(jsonPath("$.to").value("2026-05-16"))
                 .andExpect(jsonPath("$.nombreCommandes").value(27))
                 .andExpect(jsonPath("$.totalCommandes").value(145000.00))
-                .andExpect(jsonPath("$.paiementsParMoyen[0].moyen").value("CASH"))
+                .andExpect(jsonPath("$.paiementsParMoyen[0].moyen.code").value("CASH"))
                 .andExpect(jsonPath("$.ventesParVendeur[0].nomComplet").value("Diop Awa"));
     }
 

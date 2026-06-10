@@ -52,6 +52,7 @@ import org.store.vente.application.dto.VenteValidateRequest;
 import org.store.vente.application.service.impl.VenteServiceImpl;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 import org.store.vente.domain.enums.MotifAnnulationVente;
+import org.store.vente.domain.model.Client;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
@@ -171,11 +172,17 @@ class VenteServiceImplTest {
         productFournisseur.setPrixAchat(new BigDecimal("8.00"));
         productFournisseur.setPrixVente(new BigDecimal("10.00"));
 
+        Client client = new Client();
+        client.setId(UUID.randomUUID());
+        client.setNom("Test Client");
+        client.setMagasin(magasin);
+
         commande = new CommandeVente();
         commande.setId(commandeId);
         commande.setReference("VTE-AUTO");
         commande.setStatut(CommandeVenteStatut.DRAFT);
         commande.setMagasin(magasin);
+        commande.setClient(client);
         commande.setCreatedBy(vendeurAccountId.toString());
         commande.setLignes(new ArrayList<>());
 
