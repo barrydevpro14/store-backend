@@ -106,7 +106,7 @@ public class DepenseServiceImpl implements IDepenseService {
         depense.setDescription(depenseRequest.description());
         depense.setDateDepense(depenseRequest.dateDepense());
         depense.setMontant(depenseRequest.montant());
-        depense.setModePaiement(depenseRequest.modePaiement());
+        depense.setModePaiement(moyenPaiementService.findById(depenseRequest.moyenPaiementId()));
 
         return new DepenseResponse(depenseDomainService.save(depense));
     }
