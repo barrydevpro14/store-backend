@@ -1,6 +1,6 @@
 package org.store.vente.application.dto;
 
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.domain.model.MoyenPaiement;
 
 import java.math.BigDecimal;
 

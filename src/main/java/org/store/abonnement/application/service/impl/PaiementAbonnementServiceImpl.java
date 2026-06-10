@@ -41,6 +41,7 @@ import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.time.LocalDate;
@@ -67,6 +68,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     private final ValidatorService validatorService;
     private final INotificationEventPublisher notificationEventPublisher;
     private final IAuditEventPublisher auditEventPublisher;
+    private final IMoyenPaiementService moyenPaiementService;
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
@@ -79,7 +81,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                                          ICurrentUserService currentUserService,
                                          ValidatorService validatorService,
                                          INotificationEventPublisher notificationEventPublisher,
-                                         IAuditEventPublisher auditEventPublisher) {
+                                         IAuditEventPublisher auditEventPublisher,
+                                         IMoyenPaiementService moyenPaiementService) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
         this.abonnementService = abonnementService;
@@ -92,6 +95,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         this.validatorService = validatorService;
         this.notificationEventPublisher = notificationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
+        this.moyenPaiementService = moyenPaiementService;
     }
 
     /**
@@ -112,7 +116,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         PieceJointe preuveImage = uploadFileService.buildImage(preuve);
 
         PaiementAbonnement paiement = paiementAbonnementDomainService.createPending(
-                new PaiementAbonnementCreationContext(abonnement, paiementAbonnementRequest, breakdown, preuveImage));
+                new PaiementAbonnementCreationContext(abonnement, paiementAbonnementRequest, breakdown, preuveImage,
+                        moyenPaiementService.findById(paiementAbonnementRequest.moyenPaiementId())));
 
         notificationEventPublisher.publishPaiementSubmitted(
                 new PaiementAbonnementSubmittedEvent(paiement));

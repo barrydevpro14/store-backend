@@ -1,6 +1,6 @@
 package org.store.vente.application.dto;
 
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 import org.store.vente.domain.model.PaiementVente;
 
 import java.math.BigDecimal;
@@ -11,7 +11,7 @@ public record PaiementVenteResponse(
         UUID id,
         BigDecimal montant,
         LocalDate datePaiement,
-        MoyenPaiement moyen,
+        MoyenPaiementResponse moyen,
         UUID factureId
 ) {
     public PaiementVenteResponse(PaiementVente paiement) {
@@ -19,7 +19,7 @@ public record PaiementVenteResponse(
                 paiement.getId(),
                 paiement.getMontant(),
                 paiement.getDatePaiement(),
-                paiement.getMoyen(),
+                paiement.getMoyen() != null ? new MoyenPaiementResponse(paiement.getMoyen()) : null,
                 paiement.getFacture() != null ? paiement.getFacture().getId() : null
         );
     }

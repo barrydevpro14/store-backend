@@ -1,9 +1,9 @@
 package org.store.depense.application.dto;
 
-import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.common.tools.DateHelper;
 import org.store.depense.domain.model.Depense;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -16,7 +16,7 @@ public record DepenseResponse(
         String description,
         String dateDepense,
         BigDecimal montant,
-        MoyenPaiement modePaiement,
+        MoyenPaiementResponse modePaiement,
         String createdAt
 ) {
     public DepenseResponse(Depense depense) {
@@ -28,7 +28,7 @@ public record DepenseResponse(
                 depense.getDescription(),
                 DateHelper.format(depense.getDateDepense()),
                 depense.getMontant(),
-                depense.getModePaiement(),
+                depense.getModePaiement() != null ? new MoyenPaiementResponse(depense.getModePaiement()) : null,
                 DateHelper.format(depense.getCreatedAt())
         );
     }

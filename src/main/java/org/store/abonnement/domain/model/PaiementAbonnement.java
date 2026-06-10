@@ -4,9 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
-import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.common.base.AuditableEntity;
 import org.store.common.model.PieceJointe;
+import org.store.paiement.domain.model.MoyenPaiement;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,7 +32,8 @@ public class PaiementAbonnement extends AuditableEntity {
 
     private LocalDate datePaiement;
 
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moyen_id")
     private MoyenPaiement moyen;
 
     private String referenceTransaction;
