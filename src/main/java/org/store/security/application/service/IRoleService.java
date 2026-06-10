@@ -14,6 +14,8 @@ public interface IRoleService {
 
     Role findByLibelle(String libelle);
 
+    Role findById(UUID id);
+
     /** Returns roles visible to the current authenticated user (scoped by company + role level). */
     List<RoleResponse> findAllScoped();
 

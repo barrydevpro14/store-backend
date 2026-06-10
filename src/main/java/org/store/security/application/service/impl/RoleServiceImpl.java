@@ -57,6 +57,11 @@ public class RoleServiceImpl implements IRoleService {
                 .orElseThrow(() -> new EntityException("role.notFound", libelle));
     }
 
+    @Override
+    public Role findById(UUID id) {
+        return roleDomainService.findById(id);
+    }
+
     /**
      * Returns roles visible to the current user:
      * - ADMIN → all roles
