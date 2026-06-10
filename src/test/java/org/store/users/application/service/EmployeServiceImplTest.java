@@ -60,6 +60,7 @@ class EmployeServiceImplTest {
     @Mock private ValidatorService validatorService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private org.store.notification.application.service.IEmailEventPublisher emailEventPublisher;
+    @Mock private org.store.abonnement.application.service.AbonnementQuotaService quotaService;
 
     @InjectMocks
     private EmployeServiceImpl service;

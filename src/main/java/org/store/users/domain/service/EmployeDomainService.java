@@ -35,6 +35,11 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
         return repository.findActiveAccountsByMagasinIdAndRoleLibelle(magasinId, roleLibelle);
     }
 
+    /** Compte les employés d'une entreprise (pour contrôle de quota). */
+    public long countByEntrepriseId(UUID entrepriseId) {
+        return repository.countByEntrepriseId(entrepriseId);
+    }
+
     /** Retourne le nombre d'employés par entreprise pour le reporting ADMIN. */
     public Map<UUID, Long> countByEntrepriseId() {
         return repository.countAllGroupByEntrepriseId().stream()

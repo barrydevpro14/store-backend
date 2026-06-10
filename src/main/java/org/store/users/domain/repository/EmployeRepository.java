@@ -19,6 +19,9 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     @Query("SELECT employe.magasin.entreprise.id, COUNT(employe) FROM Employe employe GROUP BY employe.magasin.entreprise.id")
     List<Object[]> countAllGroupByEntrepriseId();
 
+    @Query("SELECT COUNT(employe) FROM Employe employe WHERE employe.magasin.entreprise.id = :entrepriseId")
+    long countByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
+
     @Query(value = """
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
             FROM Employe employe
