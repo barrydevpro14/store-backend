@@ -9,6 +9,40 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-10 — MoyenPaiement entity, quota enforcement, test suite cleanup, UX fixes
+
+**Subject:** Large multi-session day. Core themes: replace hardcoded payment method enum, enforce subscription quotas, fix the full test suite (backend + frontend), and several UX/bug fixes.
+
+### Backend
+
+- **MoyenPaiement entity** — new `org.store.paiement` module. V41 migration: creates `moyen_paiement` table + backfills 4 tables from old STRING enum. `MoyenPaiementController` (ADMIN CRUD), `MOYEN_PAIEMENT_*` permissions. DataInitializer seeds CASH / WAVE / OM / CARD.
+- **Employee role UUID** — `EmployeRequest/UpdateRequest/AssignRoleRequest`: String role → UUID roleId. `EmployeResponse` exposes `RoleSummary { id, libelle }`.
+- **ClientFilter.magasinId** — OWNER can filter clients by store.
+- **Account.systeme** — V42: `boolean systeme`. DataInitializer marks seeded admin. `setEnabled()` guard rejects deactivation.
+- **AbonnementQuotaService** — `ensureMagasinQuota` + `ensureEmployeQuota` injected in `MagasinServiceImpl` and `EmployeServiceImpl`. max=0 → unlimited.
+- **Anonymous client payment guard** — `VenteServiceImpl.validate()`: `premierPaiement.montant != montantTotal` → exception if client is null.
+- **Test suite** — 882/882 green. Fixed: ClientFilter (magasinId), VenteProcessFlow (anonymous client), EmployeServiceImpl/ControllerTest (roleId/RoleSummary), PaiementAbonnement/Depense tests.
+
+### Frontend
+
+- **Layout scroll** — `h-screen` + `overflow-y-auto` on dashboard main. Auth layout scroll fix.
+- **Alert bell** — Separated from notification bell. Hidden when count=0.
+- **Client page** — OWNER: `ClientMagasinSelect` card (VentesPage pattern). EMPLOYEE: backend-scoped.
+- **Moyen paiement** — All forms: hardcoded enum → `useMoyenPaiementList` API. Field: `moyenPaiementId: UUID`.
+- **Admin — Moyens de paiement** — Tab + page CRUD in Administration (pattern Coupon).
+- **Admin — Admins** — Toggle hidden if `account.systeme = true`.
+- **Test suite** — 314/314 green. `renderWithIntl` helper created. Fixed: DataTable, PhoneField, LoginForm, table tests (mobile card duplicates).
+- **CI** — `react-hooks/set-state-in-effect` disabled. `ExpenseReportSection` useMemo fix. `package-lock.json` resync.
+
+### Open
+
+- All commits on `dev`, not merged to `main` yet.
+- Vercel URL `my-store-app-wine.vercel.app`: rename project in Vercel dashboard to clean up.
+
+---
+
+## Previous session
+
 **Date:** 2026-06-08 — Per-store stats, alert system (scheduler + table + frontend), UX fixes
 
 **Subject:** New features day. Per-store statistics, full alert system (V40 + scheduler + REST + frontend), UX fixes.
