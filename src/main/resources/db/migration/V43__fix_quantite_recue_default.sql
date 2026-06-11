@@ -1,3 +1,4 @@
--- Adds DEFAULT 0 to quantite_recue so Hibernate INSERT (which omits the column)
--- doesn't fail on fresh deployments where V1 created the column without a default.
-ALTER TABLE ligne_commande_achat ALTER COLUMN quantite_recue SET DEFAULT 0;
+-- quantite_recue a été retiré du modèle JPA. Sur les DBs qui l'ont encore
+-- (NOT NULL sans DEFAULT), Hibernate échoue à l'INSERT car la colonne est absente
+-- du payload. On la supprime définitivement.
+ALTER TABLE ligne_commande_achat DROP COLUMN IF EXISTS quantite_recue;
