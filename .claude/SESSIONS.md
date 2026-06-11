@@ -37,7 +37,6 @@
 ### Open
 
 - All commits on `dev`, not merged to `main` yet.
-- Vercel URL `my-store-app-wine.vercel.app`: rename project in Vercel dashboard to clean up.
 
 ---
 
