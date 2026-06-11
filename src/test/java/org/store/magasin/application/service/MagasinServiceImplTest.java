@@ -41,6 +41,7 @@ class MagasinServiceImplTest {
     @Mock private org.store.common.service.IUploadFileService uploadFileService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private org.store.abonnement.application.service.AbonnementQuotaService quotaService;
 
     @InjectMocks
     private MagasinServiceImpl service;

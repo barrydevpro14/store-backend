@@ -1,8 +1,8 @@
 package org.store.achat.application.dto;
 
-import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.achat.domain.model.PaiementAchat;
 import org.store.common.tools.DateHelper;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,7 +13,7 @@ public record PaiementAchatResponse(
         UUID factureId,
         BigDecimal montant,
         LocalDate datePaiement,
-        MoyenPaiement moyen,
+        MoyenPaiementResponse moyen,
         String createdAt
 ) {
     public PaiementAchatResponse(PaiementAchat paiement) {
@@ -22,7 +22,7 @@ public record PaiementAchatResponse(
                 paiement.getFacture() != null ? paiement.getFacture().getId() : null,
                 paiement.getMontant(),
                 paiement.getDatePaiement(),
-                paiement.getMoyen(),
+                paiement.getMoyen() != null ? new MoyenPaiementResponse(paiement.getMoyen()) : null,
                 DateHelper.format(paiement.getCreatedAt())
         );
     }

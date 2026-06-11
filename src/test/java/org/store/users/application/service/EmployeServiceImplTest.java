@@ -29,6 +29,7 @@ import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateRequest;
+import org.store.users.application.dto.RoleSummary;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.domain.model.Employe;
 import org.store.users.domain.service.EmployeDomainService;
@@ -58,7 +59,8 @@ class EmployeServiceImplTest {
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
-    @Mock private org.store.common.service.IEmailService emailService;
+    @Mock private org.store.notification.application.service.IEmailEventPublisher emailEventPublisher;
+    @Mock private org.store.abonnement.application.service.AbonnementQuotaService quotaService;
 
     @InjectMocks
     private EmployeServiceImpl service;
@@ -68,6 +70,7 @@ class EmployeServiceImplTest {
     private Magasin magasin;
     private UtilisateurRequest validUtilisateur;
     private static final String VALID_USERNAME = "john.emp";
+    private static final UUID ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     @BeforeEach
     void setUp() {
@@ -93,13 +96,14 @@ class EmployeServiceImplTest {
                 List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
     }
 
-    private EmployeRequest request(String role, UUID requestedMagasinId) {
-        return new EmployeRequest(VALID_USERNAME, validUtilisateur, role, requestedMagasinId);
+    private EmployeRequest request(UUID roleId, UUID requestedMagasinId) {
+        return new EmployeRequest(VALID_USERNAME, validUtilisateur, roleId, requestedMagasinId);
     }
 
-    private EmployeResponse sampleResponse(String role) {
+    private EmployeResponse sampleResponse(String roleLibelle) {
         return new EmployeResponse(UUID.randomUUID(), "Doe", "John",
-                "john@example.com", "+221770000000", "Dakar", "john.emp", role, magasinId, true);
+                "john@example.com", "+221770000000", "Dakar", "john.emp",
+                new RoleSummary(ROLE_ID, roleLibelle), magasinId, true);
     }
 
     private Role roleWithId() {
@@ -120,7 +124,7 @@ class EmployeServiceImplTest {
         EmployeResponse expected = sampleResponse("MANAGER");
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("MANAGER")).thenReturn(managerRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(managerRole);
         when(permissionsService.findAllByRoleId(managerRole.getId()))
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -128,7 +132,7 @@ class EmployeServiceImplTest {
         when(accountService.create(any(AccountRequest.class), eq(managerRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
-        EmployeResponse response = service.create(request("MANAGER", magasinId));
+        EmployeResponse response = service.create(request(ROLE_ID, magasinId));
 
         assertThat(response).isSameAs(expected);
     }
@@ -142,14 +146,14 @@ class EmployeServiceImplTest {
         EmployeResponse expected = sampleResponse("SELLER");
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(accountService.create(any(AccountRequest.class), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
-        EmployeResponse response = service.create(request("SELLER", magasinId));
+        EmployeResponse response = service.create(request(ROLE_ID, magasinId));
 
         assertThat(response).isSameAs(expected);
     }
@@ -163,14 +167,14 @@ class EmployeServiceImplTest {
         EmployeResponse expected = sampleResponse("SELLER");
 
         when(currentUserService.getCurrent()).thenReturn(manager());
-        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(accountService.create(any(AccountRequest.class), eq(vendeurRole))).thenReturn(account);
         when(employeDomainService.create(eq(validUtilisateur), eq(account), eq(magasin))).thenReturn(expected);
 
-        EmployeResponse response = service.create(request("SELLER", magasinId));
+        EmployeResponse response = service.create(request(ROLE_ID, magasinId));
 
         assertThat(response).isSameAs(expected);
     }
@@ -183,9 +187,9 @@ class EmployeServiceImplTest {
         // pour la grande majorité des tests employé, on l'inverse ici.
         propRole.setAssignableToEmploye(false);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("OWNER")).thenReturn(propRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(propRole);
 
-        EmployeRequest req = request("OWNER", magasinId);
+        EmployeRequest req = request(ROLE_ID, magasinId);
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
@@ -199,11 +203,11 @@ class EmployeServiceImplTest {
     void manager_should_be_forbidden_to_create_another_manager() {
         Role managerRole = roleWithId();
         when(currentUserService.getCurrent()).thenReturn(manager());
-        when(roleService.findByLibelle("MANAGER")).thenReturn(managerRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(managerRole);
         when(permissionsService.findAllByRoleId(managerRole.getId()))
                 .thenReturn(List.of("EMPLOYE_ACCESS", "EMPLOYE_CREATE"));
 
-        assertThatThrownBy(() -> service.create(request("MANAGER", magasinId)))
+        assertThatThrownBy(() -> service.create(request(ROLE_ID, magasinId)))
                 .isInstanceOf(ForbiddenException.class);
 
         verify(accountService, never()).create(any(), any());
@@ -221,13 +225,13 @@ class EmployeServiceImplTest {
         foreignMagasin.setEntreprise(otherEntreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(foreignMagasinId)).thenReturn(foreignMagasin);
         when(magasinService.ensureAccessibleByCurrentUser(foreignMagasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
 
-        EmployeRequest req = request("SELLER", foreignMagasinId);
+        EmployeRequest req = request(ROLE_ID, foreignMagasinId);
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);
@@ -382,11 +386,11 @@ class EmployeServiceImplTest {
         employe.setAccount(account);
         Role newRole = roleWithId();
         EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "+221770000001", "Dakar", "SELLER", magasinId);
+                "+221770000001", "Dakar", ROLE_ID, magasinId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));
-        when(roleService.findByLibelle("SELLER")).thenReturn(newRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(newRole);
         when(permissionsService.findAllByRoleId(newRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
@@ -406,13 +410,13 @@ class EmployeServiceImplTest {
         otherMagasin.setId(otherMagasinId);
 
         when(currentUserService.getCurrent()).thenReturn(manager());
-        when(roleService.findByLibelle("SELLER")).thenReturn(vendeurRole);
+        when(roleService.findById(ROLE_ID)).thenReturn(vendeurRole);
         when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
         when(magasinService.findById(otherMagasinId)).thenReturn(otherMagasin);
         when(magasinService.ensureAccessibleByCurrentUser(otherMagasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
 
-        EmployeRequest req = request("SELLER", otherMagasinId);
+        EmployeRequest req = request(ROLE_ID, otherMagasinId);
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ForbiddenException.class);

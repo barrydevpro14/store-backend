@@ -19,6 +19,9 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     @Query("SELECT employe.magasin.entreprise.id, COUNT(employe) FROM Employe employe GROUP BY employe.magasin.entreprise.id")
     List<Object[]> countAllGroupByEntrepriseId();
 
+    @Query("SELECT COUNT(employe) FROM Employe employe WHERE employe.magasin.entreprise.id = :entrepriseId")
+    long countByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
+
     @Query(value = """
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
             FROM Employe employe
@@ -47,6 +50,9 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     Page<EmployeResponse> findResponsesByFilter(@Param("filter") EmployeFilter filter,
                                                 @Param("entrepriseId") UUID entrepriseId,
                                                 Pageable pageable);
+
+    @Query("SELECT COUNT(e) FROM Employe e WHERE e.magasin.id = :magasinId")
+    long countByMagasinId(@Param("magasinId") UUID magasinId);
 
     @Query("SELECT e.account FROM Employe e WHERE e.magasin.id = :magasinId AND e.account.role.libelle = :roleLibelle AND e.account.enabled = true")
     List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(@Param("magasinId") UUID magasinId,

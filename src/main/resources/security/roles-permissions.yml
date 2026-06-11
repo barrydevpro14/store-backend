@@ -172,6 +172,12 @@ permissions:
   - SUBSCRIPTION_RENEW
   - SUBSCRIPTION_VALIDATE
 
+  # MOYEN_PAIEMENT
+  - MOYEN_PAIEMENT_CREATE
+  - MOYEN_PAIEMENT_READ
+  - MOYEN_PAIEMENT_UPDATE
+  - MOYEN_PAIEMENT_DELETE
+
   # DOCUMENT
   - DOCUMENT_UPLOAD
   - DOCUMENT_READ
@@ -307,6 +313,10 @@ roles:
       - AUDIT_EXPORT
       - CONTACT_READ
       - CONTACT_RESPOND
+      - MOYEN_PAIEMENT_CREATE
+      - MOYEN_PAIEMENT_READ
+      - MOYEN_PAIEMENT_UPDATE
+      - MOYEN_PAIEMENT_DELETE
 
   - libelle: OWNER
     description: Propriétaire d'une entreprise
@@ -408,6 +418,7 @@ roles:
       - SETTINGS_READ
       - AUDIT_READ
       - AUDIT_EXPORT
+      - MOYEN_PAIEMENT_READ
 
   - libelle: MANAGER
     description: Manager d'un magasin
@@ -505,6 +516,7 @@ roles:
       - REPORT_FINANCIAL
       - AUDIT_READ
       - SUBSCRIPTION_READ
+      - MOYEN_PAIEMENT_READ
 
   - libelle: SELLER
     description: Vendeur d'un magasin
@@ -536,3 +548,4 @@ roles:
       - SALE_APPROVE
       - PAYMENT_CREATE
       - PAYMENT_READ
+      - MOYEN_PAIEMENT_READ

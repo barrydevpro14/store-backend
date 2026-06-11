@@ -11,8 +11,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.achat.domain.enums.StatutFacture;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
@@ -49,9 +50,20 @@ class PaiementVenteServiceImplTest {
     @Mock private FactureClientDomainService factureClientDomainService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private IMoyenPaiementService moyenPaiementService;
 
     @InjectMocks
     private PaiementVenteServiceImpl service;
+
+    private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenCash() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_ID);
+        m.setLibelle("Espèces");
+        m.setCode("CASH");
+        return m;
+    }
 
     private UUID entrepriseId;
     private UUID factureId;
@@ -91,7 +103,7 @@ class PaiementVenteServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         PaiementVenteResponse paiement = new PaiementVenteResponse(
                 UUID.randomUUID(), new BigDecimal("500.00"), LocalDate.of(2026, 5, 16),
-                MoyenPaiement.CASH, factureId
+                new MoyenPaiementResponse(MOYEN_ID, "Espèces", true), factureId
         );
         Page<PaiementVenteResponse> page = new PageImpl<>(List.of(paiement), pageable, 1);
 
@@ -121,22 +133,24 @@ class PaiementVenteServiceImplTest {
 
     @Test
     void create_should_add_paiement_when_valid() {
-        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("400.00"), MoyenPaiement.CASH.name(), null);
+        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("400.00"), MOYEN_ID, null);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(factureClientDomainService.findById(factureId)).thenReturn(facture);
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
         PaiementVente paiement = new PaiementVente();
         paiement.setId(UUID.randomUUID());
         paiement.setFacture(facture);
         paiement.setMontant(new BigDecimal("400.00"));
-        paiement.setMoyen(MoyenPaiement.CASH);
+        paiement.setMoyen(moyenCash());
         paiement.setDatePaiement(LocalDate.now());
         when(paiementVenteDomainService.create(any(PaiementVenteCreate.class))).thenReturn(paiement);
 
         PaiementVenteResponse response = service.create(factureId, request);
 
         assertThat(response.montant()).isEqualByComparingTo(new BigDecimal("400.00"));
-        assertThat(response.moyen()).isEqualTo(MoyenPaiement.CASH);
+        assertThat(response.moyen()).isNotNull();
+        assertThat(response.moyen().libelle()).isEqualTo("Espèces");
         ArgumentCaptor<PaiementVenteCreate> captor = ArgumentCaptor.forClass(PaiementVenteCreate.class);
         verify(paiementVenteDomainService).create(captor.capture());
         assertThat(captor.getValue().datePaiement()).isEqualTo(LocalDate.now());
@@ -147,7 +161,8 @@ class PaiementVenteServiceImplTest {
     @Test
     void create_should_use_datePaiement_from_request_when_provided() {
         LocalDate dateSaisie = LocalDate.of(2026, 5, 10);
-        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("400.00"), MoyenPaiement.CASH.name(), dateSaisie);
+        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("400.00"), MOYEN_ID, dateSaisie);
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(factureClientDomainService.findById(factureId)).thenReturn(facture);
@@ -166,7 +181,7 @@ class PaiementVenteServiceImplTest {
         other.setId(UUID.randomUUID());
         facture.getCommande().getMagasin().setEntreprise(other);
 
-        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("100.00"), MoyenPaiement.CASH.name(), null);
+        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("100.00"), MOYEN_ID, null);
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(factureClientDomainService.findById(factureId)).thenReturn(facture);
 
@@ -181,7 +196,7 @@ class PaiementVenteServiceImplTest {
     void create_should_throw_when_facture_already_paid() {
         facture.setStatut(StatutFacture.PAYEE);
         facture.setMontantPaye(new BigDecimal("1000.00"));
-        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("100.00"), MoyenPaiement.CASH.name(), null);
+        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("100.00"), MOYEN_ID, null);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(factureClientDomainService.findById(factureId)).thenReturn(facture);
@@ -196,7 +211,7 @@ class PaiementVenteServiceImplTest {
     @Test
     void create_should_throw_when_amount_exceeds_remaining() {
         // facture : montantTotal=1000, montantPaye=300 -> restant=700
-        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("800.00"), MoyenPaiement.CASH.name(), null);
+        PaiementVenteRequest request = new PaiementVenteRequest(new BigDecimal("800.00"), MOYEN_ID, null);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(factureClientDomainService.findById(factureId)).thenReturn(facture);

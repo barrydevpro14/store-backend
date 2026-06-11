@@ -3,7 +3,7 @@ package org.store.abonnement.application.dto;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.TypePlanAbonnement;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,7 +20,7 @@ public record PaiementAbonnementResponse(
         BigDecimal reduction,
         BigDecimal montantFinal,
         LocalDate datePaiement,
-        MoyenPaiement moyen,
+        MoyenPaiementResponse moyen,
         String referenceTransaction,
         StatutPaiementAbonnement statut,
         String motifRejet,
@@ -39,7 +39,7 @@ public record PaiementAbonnementResponse(
                 paiement.getReduction(),
                 paiement.getMontantFinal(),
                 paiement.getDatePaiement(),
-                paiement.getMoyen(),
+                paiement.getMoyen() != null ? new MoyenPaiementResponse(paiement.getMoyen()) : null,
                 paiement.getReferenceTransaction(),
                 paiement.getStatut(),
                 paiement.getMotifRejet(),

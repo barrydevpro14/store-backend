@@ -16,6 +16,7 @@ import org.store.depense.domain.model.Depense;
 import org.store.depense.domain.service.DepenseDomainService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.List;
@@ -34,17 +35,20 @@ public class DepenseServiceImpl implements IDepenseService {
     private final ICategoryDepenseService categoryDepenseService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final IMoyenPaiementService moyenPaiementService;
 
     public DepenseServiceImpl(DepenseDomainService depenseDomainService,
                               IMagasinService magasinService,
                               ICategoryDepenseService categoryDepenseService,
                               ICurrentUserService currentUserService,
-                              ValidatorService validatorService) {
+                              ValidatorService validatorService,
+                              IMoyenPaiementService moyenPaiementService) {
         this.depenseDomainService = depenseDomainService;
         this.magasinService = magasinService;
         this.categoryDepenseService = categoryDepenseService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.moyenPaiementService = moyenPaiementService;
     }
 
     /** Crée la dépense après vérification d'accès magasin et d'appartenance category à l'entreprise. */
@@ -54,7 +58,8 @@ public class DepenseServiceImpl implements IDepenseService {
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(depenseRequest.magasinId()));
         CategoryDepense category = categoryDepenseService.ensureBelongsToCurrentEntreprise(
                 categoryDepenseService.findById(depenseRequest.categoryId()));
-        return new DepenseResponse(depenseDomainService.create(depenseRequest, magasin, category));
+        return new DepenseResponse(depenseDomainService.create(depenseRequest, magasin, category,
+                moyenPaiementService.findById(depenseRequest.moyenPaiementId())));
     }
 
     /** Retourne la dépense après vérification d'accès magasin. */
@@ -101,7 +106,7 @@ public class DepenseServiceImpl implements IDepenseService {
         depense.setDescription(depenseRequest.description());
         depense.setDateDepense(depenseRequest.dateDepense());
         depense.setMontant(depenseRequest.montant());
-        depense.setModePaiement(depenseRequest.modePaiement());
+        depense.setModePaiement(moyenPaiementService.findById(depenseRequest.moyenPaiementId()));
 
         return new DepenseResponse(depenseDomainService.save(depense));
     }

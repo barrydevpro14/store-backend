@@ -20,7 +20,7 @@ import org.store.achat.application.dto.PaiementAchatRequest;
 import org.store.achat.application.dto.PaiementAchatResponse;
 import org.store.achat.application.service.IFactureAchatService;
 import org.store.achat.application.service.IPaiementAchatService;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
@@ -100,18 +100,20 @@ class FactureAchatControllerTest {
 
     @Test
     void should_return_201_when_paiement_created() throws Exception {
+        UUID moyenId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         PaiementAchatResponse paiement = new PaiementAchatResponse(UUID.randomUUID(), factureId,
-                new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), MoyenPaiement.CASH, "2026-05-15 10:00:00");
+                new BigDecimal("400.00"), LocalDate.of(2026, 5, 15),
+                new MoyenPaiementResponse(moyenId, "Espèces", true), "2026-05-15 10:00:00");
         when(paiementAchatService.create(eq(factureId), any(PaiementAchatRequest.class))).thenReturn(paiement);
 
-        PaiementAchatRequest body = new PaiementAchatRequest(new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), MoyenPaiement.CASH);
+        PaiementAchatRequest body = new PaiementAchatRequest(new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), moyenId);
 
         mockMvc.perform(post(FactureAchatController.BASE_PATH + "/" + factureId + "/paiements")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.montant").value(400.00))
-                .andExpect(jsonPath("$.moyen").value("CASH"));
+                .andExpect(jsonPath("$.moyen.libelle").value("Espèces"));
     }
 
     @Test

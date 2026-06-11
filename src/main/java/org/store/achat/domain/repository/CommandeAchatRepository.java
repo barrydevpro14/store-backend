@@ -21,14 +21,19 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
     @Query("SELECT COUNT(commande) FROM CommandeAchat commande WHERE commande.magasin.entreprise.id = :entrepriseId AND commande.statut = :statut")
     long countByEntrepriseAndStatut(@Param("entrepriseId") UUID entrepriseId, @Param("statut") CommandeAchatStatut statut);
 
+    /**
+     * LEFT JOIN on facture is mandatory so that DRAFT orders (no facture yet) are included.
+     * An implicit INNER JOIN via commande.facture.statut in WHERE would exclude all DRAFTs.
+     */
     @Query("""
             SELECT new org.store.achat.application.dto.CommandeAchatResponse(commande)
             FROM CommandeAchat commande
+            LEFT JOIN commande.facture facture
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.fournisseurId} IS NULL OR commande.fournisseur.id = :#{#filter.fournisseurId})
               AND (:#{#filter.statutAsEnum()} IS NULL OR commande.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.statutFactureAsEnum()} IS NULL OR commande.facture.statut = :#{#filter.statutFactureAsEnum()})
+              AND (:#{#filter.statutFactureAsEnum()} IS NULL OR facture.statut = :#{#filter.statutFactureAsEnum()})
               AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
               AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})

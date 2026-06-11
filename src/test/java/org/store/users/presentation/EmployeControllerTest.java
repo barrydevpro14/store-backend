@@ -18,6 +18,7 @@ import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateRequest;
+import org.store.users.application.dto.RoleSummary;
 import org.store.users.application.dto.UtilisateurRequest;
 import org.store.users.application.service.IEmployeService;
 
@@ -39,6 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class EmployeControllerTest {
 
+    private static final UUID ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
+
     private MockMvc mockMvc;
     private IEmployeService employeService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -59,11 +62,11 @@ class EmployeControllerTest {
                 .build();
     }
 
-    private EmployeRequest validBody(UUID magasinId, String role) {
+    private EmployeRequest validBody(UUID magasinId, UUID roleId) {
         return new EmployeRequest(
                 "john.emp",
                 new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
-                role,
+                roleId,
                 magasinId
         );
     }
@@ -73,16 +76,16 @@ class EmployeControllerTest {
         UUID magasinId = UUID.randomUUID();
         UUID createdId = UUID.randomUUID();
         EmployeResponse response = new EmployeResponse(createdId, "Doe", "John",
-                "john@example.com", "+221770000000", "Dakar", "john.emp", "MANAGER", magasinId, true);
+                "john@example.com", "+221770000000", "Dakar", "john.emp", new RoleSummary(ROLE_ID, "MANAGER"), magasinId, true);
 
         when(employeService.create(any(EmployeRequest.class))).thenReturn(response);
 
         mockMvc.perform(post(EmployeController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validBody(magasinId, "MANAGER"))))
+                        .content(objectMapper.writeValueAsString(validBody(magasinId, ROLE_ID))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(createdId.toString()))
-                .andExpect(jsonPath("$.role").value("MANAGER"))
+                .andExpect(jsonPath("$.role.libelle").value("MANAGER"))
                 .andExpect(jsonPath("$.magasinId").value(magasinId.toString()));
     }
 
@@ -105,7 +108,7 @@ class EmployeControllerTest {
 
     private EmployeResponse sampleResponse(UUID id, UUID magasinId) {
         return new EmployeResponse(id, "Doe", "John", "john@example.com", "+221770000000", "Dakar",
-                "john.emp", "SELLER", magasinId, true);
+                "john.emp", new RoleSummary(ROLE_ID, "SELLER"), magasinId, true);
     }
 
     @Test
@@ -117,7 +120,7 @@ class EmployeControllerTest {
 
         mockMvc.perform(get(EmployeController.BASE_PATH))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].role").value("SELLER"))
+                .andExpect(jsonPath("$.content[0].role.libelle").value("SELLER"))
                 .andExpect(jsonPath("$.content[0].actif").value(true))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
@@ -137,7 +140,7 @@ class EmployeControllerTest {
         UUID id = UUID.randomUUID();
         UUID magasinId = UUID.randomUUID();
         EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "+221770000001", "Dakar", "SELLER", magasinId);
+                "+221770000001", "Dakar", ROLE_ID, magasinId);
         when(employeService.update(eq(id), any(EmployeUpdateRequest.class)))
                 .thenReturn(sampleResponse(id, magasinId));
 

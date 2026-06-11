@@ -86,4 +86,8 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
                                               @Param("entrepriseId") UUID entrepriseId,
                                               @Param("startOfDay") LocalDateTime startOfDay,
                                               @Param("endOfDay") LocalDateTime endOfDay);
+
+    /** Finds unpaid sale invoices whose due date was exactly :daysAgo days ago (for 1/3/5-day overdue alerts). */
+    @Query("SELECT f FROM FactureClient f WHERE f.statut = 'NON_PAYEE' AND f.dateEcheance = :dueDate")
+    java.util.List<FactureClient> findOverdueByDueDate(@Param("dueDate") java.time.LocalDate dueDate);
 }

@@ -22,6 +22,7 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.service.MagasinDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
+import org.store.abonnement.application.service.AbonnementQuotaService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -35,17 +36,20 @@ public class MagasinServiceImpl implements IMagasinService {
     private final IUploadFileService uploadFileService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final AbonnementQuotaService quotaService;
 
     public MagasinServiceImpl(MagasinDomainService magasinDomainService,
                               IEntrepriseService entrepriseService,
                               IUploadFileService uploadFileService,
                               ICurrentUserService currentUserService,
-                              ValidatorService validatorService) {
+                              ValidatorService validatorService,
+                              AbonnementQuotaService quotaService) {
         this.magasinDomainService = magasinDomainService;
         this.entrepriseService = entrepriseService;
         this.uploadFileService = uploadFileService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.quotaService = quotaService;
     }
 
     @Override
@@ -57,6 +61,7 @@ public class MagasinServiceImpl implements IMagasinService {
     @Transactional
     public MagasinResponse create(MagasinRequest magasinRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
+        quotaService.ensureMagasinQuota(currentUser.entrepriseId());
         Entreprise entreprise = entrepriseService.findById(currentUser.entrepriseId());
         Magasin saved = create(magasinRequest, entreprise);
         return new MagasinResponse(saved);

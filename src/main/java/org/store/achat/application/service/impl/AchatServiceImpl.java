@@ -59,6 +59,7 @@ import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
 import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
+import org.store.paiement.application.service.IMoyenPaiementService;
 
 import org.springframework.data.domain.Page;
 
@@ -96,6 +97,7 @@ public class AchatServiceImpl implements IAchatService {
     private final PurchaseProperties purchaseProperties;
     private final ICurrentUserService currentUserService;
     private final IAuditEventPublisher auditEventPublisher;
+    private final IMoyenPaiementService moyenPaiementService;
 
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
@@ -111,7 +113,8 @@ public class AchatServiceImpl implements IAchatService {
                             ValidatorService validatorService,
                             PurchaseProperties purchaseProperties,
                             ICurrentUserService currentUserService,
-                            IAuditEventPublisher auditEventPublisher) {
+                            IAuditEventPublisher auditEventPublisher,
+                            IMoyenPaiementService moyenPaiementService) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
@@ -127,6 +130,7 @@ public class AchatServiceImpl implements IAchatService {
         this.purchaseProperties = purchaseProperties;
         this.currentUserService = currentUserService;
         this.auditEventPublisher = auditEventPublisher;
+        this.moyenPaiementService = moyenPaiementService;
     }
 
     /** Crée la commande DRAFT et ses lignes (validations PF + prix), sans toucher au stock ni à la facture. */
@@ -251,7 +255,8 @@ public class AchatServiceImpl implements IAchatService {
         }
 
         paiementAchatDomainService.create(new PaiementAchatCreate(
-                facture, paiement.montant(), paiement.datePaiement(), paiement.moyen()
+                facture, paiement.montant(), paiement.datePaiement(),
+                moyenPaiementService.findById(paiement.moyenPaiementId())
         ));
         return factureAchatDomainService.applyPaiement(facture, paiement.montant());
     }

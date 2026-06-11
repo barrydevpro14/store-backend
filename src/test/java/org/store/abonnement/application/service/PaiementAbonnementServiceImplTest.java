@@ -72,6 +72,7 @@ class PaiementAbonnementServiceImplTest {
     @Mock private ValidatorService validatorService;
     @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
+    @Mock private org.store.paiement.application.service.IMoyenPaiementService moyenPaiementService;
 
     @InjectMocks
     private PaiementAbonnementServiceImpl service;
@@ -140,7 +141,7 @@ class PaiementAbonnementServiceImplTest {
     }
 
     private PaiementAbonnementRequest sampleRequest() {
-        return new PaiementAbonnementRequest("WAVE", "TXN-123", LocalDate.now());
+        return new PaiementAbonnementRequest(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), "TXN-123", LocalDate.now());
     }
 
     @Test

@@ -70,6 +70,10 @@ public class ClientServiceImpl implements IClientService {
             return clientDomainService.findResponsesByMagasinId(currentUser.magasinId(), clientFilter);
         }
 
+        if (clientFilter.magasinId() != null) {
+            return clientDomainService.findResponsesByMagasinId(clientFilter.magasinId(), clientFilter);
+        }
+
         return clientDomainService.findResponsesByEntrepriseId(currentUser.entrepriseId(), clientFilter);
     }
 

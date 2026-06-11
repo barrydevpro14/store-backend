@@ -5,7 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.BadArgumentException;
-import org.store.common.service.IEmailService;
+import org.store.notification.application.event.PasswordResetRequestedEvent;
+import org.store.notification.application.service.IEmailEventPublisher;
 import org.store.property.AppProperties;
 import org.store.security.application.dto.ForgotPasswordRequest;
 import org.store.security.application.dto.ResetPasswordConfirmRequest;
@@ -40,19 +41,19 @@ public class PasswordResetServiceImpl implements IPasswordResetService {
     private final AccountRepository accountRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final IAccountService accountService;
-    private final IEmailService emailService;
     private final AppProperties appProperties;
+    private final IEmailEventPublisher emailEventPublisher;
 
     public PasswordResetServiceImpl(AccountRepository accountRepository,
                                     PasswordResetTokenRepository tokenRepository,
                                     IAccountService accountService,
-                                    IEmailService emailService,
-                                    AppProperties appProperties) {
+                                    AppProperties appProperties,
+                                    IEmailEventPublisher emailEventPublisher) {
         this.accountRepository = accountRepository;
         this.tokenRepository = tokenRepository;
         this.accountService = accountService;
-        this.emailService = emailService;
         this.appProperties = appProperties;
+        this.emailEventPublisher = emailEventPublisher;
     }
 
     @Override
@@ -84,8 +85,8 @@ public class PasswordResetServiceImpl implements IPasswordResetService {
         String resetLink = appProperties.url() + "/reset-password?token=" + resetToken.getToken();
         String recipientName = resolveRecipientName(account);
 
-        emailService.sendPasswordReset(toEmail, recipientName, resetLink);
-        log.info("Password reset email sent to account {}", account.getId());
+        emailEventPublisher.publishPasswordResetRequested(new PasswordResetRequestedEvent(toEmail, recipientName, resetLink));
+        log.info("PasswordResetRequested event published for account {}", account.getId());
     }
 
     @Override

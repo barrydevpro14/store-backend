@@ -11,7 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.depense.application.dto.CategoryDepenseSummaryResponse;
@@ -63,7 +63,7 @@ class DepenseControllerTest {
 
     private DepenseRequest validBody() {
         return new DepenseRequest(magasinId, categoryId, "Loyer mai", "desc",
-                LocalDate.of(2026, 5, 1), new BigDecimal("250000.00"), MoyenPaiement.CASH);
+                LocalDate.of(2026, 5, 1), new BigDecimal("250000.00"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
     }
 
     private DepenseResponse sample() {
@@ -73,7 +73,7 @@ class DepenseControllerTest {
                 new CategoryDepenseSummaryResponse(categoryId, "Loyer"),
                 "Loyer mai", "desc",
                 "2026-05-01",
-                new BigDecimal("250000.00"), MoyenPaiement.CASH,
+                new BigDecimal("250000.00"), new MoyenPaiementResponse(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "Espèces", true),
                 "2026-05-01 10:00:00"
         );
     }
@@ -88,13 +88,13 @@ class DepenseControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.libelle").value("Loyer mai"))
                 .andExpect(jsonPath("$.montant").value(250000.00))
-                .andExpect(jsonPath("$.modePaiement").value("CASH"));
+                .andExpect(jsonPath("$.modePaiement.libelle").value("Espèces"));
     }
 
     @Test
     void should_return_400_when_libelle_blank() throws Exception {
         DepenseRequest body = new DepenseRequest(magasinId, categoryId, "", null,
-                LocalDate.now(), new BigDecimal("100.00"), MoyenPaiement.CASH);
+                LocalDate.now(), new BigDecimal("100.00"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
         mockMvc.perform(post(DepenseController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)

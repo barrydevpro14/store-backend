@@ -5,7 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
-import org.store.common.service.IEmailService;
+import org.store.notification.application.event.EmployeWelcomeEvent;
+import org.store.notification.application.service.IEmailEventPublisher;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.magasin.application.service.IMagasinService;
@@ -25,6 +26,7 @@ import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateCommand;
 import org.store.users.application.dto.EmployeUpdateRequest;
+import org.store.abonnement.application.service.AbonnementQuotaService;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
@@ -64,7 +66,8 @@ public class EmployeServiceImpl implements IEmployeService {
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final IAuditEventPublisher auditEventPublisher;
-    private final IEmailService emailService;
+    private final IEmailEventPublisher emailEventPublisher;
+    private final AbonnementQuotaService quotaService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
                               UtilisateurDomainService utilisateurDomainService,
@@ -75,7 +78,8 @@ public class EmployeServiceImpl implements IEmployeService {
                               ICurrentUserService currentUserService,
                               ValidatorService validatorService,
                               IAuditEventPublisher auditEventPublisher,
-                              IEmailService emailService) {
+                              IEmailEventPublisher emailEventPublisher,
+                              AbonnementQuotaService quotaService) {
         this.employeDomainService = employeDomainService;
         this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
@@ -85,7 +89,8 @@ public class EmployeServiceImpl implements IEmployeService {
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.auditEventPublisher = auditEventPublisher;
-        this.emailService = emailService;
+        this.emailEventPublisher = emailEventPublisher;
+        this.quotaService = quotaService;
     }
 
     private void audit(AuditAction action, UUID entityId, String label) {
@@ -105,8 +110,9 @@ public class EmployeServiceImpl implements IEmployeService {
     @Transactional
     public EmployeResponse create(EmployeRequest employeRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
+        quotaService.ensureEmployeQuota(currentUser.entrepriseId());
 
-        Role role = roleService.findByLibelle(employeRequest.role());
+        Role role = roleService.findById(employeRequest.roleId());
         List<String> rolePermissions = permissionsService.findAllByRoleId(role.getId());
 
         ensureRoleAllowed(role);
@@ -129,12 +135,12 @@ public class EmployeServiceImpl implements IEmployeService {
 
         EmployeResponse created = employeDomainService.create(employeRequest.utilisateur(), account, magasin);
 
-        emailService.sendWelcomeEmploye(
+        emailEventPublisher.publishEmployeWelcome(new EmployeWelcomeEvent(
                 employeRequest.utilisateur().email(),
                 employeRequest.utilisateur().prenom() + " " + employeRequest.utilisateur().nom(),
                 employeRequest.username(),
                 generatedPassword
-        );
+        ));
 
         auditWithMagasin(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.username(), magasin.getId());
         return created;
@@ -174,7 +180,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
 
-        Role newRole = roleService.findByLibelle(request.role());
+        Role newRole = roleService.findById(request.roleId());
         List<String> newRolePermissions = permissionsService.findAllByRoleId(newRole.getId());
         ensureRoleAllowed(newRole);
         ensureCallerCanAssignRole(currentUser, newRolePermissions);
@@ -200,7 +206,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Employe employe = findAccessibleEmploye(id, currentUser);
 
-        Role newRole = roleService.findByLibelle(request.role());
+        Role newRole = roleService.findById(request.roleId());
         List<String> newRolePermissions = permissionsService.findAllByRoleId(newRole.getId());
         ensureRoleAllowed(newRole);
         ensureCallerCanAssignRole(currentUser, newRolePermissions);

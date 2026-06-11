@@ -23,9 +23,19 @@ import org.store.common.dto.ImageDownloadResponse;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinStatsResponse;
 import org.store.magasin.application.service.IMagasinService;
+import org.store.magasin.domain.service.MagasinDomainService;
+import org.store.stock.application.dto.StockValuationResponse;
+import org.store.stock.application.service.IStockService;
+import org.store.users.domain.service.EmployeDomainService;
+import org.store.vente.domain.service.ClientDomainService;
+import org.store.vente.domain.service.FactureClientDomainService;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.UUID;
 
 @RestController
@@ -35,9 +45,24 @@ public class MagasinController {
     public static final String BASE_PATH = "/api/v1/magasins";
 
     private final IMagasinService magasinService;
+    private final MagasinDomainService magasinDomainService;
+    private final EmployeDomainService employeDomainService;
+    private final ClientDomainService clientDomainService;
+    private final IStockService stockService;
+    private final FactureClientDomainService factureClientDomainService;
 
-    public MagasinController(IMagasinService magasinService) {
+    public MagasinController(IMagasinService magasinService,
+                             MagasinDomainService magasinDomainService,
+                             EmployeDomainService employeDomainService,
+                             ClientDomainService clientDomainService,
+                             IStockService stockService,
+                             FactureClientDomainService factureClientDomainService) {
         this.magasinService = magasinService;
+        this.magasinDomainService = magasinDomainService;
+        this.employeDomainService = employeDomainService;
+        this.clientDomainService = clientDomainService;
+        this.stockService = stockService;
+        this.factureClientDomainService = factureClientDomainService;
     }
 
     @PostMapping
@@ -63,6 +88,36 @@ public class MagasinController {
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<MagasinResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(magasinService.findResponseById(id));
+    }
+
+    @GetMapping("/{id}/stats")
+    @PreAuthorize("hasAuthority('STORE_READ_ONE')")
+    public ResponseEntity<MagasinStatsResponse> stats(@PathVariable UUID id) {
+        var magasin = magasinService.ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
+        UUID entrepriseId = magasin.getEntreprise().getId();
+
+        YearMonth currentMonth = YearMonth.now();
+        LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime endOfMonth   = currentMonth.atEndOfMonth().plusDays(1).atStartOfDay();
+
+        long nombreEmployes          = employeDomainService.countByMagasinId(id);
+        long nombreClients           = clientDomainService.countByEntrepriseId(entrepriseId);
+        StockValuationResponse stock = stockService.computeValuation(id);
+        BigDecimal revenuMois        = factureClientDomainService
+                .sumMontantCommandesForCaisse(
+                        new org.store.vente.application.dto.CaisseResumeFilter(
+                                id,
+                                startOfMonth.toLocalDate().toString(),
+                                endOfMonth.minusDays(1).toLocalDate().toString()),
+                        entrepriseId);
+
+        return ResponseEntity.ok(new MagasinStatsResponse(
+                nombreEmployes,
+                nombreClients,
+                stock.nombreLignes(),
+                stock.valeurTotale(),
+                revenuMois != null ? revenuMois : BigDecimal.ZERO
+        ));
     }
 
     @PutMapping("/{id}")

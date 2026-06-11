@@ -9,6 +9,106 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-10 — MoyenPaiement entity, quota enforcement, test suite cleanup, UX fixes
+
+**Subject:** Large multi-session day. Core themes: replace hardcoded payment method enum, enforce subscription quotas, fix the full test suite (backend + frontend), and several UX/bug fixes.
+
+### Backend
+
+- **MoyenPaiement entity** — new `org.store.paiement` module. V41 migration: creates `moyen_paiement` table + backfills 4 tables from old STRING enum. `MoyenPaiementController` (ADMIN CRUD), `MOYEN_PAIEMENT_*` permissions. DataInitializer seeds CASH / WAVE / OM / CARD.
+- **Employee role UUID** — `EmployeRequest/UpdateRequest/AssignRoleRequest`: String role → UUID roleId. `EmployeResponse` exposes `RoleSummary { id, libelle }`.
+- **ClientFilter.magasinId** — OWNER can filter clients by store.
+- **Account.systeme** — V42: `boolean systeme`. DataInitializer marks seeded admin. `setEnabled()` guard rejects deactivation.
+- **AbonnementQuotaService** — `ensureMagasinQuota` + `ensureEmployeQuota` injected in `MagasinServiceImpl` and `EmployeServiceImpl`. max=0 → unlimited.
+- **Anonymous client payment guard** — `VenteServiceImpl.validate()`: `premierPaiement.montant != montantTotal` → exception if client is null.
+- **Test suite** — 882/882 green. Fixed: ClientFilter (magasinId), VenteProcessFlow (anonymous client), EmployeServiceImpl/ControllerTest (roleId/RoleSummary), PaiementAbonnement/Depense tests.
+
+### Frontend
+
+- **Layout scroll** — `h-screen` + `overflow-y-auto` on dashboard main. Auth layout scroll fix.
+- **Alert bell** — Separated from notification bell. Hidden when count=0.
+- **Client page** — OWNER: `ClientMagasinSelect` card (VentesPage pattern). EMPLOYEE: backend-scoped.
+- **Moyen paiement** — All forms: hardcoded enum → `useMoyenPaiementList` API. Field: `moyenPaiementId: UUID`.
+- **Admin — Moyens de paiement** — Tab + page CRUD in Administration (pattern Coupon).
+- **Admin — Admins** — Toggle hidden if `account.systeme = true`.
+- **Test suite** — 314/314 green. `renderWithIntl` helper created. Fixed: DataTable, PhoneField, LoginForm, table tests (mobile card duplicates).
+- **CI** — `react-hooks/set-state-in-effect` disabled. `ExpenseReportSection` useMemo fix. `package-lock.json` resync.
+
+### Open
+
+- All commits on `dev`, not merged to `main` yet.
+
+---
+
+## Previous session
+
+**Date:** 2026-06-08 — Per-store stats, alert system (scheduler + table + frontend), UX fixes
+
+**Subject:** New features day. Per-store statistics, full alert system (V40 + scheduler + REST + frontend), UX fixes.
+
+### Backend
+
+- **`GET /api/v1/magasins/{id}/stats`** (STORE_READ_ONE) — `nombreEmployes`, `nombreClients`, `nombreProduitsEnStock`, `valeurTotaleStock`, `revenuMoisCourant`.
+- **`AlertScheduler @Scheduled 08:00`** — abonnements expirant 1/3/5 jours, factures vente/achat impayées 1/3/5 jours. Persiste `Alerte` + publie events → `NotificationEventListener`.
+- **V40** — table `alerte` (type, statut NOUVELLE/LUE/RESOLUE, titre, message, entrepriseId, magasinId, entityId, joursInfo).
+- **`GET /api/v1/alertes`** filtré + **`GET /count`** (NOUVELLE) + **PATCH /lue** + **PATCH /resolue**.
+- **`AlerteRepository`** native query avec sentinels (workaround PostgreSQL null type inference).
+- **fix(achat)**: LEFT JOIN commande.facture — DRAFTs sans facture exclus par INNER JOIN implicite.
+- **`GET /abonnements/me/current`** → 204 pour ADMIN (no company).
+
+### Frontend
+
+- **`/dashboard/alertes`** — filtre type/statut, icônes par type, badge statut, marquer lue/résolue.
+- **Notification bell** — badge = notifs non lues + alertes NOUVELLES (`useNouvelleAlertesCount` poll 60s).
+- **KPI Employés + Clients** sur la page reporting via `useMagasinStats`.
+- **"Vente moyenne"** (ex ticket moyen). Auth no-scroll. Country combobox. Vente details footer pincé.
+- **Auto-load retiré** VentesPage + AchatsPage (retour au deferred search).
+
+### Open
+- Commits locaux prêts, pas encore poussés.
+
+---
+
+## Previous session
+
+**Date:** 2026-06-07 — Deployment (Railway + Vercel), UX overhaul, backend architecture fixes, email events
+
+**Subject:** Full-day deployment + feature session. Backend live on Railway via GitLab→GitHub mirror. Frontend on Vercel (dev branch auto-deploy). Major UX, architecture, and bug-fix sweep.
+
+### Backend
+
+- **CI simplified**: test-only pipeline; Railway builds Dockerfile from GitHub mirror
+- **prod yml**: clean env vars (no dev defaults), MAIL_* empty-string defaults → NoOp graceful
+- **DataInitializer**: demo notification seed removed; global anonymous fournisseur seeded
+- **V36–V39 migrations**: role entreprise_id+actif, CI LOWER unique index, fournisseur.systeme, entreprise_id nullable on fournisseur
+- **Role CRUD**: scoped listing (ADMIN=all, OWNER=own+employee, MANAGER=employee only), PATCH /{id}/permissions/activate/deactivate, DELETE. ROLE_* permissions
+- **Global anonymous fournisseur**: system entity (entreprise IS NULL, systeme=true), included in listing, update/delete blocked
+- **Email event-driven**: `IEmailEventPublisher` + `EmailEventPublisher` + `EmailEventListener @Async`. Business services publish events (no direct IEmailService injection). OwnerWelcomeEvent on registration
+- **Security**: `/actuator/health` permitAll; `GET /abonnements/me/current` → 204 for ADMIN
+- **fix(achat)**: `LEFT JOIN commande.facture facture` — DRAFT orders (no facture) were excluded by implicit INNER JOIN
+
+### Frontend
+
+- **Filter popover**: all 21 filter components → primary text input + `@base-ui/react/popover`. Auto-search (text 400ms debounce, combobox/dates immediate). No manual Rechercher button
+- **PageHeader removed** from all list pages; Add button inline left
+- **Dialog scrolling**: `overflow-y-auto` removed from all DialogContent; tables scroll max-h-96; DialogFooter pinned on inventaire/achat/vente details
+- **Inventaire**: rapport 4-col grid (bénéfice colored highlight), période in header, totals on lines title, table max-h-48
+- **Role page**: DataTable + Detail/Edit/Permissions/Activate/Deactivate/Delete actions; RoleFilters; visibility guard per role; AssignRoleDialog → EmployesPage
+- **Fournisseur anonyme**: AchatForm shows system fournisseur first; table shows italic label when null
+- **Auth**: no scroll (h-screen overflow-hidden); country selector → Combobox
+- **Vente details**: DialogFooter pinned; withPayment default false
+- **Auto-load**: AchatsPage + VentesPage useEffect auto-triggers on magasinId; notification history + expiring lots same fix
+- **Admin reporting**: revenue amounts without currency symbol
+
+### Deployment
+- Backend: `appstore-backend-api.up.railway.app` (live, Flyway V36–V39 applied)
+- Frontend: Vercel dev-branch auto-deploy (live)
+- Mirror: GitLab store-backend → GitHub barrydevpro14/store-backend → Railway main
+
+---
+
+## Previous session
+
 **Date:** 2026-06-04 — E2E tests, UX redesign, inventory price, product images, all selectors searchable
 
 **Subject:** Two-part session. First half: backend — e2e lifecycle tests for purchase/sale/inventory, inventory improvements (duplicate count aggregation, prix_unitaire, clôture guard). Second half: frontend — full UX redesign (4 areas), product image management with carousel + lightbox, all remaining Select → Combobox.
@@ -819,3 +919,35 @@ For the morning session of the same day, see the earlier journal entry below ("2
 - Phases 2-5 frontend commits are local-only — need an explicit push.
 - Pre-existing `FormField.test.tsx` TS error (RHF generic resolver) still untriaged.
 - Auth flow doesn't yet hit a real protected feature page (no Magasin / Produit / Vente CRUD yet on the frontend). Natural next chunk: Phase 2 of the bootstrap checklist (Employe CRUD or Magasin CRUD as the first feature dashboard page).
+
+---
+
+## Session 2026-06-06
+
+### Ce qui a été fait
+
+**Backend (poussé sur `dev`) :**
+- feat(achat) : montantTotal dénormalisé, suppression magasin/fournisseur/quantiteRecue, V31
+- feat(inventaire) : commentaire clôture optionnel, V32
+- feat(vente) : montantTotal dénormalisé, suppression magasin/fournisseur, V33
+- feat(vente) : création draft-first — addLigne + findLignes serveur
+- feat(employe) : génération auto mot de passe APP+5 chiffres + email bienvenue
+- feat(auth) : reset password par e-mail — token V34 + endpoints + template
+- feat(product-fournisseur) : findOrCreate + findByTriplet + contrainte unicité V35
+- feat(achat,vente) : résolution PF déléguée au backend (productId+qualityId+fournisseurId)
+- feat(employe) : lever la contrainte 1 manager par magasin
+- fix(global-exception) : NPE contrainte null + messages person_telephone/email
+
+**Frontend (poussé sur `dev`) :**
+- feat(achat) : draft-first + résolution PF par API + données via hooks
+- feat(vente) : delete ligne confirmé par API onSuccess + LigneVenteRequest triplet PF
+- feat(employe,auth) : suppression champ password form + pages forgot/reset-password
+- fix(ux,i18n) : nom complet retiré navbar + overflow-x clip + min-w-0
+
+### À faire à la prochaine session
+
+- Mise en page des champs de recherche et filtres inspirée du screenshot :
+  /home/idyal-deb/Images/Captures d'écran/Capture d'écran du 2026-06-06 01-12-29.png
+  Titre à gauche, barre de recherche au centre, boutons Filtre + Add new à droite.
+  À appliquer sur tous les listings (achats, ventes, employés, produits, stock…).
+- Ne pas toucher à Pagination.tsx sans autorisation explicite.

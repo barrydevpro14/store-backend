@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.store.achat.application.dto.PaiementAchatCreate;
 import org.store.achat.application.dto.PaiementAchatRequest;
 import org.store.achat.application.service.impl.PaiementAchatServiceImpl;
-import org.store.achat.domain.enums.MoyenPaiement;
+import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.FactureAchat;
@@ -43,9 +43,20 @@ class PaiementAchatServiceImplTest {
     @Mock private PaiementAchatDomainService paiementAchatDomainService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
+    @Mock private IMoyenPaiementService moyenPaiementService;
 
     @InjectMocks
     private PaiementAchatServiceImpl service;
+
+    private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    private org.store.paiement.domain.model.MoyenPaiement moyenCash() {
+        org.store.paiement.domain.model.MoyenPaiement m = new org.store.paiement.domain.model.MoyenPaiement();
+        m.setId(MOYEN_ID);
+        m.setLibelle("Espèces");
+        m.setCode("CASH");
+        return m;
+    }
 
     private UUID factureId;
     private UUID entrepriseId;
@@ -81,7 +92,8 @@ class PaiementAchatServiceImplTest {
 
     @Test
     void create_should_apply_payment_and_update_facture() {
-        PaiementAchatRequest req = new PaiementAchatRequest(new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), MoyenPaiement.CASH);
+        PaiementAchatRequest req = new PaiementAchatRequest(new BigDecimal("400.00"), LocalDate.of(2026, 5, 15), MOYEN_ID);
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
         PaiementAchat paiement = new PaiementAchat();
         paiement.setId(UUID.randomUUID());
         paiement.setFacture(facture);
@@ -102,7 +114,7 @@ class PaiementAchatServiceImplTest {
     @Test
     void create_should_throw_when_overpaiement() {
         facture.setMontantPaye(new BigDecimal("800.00"));
-        PaiementAchatRequest req = new PaiementAchatRequest(new BigDecimal("500.00"), LocalDate.now(), MoyenPaiement.CASH);
+        PaiementAchatRequest req = new PaiementAchatRequest(new BigDecimal("500.00"), LocalDate.now(), MOYEN_ID);
 
         when(factureAchatDomainService.findById(factureId)).thenReturn(facture);
         when(currentUserService.getCurrent()).thenReturn(user());
@@ -122,7 +134,7 @@ class PaiementAchatServiceImplTest {
         autreMagasin.setEntreprise(autreEntreprise);
         facture.getCommande().setMagasin(autreMagasin);
 
-        PaiementAchatRequest req = new PaiementAchatRequest(new BigDecimal("100.00"), LocalDate.now(), MoyenPaiement.CASH);
+        PaiementAchatRequest req = new PaiementAchatRequest(new BigDecimal("100.00"), LocalDate.now(), MOYEN_ID);
 
         when(factureAchatDomainService.findById(factureId)).thenReturn(facture);
         when(currentUserService.getCurrent()).thenReturn(user());

@@ -47,7 +47,7 @@ public class DepenseController {
     @PreAuthorize("hasAuthority('EXPENSE_READ')")
     public ResponseEntity<Page<DepenseResponse>> list(@RequestParam UUID magasinId,
                                                       @RequestParam(required = false) UUID categoryId,
-                                                      @RequestParam(required = false) String modePaiement,
+                                                      @RequestParam(required = false) UUID moyenPaiementId,
                                                       @RequestParam(required = false) String startDate,
                                                       @RequestParam(required = false) String endDate,
                                                       @RequestParam(required = false) LocalDate createdStartDate,
@@ -55,7 +55,7 @@ public class DepenseController {
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(depenseService.findAllByCurrentEntreprise(
-                new DepenseFilter(magasinId, categoryId, modePaiement, startDate, endDate,
+                new DepenseFilter(magasinId, categoryId, moyenPaiementId, startDate, endDate,
                         createdStartDate, createdEndDate, page, size)
         ));
     }
@@ -64,13 +64,13 @@ public class DepenseController {
     @PreAuthorize("hasAuthority('EXPENSE_READ')")
     public ResponseEntity<DepenseTotalResponse> computeTotal(@RequestParam UUID magasinId,
                                                              @RequestParam(required = false) UUID categoryId,
-                                                             @RequestParam(required = false) String modePaiement,
+                                                             @RequestParam(required = false) UUID moyenPaiementId,
                                                              @RequestParam(required = false) String startDate,
                                                              @RequestParam(required = false) String endDate,
                                                              @RequestParam(required = false) LocalDate createdStartDate,
                                                              @RequestParam(required = false) LocalDate createdEndDate) {
         return ResponseEntity.ok(depenseService.computeTotal(
-                new DepenseFilter(magasinId, categoryId, modePaiement, startDate, endDate,
+                new DepenseFilter(magasinId, categoryId, moyenPaiementId, startDate, endDate,
                         createdStartDate, createdEndDate, 0, 1)
         ));
     }

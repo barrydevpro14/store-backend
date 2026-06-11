@@ -14,6 +14,7 @@ import org.store.depense.domain.model.CategoryDepense;
 import org.store.depense.domain.model.Depense;
 import org.store.depense.domain.repository.DepenseRepository;
 import org.store.magasin.domain.model.Magasin;
+import org.store.paiement.domain.model.MoyenPaiement;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,8 +25,8 @@ public class DepenseDomainService extends GlobalService<Depense, DepenseReposito
         super(repository);
     }
 
-    /** Crée et persiste une dépense après résolution des FK Magasin + Category par le service applicatif. */
-    public Depense create(DepenseRequest depenseRequest, Magasin magasin, CategoryDepense category) {
+    /** Crée et persiste une dépense après résolution des FK Magasin + Category + MoyenPaiement par le service applicatif. */
+    public Depense create(DepenseRequest depenseRequest, Magasin magasin, CategoryDepense category, MoyenPaiement moyen) {
         Depense depense = new Depense();
         depense.setMagasin(magasin);
         depense.setCategory(category);
@@ -33,7 +34,7 @@ public class DepenseDomainService extends GlobalService<Depense, DepenseReposito
         depense.setDescription(depenseRequest.description());
         depense.setDateDepense(depenseRequest.dateDepense());
         depense.setMontant(depenseRequest.montant());
-        depense.setModePaiement(depenseRequest.modePaiement());
+        depense.setModePaiement(moyen);
         return save(depense);
     }
 

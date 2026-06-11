@@ -61,4 +61,9 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
     public long countByActif(boolean actif) {
         return repository.countByActif(actif);
     }
+
+    /** Compte tous les magasins d'une entreprise (pour contrôle de quota). */
+    public long countByEntrepriseId(UUID entrepriseId) {
+        return repository.countByEntrepriseId(entrepriseId);
+    }
 }

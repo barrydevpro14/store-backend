@@ -45,12 +45,13 @@ public class ClientController {
     @PreAuthorize("hasAuthority('CLIENT_READ')")
     public ResponseEntity<Page<ClientResponse>> list(@RequestParam(required = false) String nom,
                                                      @RequestParam(required = false) String prenom,
+                                                     @RequestParam(required = false) UUID magasinId,
                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
                                                      @RequestParam(defaultValue = "0") int page,
                                                      @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(clientService.findAllForCurrentUser(
-                new ClientFilter(nom, prenom, createdStartDate, createdEndDate, page, size)));
+                new ClientFilter(nom, prenom, magasinId, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")

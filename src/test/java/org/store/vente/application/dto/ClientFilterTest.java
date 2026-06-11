@@ -14,7 +14,7 @@ class ClientFilterTest {
     @Test
     void createdStartDateTime_should_return_start_of_day_when_date_provided() {
         LocalDate date = LocalDate.of(2025, 5, 10);
-        ClientFilter filter = new ClientFilter(null, null, date, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, date, null, 0, 10);
 
         LocalDateTime result = filter.createdStartDateTime();
 
@@ -23,7 +23,7 @@ class ClientFilterTest {
 
     @Test
     void createdStartDateTime_should_return_null_when_no_start_date() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, null, 0, 10);
 
         assertThat(filter.createdStartDateTime()).isNull();
     }
@@ -31,7 +31,7 @@ class ClientFilterTest {
     @Test
     void createdEndDateTime_should_return_start_of_next_day_when_date_provided() {
         LocalDate date = LocalDate.of(2025, 5, 20);
-        ClientFilter filter = new ClientFilter(null, null, null, date, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, date, 0, 10);
 
         LocalDateTime result = filter.createdEndDateTime();
 
@@ -40,14 +40,14 @@ class ClientFilterTest {
 
     @Test
     void createdEndDateTime_should_return_null_when_no_end_date() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, null, 0, 10);
 
         assertThat(filter.createdEndDateTime()).isNull();
     }
 
     @Test
     void toPageable_should_return_pageable_with_correct_page_and_size() {
-        ClientFilter filter = new ClientFilter("Diallo", "Mama", null, null, 2, 15);
+        ClientFilter filter = new ClientFilter("Diallo", "Mama", null, null, null, 2, 15);
 
         Pageable pageable = filter.toPageable();
 
@@ -58,7 +58,7 @@ class ClientFilterTest {
 
     @Test
     void toPageable_should_return_first_page_at_page_zero() {
-        ClientFilter filter = new ClientFilter(null, null, null, null, 0, 10);
+        ClientFilter filter = new ClientFilter(null, null, null, null, null, 0, 10);
 
         Pageable pageable = filter.toPageable();
 

@@ -13,6 +13,8 @@ import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
 import org.store.achat.domain.service.FournisseurDomainService;
+import org.store.paiement.domain.model.MoyenPaiement;
+import org.store.paiement.domain.service.MoyenPaiementDomainService;
 import org.store.property.RbacProperties;
 import org.store.security.application.service.IRolesPermissionsSyncService;
 import org.store.security.domain.model.Role;
@@ -45,6 +47,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UtilisateurDomainService utilisateurDomainService;
     private final FournisseurDomainService fournisseurDomainService;
     private final DemoProductSeeder demoProductSeeder;
+    private final MoyenPaiementDomainService moyenPaiementDomainService;
 
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
@@ -55,7 +58,8 @@ public class DataInitializer implements ApplicationRunner {
                            PasswordEncoder passwordEncoder,
                            UtilisateurDomainService utilisateurDomainService,
                            FournisseurDomainService fournisseurDomainService,
-                           DemoProductSeeder demoProductSeeder) {
+                           DemoProductSeeder demoProductSeeder,
+                           MoyenPaiementDomainService moyenPaiementDomainService) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
@@ -66,6 +70,7 @@ public class DataInitializer implements ApplicationRunner {
         this.utilisateurDomainService = utilisateurDomainService;
         this.fournisseurDomainService = fournisseurDomainService;
         this.demoProductSeeder = demoProductSeeder;
+        this.moyenPaiementDomainService = moyenPaiementDomainService;
     }
 
     @Override
@@ -79,8 +84,28 @@ public class DataInitializer implements ApplicationRunner {
         }
         ensureTrialPlan();
         fournisseurDomainService.ensureGlobalAnonymous();
+        ensureMoyensPaiement();
         if (rbacProperties.sync()) {
             demoProductSeeder.seed();
+        }
+    }
+
+    private void ensureMoyensPaiement() {
+        record Seed(String code, String libelle) {}
+        var seeds = new Seed[]{
+            new Seed("CASH", "Espèces"),
+            new Seed("WAVE", "Wave"),
+            new Seed("OM",   "Orange Money"),
+            new Seed("CARD", "Carte bancaire")
+        };
+        for (Seed seed : seeds) {
+            if (moyenPaiementDomainService.findByCode(seed.code()).isEmpty()) {
+                MoyenPaiement moyen = new MoyenPaiement();
+                moyen.setCode(seed.code());
+                moyen.setLibelle(seed.libelle());
+                moyenPaiementDomainService.save(moyen);
+                log.info("DataInitializer: moyen de paiement seedé ({})", seed.code());
+            }
         }
     }
 
@@ -98,7 +123,12 @@ public class DataInitializer implements ApplicationRunner {
                             "Rôle ADMIN absent en base — la sync RBAC doit s'exécuter avant ensureAdminAccount."));
             adminAccount = accountDomainService.create(
                     ADMIN_USERNAME, passwordEncoder.encode(rbacProperties.adminPassword()), adminRole);
+            adminAccount.setSysteme(true);
+            accountDomainService.save(adminAccount);
             log.info("DataInitializer: compte ADMIN seedé (username={})", ADMIN_USERNAME);
+        } else if (!adminAccount.isSysteme()) {
+            adminAccount.setSysteme(true);
+            accountDomainService.save(adminAccount);
         }
 
         Account finalAdminAccount = adminAccount;

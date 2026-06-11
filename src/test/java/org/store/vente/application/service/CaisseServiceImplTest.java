@@ -13,7 +13,6 @@ import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
-import org.store.achat.domain.enums.MoyenPaiement;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CaisseResumeResponse;
 import org.store.vente.application.dto.PaiementParMoyenResponse;
@@ -75,9 +74,15 @@ class CaisseServiceImplTest {
     @Test
     void getResume_should_aggregate_6_queries_and_return_response_with_ventilations() {
         CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-16", null);
+        org.store.paiement.domain.model.MoyenPaiement cash = new org.store.paiement.domain.model.MoyenPaiement();
+        cash.setId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        cash.setLibelle("Espèces"); cash.setCode("CASH");
+        org.store.paiement.domain.model.MoyenPaiement wave = new org.store.paiement.domain.model.MoyenPaiement();
+        wave.setId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        wave.setLibelle("Wave"); wave.setCode("WAVE");
         List<PaiementParMoyenResponse> paiementsParMoyen = List.of(
-                new PaiementParMoyenResponse(MoyenPaiement.CASH, new BigDecimal("60000.00"), 18L),
-                new PaiementParMoyenResponse(MoyenPaiement.WAVE, new BigDecimal("38500.00"), 6L)
+                new PaiementParMoyenResponse(cash, new BigDecimal("60000.00"), 18L),
+                new PaiementParMoyenResponse(wave, new BigDecimal("38500.00"), 6L)
         );
         List<VenteParVendeurResponse> ventesParVendeur = List.of(
                 new VenteParVendeurResponse(UUID.randomUUID(), "Diop Awa", 15L, new BigDecimal("85000.00")),
@@ -104,7 +109,7 @@ class CaisseServiceImplTest {
         assertThat(result.totalCommandes()).isEqualByComparingTo(new BigDecimal("145000.00"));
         assertThat(result.totalPaiements()).isEqualByComparingTo(new BigDecimal("98500.00"));
         assertThat(result.paiementsParMoyen()).hasSize(2);
-        assertThat(result.paiementsParMoyen().get(0).moyen()).isEqualTo(MoyenPaiement.CASH);
+        assertThat(result.paiementsParMoyen().get(0).moyen().getCode()).isEqualTo("CASH");
         assertThat(result.paiementsParMoyen().get(0).total()).isEqualByComparingTo(new BigDecimal("60000.00"));
         assertThat(result.paiementsParMoyen().get(0).nombre()).isEqualTo(18L);
         assertThat(result.ventesParVendeur()).hasSize(2);

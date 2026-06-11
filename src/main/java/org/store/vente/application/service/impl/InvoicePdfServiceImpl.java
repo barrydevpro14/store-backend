@@ -211,7 +211,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
         var paiements = paiementVenteDomainService.findAllByFactureId(facture.getId());
         for (var p : paiements) {
-            String label = "Paiement (" + p.getMoyen().name() + ")";
+            String label = "Paiement (" + (p.getMoyen() != null ? p.getMoyen().getLibelle() : "—") + ")";
             if (p.getDatePaiement() != null) label += " – " + p.getDatePaiement().format(DATE_FMT);
             addTotalRow(totals, label, "– " + formatAmount(p.getMontant()), labelFont, valueFont, Color.WHITE);
         }
