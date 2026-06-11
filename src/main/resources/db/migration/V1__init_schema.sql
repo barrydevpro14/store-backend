@@ -256,7 +256,7 @@ CREATE TABLE ligne_commande_achat (
     prix_achat numeric(19,2),
     prix_vente numeric(19,2) NOT NULL,
     quantite integer NOT NULL,
-    quantite_recue integer NOT NULL DEFAULT 0,
+    quantite_recue integer NOT NULL,
     commande_id uuid,
     id uuid NOT NULL,
     product_fournisseur_id uuid,
