@@ -95,6 +95,10 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
 
     /** Garantit qu'un rôle du YAML existe en BD avec au moins les permissions listées, et alimente addedRoles/updatedRoles du context. */
     public void ensureRole(RoleDef roleDef, RbacSyncContext context) {
+        // Les rôles assignables aux employés (MANAGER, SELLER) sont créés par entreprise,
+        // pas globalement — le sync RBAC les ignore entièrement.
+        if (roleDef.assignableToEmployeOrFalse()) return;
+
         Role existing = roleDomainService.findByLibelle(roleDef.libelle()).orElse(null);
         boolean wasCreated = (existing == null);
         Role role = wasCreated ? createRole(roleDef, context) : existing;
