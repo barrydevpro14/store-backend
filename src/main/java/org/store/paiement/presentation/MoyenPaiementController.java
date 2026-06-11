@@ -25,7 +25,6 @@ public class MoyenPaiementController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('MOYEN_PAIEMENT_READ')")
     public ResponseEntity<List<MoyenPaiementResponse>> list() {
         return ResponseEntity.ok(service.findAll());
     }
