@@ -135,7 +135,7 @@ class DepenseServiceImplTest {
 
     @Test
     void list_should_validate_and_delegate() {
-        DepenseFilter filter = new DepenseFilter(magasinId, null, null, null, null, null, null, 0, 10);
+        DepenseFilter filter = new DepenseFilter(magasinId, null, null, null, null, null, null, null, 0, 10);
         Page<DepenseResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(user());
@@ -149,7 +149,7 @@ class DepenseServiceImplTest {
 
     @Test
     void computeTotal_should_validate_and_delegate() {
-        DepenseFilter filter = new DepenseFilter(magasinId, null, null, "2026-05-01", "2026-05-31", null, null, 0, 1);
+        DepenseFilter filter = new DepenseFilter(magasinId, null, null, null, "2026-05-01", "2026-05-31", null, null, 0, 1);
         DepenseTotalResponse expected = new DepenseTotalResponse(magasinId, new BigDecimal("750000.00"), 3L);
 
         when(currentUserService.getCurrent()).thenReturn(user());
