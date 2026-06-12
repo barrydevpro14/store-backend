@@ -24,6 +24,7 @@ public interface DepenseRepository extends BaseRepository<Depense> {
               AND depense.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
               AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
+              AND (:#{#filter.libellePattern()} IS NULL OR LOWER(depense.libelle) LIKE :#{#filter.libellePattern()})
               AND depense.dateDepense >= :#{#filter.fromDateSentinel()}
               AND depense.dateDepense <= :#{#filter.toDateSentinel()}
               AND depense.createdAt >= :#{#filter.createdStartDateTime()}
@@ -45,6 +46,7 @@ public interface DepenseRepository extends BaseRepository<Depense> {
               AND depense.magasin.id = :#{#filter.magasinId}
               AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
               AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
+              AND (:#{#filter.libellePattern()} IS NULL OR LOWER(depense.libelle) LIKE :#{#filter.libellePattern()})
               AND depense.dateDepense >= :#{#filter.fromDateSentinel()}
               AND depense.dateDepense <= :#{#filter.toDateSentinel()}
               AND depense.createdAt >= :#{#filter.createdStartDateTime()}

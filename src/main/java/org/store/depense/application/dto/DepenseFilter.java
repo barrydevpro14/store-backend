@@ -15,6 +15,7 @@ public record DepenseFilter(
         @NotNull UUID magasinId,
         UUID categoryId,
         UUID moyenPaiementId,
+        String libelle,
         @DatePattern String startDate,
         @DatePattern String endDate,
         LocalDate createdStartDate,
@@ -22,6 +23,9 @@ public record DepenseFilter(
         @Min(0) int page,
         @Min(1) int size
 ) {
+    public String libellePattern() {
+        return (libelle == null || libelle.isBlank()) ? null : "%" + libelle.toLowerCase() + "%";
+    }
     public LocalDate fromDate() {
         return DateHelper.parseStartOfDay(startDate) != null
                 ? DateHelper.parseStartOfDay(startDate).toLocalDate() : null;

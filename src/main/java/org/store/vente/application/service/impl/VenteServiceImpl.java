@@ -520,12 +520,13 @@ public class VenteServiceImpl implements IVenteService {
         sortieStockDomainService.markAsAnnulee(sortie);
         Stock updated = stockDomainService.creditQuantite(stock, quantite);
 
+        String refCommande = sortie.getLigneVente() != null ? sortie.getLigneVente().getCommande().getReference() : null;
         mouvementStockDomainService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.RETOUR_CLIENT,
                 quantite,
                 stockAvant,
                 updated.getQuantiteDisponible(),
-                null,
+                refCommande,
                 null
         ));
         return quantite;

@@ -129,12 +129,16 @@ public class SortieStockServiceImpl implements ISortieStockService {
             notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
         }
 
+        String refCommande = sortieStockForVente.ligneVente() != null
+                ? sortieStockForVente.ligneVente().getCommande().getReference()
+                : null;
+
         mouvementStockDomainService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.SORTIE_VENTE,
                 sortieStockForVente.quantite(),
                 stockAvant,
                 updated.getQuantiteDisponible(),
-                null,
+                refCommande,
                 null
         ));
 

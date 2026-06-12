@@ -22,6 +22,7 @@ import org.store.stock.application.dto.SortieStockCreate;
 import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.dto.SortieStockRequest;
 import org.store.stock.application.dto.SortieStockResponse;
+import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.LigneCommandeVente;
 import org.store.stock.application.service.impl.SortieStockServiceImpl;
 import org.store.stock.domain.enums.MouvementStockType;
@@ -337,8 +338,12 @@ class SortieStockServiceImplTest {
     }
 
     private LigneCommandeVente ligneVente() {
+        CommandeVente commande = new CommandeVente();
+        commande.setReference("VNT-TEST");
+
         LigneCommandeVente ligne = new LigneCommandeVente();
         ligne.setId(UUID.randomUUID());
+        ligne.setCommande(commande);
         return ligne;
     }
 

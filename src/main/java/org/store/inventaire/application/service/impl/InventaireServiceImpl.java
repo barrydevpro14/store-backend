@@ -375,7 +375,7 @@ public class InventaireServiceImpl implements IInventaireService {
     /** Agregre les depenses du magasin sur la periode [dateDebut, dateFin] via DepenseDomainService.computeTotal. */
     public BigDecimal computeDepense(Magasin magasin, LocalDate dateDebut, LocalDate dateFin) {
         DepenseFilter filter = new DepenseFilter(
-                magasin.getId(), null, null, DateHelper.format(dateDebut), DateHelper.format(dateFin), null, null, 0, 1
+                magasin.getId(), null, null, null, DateHelper.format(dateDebut), DateHelper.format(dateFin), null, null, 0, 1
         );
         DepenseTotalResponse total = depenseDomainService.computeTotal(filter, magasin.getEntreprise().getId());
         return total != null && total.montantTotal() != null ? total.montantTotal() : BigDecimal.ZERO;

@@ -281,7 +281,7 @@ class AchatServiceImplTest {
         verify(mouvementStockDomainService).journalize(eq(stockAfter), mouvementCaptor.capture());
         assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.ENTREE_ACHAT);
         assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(100);
-        assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("FAC-001");
+        assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("CMD-AUTO");
 
         verify(productFournisseurService).applyPrixVenteFromPurchase(productFournisseur, new BigDecimal("15.00"));
         verify(commandeAchatDomainService).markReceptionnee(commande);
