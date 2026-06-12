@@ -306,7 +306,7 @@ public class AchatServiceImpl implements IAchatService {
         mouvementStockDomainService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,
                 quantite, stockAvant, stock.getQuantiteDisponible(),
-                facture.getNumero(),
+                commande.getReference(),
                 null
         ));
 
