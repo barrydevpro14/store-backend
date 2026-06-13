@@ -73,4 +73,9 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
         commande.setMontantTotal(montantTotal.max(BigDecimal.ZERO));
         return save(commande);
     }
+
+    /** Retourne true si au moins une commande achat a ete creee par ce compte (audit createdBy). */
+    public boolean hasCommandesByAccount(String accountId) {
+        return repository.existsByCreatedBy(accountId);
+    }
 }

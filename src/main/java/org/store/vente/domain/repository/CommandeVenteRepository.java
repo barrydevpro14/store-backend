@@ -118,4 +118,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             @Param("entrepriseId") UUID entrepriseId,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("SELECT COUNT(commande) > 0 FROM CommandeVente commande WHERE commande.createdBy = :accountId")
+    boolean existsByCreatedBy(@Param("accountId") String accountId);
 }

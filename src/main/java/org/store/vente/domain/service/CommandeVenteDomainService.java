@@ -91,4 +91,9 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         commande.setMontantTotal(montantTotal.max(java.math.BigDecimal.ZERO));
         return save(commande);
     }
+
+    /** Retourne true si au moins une commande vente a ete creee par ce compte (audit createdBy). */
+    public boolean hasCommandesByAccount(String accountId) {
+        return repository.existsByCreatedBy(accountId);
+    }
 }

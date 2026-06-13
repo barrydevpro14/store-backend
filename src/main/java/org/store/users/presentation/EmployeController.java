@@ -103,4 +103,11 @@ public class EmployeController {
         employeService.resetPassword(id, request);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasAuthority('EMPLOYE_PURGE')")
+    public ResponseEntity<Void> permanentDelete(@PathVariable UUID id) {
+        employeService.permanentDelete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
