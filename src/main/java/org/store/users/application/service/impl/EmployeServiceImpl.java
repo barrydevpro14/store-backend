@@ -36,6 +36,7 @@ import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
 import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.security.domain.service.AccountDomainService;
+import org.store.security.domain.service.RefreshTokenDomainService;
 import org.store.users.domain.service.EmployeDomainService;
 import org.store.users.domain.service.UtilisateurDomainService;
 import org.store.vente.domain.service.CommandeVenteDomainService;
@@ -75,6 +76,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final AbonnementQuotaService quotaService;
     private final CommandeVenteDomainService commandeVenteDomainService;
     private final CommandeAchatDomainService commandeAchatDomainService;
+    private final RefreshTokenDomainService refreshTokenDomainService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
                               UtilisateurDomainService utilisateurDomainService,
@@ -89,7 +91,8 @@ public class EmployeServiceImpl implements IEmployeService {
                               IEmailEventPublisher emailEventPublisher,
                               AbonnementQuotaService quotaService,
                               CommandeVenteDomainService commandeVenteDomainService,
-                              CommandeAchatDomainService commandeAchatDomainService) {
+                              CommandeAchatDomainService commandeAchatDomainService,
+                              RefreshTokenDomainService refreshTokenDomainService) {
         this.employeDomainService = employeDomainService;
         this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
@@ -104,6 +107,7 @@ public class EmployeServiceImpl implements IEmployeService {
         this.quotaService = quotaService;
         this.commandeVenteDomainService = commandeVenteDomainService;
         this.commandeAchatDomainService = commandeAchatDomainService;
+        this.refreshTokenDomainService = refreshTokenDomainService;
     }
 
     private void audit(AuditAction action, UUID entityId, String label) {
@@ -338,6 +342,7 @@ public class EmployeServiceImpl implements IEmployeService {
         UUID magasinId = employe.getMagasin() != null ? employe.getMagasin().getId() : null;
         auditWithMagasin(AuditAction.EMPLOYE_DELETED, employe.getId(), employe.getAccount().getUsername(), magasinId);
 
+        refreshTokenDomainService.deleteByUserId(employe.getId());
         employeDomainService.delete(employe);
         accountDomainService.delete(employe.getAccount());
     }
