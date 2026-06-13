@@ -14,6 +14,7 @@ import org.store.common.tools.OwnershipHelper;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.util.UUID;
 
@@ -26,13 +27,16 @@ public class FournisseurServiceImpl implements IFournisseurService {
     private final FournisseurDomainService fournisseurDomainService;
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
+    private final UtilisateurDomainService utilisateurDomainService;
 
     public FournisseurServiceImpl(FournisseurDomainService fournisseurDomainService,
                                   IEntrepriseService entrepriseService,
-                                  ICurrentUserService currentUserService) {
+                                  ICurrentUserService currentUserService,
+                                  UtilisateurDomainService utilisateurDomainService) {
         this.fournisseurDomainService = fournisseurDomainService;
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
+        this.utilisateurDomainService = utilisateurDomainService;
     }
 
     /** Crée un fournisseur pour l'entreprise du caller après contrôle d'unicité de la référence. */
@@ -41,6 +45,8 @@ public class FournisseurServiceImpl implements IFournisseurService {
     public FournisseurResponse create(FournisseurRequest fournisseurRequest) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         ensureReferenceAvailable(fournisseurRequest.reference(), entrepriseId);
+        utilisateurDomainService.ensureContactsAvailable(
+                fournisseurRequest.email(), fournisseurRequest.telephone());
         Entreprise entreprise = entrepriseService.findById(entrepriseId);
         return new FournisseurResponse(fournisseurDomainService.create(fournisseurRequest, entreprise));
     }
@@ -74,6 +80,9 @@ public class FournisseurServiceImpl implements IFournisseurService {
         if (!java.util.Objects.equals(fournisseur.getReference(), fournisseurRequest.reference())) {
             ensureReferenceAvailable(fournisseurRequest.reference(), fournisseur.getEntreprise().getId());
         }
+        utilisateurDomainService.ensureContactsAvailableForUpdate(
+                fournisseurRequest.email(), fournisseurRequest.telephone(), fournisseur.getId());
+
         fournisseur.setNom(fournisseurRequest.nom());
         fournisseur.setPrenom(fournisseurRequest.prenom());
         fournisseur.setEmail(fournisseurRequest.email());
