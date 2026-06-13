@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.common.service.IEmailService;
+import org.store.common.service.impl.BrevoApiEmailServiceImpl;
 import org.store.common.service.impl.EmailServiceImpl;
 import org.store.common.service.impl.NoOpEmailServiceImpl;
 import org.store.property.MailProperties;
@@ -26,6 +27,11 @@ public class MailConfig {
 
     @Bean
     public IEmailService emailService(MailProperties mail, IMessageSourceService messageSourceService) {
+        if (mail.isBrevoApiConfigured()) {
+            log.info("Email service: Brevo HTTP API (bypasses SMTP)");
+            return new BrevoApiEmailServiceImpl(mail.brevoApiKey(), mail, messageSourceService);
+        }
+
         if (!mail.isConfigured()) {
             log.warn("Email service not configured (app.mail.password is blank) — NoOpEmailService active");
             return new NoOpEmailServiceImpl();
