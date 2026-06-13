@@ -1,12 +1,18 @@
 workflow:
   rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 stages:
   - test
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dmaven.color=false"
+  POSTGRES_DB: db_store
+  POSTGRES_USER: barrydevit
+  POSTGRES_PASSWORD: passer
+  POSTGRES_HOST_AUTH_METHOD: trust
 
 # ── Cache Maven dependencies across jobs ─────────────────────────────────────
 .maven-cache: &maven-cache
@@ -17,14 +23,29 @@ variables:
     policy: pull-push
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — compile check
-# Railway builds and deploys the Docker image directly from the repo.
+# STAGE 1 — compile + test suite
+# Runs on every push to dev, main and on all Merge Requests.
+# A Postgres service is spun up for StoreApplicationTests (@SpringBootTest).
+# Railway builds and deploys the Docker image directly — no deploy stage needed.
 # ─────────────────────────────────────────────────────────────────────────────
 test:
   stage: test
   image: eclipse-temurin:21-jdk-alpine
   <<: *maven-cache
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+  variables:
+    URL_DATABASE: postgres:5432
+    DB_NAME: $POSTGRES_DB
+    DB_USERNAME: $POSTGRES_USER
+    DB_PASSWORD: $POSTGRES_PASSWORD
+    JWT_SECRET: "ci-test-secret-at-least-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    RBAC_ADMIN_PASSWORD: passer123
+    SPRING_PROFILES_ACTIVE: test
   script:
-    - ./mvnw compile -q
+    - ./mvnw verify -q
   rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
