@@ -21,6 +21,7 @@ import org.store.vente.application.dto.ClientRequest;
 import org.store.vente.application.dto.ClientResponse;
 import org.store.vente.application.service.impl.ClientServiceImpl;
 import org.store.vente.domain.model.Client;
+import org.store.users.domain.service.UtilisateurDomainService;
 import org.store.vente.domain.service.ClientDomainService;
 
 import java.util.List;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.when;
 class ClientServiceImplTest {
 
     @Mock private ClientDomainService clientDomainService;
+    @Mock private UtilisateurDomainService utilisateurDomainService;
     @Mock private IMagasinService magasinService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;

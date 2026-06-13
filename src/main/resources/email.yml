@@ -7,3 +7,4 @@ app:
     from:     ${MAIL_FROM:barrydevpro@gmail.com}
     auth:     true
     starttls: true
+    ssl:      false

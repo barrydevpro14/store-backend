@@ -25,9 +25,10 @@ app:
     url: ${FRONTEND_URL}
   mail:
     host:     ${MAIL_HOST:}
-    port:     ${MAIL_PORT:587}
+    port:     ${MAIL_PORT:465}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     from:     ${MAIL_FROM:}
     auth:     true
-    starttls: true
+    starttls: ${MAIL_STARTTLS:false}
+    ssl:      ${MAIL_SSL:true}

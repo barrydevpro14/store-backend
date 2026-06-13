@@ -14,6 +14,7 @@ import org.store.vente.application.dto.ClientRequest;
 import org.store.vente.application.dto.ClientResponse;
 import org.store.vente.application.service.IClientService;
 import org.store.vente.domain.model.Client;
+import org.store.users.domain.service.UtilisateurDomainService;
 import org.store.vente.domain.service.ClientDomainService;
 
 import java.util.UUID;
@@ -28,21 +29,26 @@ public class ClientServiceImpl implements IClientService {
     private final IMagasinService magasinService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
+    private final UtilisateurDomainService utilisateurDomainService;
 
     public ClientServiceImpl(ClientDomainService clientDomainService,
                              IMagasinService magasinService,
                              ICurrentUserService currentUserService,
-                             ValidatorService validatorService) {
+                             ValidatorService validatorService,
+                             UtilisateurDomainService utilisateurDomainService) {
         this.clientDomainService = clientDomainService;
         this.magasinService = magasinService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
+        this.utilisateurDomainService = utilisateurDomainService;
     }
 
     /** Crée un client après contrôle d'accès du caller au magasin cible. */
     @Override
     @Transactional
     public ClientResponse create(ClientRequest clientRequest) {
+        utilisateurDomainService.ensureContactsAvailable(
+                clientRequest.email(), clientRequest.telephone());
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(clientRequest.magasinId()));
         return new ClientResponse(clientDomainService.create(clientRequest, magasin));
     }
@@ -90,6 +96,9 @@ public class ClientServiceImpl implements IClientService {
         if (!magasin.getId().equals(clientRequest.magasinId())) {
             magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(clientRequest.magasinId()));
         }
+
+        utilisateurDomainService.ensureContactsAvailableForUpdate(
+                clientRequest.email(), clientRequest.telephone(), client.getId());
 
         client.setNom(clientRequest.nom());
         client.setPrenom(clientRequest.prenom());

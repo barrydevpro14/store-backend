@@ -21,6 +21,7 @@ import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.users.domain.service.UtilisateurDomainService;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,6 +40,7 @@ class FournisseurServiceImplTest {
     @Mock private FournisseurDomainService fournisseurDomainService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private ICurrentUserService currentUserService;
+    @Mock private UtilisateurDomainService utilisateurDomainService;
 
     @InjectMocks
     private FournisseurServiceImpl service;

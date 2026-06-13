@@ -45,21 +45,21 @@ public class AbonnementQuotaService {
 
         long count = magasinDomainService.countByEntrepriseId(entrepriseId);
         if (count >= max) {
-            throw new BadArgumentException("abonnement.quota.magasins.exceeded", count, max);
+            throw new BadArgumentException("abonnement.quota.magasins.exceeded", max, count);
         }
     }
 
-    /** Vérifie que l'entreprise peut créer un employé supplémentaire. */
-    public void ensureEmployeQuota(UUID entrepriseId) {
+    /** Vérifie que le magasin peut accueillir un employé supplémentaire selon le plan actif. */
+    public void ensureEmployeQuota(UUID entrepriseId, UUID magasinId) {
         Optional<Abonnement> abonnement = abonnementDomainService.findCurrent(entrepriseId);
         if (abonnement.isEmpty()) return;
 
         int max = planOf(abonnement.get()).getNombreEmployesMax();
         if (max <= 0) return;
 
-        long count = employeDomainService.countByEntrepriseId(entrepriseId);
+        long count = employeDomainService.countByMagasinId(magasinId);
         if (count >= max) {
-            throw new BadArgumentException("abonnement.quota.employes.exceeded", count, max);
+            throw new BadArgumentException("abonnement.quota.employes.exceeded", max, count);
         }
     }
 

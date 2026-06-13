@@ -19,7 +19,8 @@ public record MailProperties(
         String password,
         String from,
         boolean auth,
-        boolean starttls
+        boolean starttls,
+        boolean ssl
 ) {
     public boolean isConfigured() {
         return password != null && !password.isBlank();
