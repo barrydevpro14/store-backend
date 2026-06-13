@@ -123,7 +123,6 @@ public class EmployeServiceImpl implements IEmployeService {
     @Transactional
     public EmployeResponse create(EmployeRequest employeRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
-        quotaService.ensureEmployeQuota(currentUser.entrepriseId());
 
         Role role = roleService.findById(employeRequest.roleId());
         List<String> rolePermissions = permissionsService.findAllByRoleId(role.getId());
@@ -134,6 +133,8 @@ public class EmployeServiceImpl implements IEmployeService {
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(
                 magasinService.findById(employeRequest.magasinId())
         );
+
+        quotaService.ensureEmployeQuota(currentUser.entrepriseId(), magasin.getId());
 
         utilisateurDomainService.ensureContactsAvailable(
                 employeRequest.utilisateur().email(),
