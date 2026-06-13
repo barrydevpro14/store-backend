@@ -33,4 +33,7 @@ public interface IEmployeService {
 
     /** Reset administratif du mot de passe d'un employe (sans verification de l'ancien). */
     void resetPassword(UUID id, ResetPasswordRequest request);
+
+    /** Suppression definitive (OWNER/ADMIN uniquement). Refuse si l'employe a des commandes vente ou achat a son nom. */
+    void permanentDelete(UUID id);
 }

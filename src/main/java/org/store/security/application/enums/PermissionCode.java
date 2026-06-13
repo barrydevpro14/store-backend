@@ -8,6 +8,7 @@ public enum PermissionCode {
     EMPLOYE_UPDATE,
     EMPLOYE_DELETE,
     EMPLOYE_RESET_PASSWORD,
+    EMPLOYE_PURGE,
     ADMIN_ACCESS,
 
     ROLE_CREATE,

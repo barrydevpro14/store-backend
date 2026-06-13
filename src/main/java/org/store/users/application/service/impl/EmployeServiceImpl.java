@@ -3,6 +3,7 @@ package org.store.users.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.notification.application.event.EmployeWelcomeEvent;
@@ -33,8 +34,11 @@ import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
 import org.store.users.application.service.IEmployeService;
 import org.store.users.domain.model.Employe;
+import org.store.achat.domain.service.CommandeAchatDomainService;
+import org.store.security.domain.service.AccountDomainService;
 import org.store.users.domain.service.EmployeDomainService;
 import org.store.users.domain.service.UtilisateurDomainService;
+import org.store.vente.domain.service.CommandeVenteDomainService;
 
 import java.util.List;
 import java.util.Optional;
@@ -60,6 +64,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final EmployeDomainService employeDomainService;
     private final UtilisateurDomainService utilisateurDomainService;
     private final IAccountService accountService;
+    private final AccountDomainService accountDomainService;
     private final IRoleService roleService;
     private final IPermissionsService permissionsService;
     private final IMagasinService magasinService;
@@ -68,10 +73,13 @@ public class EmployeServiceImpl implements IEmployeService {
     private final IAuditEventPublisher auditEventPublisher;
     private final IEmailEventPublisher emailEventPublisher;
     private final AbonnementQuotaService quotaService;
+    private final CommandeVenteDomainService commandeVenteDomainService;
+    private final CommandeAchatDomainService commandeAchatDomainService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
                               UtilisateurDomainService utilisateurDomainService,
                               IAccountService accountService,
+                              AccountDomainService accountDomainService,
                               IRoleService roleService,
                               IPermissionsService permissionsService,
                               IMagasinService magasinService,
@@ -79,10 +87,13 @@ public class EmployeServiceImpl implements IEmployeService {
                               ValidatorService validatorService,
                               IAuditEventPublisher auditEventPublisher,
                               IEmailEventPublisher emailEventPublisher,
-                              AbonnementQuotaService quotaService) {
+                              AbonnementQuotaService quotaService,
+                              CommandeVenteDomainService commandeVenteDomainService,
+                              CommandeAchatDomainService commandeAchatDomainService) {
         this.employeDomainService = employeDomainService;
         this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
+        this.accountDomainService = accountDomainService;
         this.roleService = roleService;
         this.permissionsService = permissionsService;
         this.magasinService = magasinService;
@@ -91,6 +102,8 @@ public class EmployeServiceImpl implements IEmployeService {
         this.auditEventPublisher = auditEventPublisher;
         this.emailEventPublisher = emailEventPublisher;
         this.quotaService = quotaService;
+        this.commandeVenteDomainService = commandeVenteDomainService;
+        this.commandeAchatDomainService = commandeAchatDomainService;
     }
 
     private void audit(AuditAction action, UUID entityId, String label) {
@@ -306,5 +319,25 @@ public class EmployeServiceImpl implements IEmployeService {
         if (elevatedRole && !currentUser.hasPermission(PermissionCode.OWNER_ACCESS)) {
             throw new ForbiddenException("employe.create.elevatedRole.forbidden");
         }
+    }
+
+    /** Suppression definitive : refuse si l'employe a des commandes vente ou achat a son nom. */
+    @Override
+    @Transactional
+    public void permanentDelete(UUID id) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        Employe employe = findAccessibleEmploye(id, currentUser);
+
+        String accountId = employe.getAccount().getId().toString();
+        if (commandeVenteDomainService.hasCommandesByAccount(accountId)
+                || commandeAchatDomainService.hasCommandesByAccount(accountId)) {
+            throw new BadArgumentException("employe.permanentDelete.hasHistory");
+        }
+
+        UUID magasinId = employe.getMagasin() != null ? employe.getMagasin().getId() : null;
+        auditWithMagasin(AuditAction.EMPLOYE_DELETED, employe.getId(), employe.getAccount().getUsername(), magasinId);
+
+        employeDomainService.delete(employe);
+        accountDomainService.delete(employe.getAccount());
     }
 }

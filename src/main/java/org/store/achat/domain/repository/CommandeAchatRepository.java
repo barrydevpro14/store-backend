@@ -44,4 +44,7 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
     Page<CommandeAchatResponse> findResponsesByFilter(@Param("filter") CommandeAchatFilter filter,
                                                      @Param("entrepriseId") UUID entrepriseId,
                                                      Pageable pageable);
+
+    @Query("SELECT COUNT(commande) > 0 FROM CommandeAchat commande WHERE commande.createdBy = :accountId")
+    boolean existsByCreatedBy(@Param("accountId") String accountId);
 }
