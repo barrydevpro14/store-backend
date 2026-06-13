@@ -785,6 +785,12 @@ Add `currencyLabel` to the `useMemo` deps array for the columns definition.
 
 ---
 
+### 53. Jamais prendre une décision à la place de l'utilisateur
+
+Voir règle **44** de `BACKEND_CODING_CONVENTIONS.md`. S'applique identiquement au frontend.
+
+---
+
 ## Commit conventions
 
 Project style: **Conventional Commits in English** (`feat(scope): description`, `fix(scope): ...`, `chore: ...`, `docs: ...`, `refactor: ...`, `test: ...`). Aligned with the backend convention.

@@ -563,6 +563,14 @@ Role role = roleService.findById(request.roleId());
 
 ---
 
+### 44. Jamais prendre une décision à la place de l'utilisateur
+
+**Toute question de conception (règle métier, choix d'architecture, arbitrage technique) doit être posée explicitement. Ne jamais combler un vide par une hypothèse, même formulée comme une "décision probable".**
+
+Si une décision passée est évoquée mais absente de la mémoire ou du contexte : demander à l'utilisateur de la reformuler. Ne pas inférer.
+
+---
+
 ## Commit conventions
 
 Project style: direct title (no `feat:`/`fix:` prefix), description of the "why" in the body. **Language: English** (entire repo is English now).

@@ -311,7 +311,6 @@ public class AchatServiceImpl implements IAchatService {
         ));
 
         productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.getPrixVente());
-        productFournisseurService.applyPrixAchatMoyenFromStock(productFournisseur, stock.getPrixAchatMoyen());
     }
 
     /** Édite une ligne d'une commande DRAFT (quantité, prix, traçabilité lot) après validations publiques. */
