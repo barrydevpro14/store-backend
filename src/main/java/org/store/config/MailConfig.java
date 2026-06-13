@@ -41,6 +41,9 @@ public class MailConfig {
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.auth", String.valueOf(mail.auth()));
         props.put("mail.smtp.starttls.enable", String.valueOf(mail.starttls()));
+        props.put("mail.smtp.connectiontimeout", "5000");
+        props.put("mail.smtp.timeout", "5000");
+        props.put("mail.smtp.writetimeout", "5000");
 
         return new EmailServiceImpl(sender, messageSourceService, mail);
     }
