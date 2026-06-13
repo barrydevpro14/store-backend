@@ -9,7 +9,36 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-06-10 — MoyenPaiement entity, quota enforcement, test suite cleanup, UX fixes
+**Date:** 2026-06-13 — Stock movements reference, MoneyInput, depense search, prix achat moyen fix, DemoProductSeeder independence
+
+### Backend
+
+- **fix(stock):** All stock movement types now carry the commande reference. `ENTREE_ACHAT` → `commande.getReference()` (was `facture.getNumero()`). `SORTIE_VENTE` (consumeForVente) → `ligneVente.getCommande().getReference()`. `RETOUR_CLIENT` → same. Tests updated accordingly.
+- **fix(produit):** `applyPrixAchatMoyenFromStock` removed entirely. `PF.prixAchat` is no longer overwritten by the weighted average after each reception. It retains the last purchase price entered on the line. `Stock.prixAchatMoyen` is preserved for valuation only. `ProductFournisseurDomainService.updatePrixAchat` also removed (orphan). Sale guard `ensurePrixUnitaireAboveFloor` still compares against `PF.prixAchat` (last purchase price).
+- **feat(depense):** `DepenseFilter` gains a `libelle` field + `libellePattern()` helper. JPQL `LOWER(libelle) LIKE :pattern` added to both list and total queries. `DepenseController` exposes the new `?libelle=` param on `GET /depenses` and `GET /depenses/total`.
+- **feat(stock):** `MouvementStockFilter` — product selector filter already existed via `productId`. `MouvementStockFilters.tsx` now shows a product Combobox (same as `StockFilters`).
+- **chore(config):** `DemoProductSeeder` is now an independent `ApplicationRunner` `@Order(2)` annotated `@Profile("dev")`. Completely decoupled from `DataInitializer`. Never runs in prod or test profiles.
+
+### Frontend
+
+- **feat(ui): MoneyInput** — new shared component `MoneyInput.tsx`. Real-time fr-FR thousand-separator formatting on all monetary amount fields (not quantities). `step` attribute removed from all numeric inputs. Applied to: achat forms (AddAchatLineRow, CreatePaiementAchatDialog, EditLigneDialog, ReceiveAchatDialog), vente forms (CreatePaiementVenteDialog, CreateVenteDialog, EditLigneVenteDialog), inventaire forms (AddLigneDialog, BilanDialog, InventaireDetailsContent), depense forms (DepenseForm), abonnement forms (step-only).
+- **fix(depense):** Table refreshes after create/update via `onSubmitted→handleSearch()` in `DepenseFormDialog`. Filter button aligned right. Libellé search input added (like achats pattern). Missing i18n keys added: `modePaiementRequired`, `modePaiementPlaceholder`, `libellePlaceholder`.
+- **fix(depense form):** `modePaiementId` field now shows `required` asterisk + validation error message.
+- **feat(achat form):** AchatForm shows a Total HT line below the lines table (uses `ligne.montantLigne`, same pattern as CreateVenteDialog).
+- **feat(stock mouvements):** Product Combobox filter added to `MouvementStockFilters` (same pattern as `StockFilters`). Filter aligned correctly (no `justify-end` wrapper needed since the Combobox takes `flex-1`).
+
+### Conventions
+
+- **Rule 44 (backend) + 53 (frontend):** Never take a decision in the user's place. Any design/architecture/business question must be asked explicitly. Do not infer past decisions.
+- Rules also added to `.claude/CLAUDE.md` (Strict limits section) and memory.
+
+### Open
+
+- All changes on `dev`. Backend + frontend not yet committed (pending explicit commit request).
+
+---
+
+## Previous session (2026-06-10) — MoyenPaiement entity, quota enforcement, test suite cleanup, UX fixes
 
 **Subject:** Large multi-session day. Core themes: replace hardcoded payment method enum, enforce subscription quotas, fix the full test suite (backend + frontend), and several UX/bug fixes.
 
