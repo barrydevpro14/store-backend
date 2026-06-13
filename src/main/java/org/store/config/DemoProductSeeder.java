@@ -2,6 +2,10 @@ package org.store.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.dto.FournisseurRequest;
@@ -36,8 +40,10 @@ import java.util.UUID;
  * Runs only when {@code security.rbac.sync=true} and the magasin has no products yet.
  * Idempotent: guarded by checking for the "Auto Pièces Pro" fournisseur.
  */
+@Profile("dev")
 @Component
-public class DemoProductSeeder {
+@Order(2)
+public class DemoProductSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoProductSeeder.class);
     private static final String SEED_FOURNISSEUR_NOM = "Auto Pièces Pro";
@@ -67,6 +73,11 @@ public class DemoProductSeeder {
         this.productFournisseurDomainService = productFournisseurDomainService;
         this.entreeStockDomainService = entreeStockDomainService;
         this.stockDomainService = stockDomainService;
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        seed();
     }
 
     @Transactional

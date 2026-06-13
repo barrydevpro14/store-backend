@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ import org.store.users.domain.service.UtilisateurDomainService;
 import java.math.BigDecimal;
 
 @Component
+@Order(1)
 public class DataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
@@ -46,7 +48,6 @@ public class DataInitializer implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final UtilisateurDomainService utilisateurDomainService;
     private final FournisseurDomainService fournisseurDomainService;
-    private final DemoProductSeeder demoProductSeeder;
     private final MoyenPaiementDomainService moyenPaiementDomainService;
 
     public DataInitializer(RbacProperties rbacProperties,
@@ -58,7 +59,6 @@ public class DataInitializer implements ApplicationRunner {
                            PasswordEncoder passwordEncoder,
                            UtilisateurDomainService utilisateurDomainService,
                            FournisseurDomainService fournisseurDomainService,
-                           DemoProductSeeder demoProductSeeder,
                            MoyenPaiementDomainService moyenPaiementDomainService) {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
@@ -69,7 +69,6 @@ public class DataInitializer implements ApplicationRunner {
         this.passwordEncoder = passwordEncoder;
         this.utilisateurDomainService = utilisateurDomainService;
         this.fournisseurDomainService = fournisseurDomainService;
-        this.demoProductSeeder = demoProductSeeder;
         this.moyenPaiementDomainService = moyenPaiementDomainService;
     }
 
@@ -85,9 +84,6 @@ public class DataInitializer implements ApplicationRunner {
         ensureTrialPlan();
         fournisseurDomainService.ensureGlobalAnonymous();
         ensureMoyensPaiement();
-        if (rbacProperties.sync()) {
-            demoProductSeeder.seed();
-        }
     }
 
     private void ensureMoyensPaiement() {
