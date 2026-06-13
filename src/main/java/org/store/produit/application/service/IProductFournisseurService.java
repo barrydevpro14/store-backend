@@ -66,9 +66,6 @@ public interface IProductFournisseurService {
      */
     ProductFournisseur applyPrixVenteFromPurchase(ProductFournisseur productFournisseur, BigDecimal newPrixVente);
 
-    /** Met à jour le prix d'achat du PF avec le coût moyen pondéré issu du Stock (réutilisé par AchatServiceImpl). */
-    ProductFournisseur applyPrixAchatMoyenFromStock(ProductFournisseur productFournisseur, BigDecimal prixAchatMoyen);
-
     /**
      * Retourne le lien existant (productId, fournisseurId, qualityId). Lève EntityException s'il n'existe pas.
      * Utilisé pour les ventes où le PF doit obligatoirement déjà exister dans le catalogue.
