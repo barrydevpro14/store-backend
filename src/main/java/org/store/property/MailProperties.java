@@ -20,9 +20,14 @@ public record MailProperties(
         String from,
         boolean auth,
         boolean starttls,
-        boolean ssl
+        boolean ssl,
+        String brevoApiKey
 ) {
     public boolean isConfigured() {
         return password != null && !password.isBlank();
+    }
+
+    public boolean isBrevoApiConfigured() {
+        return brevoApiKey != null && !brevoApiKey.isBlank();
     }
 }

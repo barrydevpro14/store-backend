@@ -4,7 +4,6 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -13,8 +12,6 @@ import org.store.common.service.IEmailService;
 import org.store.notification.application.event.ContactMessageRepliedEvent;
 import org.store.property.MailProperties;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -47,7 +44,7 @@ public class EmailServiceImpl implements IEmailService {
         String subject = messageSourceService.getMessage(
                 "email.contact.reply.subject", new Object[]{event.sujet()}, locale);
 
-        String html = renderTemplate(TEMPLATE_PATH, Map.of(
+        String html = EmailTemplateRenderer.render(TEMPLATE_PATH, Map.of(
                 "subject",          subject,
                 "appName",          messageSourceService.getMessage("email.appName", null, locale),
                 "greeting",         messageSourceService.getMessage("email.contact.reply.greeting", new Object[]{event.nom()}, locale),
@@ -80,7 +77,7 @@ public class EmailServiceImpl implements IEmailService {
         String subject = messageSourceService.getMessage("email.passwordReset.subject", null, locale);
         String appName = messageSourceService.getMessage("email.appName", null, locale);
 
-        String html = renderTemplate(RESET_TEMPLATE_PATH, Map.of(
+        String html = EmailTemplateRenderer.render(RESET_TEMPLATE_PATH, Map.of(
                 "subject",   subject,
                 "appName",   appName,
                 "greeting",  messageSourceService.getMessage("email.passwordReset.greeting",  new Object[]{recipientName}, locale),
@@ -112,7 +109,7 @@ public class EmailServiceImpl implements IEmailService {
         String subject = messageSourceService.getMessage("email.employeWelcome.subject", null, locale);
         String appName = messageSourceService.getMessage("email.appName", null, locale);
 
-        String html = renderTemplate(WELCOME_TEMPLATE_PATH, Map.of(
+        String html = EmailTemplateRenderer.render(WELCOME_TEMPLATE_PATH, Map.of(
                 "subject",           subject,
                 "appName",           appName,
                 "greeting",          messageSourceService.getMessage("email.employeWelcome.greeting",          new Object[]{recipientName}, locale),
@@ -158,7 +155,7 @@ public class EmailServiceImpl implements IEmailService {
         vars.put("loginUrl",       loginUrl);
         vars.put("footer",         messageSourceService.getMessage("email.passwordReset.footer",       new Object[]{appName}, locale));
 
-        String html = renderTemplate(OWNER_WELCOME_TEMPLATE_PATH, vars);
+        String html = EmailTemplateRenderer.render(OWNER_WELCOME_TEMPLATE_PATH, vars);
 
         try {
             MimeMessage mime = mailSender.createMimeMessage();
@@ -174,18 +171,4 @@ public class EmailServiceImpl implements IEmailService {
         }
     }
 
-    /** Loads a classpath HTML template and replaces all {{key}} placeholders. */
-    private String renderTemplate(String path, Map<String, String> vars) {
-        try {
-            String template = new ClassPathResource(path)
-                    .getContentAsString(StandardCharsets.UTF_8);
-            for (Map.Entry<String, String> entry : vars.entrySet()) {
-                template = template.replace("{{" + entry.getKey() + "}}", entry.getValue());
-            }
-            return template;
-        } catch (IOException e) {
-            log.error("Email template not found: {}", path);
-            return vars.getOrDefault("reply", "");
-        }
-    }
 }
