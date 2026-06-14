@@ -110,4 +110,9 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     public java.util.List<Abonnement> findExpiringOn(java.time.LocalDate date) {
         return repository.findByDateFinAndStatutActifOrTrial(date);
     }
+
+    /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
+    public java.util.List<Abonnement> findExpiringOnDates(java.util.List<java.time.LocalDate> dates) {
+        return repository.findByDateFinInAndStatutActifOrTrial(dates);
+    }
 }

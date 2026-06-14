@@ -9,32 +9,39 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-06-13 — Stock movements reference, MoneyInput, depense search, prix achat moyen fix, DemoProductSeeder independence
+**Date:** 2026-06-13 — Full-day session: UX, stock, email, employee purge, i18n, architecture
 
 ### Backend
 
-- **fix(stock):** All stock movement types now carry the commande reference. `ENTREE_ACHAT` → `commande.getReference()` (was `facture.getNumero()`). `SORTIE_VENTE` (consumeForVente) → `ligneVente.getCommande().getReference()`. `RETOUR_CLIENT` → same. Tests updated accordingly.
-- **fix(produit):** `applyPrixAchatMoyenFromStock` removed entirely. `PF.prixAchat` is no longer overwritten by the weighted average after each reception. It retains the last purchase price entered on the line. `Stock.prixAchatMoyen` is preserved for valuation only. `ProductFournisseurDomainService.updatePrixAchat` also removed (orphan). Sale guard `ensurePrixUnitaireAboveFloor` still compares against `PF.prixAchat` (last purchase price).
-- **feat(depense):** `DepenseFilter` gains a `libelle` field + `libellePattern()` helper. JPQL `LOWER(libelle) LIKE :pattern` added to both list and total queries. `DepenseController` exposes the new `?libelle=` param on `GET /depenses` and `GET /depenses/total`.
-- **feat(stock):** `MouvementStockFilter` — product selector filter already existed via `productId`. `MouvementStockFilters.tsx` now shows a product Combobox (same as `StockFilters`).
-- **chore(config):** `DemoProductSeeder` is now an independent `ApplicationRunner` `@Order(2)` annotated `@Profile("dev")`. Completely decoupled from `DataInitializer`. Never runs in prod or test profiles.
+- **fix(stock):** All movement types carry commande reference. `ENTREE_ACHAT` → `commande.getReference()`, `SORTIE_VENTE` → `ligneVente.getCommande().getReference()`, `RETOUR_CLIENT` → same.
+- **fix(produit):** `applyPrixAchatMoyenFromStock` removed. `PF.prixAchat` now retains the last purchase price — never overwritten by the weighted average. `Stock.prixAchatMoyen` stays for valuation only. Sale guard `ensurePrixUnitaireAboveFloor` still compares against `PF.prixAchat`.
+- **feat(depense):** `DepenseFilter.libelle` + `libellePattern()` JPQL LIKE. `DepenseController` exposes `?libelle=` on list + total. `AbonnementQuotaService.ensureEmployeQuota` now checks `countByMagasinId` (not `countByEntrepriseId`).
+- **feat(employe):** `DELETE /api/v1/employees/{id}/permanent` (permission `EMPLOYE_PURGE`, OWNER + ADMIN). Guard: refuses if employee has vente/achat orders. Purges `refresh_token` rows before deleting `Employe` + `Account`. V45 Flyway migration inserts permission in prod (RBAC_SYNC=true). `EMPLOYE_PURGE` in `PermissionCode` + YAML.
+- **fix(contact):** `FournisseurServiceImpl` and `ClientServiceImpl` now call `ensureContactsAvailable` / `ensureContactsAvailableForUpdate` before create/update — prevents raw `PSQLException person_telephone_unique`.
+- **fix(quota):** `AbonnementQuotaService` message args `(max, count)` — `{0}=max`, `{1}=count` aligned with FR/EN templates. `abonnement.quota.magasins.exceeded` same fix.
+- **fix(i18n):** 12 `messages.properties` entries with unescaped apostrophes before `{N}` arguments fixed with `''` (MessageFormat escaping). Affected: account, commandeVente, commandeAchat, stock, inventaire, plan, subscriptionType, abonnement, upload, utilisateur.
+- **chore(config):** `DemoProductSeeder` → independent `ApplicationRunner` `@Order(2)` `@Profile("dev")`. Fully decoupled from `DataInitializer`.
+- **ci:** `.gitlab-ci.yml` rewritten — triggers on `dev`, `main`, MR. Stage `test`: `mvn verify` + Postgres 16 service for `StoreApplicationTests`. Was compile-only on `main` only.
+- **refactor(mail):** Strategy pattern for email service selection. `IEmailServiceStrategy` + 3 impls (`@Order` 1/2/3: `BrevoApiEmailServiceStrategy`, `SmtpEmailServiceStrategy`, `NoOpEmailServiceStrategy`). `MailConfig` reduced to a stream — zero `if`. `EmailTemplateRenderer` extracted as shared utility. `BrevoApiEmailServiceImpl` calls `api.brevo.com/v3/smtp/email` (HTTPS 443 — unblocked on Railway). Prod activated via `BREVO_API_KEY` env var.
 
 ### Frontend
 
-- **feat(ui): MoneyInput** — new shared component `MoneyInput.tsx`. Real-time fr-FR thousand-separator formatting on all monetary amount fields (not quantities). `step` attribute removed from all numeric inputs. Applied to: achat forms (AddAchatLineRow, CreatePaiementAchatDialog, EditLigneDialog, ReceiveAchatDialog), vente forms (CreatePaiementVenteDialog, CreateVenteDialog, EditLigneVenteDialog), inventaire forms (AddLigneDialog, BilanDialog, InventaireDetailsContent), depense forms (DepenseForm), abonnement forms (step-only).
-- **fix(depense):** Table refreshes after create/update via `onSubmitted→handleSearch()` in `DepenseFormDialog`. Filter button aligned right. Libellé search input added (like achats pattern). Missing i18n keys added: `modePaiementRequired`, `modePaiementPlaceholder`, `libellePlaceholder`.
-- **fix(depense form):** `modePaiementId` field now shows `required` asterisk + validation error message.
-- **feat(achat form):** AchatForm shows a Total HT line below the lines table (uses `ligne.montantLigne`, same pattern as CreateVenteDialog).
-- **feat(stock mouvements):** Product Combobox filter added to `MouvementStockFilters` (same pattern as `StockFilters`). Filter aligned correctly (no `justify-end` wrapper needed since the Combobox takes `flex-1`).
+- **feat(ui): MoneyInput** — real-time fr-FR thousand-separator formatting. Applied to all monetary fields. `step` attribute removed from all numeric inputs.
+- **feat(employe):** Permanent delete button (red, OWNER only, `ConfirmDialog`). Detail dialog (`EmployeDetailsDialog`) on row click + Eye menu button. `EmployeRowActionsMenu` + `EmployeIdentityCell` extracted to own files (rule 46). `stopPropagation` on actions cell prevents row-click conflict.
+- **feat(depense):** Libellé search input + filter button right-aligned. Table refreshes after create/update.
+- **feat(achat):** Total HT below lines table. Fournisseur selector shows telephone (`Nom — +XXX`).
+- **feat(stock mouvements):** Product Combobox filter (same pattern as StockFilters).
+- **fix(ui):** `closeButton` on all toasts. Several missing i18n keys added.
+- **refactor:** `EmployeRowActionsMenu` + `EmployeIdentityCell` extracted (rule 46).
 
 ### Conventions
 
-- **Rule 44 (backend) + 53 (frontend):** Never take a decision in the user's place. Any design/architecture/business question must be asked explicitly. Do not infer past decisions.
-- Rules also added to `.claude/CLAUDE.md` (Strict limits section) and memory.
+- **Rule 44 / 53:** Never take a decision in the user's place — added to `CLAUDE.md`, `BACKEND_CODING_CONVENTIONS.md`, `FRONTEND_CODING_CONVENTIONS.md`, memory.
 
 ### Open
 
-- All changes on `dev`. Backend + frontend not yet committed (pending explicit commit request).
+- `BREVO_API_KEY` configured in Railway. Email via Brevo HTTP API active in prod. Test pending (welcome email on employee creation).
+- All changes committed and pushed on `dev`.
 
 ---
 

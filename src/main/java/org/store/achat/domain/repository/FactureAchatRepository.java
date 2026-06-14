@@ -51,7 +51,7 @@ public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
                                              @Param("entrepriseId") UUID entrepriseId,
                                              Pageable pageable);
 
-    /** Finds unpaid purchase invoices whose due date was exactly on :dueDate (for 1/3/5-day overdue alerts). */
-    @Query("SELECT f FROM FactureAchat f WHERE f.statut = 'NON_PAYEE' AND f.dateEcheance = :dueDate")
-    java.util.List<FactureAchat> findOverdueByDueDate(@Param("dueDate") java.time.LocalDate dueDate);
+    /** Finds unpaid purchase invoices whose due date is one of the given alert dates (today+1, today+3, today+5). */
+    @Query("SELECT f FROM FactureAchat f WHERE f.statut = 'NON_PAYEE' AND f.dateEcheance IN :dates")
+    java.util.List<FactureAchat> findDueOnDates(@Param("dates") java.util.List<java.time.LocalDate> dates);
 }

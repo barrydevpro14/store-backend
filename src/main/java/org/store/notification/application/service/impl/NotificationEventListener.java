@@ -3,7 +3,7 @@ package org.store.notification.application.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.domain.Pageable;
+
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.store.common.i18n.IMessageSourceService;
@@ -106,8 +106,7 @@ public class NotificationEventListener {
                 new Object[]{sigle, paiement.getMontantFinal()});
 
         accountDomainService
-                .findAllByRoleLibelle("ADMIN", Pageable.ofSize(100))
-                .getContent()
+                .findAllByRoleLibelle("ADMIN")
                 .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
         log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", paiement.getId());
@@ -152,8 +151,7 @@ public class NotificationEventListener {
                 new Object[]{contact.getNom(), contact.getEmail(), contact.getMessage()});
 
         accountDomainService
-                .findAllByRoleLibelle("ADMIN", Pageable.ofSize(100))
-                .getContent()
+                .findAllByRoleLibelle("ADMIN")
                 .forEach(account -> createInApp(account, new NotificationPayload(titre, body, contact)));
 
         log.info("ContactMessageReceived notification sent for contact from {}", contact.getEmail());
