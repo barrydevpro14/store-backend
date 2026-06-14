@@ -9,7 +9,35 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-06-13 — Full-day session: UX, stock, email, employee purge, i18n, architecture
+**Date:** 2026-06-14 — Responsive, alertes/notifications config, inventaire scindé, achat montant restant, UX fixes
+
+### Backend
+
+- **fix(i18n/@Async):** `LocaleAwareTaskDecorator` + `AsyncConfig` — locale HTTP propagée dans threads @Async. Fallback `Locale.FRENCH` pour threads scheduler (cron sans requête HTTP). Résout notifications/alertes en EN alors que la langue est FR.
+- **fix(notifications):** `findAllByRoleLibelle("ADMIN")` sans `Pageable.ofSize(100)` — plus de limite arbitraire sur le nombre d'admins notifiés.
+- **fix(AlertScheduler):** Refactorisé — 1 requête `IN (today+1, today+3, today+5)` par type au lieu de 3 boucles. Logique direction corrigée : alertes **avant** l'échéance (pas après). `messageSourceService.getMessage(..., Locale.FRENCH)` partout. Strings hardcodées supprimées. `findDueOnDates` ajouté sur `FactureClientRepository` et `FactureAchatRepository`. `findExpiringOnDates` sur `AbonnementRepository`.
+- **fix(quota):** `ensureEmployeQuota` vérifie `countByMagasinId` (pas `countByEntrepriseId`). Messages `{0}=max`, `{1}=count` alignés.
+- **fix(contact):** `ClientServiceImpl` et `FournisseurServiceImpl` appellent `ensureContactsAvailable` / `ensureContactsAvailableForUpdate` — évite le `PSQLException person_telephone_unique`.
+- **fix(inventaire):** Requête `existsByMagasinIdAndStatutIn` remplacée par `@Query` explicite pour éviter l'ambiguïté Spring Data sur `magasin.id`. `GET /inventaires/active?magasinId=` nouveau endpoint (204 si aucun). `findActiveByMagasinId` dans repository + domain service + service + controller.
+- **feat(achat):** `CommandeAchatResponse` expose `montantRestant` = `facture.total - facture.paye` (ou `commande.montantTotal` si DRAFT).
+- **fix(i18n):** 12 messages.properties avec apostrophes non échappées corrigés avec `''` (MessageFormat).
+
+### Frontend
+
+- **feat(inventaire):** Page scindée en 2 — `/dashboard/inventaires` (page active : "Continuer" ou "Commencer") + `/dashboard/inventaires/historique` (liste complète). `useActiveInventaire` hook. `alerte-config.tsx` centralisé pour les types/icônes/couleurs alertes. Filtre historique aligné à droite.
+- **feat(achat):** `montantRestant` dans `CommandeAchatTable` (amber si impayé) + résumé dans `AchatFacturePaiementsSection` (grid Total / Payé / **Reste** en amber).
+- **fix(responsive):** Audit complet — 23 popovers `w-72` → `w-[min(288px,90vw)]`. `NotificationHistoryPage` filtres `flex-col sm:flex-row`. `ContactMessagesPage` `overflow-x-auto`. Inputs date `w-full sm:w-36`. KPI grids `md:grid-cols-3`. `SubscribeDurationRadio` `flex-wrap`. `AlertesPage` texte plus grand (`text-base/sm/xs`).
+- **feat(config):** `alerte-config.tsx` centralise `ALERTE_TYPE_CONFIG` + `ALERTE_STATUT_COLORS`. `notification-config.tsx` centralise `NOTIFICATION_CANAL_CONFIG` + `NOTIFICATION_STATUT_CONFIG`. Ajouter un type = 1 fichier.
+- **fix(ui):** Combobox : bouton `X` pour effacer la sélection quand une valeur est choisie.
+
+### Open
+
+- Brevo API confirmé fonctionnel en prod (2026-06-13).
+- All changes committed and pushed on `dev`.
+
+---
+
+## Previous session (2026-06-13) — Full-day session: UX, stock, email, employee purge, i18n, architecture
 
 ### Backend
 
@@ -40,7 +68,7 @@
 
 ### Open
 
-- `BREVO_API_KEY` configured in Railway. Email via Brevo HTTP API active in prod. Test pending (welcome email on employee creation).
+- ~~Brevo API test pending~~ — **confirmed working in prod** (2026-06-14).
 - All changes committed and pushed on `dev`.
 
 ---

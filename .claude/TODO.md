@@ -148,6 +148,7 @@
 - [ ] **Enriched global product listing** — Add filters to `GET /products`: by category, by quality, by price threshold, by stock availability. Today the listing is basic (pagination only).
 - [ ] **Top sellers (by revenue)** — `GET /api/v1/ventes/caisse/top-vendeurs?magasinId=&from=&to=&nombre=N`: ranks sellers by cumulative revenue over the period. Complement to the already shipped top-products.
 - [ ] **Inventory line deletion in BILAN** — Today lines are frozen at BILAN (product report). Allow deleting a BILAN line if a mistake is detected before closure, with report regeneration. Refines post-BILAN correction.
+- [x] **Inventaire scindé en 2 pages** (2026-06-14) — `/dashboard/inventaires` : page active (Continuer/Commencer). `/dashboard/inventaires/historique` : liste complète. `GET /inventaires/active`. Fix guard `existsByMagasinIdAndStatutIn` via @Query explicite.
 
 #### Subscription module (10 points — entity-rich skeleton, no exposed REST)
 
