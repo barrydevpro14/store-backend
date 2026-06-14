@@ -8,6 +8,7 @@ import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.repository.AccountRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +38,10 @@ public class AccountDomainService extends GlobalService<Account, AccountReposito
 
     public Page<Account> findAllByRoleLibelle(String roleLibelle, Pageable pageable) {
         return repository.findAllByRoleLibelle(roleLibelle, pageable);
+    }
+
+    public List<Account> findAllByRoleLibelle(String roleLibelle) {
+        return repository.findAllByRoleLibelle(roleLibelle);
     }
 
     public Optional<Account> findOptionalById(UUID id) {

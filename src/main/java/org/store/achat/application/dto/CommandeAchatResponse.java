@@ -18,7 +18,8 @@ public record CommandeAchatResponse(
         List<LigneCommandeAchatResponse> lignes,
         StatutFacture statutFacture,
         String createdAt,
-        BigDecimal montantTotal
+        BigDecimal montantTotal,
+        BigDecimal montantRestant  // null when no facture exists yet (DRAFT)
 ) {
     /** Constructeur unique — lit facture et montantTotal depuis la commande. */
     public CommandeAchatResponse(CommandeAchat commande) {
@@ -31,7 +32,10 @@ public record CommandeAchatResponse(
                 List.of(),
                 commande.getFacture() != null ? commande.getFacture().getStatut() : null,
                 DateHelper.format(commande.getCreatedAt()),
-                commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO
+                commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
+                commande.getFacture() != null
+                        ? commande.getFacture().getMontantTotal().subtract(commande.getFacture().getMontantPaye())
+                        : commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO
         );
     }
 }

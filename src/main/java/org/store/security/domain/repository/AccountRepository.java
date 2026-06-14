@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.security.domain.model.Account;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AccountRepository extends BaseRepository<Account> {
@@ -29,4 +30,7 @@ public interface AccountRepository extends BaseRepository<Account> {
             WHERE account.role.libelle = :roleLibelle
             """)
     Page<Account> findAllByRoleLibelle(@Param("roleLibelle") String roleLibelle, Pageable pageable);
+
+    @Query("SELECT account FROM Account account WHERE account.role.libelle = :roleLibelle")
+    List<Account> findAllByRoleLibelle(@Param("roleLibelle") String roleLibelle);
 }

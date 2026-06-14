@@ -16,7 +16,18 @@ import java.util.UUID;
 
 public interface InventaireRepository extends BaseRepository<Inventaire> {
 
-    boolean existsByMagasinIdAndStatutIn(UUID magasinId, Collection<InventaireStatut> statuts);
+    @Query("SELECT COUNT(inventaire) > 0 FROM Inventaire inventaire WHERE inventaire.magasin.id = :magasinId AND inventaire.statut IN :statuts")
+    boolean existsByMagasinIdAndStatutIn(@Param("magasinId") UUID magasinId, @Param("statuts") Collection<InventaireStatut> statuts);
+
+    @Query("""
+            SELECT new org.store.inventaire.application.dto.InventaireResponse(inventaire)
+            FROM Inventaire inventaire
+            WHERE inventaire.magasin.id = :magasinId
+              AND inventaire.statut IN :statuts
+            ORDER BY inventaire.createdAt DESC
+            """)
+    java.util.List<InventaireResponse> findActiveByMagasinId(@Param("magasinId") UUID magasinId,
+                                                             @Param("statuts") Collection<InventaireStatut> statuts);
 
 
     @Query("""

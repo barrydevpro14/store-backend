@@ -35,5 +35,7 @@ public interface IInventaireService {
 
     InventaireResponse findResponseById(UUID id);
 
+    java.util.Optional<InventaireResponse> findActiveByMagasinId(UUID magasinId);
+
     RapportInventaireResponse findRapportByInventaireId(UUID inventaireId);
 }

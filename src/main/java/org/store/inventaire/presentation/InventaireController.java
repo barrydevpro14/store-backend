@@ -121,4 +121,12 @@ public class InventaireController {
     public ResponseEntity<InventaireResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(inventaireService.findResponseById(id));
     }
+
+    @GetMapping("/active")
+    @PreAuthorize("hasAuthority('INVENTORY_READ')")
+    public ResponseEntity<InventaireResponse> getActive(@RequestParam UUID magasinId) {
+        return inventaireService.findActiveByMagasinId(magasinId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
 }

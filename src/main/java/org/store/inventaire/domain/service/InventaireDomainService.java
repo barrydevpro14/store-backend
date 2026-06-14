@@ -30,6 +30,14 @@ public class InventaireDomainService extends GlobalService<Inventaire, Inventair
         );
     }
 
+    /** Retourne l'inventaire actif (EN_COURS ou BILAN) du magasin, ou empty si aucun. */
+    public java.util.Optional<org.store.inventaire.application.dto.InventaireResponse> findActive(UUID magasinId) {
+        return repository.findActiveByMagasinId(
+                        magasinId,
+                        List.of(InventaireStatut.EN_COURS, InventaireStatut.BILAN))
+                .stream().findFirst();
+    }
+
     /** Crée un inventaire au statut EN_COURS pour un magasin et une date donnée. */
     public Inventaire create(Magasin magasin, LocalDate date) {
         Inventaire inventaire = new Inventaire();

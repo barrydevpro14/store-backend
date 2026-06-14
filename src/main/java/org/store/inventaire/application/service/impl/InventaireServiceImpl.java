@@ -251,6 +251,13 @@ public class InventaireServiceImpl implements IInventaireService {
                 .orElseThrow(() -> new EntityException("inventaire.notFound", id));
     }
 
+    /** Retourne l'inventaire actif (EN_COURS ou BILAN) du magasin demande, ou empty si aucun. */
+    @Override
+    public java.util.Optional<InventaireResponse> findActiveByMagasinId(UUID magasinId) {
+        magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
+        return inventaireDomainService.findActive(magasinId);
+    }
+
     /** Rapport projete de l'inventaire (404 si pas encore cloture ou inventaire absent / autre entreprise). */
     @Override
     public RapportInventaireResponse findRapportByInventaireId(UUID inventaireId) {

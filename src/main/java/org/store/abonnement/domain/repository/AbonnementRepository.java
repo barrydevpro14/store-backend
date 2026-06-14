@@ -125,4 +125,8 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     /** Finds active/trial subscriptions expiring exactly on the given date (for 1/3/5-day alerts). */
     @Query("SELECT a FROM Abonnement a WHERE a.dateFin = :date AND a.statut IN ('ACTIF', 'TRIAL')")
     List<Abonnement> findByDateFinAndStatutActifOrTrial(@Param("date") LocalDate date);
+
+    /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
+    @Query("SELECT a FROM Abonnement a WHERE a.dateFin IN :dates AND a.statut IN ('ACTIF', 'TRIAL')")
+    List<Abonnement> findByDateFinInAndStatutActifOrTrial(@Param("dates") List<LocalDate> dates);
 }
