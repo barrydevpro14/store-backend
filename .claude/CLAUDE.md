@@ -69,6 +69,7 @@ At the start of each session, read in this order:
 - When in doubt about scope: **ask before acting**
 - **Never** take a decision in the user's place — when a design question arises (business rule, architecture choice, tradeoff), stop and ask. Never fill in the answer yourself, even as a "probable" hypothesis. If a past decision is referenced but not in memory, ask the user to restate it.
 - **Never** run `git commit` or `git push` without an explicit, distinct instruction from me. A "go", "OK", or "looks good" on the code does **not** count as git authorization. Finish the change, run tests/build to verify, then **stop** and ask: "Shall I commit?" or "Shall I commit and push?". The two operations are distinct and each requires its own authorization. This rule applies to both repos (`store/` backend and `store-frontend/` frontend) and to all branches.
+- **Active branch: `dev-barry`** — all commits and pushes (backend AND frontend) go to `dev-barry`. **Never** push to `dev` or `main` directly, for any reason.
 
 ---
 
