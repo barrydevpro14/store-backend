@@ -44,12 +44,12 @@ public record CommandeAchatFilter(
         return DateHelper.parseEndOfDay(endDate);
     }
 
-    public LocalDateTime createdStartDateTime() {
-        return createdStartDate == null ? DateHelper.SENTINEL_START : createdStartDate.atStartOfDay();
+    public String createdStartDateStr() {
+        return createdStartDate != null ? createdStartDate.toString() : null;
     }
 
-    public LocalDateTime createdEndDateTime() {
-        return createdEndDate == null ? DateHelper.SENTINEL_END : createdEndDate.plusDays(1).atStartOfDay();
+    public String createdEndDateStr() {
+        return createdEndDate != null ? createdEndDate.plusDays(1).toString() : null;
     }
 
     public Pageable toPageable() {

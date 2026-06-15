@@ -37,8 +37,8 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
               AND (:#{#filter.reference} IS NULL OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%')))
               AND (:#{#filter.fromDateTime()} IS NULL OR commande.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR commande.createdAt <= :#{#filter.toDateTime()})
-              AND commande.createdAt >= :#{#filter.createdStartDateTime()}
-              AND commande.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDateStr()} IS NULL OR FUNCTION('DATE', commande.createdAt) >= CAST(:#{#filter.createdStartDateStr()} AS date))
+              AND (:#{#filter.createdEndDateStr()}   IS NULL OR FUNCTION('DATE', commande.createdAt) <  CAST(:#{#filter.createdEndDateStr()} AS date))
             ORDER BY commande.createdAt DESC
             """)
     Page<CommandeAchatResponse> findResponsesByFilter(@Param("filter") CommandeAchatFilter filter,
