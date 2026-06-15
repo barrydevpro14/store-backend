@@ -8,6 +8,7 @@ import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.achat.domain.repository.FournisseurRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
 
 import java.util.Optional;
@@ -46,7 +47,12 @@ public class FournisseurDomainService extends GlobalService<Fournisseur, Fournis
     }
 
     public Page<FournisseurResponse> findResponsesByFilter(FournisseurFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.nom(), LikePatternHelper.toLikePattern(filter.nom()),
+                filter.reference(), LikePatternHelper.toLikePattern(filter.reference()),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     public Optional<Fournisseur> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {

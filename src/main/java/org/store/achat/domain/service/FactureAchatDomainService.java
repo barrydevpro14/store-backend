@@ -36,11 +36,17 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
     }
 
     public Page<FactureAchatResponse> findResponsesByFilter(FactureAchatFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId, filter.magasinId(), filter.fournisseurId(),
+                filter.statutAsEnum(), filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     public Page<FactureAchatResponse> findEcheances(FactureAchatEcheanceFilter filter, UUID entrepriseId) {
-        return repository.findEcheances(filter, entrepriseId, filter.toPageable());
+        return repository.findEcheances(
+                entrepriseId, filter.magasinId(),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     public Optional<FactureAchat> findByCommandeId(UUID commandeId) {
