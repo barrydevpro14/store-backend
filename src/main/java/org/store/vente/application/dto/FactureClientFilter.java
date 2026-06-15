@@ -25,8 +25,6 @@ public record FactureClientFilter(
         @DecimalMin(value = "0.0") BigDecimal montantMax,
         @DatePattern String startDate,
         @DatePattern String endDate,
-        LocalDate createdStartDate,
-        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
