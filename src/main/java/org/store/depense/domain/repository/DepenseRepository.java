@@ -25,10 +25,10 @@ public interface DepenseRepository extends BaseRepository<Depense> {
               AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
               AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
               AND (:#{#filter.libellePattern()} IS NULL OR LOWER(depense.libelle) LIKE :#{#filter.libellePattern()})
-              AND depense.dateDepense >= :#{#filter.fromDateSentinel()}
-              AND depense.dateDepense <= :#{#filter.toDateSentinel()}
-              AND depense.createdAt >= :#{#filter.createdStartDateTime()}
-              AND depense.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
+              AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', depense.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', depense.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY depense.createdAt DESC
             """)
     Page<DepenseResponse> findResponsesByFilter(@Param("filter") DepenseFilter filter,
@@ -47,10 +47,10 @@ public interface DepenseRepository extends BaseRepository<Depense> {
               AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
               AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
               AND (:#{#filter.libellePattern()} IS NULL OR LOWER(depense.libelle) LIKE :#{#filter.libellePattern()})
-              AND depense.dateDepense >= :#{#filter.fromDateSentinel()}
-              AND depense.dateDepense <= :#{#filter.toDateSentinel()}
-              AND depense.createdAt >= :#{#filter.createdStartDateTime()}
-              AND depense.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
+              AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', depense.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', depense.createdAt) <  :#{#filter.createdEndDate})
             """)
     DepenseTotalResponse computeTotal(@Param("filter") DepenseFilter filter,
                                       @Param("entrepriseId") UUID entrepriseId);

@@ -23,8 +23,8 @@ public interface MouvementStockRepository extends BaseRepository<MouvementStock>
               AND (:#{#filter.typeAsEnum()} IS NULL OR mouvement.type = :#{#filter.typeAsEnum()})
               AND (:#{#filter.fromDateTime()} IS NULL OR mouvement.createdAt >= :#{#filter.fromDateTime()})
               AND (:#{#filter.toDateTime()} IS NULL OR mouvement.createdAt <= :#{#filter.toDateTime()})
-              AND mouvement.createdAt >= :#{#filter.createdStartDateTime()}
-              AND mouvement.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', mouvement.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', mouvement.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY mouvement.createdAt DESC
             """)
     Page<MouvementStockResponse> findResponsesByFilter(@Param("filter") MouvementStockFilter filter,

@@ -21,8 +21,8 @@ public interface ContactMessageRepository extends BaseRepository<ContactMessage>
             WHERE (:#{#filter.nom}    IS NULL OR LOWER(c.nom)   LIKE LOWER(CONCAT('%', :#{#filter.nom},   '%')))
               AND (:#{#filter.email}  IS NULL OR LOWER(c.email) LIKE LOWER(CONCAT('%', :#{#filter.email}, '%')))
               AND (:#{#filter.statut} IS NULL OR c.statut = :#{#filter.statut})
-              AND c.createdAt >= :#{#filter.createdStartDateTime()}
-              AND c.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', c.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', c.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY c.createdAt DESC
             """,
            countQuery = """
@@ -31,8 +31,8 @@ public interface ContactMessageRepository extends BaseRepository<ContactMessage>
             WHERE (:#{#filter.nom}    IS NULL OR LOWER(c.nom)   LIKE LOWER(CONCAT('%', :#{#filter.nom},   '%')))
               AND (:#{#filter.email}  IS NULL OR LOWER(c.email) LIKE LOWER(CONCAT('%', :#{#filter.email}, '%')))
               AND (:#{#filter.statut} IS NULL OR c.statut = :#{#filter.statut})
-              AND c.createdAt >= :#{#filter.createdStartDateTime()}
-              AND c.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', c.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', c.createdAt) <  :#{#filter.createdEndDate})
             """)
     Page<ContactMessageResponse> findResponsesByFilter(@Param("filter") ContactMessageFilter filter,
                                                        Pageable pageable);

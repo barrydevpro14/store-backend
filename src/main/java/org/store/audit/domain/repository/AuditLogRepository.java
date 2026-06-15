@@ -21,8 +21,8 @@ public interface AuditLogRepository extends BaseRepository<AuditLog> {
               AND (:#{#filter.magasinId} IS NULL OR log.magasinId = :#{#filter.magasinId})
               AND (:#{#filter.performedByLabel} IS NULL
                    OR LOWER(log.performedByLabel) LIKE LOWER(CONCAT('%', :#{#filter.performedByLabel}, '%')))
-              AND log.createdAt >= :#{#filter.createdStartDateTime()}
-              AND log.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', log.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', log.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY log.createdAt DESC
             """,
            countQuery = """
@@ -33,8 +33,8 @@ public interface AuditLogRepository extends BaseRepository<AuditLog> {
               AND (:#{#filter.magasinId} IS NULL OR log.magasinId = :#{#filter.magasinId})
               AND (:#{#filter.performedByLabel} IS NULL
                    OR LOWER(log.performedByLabel) LIKE LOWER(CONCAT('%', :#{#filter.performedByLabel}, '%')))
-              AND log.createdAt >= :#{#filter.createdStartDateTime()}
-              AND log.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', log.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', log.createdAt) <  :#{#filter.createdEndDate})
             """)
     Page<AuditLogResponse> findResponsesByFilter(@Param("filter") AuditLogFilter filter, Pageable pageable);
 

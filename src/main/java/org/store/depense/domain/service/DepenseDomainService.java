@@ -48,8 +48,8 @@ public class DepenseDomainService extends GlobalService<Depense, DepenseReposito
 
     /** Répartition des dépenses par catégorie, triée par montant décroissant. */
     public List<DepenseParCategorieResponse> computeByCategory(DepenseFilter filter, UUID entrepriseId) {
-        String start = DateHelper.format(filter.fromDateSentinel());
-        String end   = DateHelper.format(filter.toDateSentinel());
+        String start = filter.startDate() != null && !filter.startDate().isBlank() ? filter.startDate() : "2000-01-01";
+        String end   = filter.endDate()   != null && !filter.endDate().isBlank()   ? filter.endDate()   : "2099-12-31";
         List<DepenseParCategorieProjection> rows = repository.computeByCategory(filter.magasinId(), start, end, entrepriseId);
         return rows.stream()
                 .map(p -> new DepenseParCategorieResponse(p.getCategoryId(), p.getCategoryNom(), p.getMontantTotal(), p.getNombreDepenses()))

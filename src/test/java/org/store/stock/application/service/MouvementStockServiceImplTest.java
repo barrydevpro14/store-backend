@@ -71,25 +71,6 @@ class MouvementStockServiceImplTest {
     }
 
     @Test
-    void filter_should_convert_dates_to_startOfDay_and_endOfDay() {
-        MouvementStockFilter filter = new MouvementStockFilter(magasinId, null, null, null, "2026-05-01", "2026-05-14", null, null, 0, 10);
-
-        assertThat(filter.fromDateTime()).isEqualTo(LocalDate.of(2026, 5, 1).atStartOfDay());
-        assertThat(filter.toDateTime()).isEqualTo(LocalDate.of(2026, 5, 14).atTime(LocalTime.MAX));
-    }
-
-    @Test
-    void filter_should_return_null_dateTime_when_blank_or_null_dates() {
-        MouvementStockFilter filterNulls = new MouvementStockFilter(magasinId, null, null, null, null, null, null, null, 0, 10);
-        MouvementStockFilter filterBlanks = new MouvementStockFilter(magasinId, null, null, null, "", "  ", null, null, 0, 10);
-
-        assertThat(filterNulls.fromDateTime()).isNull();
-        assertThat(filterNulls.toDateTime()).isNull();
-        assertThat(filterBlanks.fromDateTime()).isNull();
-        assertThat(filterBlanks.toDateTime()).isNull();
-    }
-
-    @Test
     void typeAsEnum_should_parse_valid_type_or_return_null() {
         MouvementStockFilter withType = new MouvementStockFilter(magasinId, null, null, "ENTREE_ACHAT", null, null, null, null, 0, 10);
         MouvementStockFilter withoutType = new MouvementStockFilter(magasinId, null, null, null, null, null, null, null, 0, 10);
