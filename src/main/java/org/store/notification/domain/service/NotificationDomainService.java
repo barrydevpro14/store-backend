@@ -28,7 +28,7 @@ public class NotificationDomainService extends GlobalService<Notification, Notif
     }
 
     public Page<Notification> findByFilter(UUID accountId, NotificationFilter filter) {
-        return repository.findByFilter(accountId, filter, filter.toPageable());
+        return repository.findByFilter(accountId, filter.statut(), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     public long countUnread(UUID accountId) {

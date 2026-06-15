@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.domain.model.Stock;
@@ -21,30 +20,37 @@ public interface StockRepository extends BaseRepository<Stock> {
             SELECT new org.store.stock.application.dto.StockResponse(stock)
             FROM Stock stock
             WHERE stock.magasin.entreprise.id = :entrepriseId
-              AND stock.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR stock.productFournisseur.product.id = :#{#filter.productId})
-              AND (:#{#filter.productNamePattern()} IS NULL
-                   OR LOWER(stock.productFournisseur.product.nom) LIKE :#{#filter.productNamePattern()}
-                   OR LOWER(COALESCE(stock.productFournisseur.product.reference, '')) LIKE :#{#filter.productNamePattern()})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', stock.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', stock.createdAt) <  :#{#filter.createdEndDate})
+              AND stock.magasin.id = :magasinId
+              AND (:productId IS NULL OR stock.productFournisseur.product.id = :productId)
+              AND (:productName IS NULL OR :productName = ''
+                   OR LOWER(stock.productFournisseur.product.nom) LIKE :productNamePattern
+                   OR LOWER(COALESCE(stock.productFournisseur.product.reference, '')) LIKE :productNamePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', stock.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', stock.createdAt) <= CAST(:endDate AS date))
             ORDER BY stock.createdAt DESC
             """)
-    Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,
-                                              @Param("entrepriseId") UUID entrepriseId,
-                                              Pageable pageable);
+    Page<StockResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("productId") UUID productId,
+            @Param("productName") String productName,
+            @Param("productNamePattern") String productNamePattern,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("""
             SELECT new org.store.stock.application.dto.StockResponse(stock)
             FROM Stock stock
             WHERE stock.magasin.entreprise.id = :entrepriseId
-              AND stock.magasin.id = :#{#filter.magasinId}
+              AND stock.magasin.id = :magasinId
               AND stock.seuilApprovisionnement > 0
               AND stock.quantiteDisponible <= stock.seuilApprovisionnement
             """)
-    Page<StockResponse> findResponsesBelowThreshold(@Param("filter") StockFilter filter,
-                                                    @Param("entrepriseId") UUID entrepriseId,
-                                                    Pageable pageable);
+    Page<StockResponse> findResponsesBelowThreshold(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            Pageable pageable);
 
     @Query("""
             SELECT COUNT(stock)

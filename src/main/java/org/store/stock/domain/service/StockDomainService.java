@@ -29,11 +29,19 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
     }
 
     public Page<StockResponse> findResponsesByFilter(StockFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.magasinId(),
+                filter.productId(),
+                filter.productName(),
+                filter.productNamePattern(),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 
     public Page<StockResponse> findResponsesBelowThreshold(StockFilter filter, UUID entrepriseId) {
-        return repository.findResponsesBelowThreshold(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesBelowThreshold(entrepriseId, filter.magasinId(), filter.toPageable());
     }
 
     public StockValuationResponse computeValuation(UUID magasinId, UUID entrepriseId) {

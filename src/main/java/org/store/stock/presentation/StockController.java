@@ -20,7 +20,6 @@ import org.store.stock.application.dto.StockThresholdRequest;
 import org.store.stock.application.service.IExpiringLotsService;
 import org.store.stock.application.service.IStockService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -43,12 +42,12 @@ public class StockController {
     public ResponseEntity<Page<StockResponse>> list(@RequestParam UUID magasinId,
                                                     @RequestParam(required = false) UUID productId,
                                                     @RequestParam(required = false) String productName,
-                                                    @RequestParam(required = false) LocalDate createdStartDate,
-                                                    @RequestParam(required = false) LocalDate createdEndDate,
+                                                    @RequestParam(required = false) String startDate,
+                                                    @RequestParam(required = false) String endDate,
                                                     @RequestParam(defaultValue = "0") int page,
                                                     @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(stockService.findAllByCurrentEntreprise(
-                new StockFilter(magasinId, productId, productName, createdStartDate, createdEndDate, page, size)
+                new StockFilter(magasinId, productId, productName, startDate, endDate, page, size)
         ));
     }
 

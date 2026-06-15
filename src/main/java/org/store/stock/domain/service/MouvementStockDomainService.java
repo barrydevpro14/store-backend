@@ -31,6 +31,14 @@ public class MouvementStockDomainService extends GlobalService<MouvementStock, M
     }
 
     public Page<MouvementStockResponse> findResponsesByFilter(MouvementStockFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.magasinId(),
+                filter.productId(),
+                filter.stockId(),
+                filter.typeAsEnum(),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 }
