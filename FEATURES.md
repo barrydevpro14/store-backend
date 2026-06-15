@@ -1487,13 +1487,55 @@ Repos involved : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLign
 
 ---
 
+## 60. Employee permanent delete — `EmployeServiceImpl.permanentDelete`
+
+- **Permission**: `EMPLOYE_PURGE` (OWNER + ADMIN only — V45 Flyway migration inserts it in prod)
+- **Guard**: `CommandeVenteDomainService.hasCommandesByAccount` + `CommandeAchatDomainService.hasCommandesByAccount` — refuses if the employee has any order on record (`BadArgumentException "employe.permanentDelete.hasHistory"`)
+- **Flow**: purge `RefreshToken` rows → delete `Employe` → delete `Account` → audit `EMPLOYE_DELETED`
+- **Endpoint**: `DELETE /api/v1/employees/{id}/permanent` → 204
+
+---
+
+## 61. Email service — Strategy pattern — `MailConfig` + `IEmailServiceStrategy`
+
+Replaces the if/else in `MailConfig` with `@Order`-sorted strategies:
+- `BrevoApiEmailServiceStrategy` (@Order 1) — active when `BREVO_API_KEY` is set; calls `POST https://api.brevo.com/v3/smtp/email` (HTTPS 443, unblocked on Railway)
+- `SmtpEmailServiceStrategy` (@Order 2) — active when `app.mail.password` is set; uses `JavaMailSenderImpl`
+- `NoOpEmailServiceStrategy` (@Order 3) — fallback, silently discards
+
+Adding a new provider = 1 file (`@Component @Order(N)` implementing `IEmailServiceStrategy`).
+
+---
+
+## 62. Async locale propagation — `AsyncConfig` + `LocaleAwareTaskDecorator`
+
+`LocaleAwareTaskDecorator` captures the `LocaleContext` from the HTTP thread before submitting a task to the `@Async` executor, then restores it in the worker thread. Fallback: `Locale.FRENCH` when no locale is set (scheduler threads with no HTTP context). Configured on the `ThreadPoolTaskExecutor` in `AsyncConfig`.
+
+---
+
+## 63. Inventaire active page — `GET /inventaires/active`
+
+Returns the EN_COURS or BILAN inventory for a given store (204 if none). Used by the frontend "active page" which shows "Continue your inventory" or "Start an inventory" depending on the result. Guard `existsByMagasinIdAndStatutIn` uses explicit `@Query` to avoid Spring Data traversal ambiguity on `magasin.id`.
+
+---
+
+## 64. Alert scheduler refactoring — `AlertScheduler`
+
+- **One query per type** using `IN (today+1, today+3, today+5)` — replaces 3 separate queries per threshold
+- **Direction corrected** — alerts fire **before** the due date (expiring soon), not after
+- **i18n** — `messageSourceService.getMessage(..., Locale.FRENCH)` replaces hardcoded French strings
+- `findDueOnDates(List<LocalDate>)` added on `FactureClientRepository`, `FactureAchatRepository`, `AbonnementRepository`
+
+---
+
 ## Cross-cutting conventions
 
-- **i18n** : all error messages go through `IMessageSourceService` (keys in `messages*.properties`, fallback `useCodeAsDefaultMessage=true`).
+- **i18n** : all error messages go through `IMessageSourceService` (keys in `messages*.properties`, fallback `useCodeAsDefaultMessage=true`). MessageFormat apostrophes must be escaped as `''` in properties files.
 - **Security** : `@PreAuthorize` at controller level for coarse-grained auth ; service responsible for fine-grained business rules.
 - **Service isolation** : an `<X>ServiceImpl` only injects `<X>DomainService` + `I<Y>Service` from other aggregates (never a `<Y>Repository`).
-- **Responses** : every `<X>Response` must expose a `(<X> entity)` constructor — or secondary constructors for multi-field JPQL projections (see `PublicPlanResponse` use case 37, `AbonnementResponse` use case 40).
+- **Responses** : every `<X>Response` must expose a `(<X> entity)` constructor — or secondary constructors for multi-field JPQL projections.
 - **Permissions** : centralized in the `PermissionCode` enum ; each value = code in DB.
-- **Setters in DomainService** (rule 26) : every `entity.setX()` + `save(entity)` lives in `<X>DomainService` as a named business method (`setActive`, `activate`, `markAsValide`, `incrementUsage`, etc.). The ServiceImpls only orchestrate.
-- **Record projections** (rule 24 + 38) : repository methods return `<X>Response` by default (JPQL `SELECT new` projection), not entities. Justified entity cases : FK for creation / small table shared by several use cases / closed domain.
-- **Externalization of fixed values** (rule 38) : `@ConfigurationProperties` (records in `org.store.property/`) — no `private static final` for parameterizable business values (`SubscriptionProperties.trialDays`, `LoggingProperties.maxPayloadLength`, etc.).
+- **Setters in DomainService** (rule 26) : every `entity.setX()` + `save(entity)` lives in `<X>DomainService` as a named business method.
+- **Record projections** (rule 24 + 38) : repository methods return `<X>Response` by default (JPQL `SELECT new` projection), not entities.
+- **Externalization of fixed values** (rule 38) : `@ConfigurationProperties` (records in `org.store.property/`) — no `private static final` for parameterizable business values.
+- **Stock pricing** : `PF.prixAchat` retains the last purchase price (never overwritten by `Stock.prixAchatMoyen`). `Stock.prixAchatMoyen` is used only for valuation (`SUM(qty × prixAchatMoyen)`). The sale floor `ensurePrixUnitaireAboveFloor` compares `prixUnitaire > PF.prixAchat`.

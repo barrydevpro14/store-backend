@@ -62,7 +62,7 @@ public class FactureClientController {
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(factureClientService.findAllByCurrentEntreprise(
                 new FactureClientFilter(magasinId, clientId, vendeurId, statut, numero,
-                        montantMin, montantMax, startDate, endDate, createdStartDate, createdEndDate, page, size)
+                        montantMin, montantMax, startDate, endDate, page, size)
         ));
     }
 

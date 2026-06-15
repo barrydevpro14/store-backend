@@ -123,7 +123,7 @@ public class InventaireController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasAuthority('INVENTORY_READ')")
+    @PreAuthorize("hasAuthority('INVENTORY_ACCESS')")
     public ResponseEntity<InventaireResponse> getActive(@RequestParam UUID magasinId) {
         return inventaireService.findActiveByMagasinId(magasinId)
                 .map(ResponseEntity::ok)

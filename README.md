@@ -59,9 +59,13 @@ Application on `http://localhost:8080`; Actuator health check at `/actuator/heal
 | `achat` | Purchases: `CommandeAchat`, `Fournisseur`, `FactureAchat`, `PaiementAchat` |
 | `vente` | Sales: `CommandeVente`, `Client`, `FactureClient` |
 | `abonnement` | SaaS billing: `PlanAbonnement`, `Abonnement`, `Coupon`, `Promotion`, `PaiementAbonnement` |
-| `notification` | Notifications & due dates: `Notification`, `NotificationTemplate`, `Echeance` |
+| `notification` | Notifications & alerts: `Notification`, `Alerte`, `AlerteType`, daily `AlertScheduler` |
 | `depense` | Expenses: `Depense`, `CategoryDepense` |
-| `common` | Technical foundations: `BaseEntity`, `AuditableEntity`, `Person`, `PieceJointe` |
+| `contact` | Contact form: `ContactMessage`, `ContactStatut` |
+| `audit` | Audit log: `AuditLog`, `AuditAction`, `AuditEntityType` |
+| `country` | Country catalog: `Country` (65 seeds), currency + countryName in JWT |
+| `paiement` | Payment methods: `MoyenPaiement` (ADMIN CRUD, replaces hardcoded enum) |
+| `common` | Technical foundations: `BaseEntity`, `AuditableEntity`, `Person`, `PieceJointe`, email Strategy pattern |
 
 ## Data model
 
@@ -73,3 +77,6 @@ Application on `http://localhost:8080`; Actuator health check at `/actuator/heal
 - **Subscription**: a `PlanAbonnement` (Trial/Standard/Pro) + a `TypeAbonnement` (duration + discount) → `Abonnement` linked to an `Entreprise`. Discounts via `Coupon` (with `UtilisationCoupon`) and `Promotion`.
 - **FIFO stock**: entries (`EntreeStock` linked to `CommandeAchat`) consumed by exits (`SortieStock` linked to `LigneCommandeVente`), movements tracked by `MouvementStock`.
 - **Billing**: `CommandeVente` → `FactureClient`, `CommandeAchat` → `FactureAchat`, payments tracked separately.
+- **Email**: `IEmailServiceStrategy` pattern — `BrevoApiEmailServiceStrategy` (prod, HTTPS 443) / `SmtpEmailServiceStrategy` (dev) / `NoOpEmailServiceStrategy` (fallback). Selected by `MailConfig` based on `BREVO_API_KEY` / `app.mail.password`.
+- **Stock movements**: all types carry `referenceDocument` (commande reference). `prixAchat` on `ProductFournisseur` retains the last purchase price — never overwritten by the weighted average (`Stock.prixAchatMoyen` is for valuation only).
+- **Async locale**: `LocaleAwareTaskDecorator` + `AsyncConfig` propagate the HTTP request locale to `@Async` threads (notifications/alerts in FR even when triggered from a request with `Accept-Language: fr`).

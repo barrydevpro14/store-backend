@@ -4,10 +4,10 @@
 > For per-use-case detail (input/flow/rules/output), see `FEATURES.md`.
 > For package architecture, see `.claude/ARCHITECTURE.md`.
 
-**Last updated**: 2026-05-26
-**Total modules**: 16 business modules delivered
-**Total REST endpoints**: ~200+
-**Total YAML permissions**: 80+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`).
+**Last updated**: 2026-06-14
+**Total modules**: 17 business modules delivered
+**Total REST endpoints**: ~215+
+**Total YAML permissions**: 85+ (centralized in `org.store.security.application.enums.PermissionCode` + `roles-permissions.yml`).
 **Roles**: ADMIN, OWNER (was PROPRIETAIRE), MANAGER, SELLER (was VENDEUR). Renamed FR → EN via V3 Flyway migration on 2026-05-20.
 **JWT claims**: `userId`, `entrepriseId`, `magasinId`, `username`, `role`, `permissions`, `currency`, `countryName` — currency and countryName resolved from `entreprise.country` at login time.
 
@@ -106,8 +106,11 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | DELETE | `/api/v1/employees/{id}` | `EMPLOYE_DELETE` | OWNER/ADMIN/MANAGER |
 | PATCH | `/api/v1/employees/{id}/activate` | `EMPLOYE_DELETE` | OWNER/ADMIN/MANAGER |
 | POST | `/api/v1/employees/{id}/reset-password` | `EMPLOYE_RESET_PASSWORD` | OWNER/ADMIN/MANAGER |
+| DELETE | `/api/v1/employees/{id}/permanent` | `EMPLOYE_PURGE` | OWNER/ADMIN |
 
-**Total endpoints**: 13
+**Total endpoints**: 14
+
+> `DELETE /permanent` performs a hard delete. Guard: refuses if the employee has any sale or purchase orders on record. Purges refresh tokens before deleting `Employe` + `Account`. `EMPLOYE_PURGE` is granted only to OWNER and ADMIN (V45 Flyway migration).
 
 ---
 
@@ -217,8 +220,11 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | POST | `/api/v1/inventaires/{id}/cloturer` | `STOCK_INVENTORY` | OWNER/MANAGER |
 | POST | `/api/v1/inventaires/{id}/annuler` | `STOCK_INVENTORY` | OWNER/MANAGER |
 | GET | `/api/v1/inventaires/{id}/rapport` | `STOCK_READ` | OWNER/MANAGER |
+| GET | `/api/v1/inventaires/active?magasinId=` | `INVENTORY_READ` | OWNER/MANAGER |
 
-**Total endpoints**: 11
+**Total endpoints**: 12
+
+> `GET /active` returns the EN_COURS or BILAN inventory for the given store (204 if none). Used by the frontend active-inventory page to show "Continue" or "Start" CTA.
 
 ---
 
@@ -330,8 +336,8 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | PUT | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_UPDATE` | OWNER/MANAGER |
 | DELETE | `/api/v1/expense-categories/{id}` | `EXPENSE_CATEGORY_DELETE` | OWNER/MANAGER |
 | POST | `/api/v1/depenses` | `EXPENSE_CREATE` | OWNER/MANAGER |
-| GET | `/api/v1/depenses?magasinId=&categoryId=&modePaiement=&startDate=&endDate=&page=&size=` | `EXPENSE_READ` | OWNER/MANAGER |
-| GET | `/api/v1/depenses/total?magasinId=&categoryId=&modePaiement=&startDate=&endDate=` | `EXPENSE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/depenses?magasinId=&categoryId=&modePaiement=&libelle=&startDate=&endDate=&page=&size=` | `EXPENSE_READ` | OWNER/MANAGER |
+| GET | `/api/v1/depenses/total?magasinId=&categoryId=&modePaiement=&libelle=&startDate=&endDate=` | `EXPENSE_READ` | OWNER/MANAGER |
 | GET | `/api/v1/depenses/{id}` | `EXPENSE_READ` | OWNER/MANAGER |
 | PUT | `/api/v1/depenses/{id}` | `EXPENSE_UPDATE` | OWNER/MANAGER |
 | DELETE | `/api/v1/depenses/{id}` | `EXPENSE_DELETE` | OWNER/MANAGER |
@@ -504,10 +510,10 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | security (auth) | 4 | (public) |
 | entreprise | 11 | `ADMIN_ACCESS`, `OWNER_ACCESS` |
 | magasin | 9 | `OWNER_ACCESS`, `ADMIN_ACCESS` |
-| users | 13 | `EMPLOYE_*`, `AUTH_CHANGE_PASSWORD` |
+| users | 14 | `EMPLOYE_*`, `EMPLOYE_PURGE`, `AUTH_CHANGE_PASSWORD` |
 | produit | 29 | `PRODUCT_*`, `CATEGORY_PRODUCT_*`, `QUALITY_*`, `SUPPLIER_*` |
 | stock | 10 | `STOCK_READ`, `STOCK_ENTRY`, `STOCK_ADJUSTMENT`, `REPORT_STOCK` |
-| inventaire | 11 | `STOCK_INVENTORY`, `STOCK_READ` |
+| inventaire | 12 | `STOCK_INVENTORY`, `INVENTORY_READ` |
 | achat | 19 | `SUPPLIER_*`, `PURCHASE_*` |
 | vente | 20 | `CLIENT_*`, `SALE_*` |
 | depense | 11 | `EXPENSE_*`, `EXPENSE_CATEGORY_*` |
@@ -534,8 +540,8 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 
 ## 🗂️ Cross-cutting modules (non-business)
 
-- **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `IEmailService` + `EmailServiceImpl` (JavaMailSender, `@ConditionalOnProperty`) + `NoOpEmailServiceImpl`, `LocalizedRuntimeException` + custom exceptions, `IMessageSourceService`, `PieceJointe`, custom validators (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper` (sentinel dates) / `EnumHelper` / `UuidHelper` / `LikePatternHelper` / `RequestHelper` (IP + UA extraction) / `SubscriptionRules` / `NameHelper` / `ReferenceHelper` / `LotConsumptionContext`.
-- **`config/`** — `StoreApplication`, `I18nConfig`, `AuditorAwareImpl`, `DataInitializer`, `HttpRequestLoggingFilter`.
+- **`common/`** — `BaseEntity` / `AuditableEntity`, `BaseRepository`, `GlobalService<E,R>`, `ValidatorService`, `IUploadFileService`, `IEmailService` + strategy pattern (`IEmailServiceStrategy` / `BrevoApiEmailServiceStrategy` / `SmtpEmailServiceStrategy` / `NoOpEmailServiceStrategy`) + `EmailTemplateRenderer`, `LocalizedRuntimeException` + custom exceptions, `IMessageSourceService`, `PieceJointe`, custom validators (`@Phone`, `@EnumValue`, `@DatePattern`, `@Uuid`), helpers `DateHelper` / `EnumHelper` / `UuidHelper` / `LikePatternHelper` / `RequestHelper` / `SubscriptionRules` / `NameHelper` / `ReferenceHelper` / `LotConsumptionContext`.
+- **`config/`** — `StoreApplication`, `I18nConfig`, `AuditorAwareImpl`, `DataInitializer`, `DemoProductSeeder` (`@Profile("dev")` standalone), `AsyncConfig` + `LocaleAwareTaskDecorator` (locale propagation to async threads), `HttpRequestLoggingFilter`.
 - **`property/`** — `JwtProperties`, `RbacProperties`, `SaleProperties`, `PurchaseProperties` (records `@ConfigurationProperties`).
 - **`audit/`** — `AuditLog` entity, `AuditAction` + `AuditEntityType` enums, `AuditEventListener` (@Async), `IAuditEventPublisher`, `AuditLogController`.
 - **`country/`** — `Country` entity (65 seeds), `CountryDomainService`, `CountryController` (permitAll).

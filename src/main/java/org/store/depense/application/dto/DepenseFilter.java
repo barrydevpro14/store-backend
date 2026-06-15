@@ -8,7 +8,6 @@ import org.store.common.tools.DateHelper;
 import org.store.common.validation.DatePattern;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record DepenseFilter(
@@ -34,24 +33,6 @@ public record DepenseFilter(
     public LocalDate toDate() {
         return DateHelper.parseEndOfDay(endDate) != null
                 ? DateHelper.parseEndOfDay(endDate).toLocalDate() : null;
-    }
-
-    public LocalDate fromDateSentinel() {
-        LocalDate d = fromDate();
-        return d != null ? d : LocalDate.of(2000, 1, 1);
-    }
-
-    public LocalDate toDateSentinel() {
-        LocalDate d = toDate();
-        return d != null ? d : LocalDate.of(2099, 12, 31);
-    }
-
-    public LocalDateTime createdStartDateTime() {
-        return createdStartDate == null ? DateHelper.SENTINEL_START : createdStartDate.atStartOfDay();
-    }
-
-    public LocalDateTime createdEndDateTime() {
-        return createdEndDate == null ? DateHelper.SENTINEL_END : createdEndDate.plusDays(1).atStartOfDay();
     }
 
     public Pageable toPageable() {

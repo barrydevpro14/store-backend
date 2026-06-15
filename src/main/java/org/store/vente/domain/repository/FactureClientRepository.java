@@ -5,13 +5,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.vente.application.dto.FactureClientFilter;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.domain.model.FactureClient;
 
 import org.store.achat.domain.enums.StatutFacture;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,22 +29,29 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
             FROM FactureClient facture
             LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = facture.createdBy
             WHERE facture.commande.magasin.entreprise.id = :entrepriseId
-              AND facture.commande.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.clientId} IS NULL OR facture.commande.client.id = :#{#filter.clientId})
-              AND (:#{#filter.vendeurId} IS NULL OR account.user.id = :#{#filter.vendeurId})
-              AND (:#{#filter.statutAsEnum()} IS NULL OR facture.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.numero} IS NULL OR LOWER(facture.numero) LIKE LOWER(CONCAT('%', :#{#filter.numero}, '%')))
-              AND (:#{#filter.montantMin} IS NULL OR facture.montantTotal >= :#{#filter.montantMin})
-              AND (:#{#filter.montantMax} IS NULL OR facture.montantTotal <= :#{#filter.montantMax})
-              AND (:#{#filter.fromDateTime()} IS NULL OR facture.createdAt >= :#{#filter.fromDateTime()})
-              AND (:#{#filter.toDateTime()} IS NULL OR facture.createdAt <= :#{#filter.toDateTime()})
-              AND facture.createdAt >= :#{#filter.createdStartDateTime()}
-              AND facture.createdAt <  :#{#filter.createdEndDateTime()}
+              AND facture.commande.magasin.id = :magasinId
+              AND (:clientId IS NULL OR facture.commande.client.id = :clientId)
+              AND (:vendeurId IS NULL OR account.user.id = :vendeurId)
+              AND (:statut IS NULL OR facture.statut = :statut)
+              AND (:numero IS NULL OR :numero = '' OR facture.numero ilike CONCAT('%', :numero, '%'))
+              AND (:montantMin IS NULL OR facture.montantTotal >= :montantMin)
+              AND (:montantMax IS NULL OR facture.montantTotal <= :montantMax)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', facture.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', facture.createdAt) <= CAST(:endDate AS date))
             ORDER BY facture.createdAt DESC
             """)
-    Page<FactureClientResponse> findResponsesByFilter(@Param("filter") FactureClientFilter filter,
-                                                     @Param("entrepriseId") UUID entrepriseId,
-                                                     Pageable pageable);
+    Page<FactureClientResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("clientId") UUID clientId,
+            @Param("vendeurId") UUID vendeurId,
+            @Param("statut") StatutFacture statut,
+            @Param("numero") String numero,
+            @Param("montantMin") BigDecimal montantMin,
+            @Param("montantMax") BigDecimal montantMax,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("""
             SELECT new org.store.vente.application.dto.FactureClientResponse(facture)
@@ -89,5 +96,5 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
 
     /** Finds unpaid sale invoices whose due date is one of the given alert dates (today+1, today+3, today+5). */
     @Query("SELECT f FROM FactureClient f WHERE f.statut = 'NON_PAYEE' AND f.dateEcheance IN :dates")
-    java.util.List<FactureClient> findDueOnDates(@Param("dates") java.util.List<java.time.LocalDate> dates);
+    List<FactureClient> findDueOnDates(@Param("dates") List<LocalDate> dates);
 }

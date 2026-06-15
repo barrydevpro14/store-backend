@@ -79,7 +79,7 @@ class CommandeVenteServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_validate_filter_and_delegate_to_domain() {
-        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, null, null, 0, 10);
+        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, 0, 10);
         Page<CommandeVenteResponse> page = new PageImpl<>(List.of(sampleResponse()));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
@@ -95,7 +95,7 @@ class CommandeVenteServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_propagate_forbidden_when_magasin_not_accessible() {
-        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, null, null, 0, 10);
+        CommandeVenteFilter filter = new CommandeVenteFilter(magasinId, null, null, null, null, null, null, null, null, null, 0, 10);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);

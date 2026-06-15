@@ -94,19 +94,27 @@ class CommandeAchatDomainServiceTest {
     void findResponsesByFilter_should_delegate_to_repository_with_filter_and_entreprise() {
         UUID magasinId = magasin.getId();
         CommandeAchatFilter filter = new CommandeAchatFilter(
-                magasinId, null, null, null, null, null, null, null, null, 0, 10);
+                magasinId, null, null, null, null, null, null, 0, 10);
 
         CommandeAchatResponse responseItem = new CommandeAchatResponse(buildCommande("CMD-001"));
         Page<CommandeAchatResponse> page = new PageImpl<>(
                 List.of(responseItem), PageRequest.of(0, 10), 1);
 
-        when(repository.findResponsesByFilter(eq(filter), eq(entrepriseId), eq(filter.toPageable())))
+        when(repository.findResponsesByFilter(
+                eq(entrepriseId), eq(filter.magasinId()), eq(filter.fournisseurId()),
+                eq(filter.statutAsEnum()), eq(filter.statutFactureAsEnum()),
+                eq(filter.reference()), eq(filter.startDate()), eq(filter.endDate()),
+                eq(filter.toPageable())))
                 .thenReturn(page);
 
         Page<CommandeAchatResponse> result = service.findResponsesByFilter(filter, entrepriseId);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(repository).findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        verify(repository).findResponsesByFilter(
+                entrepriseId, filter.magasinId(), filter.fournisseurId(),
+                filter.statutAsEnum(), filter.statutFactureAsEnum(),
+                filter.reference(), filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     @Test

@@ -66,4 +66,9 @@ public record CommandeVenteResponse(
                 DateHelper.format(commande.getCreatedAt())
         );
     }
+
+    /** Montant restant à payer — sérialisé par Jackson comme champ JSON. */
+    public BigDecimal montantRestant() {
+        return montantTotal.subtract(montantPaye);
+    }
 }

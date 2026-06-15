@@ -26,8 +26,8 @@ public interface StockRepository extends BaseRepository<Stock> {
               AND (:#{#filter.productNamePattern()} IS NULL
                    OR LOWER(stock.productFournisseur.product.nom) LIKE :#{#filter.productNamePattern()}
                    OR LOWER(COALESCE(stock.productFournisseur.product.reference, '')) LIKE :#{#filter.productNamePattern()})
-              AND stock.createdAt >= :#{#filter.createdStartDateTime()}
-              AND stock.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', stock.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', stock.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY stock.createdAt DESC
             """)
     Page<StockResponse> findResponsesByFilter(@Param("filter") StockFilter filter,

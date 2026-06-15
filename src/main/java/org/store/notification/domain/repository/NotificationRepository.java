@@ -34,16 +34,16 @@ public interface NotificationRepository extends BaseRepository<Notification> {
             SELECT n FROM Notification n
             WHERE n.destinataire.id = :accountId
               AND (:#{#filter.statut} IS NULL OR n.statut = :#{#filter.statut})
-              AND n.createdAt >= :#{#filter.createdStartDateTime()}
-              AND n.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', n.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', n.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY n.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(n) FROM Notification n
             WHERE n.destinataire.id = :accountId
               AND (:#{#filter.statut} IS NULL OR n.statut = :#{#filter.statut})
-              AND n.createdAt >= :#{#filter.createdStartDateTime()}
-              AND n.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', n.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', n.createdAt) <  :#{#filter.createdEndDate})
             """)
     Page<Notification> findByFilter(@Param("accountId") UUID accountId,
                                     @Param("filter") NotificationFilter filter,

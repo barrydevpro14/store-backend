@@ -9,6 +9,7 @@ import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.model.AuditLog;
 import org.store.audit.domain.repository.AuditLogRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,7 +23,18 @@ public class AuditLogDomainService extends GlobalService<AuditLog, AuditLogRepos
     }
 
     public Page<AuditLogResponse> findByFilter(AuditLogFilter filter) {
-        return repository.findResponsesByFilter(filter, filter.toPageable());
+        String startDate = filter.createdStartDate() != null ? filter.createdStartDate().toString() : null;
+        String endDate   = filter.createdEndDate()   != null ? filter.createdEndDate().toString()   : null;
+        return repository.findResponsesByFilter(
+                filter.action(),
+                filter.entityType(),
+                filter.entrepriseId(),
+                filter.magasinId(),
+                filter.performedByLabel(),
+                LikePatternHelper.toLikePattern(filter.performedByLabel()),
+                startDate,
+                endDate,
+                filter.toPageable());
     }
 
     /** Returns the most recent LOGIN entry for the given accountId, used to compute session duration at logout. */

@@ -41,8 +41,8 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             WHERE (:#{#filter.statutAsEnum()}        IS NULL OR paiement.statut         = :#{#filter.statutAsEnum()})
               AND (:#{#filter.abonnementId}          IS NULL OR abonnement.id           = :#{#filter.abonnementId})
               AND (:#{#filter.entrepriseId}          IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
-              AND paiement.createdAt >= :#{#filter.createdStartDateTime()}
-              AND paiement.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', paiement.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', paiement.createdAt) <  :#{#filter.createdEndDate})
             ORDER BY paiement.createdAt DESC
             """,
            countQuery = """
@@ -52,8 +52,8 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             WHERE (:#{#filter.statutAsEnum()}        IS NULL OR paiement.statut         = :#{#filter.statutAsEnum()})
               AND (:#{#filter.abonnementId}          IS NULL OR abonnement.id           = :#{#filter.abonnementId})
               AND (:#{#filter.entrepriseId}          IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
-              AND paiement.createdAt >= :#{#filter.createdStartDateTime()}
-              AND paiement.createdAt <  :#{#filter.createdEndDateTime()}
+              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', paiement.createdAt) >= :#{#filter.createdStartDate})
+              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', paiement.createdAt) <  :#{#filter.createdEndDate})
             """)
     Page<PaiementAbonnementResponse> findResponsesByFilter(@Param("filter") PaiementAbonnementFilter filter,
                                                            Pageable pageable);

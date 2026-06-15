@@ -104,7 +104,7 @@ class CommandeAchatServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_validate_and_delegate() {
-        CommandeAchatFilter filter = new CommandeAchatFilter(magasin.getId(), null, null, null, null, null, null, null, null, 0, 10);
+        CommandeAchatFilter filter = new CommandeAchatFilter(magasin.getId(), null, null, null, null, null, null, 0, 10);
         Page<CommandeAchatResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(user());

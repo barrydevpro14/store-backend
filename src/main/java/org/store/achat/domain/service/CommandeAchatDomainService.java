@@ -40,7 +40,16 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
     }
 
     public Page<CommandeAchatResponse> findResponsesByFilter(CommandeAchatFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.magasinId(),
+                filter.fournisseurId(),
+                filter.statutAsEnum(),
+                filter.statutFactureAsEnum(),
+                filter.reference(),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 
     /** Bascule la commande en statut RECEPTIONNEE quand toutes les lignes ont été totalement reçues. */

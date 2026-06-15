@@ -50,7 +50,10 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
 
     /** Listing paginé filtré scopé entreprise (projection JPQL). */
     public Page<FactureClientResponse> findResponsesByFilter(FactureClientFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(entrepriseId, filter.magasinId(),filter.clientId(),
+                filter.vendeurId(),filter.statutAsEnum(),filter.numero(),filter.montantMin() , filter.montantMax(),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     /** Projection JPQL d'une facture par id, scopée entreprise (Optional empty si introuvable ou autre entreprise). */
