@@ -13,7 +13,6 @@ import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.service.ICommandeVenteService;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -40,13 +39,11 @@ public class CommandeVenteController {
                                                             @RequestParam(required = false) BigDecimal montantMax,
                                                             @RequestParam(required = false) String startDate,
                                                             @RequestParam(required = false) String endDate,
-                                                            @RequestParam(required = false) LocalDate createdStartDate,
-                                                            @RequestParam(required = false) LocalDate createdEndDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(commandeVenteService.findAllByCurrentEntreprise(
                 new CommandeVenteFilter(magasinId, clientId, vendeurId, statut, statutFacture, reference,
-                        montantMin, montantMax, startDate, endDate, createdStartDate, createdEndDate, page, size)
+                        montantMin, montantMax, startDate, endDate, page, size)
         ));
     }
 

@@ -43,7 +43,19 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
 
     /** Listing paginé filtré scopé entreprise (projection JPQL, user toujours null). */
     public Page<CommandeVenteResponse> findResponsesByFilter(CommandeVenteFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.magasinId(),
+                filter.clientId(),
+                filter.vendeurId(),
+                filter.statutAsEnum(),
+                filter.statutFactureAsEnum(),
+                filter.reference(),
+                filter.montantMin(),
+                filter.montantMax(),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 
     /** Détails projetés JPQL avec user résolu (Account.createdBy -> Utilisateur via CAST + JOIN), scopé entreprise. */
