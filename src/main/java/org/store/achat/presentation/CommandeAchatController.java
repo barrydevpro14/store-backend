@@ -12,7 +12,7 @@ import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.service.ICommandeAchatService;
 
-import java.time.LocalDate;
+
 import java.util.UUID;
 
 @RestController
@@ -36,13 +36,10 @@ public class CommandeAchatController {
                                                             @RequestParam(required = false) String reference,
                                                             @RequestParam(required = false) String startDate,
                                                             @RequestParam(required = false) String endDate,
-                                                            @RequestParam(required = false) LocalDate createdStartDate,
-                                                            @RequestParam(required = false) LocalDate createdEndDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(commandeAchatService.findAllByCurrentEntreprise(
-                new CommandeAchatFilter(magasinId, fournisseurId, statut, statutFacture, reference, startDate, endDate,
-                        createdStartDate, createdEndDate, page, size)
+                new CommandeAchatFilter(magasinId, fournisseurId, statut, statutFacture, reference, startDate, endDate, page, size)
         ));
     }
 

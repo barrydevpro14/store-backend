@@ -23,8 +23,6 @@ public record CommandeAchatFilter(
         String reference,
         @DatePattern String startDate,
         @DatePattern String endDate,
-        LocalDate createdStartDate,
-        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
@@ -36,21 +34,6 @@ public record CommandeAchatFilter(
         return EnumHelper.parse(StatutFacture.class, statutFacture);
     }
 
-    public LocalDateTime fromDateTime() {
-        return DateHelper.parseStartOfDay(startDate);
-    }
-
-    public LocalDateTime toDateTime() {
-        return DateHelper.parseEndOfDay(endDate);
-    }
-
-    public String createdStartDateStr() {
-        return createdStartDate != null ? createdStartDate.toString() : null;
-    }
-
-    public String createdEndDateStr() {
-        return createdEndDate != null ? createdEndDate.plusDays(1).toString() : null;
-    }
 
     public Pageable toPageable() {
         return PageRequest.of(page, size);
