@@ -58,7 +58,13 @@ public class InventaireDomainService extends GlobalService<Inventaire, Inventair
 
     /** Listing paginé filtré scopé entreprise. */
     public Page<InventaireResponse> findResponsesByFilter(InventaireFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.magasinId(),
+                filter.statutAsEnum(),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 
     /** Détail projeté JPQL, scopé entreprise. */
