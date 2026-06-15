@@ -4,13 +4,11 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
 import org.store.common.tools.EnumHelper;
 import org.store.common.validation.DatePattern;
 import org.store.common.validation.EnumValue;
 import org.store.stock.domain.enums.MouvementStockType;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 public record MouvementStockFilter(
@@ -20,12 +18,9 @@ public record MouvementStockFilter(
         @EnumValue(enumClass = MouvementStockType.class) String type,
         @DatePattern String startDate,
         @DatePattern String endDate,
-        LocalDate createdStartDate,
-        LocalDate createdEndDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
-
     public MouvementStockType typeAsEnum() {
         return EnumHelper.parse(MouvementStockType.class, type);
     }

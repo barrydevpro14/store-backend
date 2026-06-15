@@ -82,7 +82,7 @@ class MouvementStockControllerTest {
                 .andExpect(jsonPath("$.content[0].detail.type").value("ENTREE_ACHAT"))
                 .andExpect(jsonPath("$.content[0].detail.quantite").value(100));
 
-        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, null, null, null, null, null, null, null, 0, 10)));
+        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, null, null, null, null, null, 0, 10)));
     }
 
     @Test
@@ -101,6 +101,6 @@ class MouvementStockControllerTest {
                         .param("size", "5"))
                 .andExpect(status().isOk());
 
-        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, productId, stockId, "ENTREE_ACHAT", "2026-05-01", "2026-05-14", null, null, 1, 5)));
+        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, productId, stockId, "ENTREE_ACHAT", "2026-05-01", "2026-05-14", 1, 5)));
     }
 }
