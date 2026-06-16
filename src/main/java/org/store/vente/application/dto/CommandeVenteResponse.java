@@ -20,6 +20,7 @@ public record CommandeVenteResponse(
         LocalDate dateVente,
         BigDecimal montantTotal,
         BigDecimal montantPaye,
+        BigDecimal montantRestant,
         StatutFacture statutFacture,
         String createdAt
 ) {
@@ -62,6 +63,9 @@ public record CommandeVenteResponse(
                 commande.getDate(),
                 montantTotal != null ? montantTotal : BigDecimal.ZERO,
                 montantPaye != null ? montantPaye : BigDecimal.ZERO,
+                commande.getFacture() != null
+                        ? commande.getFacture().getMontantTotal().subtract(commande.getFacture().getMontantPaye())
+                        : commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
                 statutFacture,
                 DateHelper.format(commande.getCreatedAt())
         );

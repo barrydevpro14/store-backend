@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
@@ -79,11 +78,7 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
      * EXPIREs every sibling actif=true Abonnement on the entreprise — to be called from
      * {@link org.store.abonnement.domain.service.AbonnementDomainService#activate} before a paid
      * Abonnement is flipped to actif=true, so the {@code abonnement_one_actif_per_entreprise}
-     * partial unique index (V14) is preserved. {@code flushAutomatically=true} forces the UPDATE
-     * to hit the DB before the subsequent {@code save} of the now-actif row, so the constraint
-     * check sees the siblings already deactivated. {@code clearAutomatically} is intentionally
-     * left off — the caller's {@code abonnement} reference must stay managed so the next
-     * {@code save(abonnement)} performs a plain UPDATE, not a {@code merge} round-trip.
+     * partial unique index (V14) is preserved.
      */
     @Modifying(flushAutomatically = true)
     @Query("""
@@ -103,24 +98,30 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
             LEFT JOIN FETCH abonnement.typePlanAbonnement type
             LEFT JOIN FETCH type.plan
             LEFT JOIN FETCH abonnement.entreprise
-            WHERE (:#{#filter.entrepriseId}        IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
-              AND (:#{#filter.statutAsEnum()}      IS NULL OR abonnement.statut        = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.planId}              IS NULL OR type.plan.id             = :#{#filter.planId})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', abonnement.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', abonnement.createdAt) <  :#{#filter.createdEndDate})
+            WHERE (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
+              AND (:statut IS NULL OR abonnement.statut = :statut)
+              AND (:planId IS NULL OR type.plan.id = :planId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', abonnement.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', abonnement.createdAt) <= CAST(:endDate AS date))
             ORDER BY abonnement.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(abonnement)
             FROM Abonnement abonnement
             JOIN abonnement.typePlanAbonnement type
-            WHERE (:#{#filter.entrepriseId}        IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
-              AND (:#{#filter.statutAsEnum()}      IS NULL OR abonnement.statut        = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.planId}              IS NULL OR type.plan.id             = :#{#filter.planId})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', abonnement.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', abonnement.createdAt) <  :#{#filter.createdEndDate})
+            WHERE (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
+              AND (:statut IS NULL OR abonnement.statut = :statut)
+              AND (:planId IS NULL OR type.plan.id = :planId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', abonnement.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', abonnement.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<AbonnementResponse> findResponsesByFilter(@Param("filter") AbonnementFilter filter, Pageable pageable);
+    Page<AbonnementResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("statut") AbonnementStatut statut,
+            @Param("planId") UUID planId,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     /** Finds active/trial subscriptions expiring exactly on the given date (for 1/3/5-day alerts). */
     @Query("SELECT a FROM Abonnement a WHERE a.dateFin = :date AND a.statut IN ('ACTIF', 'TRIAL')")

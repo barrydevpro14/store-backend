@@ -72,7 +72,7 @@ class CommandeVenteServiceImplTest {
         return new CommandeVenteResponse(
                 UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.VALIDATE,
                 null, null, LocalDate.of(2026, 5, 16),
-                new BigDecimal("1300.00"), BigDecimal.ZERO,
+                new BigDecimal("1300.00"), BigDecimal.ZERO,new BigDecimal("1300.00"),
                 null, "2026-05-16 10:00:00"
         );
     }
@@ -113,7 +113,7 @@ class CommandeVenteServiceImplTest {
                 commandeId, "VTE-AUTO-002", CommandeVenteStatut.VALIDATE,
                 null, new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),
-                new BigDecimal("1300.00"), BigDecimal.ZERO,
+                new BigDecimal("1300.00"), BigDecimal.ZERO,new BigDecimal("1300.00"),
                 null, "2026-05-16 10:00:00"
         );
 

@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.domain.model.Quality;
 
@@ -18,30 +17,26 @@ public interface QualityRepository extends BaseRepository<Quality> {
             SELECT new org.store.produit.application.dto.QualityResponse(quality)
             FROM Quality quality
             WHERE quality.entreprise.id = :entrepriseId
-              AND (
-                  :#{#filter.libelle} IS NULL
-                  OR :#{#filter.libelle} = ''
-                  OR LOWER(quality.libelle) LIKE LOWER(CONCAT('%', :#{#filter.libelle}, '%'))
-              )
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR quality.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR quality.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(quality.libelle) LIKE :libellePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', quality.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', quality.createdAt) <= CAST(:endDate AS date))
             ORDER BY quality.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(quality)
             FROM Quality quality
             WHERE quality.entreprise.id = :entrepriseId
-              AND (
-                  :#{#filter.libelle} IS NULL
-                  OR :#{#filter.libelle} = ''
-                  OR LOWER(quality.libelle) LIKE LOWER(CONCAT('%', :#{#filter.libelle}, '%'))
-              )
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR quality.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR quality.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(quality.libelle) LIKE :libellePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', quality.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', quality.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<QualityResponse> findResponsesByFilter(@Param("filter") QualityFilter filter,
-                                                @Param("entrepriseId") UUID entrepriseId,
-                                                Pageable pageable);
+    Page<QualityResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("libelle") String libelle,
+            @Param("libellePattern") String libellePattern,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     Optional<Quality> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
 

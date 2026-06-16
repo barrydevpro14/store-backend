@@ -2,7 +2,6 @@ package org.store.contact.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +20,6 @@ import org.store.contact.application.dto.ContactReplyRequest;
 import org.store.contact.application.service.IContactMessageService;
 import org.store.contact.domain.enums.ContactStatut;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -50,12 +48,12 @@ public class ContactMessageController {
             @RequestParam(required = false) String nom,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) ContactStatut statut,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(contactMessageService.findAll(
-                new ContactMessageFilter(nom, email, statut, createdStartDate, createdEndDate, page, size)));
+                new ContactMessageFilter(nom, email, statut, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")

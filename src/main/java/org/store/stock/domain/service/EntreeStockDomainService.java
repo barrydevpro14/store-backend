@@ -27,7 +27,9 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
     }
 
     public Page<ExpiringLotResponse> findExpiringLots(ExpiringLotsFilter filter, UUID entrepriseId) {
-        return repository.findExpiringLots(filter, entrepriseId, filter.toPageable());
+        return repository.findExpiringLots(
+                entrepriseId, filter.magasinId(), filter.productId(),
+                filter.untilDate(), filter.toPageable());
     }
 
     public List<EntreeStock> findActiveLotsByMagasinAndProductIds(UUID magasinId, List<UUID> productIds) {

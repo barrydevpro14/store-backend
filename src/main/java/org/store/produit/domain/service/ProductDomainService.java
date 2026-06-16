@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
+import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
@@ -35,7 +36,7 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
     }
 
     public Page<ProductResponse> findResponsesByFilter(ProductFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(entrepriseId, filter.nom(), LikePatternHelper.toLikePattern(filter.nom()), filter.reference(), LikePatternHelper.toLikePattern(filter.reference()), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     public Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {

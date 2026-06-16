@@ -9,6 +9,32 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-15/16 — SpEL suppression complète, responsive fixes, alertes jour J, fix ADMIN alertes
+
+### Backend
+
+- **fix(PSQLException):** Cause racine identifiée — SpEL `:#{}` passe les params null avec `Types.OTHER` que PostgreSQL rejette. Pattern unifié : params individuels `@Param`, dates en String + `CAST(:date AS date)`.
+- **fix(SpEL — tous repositories):** 23 repositories corrigés — plus aucun `:#{#filter.X}` dans le codebase. Pattern : supprimer `@Param("filter")`, déclarer chaque champ en `@Param` distinct, `LikePatternHelper` pour les LIKE, `CAST AS date` pour les dates. Modules : achat (CommandeAchat, FactureAchat, Fournisseur), vente (CommandeVente, FactureClient), inventaire, stock (Stock, MouvementStock, EntreeStock, SortieStock), depense (Depense, CategoryDepense), magasin, entreprise, employe, produit (Product, Quality, CategoryProduct), abonnement (Abonnement, PlanAbonnement, Coupon, Promotion, TypePlanAbonnement, PaiementAbonnement), contact, notification, audit. AlerteRepository migré sentinels → String + CAST natif.
+- **fix(rbac):** `INVENTORY_READ` ajouté sur OWNER et MANAGER — endpoints GET inventaire bloquaient sans cette permission.
+- **fix(alertes ADMIN):** `AlerteController` retourne page vide quand `entrepriseId == null` (ADMIN SaaS) — évite de ramener toutes les alertes de toutes les entreprises.
+- **feat(alertes jour J):** Ajout de `today` dans les 3 listes `alertDates`. Clés i18n `.today` dédiées ("aujourd'hui"/"today") pour éviter "dans 0 jour(s)". Abonnement + FactureClient + FactureAchat.
+- **Branche active :** `dev-barry` créée depuis `dev` à `3ca55ce`. Règle ajoutée dans `CLAUDE.md` — jamais pousser sur `dev` ou `main`.
+
+### Frontend
+
+- **fix(responsive — formulaires):** `CreateVenteDialog` : produit L1, quantité+prix L2 sur mobile. `AddAchatLineRow` : produit L1, qualité L2, quantité+prix L3, lot+date L4. `AddLigneDialog` (inventaire) : produit L1, quantité+prix L2.
+- **fix(responsive — pages):** Bouton "Nouvelle vente/achat" : texte masqué sur mobile (`hidden sm:inline`), icône seule.
+- **fix(responsive — auth layout):** `min-h-screen` + scroll entier au lieu de `h-screen overflow-hidden`. Header visible à tout moment sur tablette. Fonds décoratifs en `fixed`.
+- **fix(responsive — navbar publique):** `NavbarMobileMenu` intégré dans `Navbar.tsx`. Login/Register masqués sur mobile (`hidden md:flex`), disponibles dans le drawer.
+- **fix(audit — stale draft):** `AuditPage.handleSearch` capturait `draft` par closure stale. Ajout `draftRef` mis à jour synchronement dans `handleDraftChange` — filtre date correct à la sélection.
+- **fix(NavbarMobileMenu.tsx):** Fichier untracked depuis le début, jamais commité — ajouté au dépôt.
+
+### État final
+- Backend : 874/874 tests verts. Zéro SpEL dans le codebase.
+- Branche : `dev-barry` (backend + frontend). Merge vers `dev` à faire via MR/PR.
+
+## 🗂 Previous session
+
 **Date:** 2026-06-14 — Responsive, alertes/notifications config, inventaire scindé, achat montant restant, UX fixes
 
 ### Backend

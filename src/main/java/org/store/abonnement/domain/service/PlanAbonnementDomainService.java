@@ -9,6 +9,7 @@ import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.PlanAbonnementRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,7 +47,7 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
     }
 
     public Page<PlanAbonnementResponse> findResponses(PlanAbonnementFilter filter) {
-        return repository.findResponsesByFilter(filter, filter.toPageable());
+        return repository.findResponsesByFilter(filter.nom(), LikePatternHelper.toLikePattern(filter.nom()), filter.actif(), filter.visible(), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     public List<PublicPlanResponse> findPublicResponses() {

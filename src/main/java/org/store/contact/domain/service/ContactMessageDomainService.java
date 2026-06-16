@@ -3,6 +3,7 @@ package org.store.contact.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.contact.application.dto.ContactMessageFilter;
 import org.store.contact.application.dto.ContactMessageResponse;
 import org.store.contact.domain.enums.ContactStatut;
@@ -22,6 +23,11 @@ public class ContactMessageDomainService extends GlobalService<ContactMessage, C
 
     /** Paginated + filtered listing. */
     public Page<ContactMessageResponse> findByFilter(ContactMessageFilter filter) {
-        return repository.findResponsesByFilter(filter, filter.toPageable());
+        return repository.findResponsesByFilter(
+                filter.nom(), LikePatternHelper.toLikePattern(filter.nom()),
+                filter.email(), LikePatternHelper.toLikePattern(filter.email()),
+                filter.statut(),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 }

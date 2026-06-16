@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.Product;
 
@@ -18,40 +17,30 @@ public interface ProductRepository extends BaseRepository<Product> {
             SELECT new org.store.produit.application.dto.ProductResponse(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (
-                  :#{#filter.nom} IS NULL
-                  OR :#{#filter.nom} = ''
-                  OR LOWER(produit.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%'))
-              )
-              AND (
-                  :#{#filter.reference} IS NULL
-                  OR :#{#filter.reference} = ''
-                  OR LOWER(produit.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%'))
-              )
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR produit.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR produit.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:nom IS NULL OR :nom = '' OR LOWER(produit.nom) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(produit.reference) LIKE :referencePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
             ORDER BY produit.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (
-                  :#{#filter.nom} IS NULL
-                  OR :#{#filter.nom} = ''
-                  OR LOWER(produit.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%'))
-              )
-              AND (
-                  :#{#filter.reference} IS NULL
-                  OR :#{#filter.reference} = ''
-                  OR LOWER(produit.reference) LIKE LOWER(CONCAT('%', :#{#filter.reference}, '%'))
-              )
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR produit.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR produit.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:nom IS NULL OR :nom = '' OR LOWER(produit.nom) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(produit.reference) LIKE :referencePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<ProductResponse> findResponsesByFilter(@Param("filter") ProductFilter filter,
-                                                @Param("entrepriseId") UUID entrepriseId,
-                                                Pageable pageable);
+    Page<ProductResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("nom") String nom,
+            @Param("nomPattern") String nomPattern,
+            @Param("reference") String reference,
+            @Param("referencePattern") String referencePattern,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 

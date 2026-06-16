@@ -25,9 +25,9 @@ import java.util.Locale;
 /**
  * Daily alert scheduler — runs at 08:00 every morning.
  * Publishes events for:
- *   - Subscriptions expiring in 1, 3 or 5 days
- *   - Unpaid sale invoices overdue by 1, 3 or 5 days
- *   - Unpaid purchase invoices overdue by 1, 3 or 5 days
+ *   - Subscriptions expiring in 0, 1, 3 or 5 days
+ *   - Unpaid sale invoices overdue by 0, 1, 3 or 5 days
+ *   - Unpaid purchase invoices overdue by 0, 1, 3 or 5 days
  */
 @Component
 public class AlertScheduler {
@@ -66,7 +66,7 @@ public class AlertScheduler {
     private void checkAbonnementsExpiring() {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
-                today.plusDays(1), today.plusDays(3), today.plusDays(5));
+                today, today.plusDays(1), today.plusDays(3), today.plusDays(5));
         abonnementDomainService.findExpiringOnDates(alertDates).forEach(abonnement -> {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(today, abonnement.getDateFin());
             alertAbonnementExpiring(abonnement, daysUntil);
@@ -74,10 +74,13 @@ public class AlertScheduler {
     }
 
     private void alertAbonnementExpiring(Abonnement abonnement, int daysUntilExpiry) {
-        String titre = messageSourceService.getMessage("notification.abonnement.expiring.titre",
-                new Object[]{daysUntilExpiry}, Locale.FRENCH);
-        String msg   = messageSourceService.getMessage("notification.abonnement.expiring.message",
-                new Object[]{daysUntilExpiry, abonnement.getDateFin()}, Locale.FRENCH);
+        boolean isToday = daysUntilExpiry == 0;
+        String titre = isToday
+                ? messageSourceService.getMessage("notification.abonnement.expiring.titre.today", new Object[]{}, Locale.FRENCH)
+                : messageSourceService.getMessage("notification.abonnement.expiring.titre", new Object[]{daysUntilExpiry}, Locale.FRENCH);
+        String msg = isToday
+                ? messageSourceService.getMessage("notification.abonnement.expiring.message.today", new Object[]{abonnement.getDateFin()}, Locale.FRENCH)
+                : messageSourceService.getMessage("notification.abonnement.expiring.message", new Object[]{daysUntilExpiry, abonnement.getDateFin()}, Locale.FRENCH);
         alerteDomainService.create(AlerteType.ABONNEMENT_EXPIRING, AlerteStatut.NOUVELLE,
                 titre, msg,
                 abonnement.getEntreprise().getId(), null, abonnement.getId(), daysUntilExpiry);
@@ -88,7 +91,7 @@ public class AlertScheduler {
     private void checkFacturesClientOverdue() {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
-                today.plusDays(1), today.plusDays(3), today.plusDays(5));
+                today, today.plusDays(1), today.plusDays(3), today.plusDays(5));
         factureClientRepository.findDueOnDates(alertDates).forEach(facture -> {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(today, facture.getDateEcheance());
             alertFactureClientOverdue(facture, daysUntil);
@@ -97,10 +100,14 @@ public class AlertScheduler {
 
     private void alertFactureClientOverdue(FactureClient facture, int daysUntil) {
         var magasin = facture.getCommande().getMagasin();
-        String titre = messageSourceService.getMessage("notification.facture.vente.overdue.titre",
-                new Object[]{facture.getNumero(), daysUntil}, Locale.FRENCH);
-        String msg   = messageSourceService.getMessage("notification.facture.vente.overdue.message",
-                new Object[]{facture.getNumero(), daysUntil, facture.getMontantTotal().subtract(facture.getMontantPaye())}, Locale.FRENCH);
+        var restant = facture.getMontantTotal().subtract(facture.getMontantPaye());
+        boolean isToday = daysUntil == 0;
+        String titre = isToday
+                ? messageSourceService.getMessage("notification.facture.vente.overdue.titre.today", new Object[]{facture.getNumero()}, Locale.FRENCH)
+                : messageSourceService.getMessage("notification.facture.vente.overdue.titre", new Object[]{facture.getNumero(), daysUntil}, Locale.FRENCH);
+        String msg = isToday
+                ? messageSourceService.getMessage("notification.facture.vente.overdue.message.today", new Object[]{facture.getNumero(), restant}, Locale.FRENCH)
+                : messageSourceService.getMessage("notification.facture.vente.overdue.message", new Object[]{facture.getNumero(), daysUntil, restant}, Locale.FRENCH);
         alerteDomainService.create(AlerteType.FACTURE_VENTE_OVERDUE, AlerteStatut.NOUVELLE,
                 titre, msg,
                 magasin.getEntreprise().getId(), magasin.getId(), facture.getId(), daysUntil);
@@ -111,7 +118,7 @@ public class AlertScheduler {
     private void checkFacturesAchatOverdue() {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
-                today.plusDays(1), today.plusDays(3), today.plusDays(5));
+                today, today.plusDays(1), today.plusDays(3), today.plusDays(5));
         factureAchatRepository.findDueOnDates(alertDates).forEach(facture -> {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(today, facture.getDateEcheance());
             alertFactureAchatOverdue(facture, daysUntil);
@@ -120,10 +127,14 @@ public class AlertScheduler {
 
     private void alertFactureAchatOverdue(FactureAchat facture, int daysUntil) {
         var magasin = facture.getCommande().getMagasin();
-        String titre = messageSourceService.getMessage("notification.facture.achat.overdue.titre",
-                new Object[]{facture.getNumero(), daysUntil}, Locale.FRENCH);
-        String msg   = messageSourceService.getMessage("notification.facture.achat.overdue.message",
-                new Object[]{facture.getNumero(), daysUntil, facture.getMontantTotal().subtract(facture.getMontantPaye())}, Locale.FRENCH);
+        var restant = facture.getMontantTotal().subtract(facture.getMontantPaye());
+        boolean isToday = daysUntil == 0;
+        String titre = isToday
+                ? messageSourceService.getMessage("notification.facture.achat.overdue.titre.today", new Object[]{facture.getNumero()}, Locale.FRENCH)
+                : messageSourceService.getMessage("notification.facture.achat.overdue.titre", new Object[]{facture.getNumero(), daysUntil}, Locale.FRENCH);
+        String msg = isToday
+                ? messageSourceService.getMessage("notification.facture.achat.overdue.message.today", new Object[]{facture.getNumero(), restant}, Locale.FRENCH)
+                : messageSourceService.getMessage("notification.facture.achat.overdue.message", new Object[]{facture.getNumero(), daysUntil, restant}, Locale.FRENCH);
         alerteDomainService.create(AlerteType.FACTURE_ACHAT_OVERDUE, AlerteStatut.NOUVELLE,
                 titre, msg,
                 magasin.getEntreprise().getId(), magasin.getId(), facture.getId(), daysUntil);
