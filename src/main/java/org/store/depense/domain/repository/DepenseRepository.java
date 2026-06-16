@@ -5,8 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.depense.application.dto.DepenseFilter;
-import org.store.depense.application.dto.DepenseParCategorieResponse;
 import org.store.depense.application.dto.DepenseResponse;
 import org.store.depense.application.dto.DepenseTotalResponse;
 import org.store.depense.domain.model.Depense;
@@ -14,51 +12,58 @@ import org.store.depense.domain.model.Depense;
 import java.util.List;
 import java.util.UUID;
 
-
 public interface DepenseRepository extends BaseRepository<Depense> {
 
     @Query("""
             SELECT new org.store.depense.application.dto.DepenseResponse(depense)
             FROM Depense depense
             WHERE depense.magasin.entreprise.id = :entrepriseId
-              AND depense.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
-              AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
-              AND (:#{#filter.libellePattern()} IS NULL OR LOWER(depense.libelle) LIKE :#{#filter.libellePattern()})
-              AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
-              AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', depense.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', depense.createdAt) <  :#{#filter.createdEndDate})
-            ORDER BY depense.createdAt DESC
+              AND depense.magasin.id = :magasinId
+              AND (:categoryId IS NULL OR depense.category.id = :categoryId)
+              AND (:moyenPaiementId IS NULL OR depense.modePaiement.id = :moyenPaiementId)
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(depense.libelle) LIKE :libellePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR depense.dateDepense >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR depense.dateDepense <= CAST(:endDate AS date))
+            ORDER BY depense.dateDepense DESC
             """)
-    Page<DepenseResponse> findResponsesByFilter(@Param("filter") DepenseFilter filter,
-                                                @Param("entrepriseId") UUID entrepriseId,
-                                                Pageable pageable);
+    Page<DepenseResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("categoryId") UUID categoryId,
+            @Param("moyenPaiementId") UUID moyenPaiementId,
+            @Param("libelle") String libelle,
+            @Param("libellePattern") String libellePattern,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("""
             SELECT new org.store.depense.application.dto.DepenseTotalResponse(
-                :#{#filter.magasinId},
+                :magasinId,
                 COALESCE(SUM(depense.montant), 0),
                 COUNT(depense)
             )
             FROM Depense depense
             WHERE depense.magasin.entreprise.id = :entrepriseId
-              AND depense.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.categoryId} IS NULL OR depense.category.id = :#{#filter.categoryId})
-              AND (:#{#filter.moyenPaiementId()} IS NULL OR depense.modePaiement.id = :#{#filter.moyenPaiementId()})
-              AND (:#{#filter.libellePattern()} IS NULL OR LOWER(depense.libelle) LIKE :#{#filter.libellePattern()})
-              AND (:#{#filter.fromDate()} IS NULL OR depense.dateDepense >= :#{#filter.fromDate()})
-              AND (:#{#filter.toDate()} IS NULL OR depense.dateDepense <= :#{#filter.toDate()})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', depense.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', depense.createdAt) <  :#{#filter.createdEndDate})
+              AND depense.magasin.id = :magasinId
+              AND (:categoryId IS NULL OR depense.category.id = :categoryId)
+              AND (:moyenPaiementId IS NULL OR depense.modePaiement.id = :moyenPaiementId)
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(depense.libelle) LIKE :libellePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR depense.dateDepense >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR depense.dateDepense <= CAST(:endDate AS date))
             """)
-    DepenseTotalResponse computeTotal(@Param("filter") DepenseFilter filter,
-                                      @Param("entrepriseId") UUID entrepriseId);
+    DepenseTotalResponse computeTotal(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("categoryId") UUID categoryId,
+            @Param("moyenPaiementId") UUID moyenPaiementId,
+            @Param("libelle") String libelle,
+            @Param("libellePattern") String libellePattern,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate);
 
     /**
-     * Aggregation par catégorie via SQL natif — évite le problème de type-inference
-     * Hibernate 6 + PostgreSQL 16 sur les paramètres LocalDate en JPQL.
-     * Les dates sont passées en chaîne ISO (yyyy-MM-dd) et castées côté SQL.
+     * Aggregation par catégorie via SQL natif — dates passées en String ISO castées côté SQL.
      */
     @Query(value = """
             SELECT d.category_id        AS categoryId,

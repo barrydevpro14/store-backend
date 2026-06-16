@@ -3,6 +3,7 @@ package org.store.depense.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.depense.application.dto.DepenseFilter;
 import org.store.depense.application.dto.DepenseParCategorieResponse;
 import org.store.depense.application.dto.DepenseRequest;
@@ -39,11 +40,28 @@ public class DepenseDomainService extends GlobalService<Depense, DepenseReposito
     }
 
     public Page<DepenseResponse> findResponsesByFilter(DepenseFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.magasinId(),
+                filter.categoryId(),
+                filter.moyenPaiementId(),
+                filter.libelle(),
+                LikePatternHelper.toLikePattern(filter.libelle()),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 
     public DepenseTotalResponse computeTotal(DepenseFilter filter, UUID entrepriseId) {
-        return repository.computeTotal(filter, entrepriseId);
+        return repository.computeTotal(
+                entrepriseId,
+                filter.magasinId(),
+                filter.categoryId(),
+                filter.moyenPaiementId(),
+                filter.libelle(),
+                LikePatternHelper.toLikePattern(filter.libelle()),
+                filter.startDate(),
+                filter.endDate());
     }
 
     /** Répartition des dépenses par catégorie, triée par montant décroissant. */

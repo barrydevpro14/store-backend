@@ -500,7 +500,7 @@ class InventaireServiceImplTest {
 
     @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
-        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, null, null, 0, 10);
+        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, 0, 10);
         InventaireResponse response = new InventaireResponse(inventaireEnCours);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());

@@ -25,7 +25,6 @@ import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireResponse;
 import org.store.inventaire.application.service.IInventaireService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -106,13 +105,10 @@ public class InventaireController {
                                                          @RequestParam(required = false) String statut,
                                                          @RequestParam(required = false) String startDate,
                                                          @RequestParam(required = false) String endDate,
-                                                         @RequestParam(required = false) LocalDate createdStartDate,
-                                                         @RequestParam(required = false) LocalDate createdEndDate,
                                                          @RequestParam(defaultValue = "0") int page,
                                                          @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(inventaireService.findAllByCurrentEntreprise(
-                new InventaireFilter(magasinId, statut, startDate, endDate,
-                        createdStartDate, createdEndDate, page, size)
+                new InventaireFilter(magasinId, statut, startDate, endDate, page, size)
         ));
     }
 

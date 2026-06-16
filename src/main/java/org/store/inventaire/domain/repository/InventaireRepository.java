@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.domain.enums.InventaireStatut;
 import org.store.inventaire.domain.model.Inventaire;
@@ -34,17 +33,19 @@ public interface InventaireRepository extends BaseRepository<Inventaire> {
             SELECT new org.store.inventaire.application.dto.InventaireResponse(inventaire)
             FROM Inventaire inventaire
             WHERE inventaire.magasin.entreprise.id = :entrepriseId
-              AND inventaire.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.statutAsEnum()} IS NULL OR inventaire.statut = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.fromDate()} IS NULL OR inventaire.date >= :#{#filter.fromDate()})
-              AND (:#{#filter.toDate()} IS NULL OR inventaire.date <= :#{#filter.toDate()})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', inventaire.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', inventaire.createdAt) <  :#{#filter.createdEndDate})
+              AND inventaire.magasin.id = :magasinId
+              AND (:statut IS NULL OR inventaire.statut = :statut)
+              AND (:startDate IS NULL OR :startDate = '' OR inventaire.date >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR inventaire.date <= CAST(:endDate AS date))
             ORDER BY inventaire.date DESC, inventaire.createdAt DESC
             """)
-    Page<InventaireResponse> findResponsesByFilter(@Param("filter") InventaireFilter filter,
-                                                  @Param("entrepriseId") UUID entrepriseId,
-                                                  Pageable pageable);
+    Page<InventaireResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("statut") InventaireStatut statut,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("""
             SELECT new org.store.inventaire.application.dto.InventaireResponse(inventaire)

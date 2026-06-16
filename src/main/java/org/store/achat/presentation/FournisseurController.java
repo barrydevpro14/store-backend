@@ -2,7 +2,6 @@ package org.store.achat.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +19,6 @@ import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
 import org.store.achat.application.service.IFournisseurService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -45,12 +43,12 @@ public class FournisseurController {
     @PreAuthorize("hasAuthority('SUPPLIER_READ')")
     public ResponseEntity<Page<FournisseurResponse>> list(@RequestParam(required = false) String nom,
                                                           @RequestParam(required = false) String reference,
-                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                          @RequestParam(required = false) String startDate,
+                                                          @RequestParam(required = false) String endDate,
                                                           @RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(fournisseurService.findAll(
-                new FournisseurFilter(nom, reference, createdStartDate, createdEndDate, page, size)));
+                new FournisseurFilter(nom, reference, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")
