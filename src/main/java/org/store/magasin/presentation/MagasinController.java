@@ -2,7 +2,6 @@ package org.store.magasin.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +32,6 @@ import org.store.vente.domain.service.ClientDomainService;
 import org.store.vente.domain.service.FactureClientDomainService;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.UUID;
@@ -76,12 +74,12 @@ public class MagasinController {
     @PreAuthorize("hasAuthority('STORE_READ')")
     public ResponseEntity<Page<MagasinResponse>> list(@RequestParam(required = false) String nom,
                                                       @RequestParam(required = false) Boolean actif,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                      @RequestParam(required = false) String startDate,
+                                                      @RequestParam(required = false) String endDate,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise(
-                new MagasinFilter(nom, actif, createdStartDate, createdEndDate, page, size)));
+                new MagasinFilter(nom, actif, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")
