@@ -2,7 +2,6 @@ package org.store.depense.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +19,6 @@ import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
 import org.store.depense.application.service.ICategoryDepenseService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -45,12 +43,12 @@ public class CategoryDepenseController {
     @PreAuthorize("hasAuthority('EXPENSE_READ')")
     public ResponseEntity<Page<CategoryDepenseResponse>> list(@RequestParam(required = false) String nom,
                                                               @RequestParam(required = false) Boolean actif,
-                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                              @RequestParam(required = false) String startDate,
+                                                              @RequestParam(required = false) String endDate,
                                                               @RequestParam(defaultValue = "0") int page,
                                                               @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(categoryDepenseService.findAll(
-                new CategoryDepenseFilter(nom, actif, createdStartDate, createdEndDate, page, size)));
+                new CategoryDepenseFilter(nom, actif, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")
