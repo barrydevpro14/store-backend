@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.store.abonnement.application.dto.PlanAbonnementFilter;
 import org.store.abonnement.application.dto.PlanAbonnementResponse;
 import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.domain.model.PlanAbonnement;
@@ -22,23 +21,30 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
     @Query(value = """
             SELECT new org.store.abonnement.application.dto.PlanAbonnementResponse(plan)
             FROM PlanAbonnement plan
-            WHERE (:#{#filter.nom}     IS NULL OR LOWER(plan.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
-              AND (:#{#filter.actif}   IS NULL OR plan.actif   = :#{#filter.actif})
-              AND (:#{#filter.visible} IS NULL OR plan.visible = :#{#filter.visible})
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR plan.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR plan.createdAt <  :#{#filter.createdEndDateTime()})
+            WHERE (:nom IS NULL OR :nom = '' OR LOWER(plan.nom) LIKE :nomPattern)
+              AND (:actif IS NULL OR plan.actif = :actif)
+              AND (:visible IS NULL OR plan.visible = :visible)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', plan.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', plan.createdAt) <= CAST(:endDate AS date))
             ORDER BY plan.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(plan)
             FROM PlanAbonnement plan
-            WHERE (:#{#filter.nom}     IS NULL OR LOWER(plan.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
-              AND (:#{#filter.actif}   IS NULL OR plan.actif   = :#{#filter.actif})
-              AND (:#{#filter.visible} IS NULL OR plan.visible = :#{#filter.visible})
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR plan.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR plan.createdAt <  :#{#filter.createdEndDateTime()})
+            WHERE (:nom IS NULL OR :nom = '' OR LOWER(plan.nom) LIKE :nomPattern)
+              AND (:actif IS NULL OR plan.actif = :actif)
+              AND (:visible IS NULL OR plan.visible = :visible)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', plan.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', plan.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<PlanAbonnementResponse> findResponsesByFilter(@Param("filter") PlanAbonnementFilter filter, Pageable pageable);
+    Page<PlanAbonnementResponse> findResponsesByFilter(
+            @Param("nom") String nom,
+            @Param("nomPattern") String nomPattern,
+            @Param("actif") Boolean actif,
+            @Param("visible") Boolean visible,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("""
             SELECT new org.store.abonnement.application.dto.PublicPlanResponse(

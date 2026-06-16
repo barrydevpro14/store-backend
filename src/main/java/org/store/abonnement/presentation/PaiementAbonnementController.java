@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementRequest;
@@ -24,7 +23,6 @@ import org.store.abonnement.application.dto.RejectPaiementRequest;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.common.dto.ImageDownloadResponse;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -53,12 +51,12 @@ public class PaiementAbonnementController {
     public ResponseEntity<Page<PaiementAbonnementResponse>> list(@RequestParam(required = false) String statut,
                                                                  @RequestParam(required = false) UUID abonnementId,
                                                                  @RequestParam(required = false) UUID entrepriseId,
-                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                                 @RequestParam(required = false) String startDate,
+                                                            @RequestParam(required = false) String endDate,
                                                                  @RequestParam(defaultValue = "0") int page,
                                                                  @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(paiementAbonnementService.findAll(
-                new PaiementAbonnementFilter(statut, abonnementId, entrepriseId, createdStartDate, createdEndDate, page, size)));
+                new PaiementAbonnementFilter(statut, abonnementId, entrepriseId, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")

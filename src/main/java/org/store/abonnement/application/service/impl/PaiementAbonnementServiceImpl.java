@@ -274,7 +274,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         }
         return new PaiementAbonnementFilter(
                 filter.statut(), filter.abonnementId(), currentUser.entrepriseId(),
-                filter.createdStartDate(), filter.createdEndDate(),
+                filter.startDate(), filter.endDate(),
                 filter.page(), filter.size());
     }
 

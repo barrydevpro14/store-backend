@@ -2,7 +2,6 @@ package org.store.abonnement.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +20,6 @@ import org.store.abonnement.application.dto.PromotionRequest;
 import org.store.abonnement.application.dto.PromotionResponse;
 import org.store.abonnement.application.service.IPromotionService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -47,12 +45,12 @@ public class PromotionController {
     public ResponseEntity<Page<PromotionResponse>> list(@RequestParam(required = false) String nom,
                                                         @RequestParam(required = false) Boolean actif,
                                                         @RequestParam(required = false) UUID planId,
-                                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                        @RequestParam(required = false) String startDate,
+                                                            @RequestParam(required = false) String endDate,
                                                         @RequestParam(defaultValue = "0") int page,
                                                         @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(promotionService.findAll(
-                new PromotionFilter(nom, actif, planId, createdStartDate, createdEndDate, page, size)));
+                new PromotionFilter(nom, actif, planId, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")

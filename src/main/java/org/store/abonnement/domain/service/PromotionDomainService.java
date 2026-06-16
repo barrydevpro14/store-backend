@@ -9,6 +9,7 @@ import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.Promotion;
 import org.store.abonnement.domain.repository.PromotionRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -40,7 +41,7 @@ public class PromotionDomainService extends GlobalService<Promotion, PromotionRe
     }
 
     public Page<PromotionResponse> findResponses(PromotionFilter filter) {
-        return repository.findResponsesByFilter(filter, filter.toPageable());
+        return repository.findResponsesByFilter(filter.nom(), LikePatternHelper.toLikePattern(filter.nom()), filter.actif(), filter.planId(), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     public List<PromotionResponse> findActiveGlobalResponses(LocalDate today) {

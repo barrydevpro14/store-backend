@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
@@ -38,23 +37,28 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             LEFT JOIN FETCH abonnement.entreprise
             LEFT JOIN FETCH abonnement.typePlanAbonnement type
             LEFT JOIN FETCH type.plan
-            WHERE (:#{#filter.statutAsEnum()}        IS NULL OR paiement.statut         = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.abonnementId}          IS NULL OR abonnement.id           = :#{#filter.abonnementId})
-              AND (:#{#filter.entrepriseId}          IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', paiement.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', paiement.createdAt) <  :#{#filter.createdEndDate})
+            WHERE (:statut IS NULL OR paiement.statut = :statut)
+              AND (:abonnementId IS NULL OR abonnement.id = :abonnementId)
+              AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', paiement.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
             ORDER BY paiement.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(paiement)
             FROM PaiementAbonnement paiement
             JOIN paiement.abonnement abonnement
-            WHERE (:#{#filter.statutAsEnum()}        IS NULL OR paiement.statut         = :#{#filter.statutAsEnum()})
-              AND (:#{#filter.abonnementId}          IS NULL OR abonnement.id           = :#{#filter.abonnementId})
-              AND (:#{#filter.entrepriseId}          IS NULL OR abonnement.entreprise.id = :#{#filter.entrepriseId})
-              AND (:#{#filter.createdStartDate} IS NULL OR FUNCTION('DATE', paiement.createdAt) >= :#{#filter.createdStartDate})
-              AND (:#{#filter.createdEndDate}   IS NULL OR FUNCTION('DATE', paiement.createdAt) <  :#{#filter.createdEndDate})
+            WHERE (:statut IS NULL OR paiement.statut = :statut)
+              AND (:abonnementId IS NULL OR abonnement.id = :abonnementId)
+              AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', paiement.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<PaiementAbonnementResponse> findResponsesByFilter(@Param("filter") PaiementAbonnementFilter filter,
-                                                           Pageable pageable);
+    Page<PaiementAbonnementResponse> findResponsesByFilter(
+            @Param("statut") org.store.abonnement.domain.enums.StatutPaiementAbonnement statut,
+            @Param("abonnementId") java.util.UUID abonnementId,
+            @Param("entrepriseId") java.util.UUID entrepriseId,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 }

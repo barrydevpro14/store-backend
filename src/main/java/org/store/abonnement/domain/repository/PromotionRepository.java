@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.store.abonnement.application.dto.PromotionFilter;
 import org.store.abonnement.application.dto.PromotionResponse;
 import org.store.abonnement.domain.model.Promotion;
 import org.store.common.repository.BaseRepository;
@@ -20,24 +19,31 @@ public interface PromotionRepository extends BaseRepository<Promotion> {
             SELECT new org.store.abonnement.application.dto.PromotionResponse(promotion)
             FROM Promotion promotion
             LEFT JOIN promotion.plan plan
-            WHERE (:#{#filter.nom}    IS NULL OR LOWER(promotion.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
-              AND (:#{#filter.actif}  IS NULL OR promotion.actif = :#{#filter.actif})
-              AND (:#{#filter.planId} IS NULL OR plan.id         = :#{#filter.planId})
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR promotion.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR promotion.createdAt <  :#{#filter.createdEndDateTime()})
+            WHERE (:nom IS NULL OR :nom = '' OR LOWER(promotion.nom) LIKE :nomPattern)
+              AND (:actif IS NULL OR promotion.actif = :actif)
+              AND (:planId IS NULL OR plan.id = :planId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', promotion.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', promotion.createdAt) <= CAST(:endDate AS date))
             ORDER BY promotion.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(promotion)
             FROM Promotion promotion
             LEFT JOIN promotion.plan plan
-            WHERE (:#{#filter.nom}    IS NULL OR LOWER(promotion.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
-              AND (:#{#filter.actif}  IS NULL OR promotion.actif = :#{#filter.actif})
-              AND (:#{#filter.planId} IS NULL OR plan.id         = :#{#filter.planId})
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR promotion.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR promotion.createdAt <  :#{#filter.createdEndDateTime()})
+            WHERE (:nom IS NULL OR :nom = '' OR LOWER(promotion.nom) LIKE :nomPattern)
+              AND (:actif IS NULL OR promotion.actif = :actif)
+              AND (:planId IS NULL OR plan.id = :planId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', promotion.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', promotion.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<PromotionResponse> findResponsesByFilter(@Param("filter") PromotionFilter filter, Pageable pageable);
+    Page<PromotionResponse> findResponsesByFilter(
+            @Param("nom") String nom,
+            @Param("nomPattern") String nomPattern,
+            @Param("actif") Boolean actif,
+            @Param("planId") java.util.UUID planId,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("""
             SELECT new org.store.abonnement.application.dto.PromotionResponse(promotion)

@@ -9,6 +9,7 @@ import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.CouponRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 
 @Service
 public class CouponDomainService extends GlobalService<Coupon, CouponRepository> {
@@ -37,7 +38,7 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
     }
 
     public Page<CouponResponse> findResponses(CouponFilter filter) {
-        return repository.findResponsesByFilter(filter, filter.toPageable());
+        return repository.findResponsesByFilter(filter.code(), LikePatternHelper.toLikePattern(filter.code()), filter.actif(), filter.planId(), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     public boolean existsByCode(String code) {

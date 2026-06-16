@@ -3,28 +3,19 @@ package org.store.abonnement.application.dto;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.store.common.validation.DatePattern;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record CouponFilter(
         String code,
         Boolean actif,
         UUID planId,
-        LocalDate createdStartDate,
-        LocalDate createdEndDate,
+        @DatePattern String startDate,
+        @DatePattern String endDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
-    public LocalDateTime createdStartDateTime() {
-        return createdStartDate == null ? null : createdStartDate.atStartOfDay();
-    }
-
-    public LocalDateTime createdEndDateTime() {
-        return createdEndDate == null ? null : createdEndDate.plusDays(1).atStartOfDay();
-    }
-
     public Pageable toPageable() {
         return PageRequest.of(page, size);
     }
