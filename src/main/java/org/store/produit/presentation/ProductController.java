@@ -3,7 +3,6 @@ package org.store.produit.presentation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +27,6 @@ import org.store.produit.application.dto.ProductSearchResponse;
 import org.store.produit.application.service.IProductSearchService;
 import org.store.produit.application.service.IProductService;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,12 +54,12 @@ public class ProductController {
     @PreAuthorize("hasAuthority('PRODUCT_READ')")
     public ResponseEntity<Page<ProductResponse>> list(@RequestParam(required = false) String nom,
                                                       @RequestParam(required = false) String reference,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                      @RequestParam(required = false) String startDate,
+                                                      @RequestParam(required = false) String endDate,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(productService.findAll(
-                new ProductFilter(nom, reference, createdStartDate, createdEndDate, page, size)));
+                new ProductFilter(nom, reference, startDate, endDate, page, size)));
     }
 
     @GetMapping("/search")
