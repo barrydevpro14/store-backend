@@ -301,7 +301,7 @@ public class EmployeServiceImpl implements IEmployeService {
         }
         return new EmployeFilter(filter.nom(), filter.prenom(), filter.role(),
                 currentUser.magasinId(), filter.actif(),
-                filter.createdStartDate(), filter.createdEndDate(),
+                filter.startDate(), filter.endDate(),
                 filter.page(), filter.size());
     }
 

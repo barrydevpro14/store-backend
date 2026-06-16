@@ -3,6 +3,7 @@ package org.store.users.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
@@ -55,7 +56,16 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
 
     /** Listing projete scope entreprise (multi-tenant). */
     public Page<EmployeResponse> findResponsesByFilter(EmployeFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.nom(), LikePatternHelper.toLikePattern(filter.nom()),
+                filter.prenom(), LikePatternHelper.toLikePattern(filter.prenom()),
+                filter.role(),
+                filter.magasinId(),
+                filter.actif(),
+                filter.startDate(),
+                filter.endDate(),
+                filter.toPageable());
     }
 
     /** Detail projete scope entreprise. */

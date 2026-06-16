@@ -2,7 +2,6 @@ package org.store.users.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +23,6 @@ import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.application.service.IEmployeService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -53,12 +51,12 @@ public class EmployeController {
                                                       @RequestParam(required = false) String role,
                                                       @RequestParam(required = false) UUID magasinId,
                                                       @RequestParam(required = false) Boolean actif,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                      @RequestParam(required = false) String startDate,
+                                                      @RequestParam(required = false) String endDate,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(employeService.findAllByCurrentEntreprise(
-                new EmployeFilter(nom, prenom, role, magasinId, actif, createdStartDate, createdEndDate, page, size)
+                new EmployeFilter(nom, prenom, role, magasinId, actif, startDate, endDate, page, size)
         ));
     }
 
