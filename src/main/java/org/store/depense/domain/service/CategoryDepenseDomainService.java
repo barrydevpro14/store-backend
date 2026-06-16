@@ -3,6 +3,7 @@ package org.store.depense.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.depense.application.dto.CategoryDepenseFilter;
 import org.store.depense.application.dto.CategoryDepenseRequest;
 import org.store.depense.application.dto.CategoryDepenseResponse;
@@ -37,6 +38,11 @@ public class CategoryDepenseDomainService extends GlobalService<CategoryDepense,
     }
 
     public Page<CategoryDepenseResponse> findResponses(UUID entrepriseId, CategoryDepenseFilter filter) {
-        return repository.findResponsesByFilter(entrepriseId, filter, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.nom(), LikePatternHelper.toLikePattern(filter.nom()),
+                filter.actif(),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 }

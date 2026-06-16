@@ -98,7 +98,10 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     }
 
     public Page<AbonnementResponse> findResponses(AbonnementFilter filter) {
-        return repository.findResponsesByFilter(filter, filter.toPageable());
+        return repository.findResponsesByFilter(
+                filter.entrepriseId(), filter.statutAsEnum(), filter.planId(),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     /** Compte le nombre d'abonnements dans un statut donné. */

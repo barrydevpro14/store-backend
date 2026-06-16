@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
@@ -42,7 +43,12 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
 
     /** Listing pagine filtre (nom LIKE insensitive, actif) scope entreprise. */
     public Page<MagasinResponse> findResponsesByFilter(MagasinFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(
+                entrepriseId,
+                filter.nom(), LikePatternHelper.toLikePattern(filter.nom()),
+                filter.actif(),
+                filter.startDate(), filter.endDate(),
+                filter.toPageable());
     }
 
     /** Pose ou remplace le logo. orphanRemoval supprime auto l'ancienne PieceJointe. */

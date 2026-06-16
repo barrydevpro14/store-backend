@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.stock.application.dto.ExpiringLotResponse;
-import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.domain.model.EntreeStock;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,17 +39,20 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             SELECT new org.store.stock.application.dto.ExpiringLotResponse(entree)
             FROM EntreeStock entree
             WHERE entree.magasin.entreprise.id = :entrepriseId
-              AND entree.magasin.id = :#{#filter.magasinId}
-              AND (:#{#filter.productId} IS NULL OR entree.produit.id = :#{#filter.productId})
+              AND entree.magasin.id = :magasinId
+              AND (:productId IS NULL OR entree.produit.id = :productId)
               AND entree.dateExpiration IS NOT NULL
-              AND entree.dateExpiration <= :#{#filter.untilDate()}
+              AND entree.dateExpiration <= :untilDate
               AND entree.quantiteRestante > 0
               AND entree.annulee = false
             ORDER BY entree.dateExpiration ASC
             """)
-    Page<ExpiringLotResponse> findExpiringLots(@Param("filter") ExpiringLotsFilter filter,
-                                               @Param("entrepriseId") UUID entrepriseId,
-                                               Pageable pageable);
+    Page<ExpiringLotResponse> findExpiringLots(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("productId") UUID productId,
+            @Param("untilDate") LocalDate untilDate,
+            Pageable pageable);
 
     @Query("""
             SELECT entree FROM EntreeStock entree

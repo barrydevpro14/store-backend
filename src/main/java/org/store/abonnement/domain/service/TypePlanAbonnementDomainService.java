@@ -9,6 +9,7 @@ import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.TypePlanAbonnement;
 import org.store.abonnement.domain.repository.TypePlanAbonnementRepository;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 
 import java.util.List;
 import java.util.Optional;
@@ -48,7 +49,7 @@ public class TypePlanAbonnementDomainService extends GlobalService<TypePlanAbonn
 
     /** Plan-scoped paginated listing, filtered by nom/actif/recommande. */
     public Page<SubscriptionTypeResponse> findResponses(UUID planId, SubscriptionTypeFilter filter) {
-        return repository.findResponsesByFilter(planId, filter, filter.toPageable());
+        return repository.findResponsesByFilter(planId, filter.nom(), LikePatternHelper.toLikePattern(filter.nom()), filter.actif(), filter.recommande(), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     /** Active durations of a plan (sorted) — used by the public catalog. */

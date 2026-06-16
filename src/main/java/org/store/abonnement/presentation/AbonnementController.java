@@ -2,7 +2,6 @@ package org.store.abonnement.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,7 +22,6 @@ import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.security.application.service.ICurrentUserService;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -59,24 +57,24 @@ public class AbonnementController {
     public ResponseEntity<Page<AbonnementResponse>> findAll(@RequestParam(required = false) UUID entrepriseId,
                                                             @RequestParam(required = false) String statut,
                                                             @RequestParam(required = false) UUID planId,
-                                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                            @RequestParam(required = false) String startDate,
+                                                            @RequestParam(required = false) String endDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(abonnementService.findAll(
-                new AbonnementFilter(entrepriseId, statut, planId, createdStartDate, createdEndDate, page, size)));
+                new AbonnementFilter(entrepriseId, statut, planId, startDate, endDate, page, size)));
     }
 
     @GetMapping("/me")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<Page<AbonnementResponse>> findMyHistory(@RequestParam(required = false) String statut,
                                                                   @RequestParam(required = false) UUID planId,
-                                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
-                                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                                  @RequestParam(required = false) String startDate,
+                                                            @RequestParam(required = false) String endDate,
                                                                   @RequestParam(defaultValue = "0") int page,
                                                                   @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(abonnementService.findMyHistory(
-                new AbonnementFilter(null, statut, planId, createdStartDate, createdEndDate, page, size)));
+                new AbonnementFilter(null, statut, planId, startDate, endDate, page, size)));
     }
 
     @GetMapping("/me/current")

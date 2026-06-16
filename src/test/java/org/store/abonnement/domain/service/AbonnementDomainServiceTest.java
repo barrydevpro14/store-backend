@@ -177,11 +177,11 @@ class AbonnementDomainServiceTest {
     void findResponses_should_delegate_with_filter_pageable() {
         AbonnementFilter filter = new AbonnementFilter(entrepriseId, "ACTIF", null, null, null, 0, 10);
         Page<AbonnementResponse> page = new PageImpl<>(List.of());
-        when(repository.findResponsesByFilter(eq(filter), any(Pageable.class))).thenReturn(page);
+        when(repository.findResponsesByFilter(eq(filter.entrepriseId()), eq(filter.statutAsEnum()), eq(filter.planId()), eq(filter.startDate()), eq(filter.endDate()), any(Pageable.class))).thenReturn(page);
 
         Page<AbonnementResponse> result = service.findResponses(filter);
 
         assertThat(result).isSameAs(page);
-        verify(repository).findResponsesByFilter(eq(filter), any(Pageable.class));
+        verify(repository).findResponsesByFilter(eq(filter.entrepriseId()), eq(filter.statutAsEnum()), eq(filter.planId()), eq(filter.startDate()), eq(filter.endDate()), any(Pageable.class));
     }
 }

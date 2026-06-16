@@ -45,7 +45,10 @@ public class SortieStockDomainService extends GlobalService<SortieStock, SortieS
     }
 
     public MarginReportResponse computeMargin(MarginReportFilter filter, UUID entrepriseId) {
-        return repository.computeMargin(filter, entrepriseId);
+        return repository.computeMargin(
+                entrepriseId, filter.magasinId(),
+                filter.productId(), filter.fournisseurId(),
+                filter.startDate(), filter.endDate());
     }
 
     /** Sorties actives (non annulées) liées à une ligne de vente — utilisé pour la ré-injection à l'annulation. */

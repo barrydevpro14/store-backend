@@ -115,7 +115,7 @@ class TypePlanAbonnementDomainServiceTest {
     void findResponses_should_delegate_with_planId_filter_and_pageable() {
         SubscriptionTypeFilter filter = new SubscriptionTypeFilter("Annuel", true, null, null, null, 0, 10);
         Page<SubscriptionTypeResponse> page = new PageImpl<>(List.of());
-        when(repository.findResponsesByFilter(eq(planId), eq(filter), any(Pageable.class)))
+        when(repository.findResponsesByFilter(eq(planId), eq(filter.nom()), any(), eq(filter.actif()), eq(filter.recommande()), eq(filter.startDate()), eq(filter.endDate()), any(Pageable.class)))
                 .thenReturn(page);
 
         Page<SubscriptionTypeResponse> result = service.findResponses(planId, filter);

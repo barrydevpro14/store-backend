@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.security.domain.model.Account;
-import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.domain.model.Employe;
 
@@ -26,30 +25,39 @@ public interface EmployeRepository extends BaseRepository<Employe> {
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
             FROM Employe employe
             WHERE employe.magasin.entreprise.id = :entrepriseId
-              AND (:#{#filter.nom} IS NULL OR LOWER(employe.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
-              AND (:#{#filter.prenom} IS NULL OR LOWER(employe.prenom) LIKE LOWER(CONCAT('%', :#{#filter.prenom}, '%')))
-              AND (:#{#filter.role} IS NULL OR employe.account.role.libelle = :#{#filter.role})
-              AND (:#{#filter.magasinId} IS NULL OR employe.magasin.id = :#{#filter.magasinId})
-              AND (:#{#filter.actif} IS NULL OR employe.account.enabled = :#{#filter.actif})
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR employe.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR employe.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:nom IS NULL OR :nom = '' OR LOWER(employe.nom) LIKE :nomPattern)
+              AND (:prenom IS NULL OR :prenom = '' OR LOWER(employe.prenom) LIKE :prenomPattern)
+              AND (:role IS NULL OR :role = '' OR employe.account.role.libelle = :role)
+              AND (:magasinId IS NULL OR employe.magasin.id = :magasinId)
+              AND (:actif IS NULL OR employe.account.enabled = :actif)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', employe.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', employe.createdAt) <= CAST(:endDate AS date))
             ORDER BY employe.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(employe)
             FROM Employe employe
             WHERE employe.magasin.entreprise.id = :entrepriseId
-              AND (:#{#filter.nom} IS NULL OR LOWER(employe.nom) LIKE LOWER(CONCAT('%', :#{#filter.nom}, '%')))
-              AND (:#{#filter.prenom} IS NULL OR LOWER(employe.prenom) LIKE LOWER(CONCAT('%', :#{#filter.prenom}, '%')))
-              AND (:#{#filter.role} IS NULL OR employe.account.role.libelle = :#{#filter.role})
-              AND (:#{#filter.magasinId} IS NULL OR employe.magasin.id = :#{#filter.magasinId})
-              AND (:#{#filter.actif} IS NULL OR employe.account.enabled = :#{#filter.actif})
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR employe.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR employe.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:nom IS NULL OR :nom = '' OR LOWER(employe.nom) LIKE :nomPattern)
+              AND (:prenom IS NULL OR :prenom = '' OR LOWER(employe.prenom) LIKE :prenomPattern)
+              AND (:role IS NULL OR :role = '' OR employe.account.role.libelle = :role)
+              AND (:magasinId IS NULL OR employe.magasin.id = :magasinId)
+              AND (:actif IS NULL OR employe.account.enabled = :actif)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', employe.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', employe.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<EmployeResponse> findResponsesByFilter(@Param("filter") EmployeFilter filter,
-                                                @Param("entrepriseId") UUID entrepriseId,
-                                                Pageable pageable);
+    Page<EmployeResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("nom") String nom,
+            @Param("nomPattern") String nomPattern,
+            @Param("prenom") String prenom,
+            @Param("prenomPattern") String prenomPattern,
+            @Param("role") String role,
+            @Param("magasinId") UUID magasinId,
+            @Param("actif") Boolean actif,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     @Query("SELECT COUNT(e) FROM Employe e WHERE e.magasin.id = :magasinId")
     long countByMagasinId(@Param("magasinId") UUID magasinId);

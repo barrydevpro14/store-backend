@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.produit.application.dto.CategoryProductFilter;
 import org.store.produit.application.dto.CategoryProductResponse;
 import org.store.produit.domain.model.CategoryProduct;
 
@@ -18,30 +17,26 @@ public interface CategoryProductRepository extends BaseRepository<CategoryProduc
             SELECT new org.store.produit.application.dto.CategoryProductResponse(category)
             FROM CategoryProduct category
             WHERE category.entreprise.id = :entrepriseId
-              AND (
-                  :#{#filter.libelle} IS NULL
-                  OR :#{#filter.libelle} = ''
-                  OR LOWER(category.libelle) LIKE LOWER(CONCAT('%', :#{#filter.libelle}, '%'))
-              )
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR category.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR category.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(category.libelle) LIKE :libellePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', category.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', category.createdAt) <= CAST(:endDate AS date))
             ORDER BY category.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(category)
             FROM CategoryProduct category
             WHERE category.entreprise.id = :entrepriseId
-              AND (
-                  :#{#filter.libelle} IS NULL
-                  OR :#{#filter.libelle} = ''
-                  OR LOWER(category.libelle) LIKE LOWER(CONCAT('%', :#{#filter.libelle}, '%'))
-              )
-              AND (:#{#filter.createdStartDateTime()} IS NULL OR category.createdAt >= :#{#filter.createdStartDateTime()})
-              AND (:#{#filter.createdEndDateTime()}   IS NULL OR category.createdAt <  :#{#filter.createdEndDateTime()})
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(category.libelle) LIKE :libellePattern)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', category.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', category.createdAt) <= CAST(:endDate AS date))
             """)
-    Page<CategoryProductResponse> findResponsesByFilter(@Param("filter") CategoryProductFilter filter,
-                                                       @Param("entrepriseId") UUID entrepriseId,
-                                                       Pageable pageable);
+    Page<CategoryProductResponse> findResponsesByFilter(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("libelle") String libelle,
+            @Param("libellePattern") String libellePattern,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            Pageable pageable);
 
     Optional<CategoryProduct> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
 

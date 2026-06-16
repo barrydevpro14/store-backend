@@ -10,6 +10,7 @@ import org.store.notification.domain.enums.AlerteType;
 import org.store.notification.domain.model.Alerte;
 import org.store.notification.domain.repository.AlerteRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -34,9 +35,6 @@ public class AlerteDomainService extends GlobalService<Alerte, AlerteRepository>
         return save(alerte);
     }
 
-    private static final LocalDateTime SENTINEL_FROM = LocalDateTime.of(2000, 1, 1, 0, 0);
-    private static final LocalDateTime SENTINEL_TO   = LocalDateTime.of(2099, 12, 31, 23, 59);
-
     public Page<AlerteResponse> findByFilter(UUID entrepriseId, UUID magasinId,
                                              AlerteType type, AlerteStatut statut,
                                              LocalDateTime from, LocalDateTime to,
@@ -45,9 +43,9 @@ public class AlerteDomainService extends GlobalService<Alerte, AlerteRepository>
         String magasinIdStr    = magasinId    != null ? magasinId.toString()    : "";
         String typeStr         = type         != null ? type.name()             : "";
         String statutStr       = statut       != null ? statut.name()           : "";
-        LocalDateTime fromDt   = from != null ? from : SENTINEL_FROM;
-        LocalDateTime toDt     = to   != null ? to   : SENTINEL_TO;
-        return repository.findByFilterNative(entrepriseIdStr, magasinIdStr, typeStr, statutStr, fromDt, toDt,
+        String fromStr         = from != null ? from.toLocalDate().toString()   : "";
+        String toStr           = to   != null ? to.toLocalDate().toString()     : "";
+        return repository.findByFilterNative(entrepriseIdStr, magasinIdStr, typeStr, statutStr, fromStr, toStr,
                         PageRequest.of(page, size))
                 .map(AlerteResponse::new);
     }

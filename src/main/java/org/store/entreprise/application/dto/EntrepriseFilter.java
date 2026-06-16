@@ -3,9 +3,7 @@ package org.store.entreprise.application.dto;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import org.store.common.validation.DatePattern;
 
 public record EntrepriseFilter(
         String sigle,
@@ -13,19 +11,11 @@ public record EntrepriseFilter(
         String ninea,
         String rccm,
         Boolean actif,
-        LocalDate createdStartDate,
-        LocalDate createdEndDate,
+        @DatePattern String startDate,
+        @DatePattern String endDate,
         @Min(0) int page,
         @Min(1) int size
 ) {
-    public LocalDateTime createdStartDateTime() {
-        return createdStartDate == null ? null : createdStartDate.atStartOfDay();
-    }
-
-    public LocalDateTime createdEndDateTime() {
-        return createdEndDate == null ? null : createdEndDate.plusDays(1).atStartOfDay();
-    }
-
     public Pageable toPageable() {
         return PageRequest.of(page, size);
     }

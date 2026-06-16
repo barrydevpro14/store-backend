@@ -1,6 +1,8 @@
 package org.store.notification.presentation;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +45,9 @@ public class AlerteController {
             @RequestParam(defaultValue = "20") int size) {
 
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        if (entrepriseId == null) {
+            return ResponseEntity.ok(new PageImpl<>(java.util.List.of(), PageRequest.of(page, size), 0));
+        }
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDt   = to   != null ? to.plusDays(1).atStartOfDay() : null;
 
@@ -54,6 +59,7 @@ public class AlerteController {
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<Long> countNouvelles() {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        if (entrepriseId == null) return ResponseEntity.ok(0L);
         long count = alerteDomainService
                 .findByFilter(entrepriseId, null, null, AlerteStatut.NOUVELLE, null, null, 0, 1)
                 .getTotalElements();

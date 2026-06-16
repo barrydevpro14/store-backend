@@ -3,6 +3,7 @@ package org.store.produit.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
@@ -28,7 +29,7 @@ public class QualityDomainService extends GlobalService<Quality, QualityReposito
     }
 
     public Page<QualityResponse> findResponsesByFilter(QualityFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(filter, entrepriseId, filter.toPageable());
+        return repository.findResponsesByFilter(entrepriseId, filter.libelle(), LikePatternHelper.toLikePattern(filter.libelle()), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
     public Optional<Quality> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId) {
