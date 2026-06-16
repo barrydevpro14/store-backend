@@ -1,10 +1,8 @@
 package org.store.stock.application.dto;
 
 import jakarta.validation.constraints.NotNull;
-import org.store.common.tools.DateHelper;
 import org.store.common.validation.DatePattern;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record MarginReportFilter(
@@ -14,11 +12,4 @@ public record MarginReportFilter(
         @DatePattern String startDate,
         @DatePattern String endDate
 ) {
-    public LocalDateTime fromDateTime() {
-        return DateHelper.parseStartOfDay(startDate);
-    }
-
-    public LocalDateTime toDateTime() {
-        return DateHelper.parseEndOfDay(endDate);
-    }
 }

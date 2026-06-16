@@ -3,7 +3,6 @@ package org.store.stock.domain.repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
-import org.store.stock.application.dto.MarginReportFilter;
 import org.store.stock.application.dto.MarginReportResponse;
 import org.store.stock.domain.model.SortieStock;
 
@@ -21,15 +20,20 @@ public interface SortieStockRepository extends BaseRepository<SortieStock> {
             FROM SortieStock sortie
             JOIN sortie.entreeStock entree
             WHERE entree.magasin.entreprise.id = :entrepriseId
-              AND entree.magasin.id = :#{#filter.magasinId}
+              AND entree.magasin.id = :magasinId
               AND sortie.annulee = false
-              AND (:#{#filter.productId} IS NULL OR entree.produit.id = :#{#filter.productId})
-              AND (:#{#filter.fournisseurId} IS NULL OR entree.productFournisseur.fournisseur.id = :#{#filter.fournisseurId})
-              AND (:#{#filter.fromDateTime()} IS NULL OR sortie.createdAt >= :#{#filter.fromDateTime()})
-              AND (:#{#filter.toDateTime()} IS NULL OR sortie.createdAt <= :#{#filter.toDateTime()})
+              AND (:productId IS NULL OR entree.produit.id = :productId)
+              AND (:fournisseurId IS NULL OR entree.productFournisseur.fournisseur.id = :fournisseurId)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', sortie.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', sortie.createdAt) <= CAST(:endDate AS date))
             """)
-    MarginReportResponse computeMargin(@Param("filter") MarginReportFilter filter,
-                                       @Param("entrepriseId") UUID entrepriseId);
+    MarginReportResponse computeMargin(
+            @Param("entrepriseId") UUID entrepriseId,
+            @Param("magasinId") UUID magasinId,
+            @Param("productId") UUID productId,
+            @Param("fournisseurId") UUID fournisseurId,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate);
 
     List<SortieStock> findAllByLigneVenteIdAndAnnuleeFalse(UUID ligneVenteId);
 }
