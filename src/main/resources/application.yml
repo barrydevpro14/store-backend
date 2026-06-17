@@ -72,3 +72,6 @@ sale:
 
 purchase:
   cancel-window-hours: ${PURCHASE_CANCEL_WINDOW_HOURS:24}
+
+alert:
+  daily: ${ALERT_DAILY:0 0 8 * * *}
