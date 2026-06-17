@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.domain.enums.StatutFacture;
+import org.store.common.dto.DataCountResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
@@ -49,6 +50,12 @@ public class FactureClientServiceImpl implements IFactureClientService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         magasinService.ensureAccessibleByCurrentUser(magasinService.findById(filter.magasinId()));
         return factureClientDomainService.findResponsesByFilter(filter, currentUser.entrepriseId());
+    }
+
+    @Override
+    public DataCountResponse countAllUnpaid(UUID magasingId) {
+        long countByMagasinIdAndStatut = factureClientDomainService.countByMagasinIdAndStatut(magasingId, List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE));
+        return new DataCountResponse(countByMagasinIdAndStatut);
     }
 
     /** GET by id : projection JPQL scopée par l'entreprise du caller, throw notFound si absent. */
