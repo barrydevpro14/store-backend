@@ -12,6 +12,7 @@ import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -115,7 +116,7 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     }
 
     /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
-    public java.util.List<Abonnement> findExpiringOnDates(java.util.List<java.time.LocalDate> dates) {
-        return repository.findByDateFinInAndStatutActifOrTrial(dates);
+    public List<Abonnement> findExpiringOnDates(List<LocalDate> dates) {
+        return repository.findByDateFinInAndStatutActifOrTrial(dates , List.of(AbonnementStatut.ACTIF , AbonnementStatut.TRIAL));
     }
 }

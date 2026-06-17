@@ -35,6 +35,7 @@ import org.store.security.application.service.ICurrentUserService;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -217,6 +218,15 @@ public class AbonnementServiceImpl implements IAbonnementService {
     @Override
     public boolean hasActiveSubscription(UUID entrepriseId) {
         return abonnementDomainService.findCurrent(entrepriseId).isPresent();
+    }
+
+    /**
+     * @param dates 
+     * @return List of abonnements expirings
+     */
+    @Override
+    public List<Abonnement> findExpiringOnDates(List<LocalDate> dates) {
+        return abonnementDomainService.findExpiringOnDates(dates);
     }
 
     /** Throws {@code BadArgumentException("plan.notSubscribable")} when the plan is inactive, hidden or trial. */

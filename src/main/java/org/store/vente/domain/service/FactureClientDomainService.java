@@ -1,10 +1,12 @@
 package org.store.vente.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.store.achat.domain.enums.StatutFacture;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.store.common.service.GlobalService;
@@ -104,5 +106,9 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
     public long countUnpaidByEntreprise(UUID entrepriseId) {
         return repository.countByEntrepriseAndStatuts(entrepriseId,
                 List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE));
+    }
+
+    public List<FactureClient> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures){
+        return repository.findDueOnDates(dates, statutFactures);
     }
 }

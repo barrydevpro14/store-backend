@@ -95,6 +95,13 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
                                               @Param("endOfDay") LocalDateTime endOfDay);
 
     /** Finds unpaid sale invoices whose due date is one of the given alert dates (today+1, today+3, today+5). */
-    @Query("SELECT f FROM FactureClient f WHERE f.statut = 'NON_PAYEE' AND f.dateEcheance IN :dates")
-    List<FactureClient> findDueOnDates(@Param("dates") List<LocalDate> dates);
+    @Query("""
+    SELECT f
+    FROM FactureClient f
+    JOIN FETCH f.commande commande
+    JOIN FETCH commande.magasin
+    WHERE f.dateEcheance IN :dates
+    AND f.statut IN :statutFactures
+""")
+    List<FactureClient> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures);
 }
