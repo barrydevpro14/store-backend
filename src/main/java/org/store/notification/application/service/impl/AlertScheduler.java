@@ -2,6 +2,7 @@ package org.store.notification.application.service.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.store.abonnement.domain.model.Abonnement;
@@ -20,6 +21,7 @@ import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.repository.FactureClientRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 /**
@@ -55,14 +57,18 @@ public class AlertScheduler {
         this.messageSourceService    = messageSourceService;
     }
 
-    @Scheduled(cron = "0 0 8 * * *")
+    @Scheduled(cron = "${alert.daily}")
     public void runDailyAlerts() {
-        log.info("AlertScheduler: running daily alert checks at 08:00");
+        log.info("AlertScheduler: running daily alert checks at {}", LocalDateTime.now());
+        runDailyAlertsAsync();
+    }
+
+    @Async
+    public void runDailyAlertsAsync(){
         checkAbonnementsExpiring();
         checkFacturesClientOverdue();
         checkFacturesAchatOverdue();
     }
-
     private void checkAbonnementsExpiring() {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
