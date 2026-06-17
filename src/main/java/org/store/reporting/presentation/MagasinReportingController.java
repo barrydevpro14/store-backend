@@ -22,6 +22,7 @@ import org.store.vente.domain.service.FactureClientDomainService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -59,7 +60,7 @@ public class MagasinReportingController {
         StockValuationResponse valuation = stockService.computeValuation(magasinId);
 
         long achatsEnAttente  = commandeAchatDomainService.countByMagasinIdAndStatut(magasinId, CommandeAchatStatut.DRAFT);
-        long facturesImpayees = factureClientDomainService.countByMagasinIdAndStatut(magasinId, StatutFacture.NON_PAYEE);
+        long facturesImpayees = factureClientDomainService.countByMagasinIdAndStatut(magasinId, List.of(StatutFacture.NON_PAYEE , StatutFacture.PARTIELLEMENT_PAYEE));
         long produitsBasSeuil = stockDomainService.countBelowThreshold(magasinId);
 
         long nombreCommandes = resume.nombreCommandes();
