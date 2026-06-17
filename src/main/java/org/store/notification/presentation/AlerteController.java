@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.store.common.exceptions.EntityException;
 import org.store.notification.application.dto.AlerteResponse;
+import org.store.notification.application.service.IAlertService;
 import org.store.notification.domain.enums.AlerteStatut;
 import org.store.notification.domain.enums.AlerteType;
 import org.store.notification.domain.service.AlerteDomainService;
@@ -24,12 +25,13 @@ public class AlerteController {
 
     public static final String BASE_PATH = "/api/v1/alertes";
 
-    private final AlerteDomainService alerteDomainService;
+    private final IAlertService alertService;
     private final ICurrentUserService currentUserService;
 
-    public AlerteController(AlerteDomainService alerteDomainService,
-                            ICurrentUserService currentUserService) {
-        this.alerteDomainService = alerteDomainService;
+    public AlerteController(
+            IAlertService alertService, ICurrentUserService currentUserService) {
+        this.alertService = alertService;
+
         this.currentUserService  = currentUserService;
     }
 
@@ -51,32 +53,27 @@ public class AlerteController {
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDt   = to   != null ? to.plusDays(1).atStartOfDay() : null;
 
-        return ResponseEntity.ok(alerteDomainService.findByFilter(
+        return ResponseEntity.ok(alertService.findByFilter(
                 entrepriseId, magasinId, type, statut, fromDt, toDt, page, size));
     }
 
     @GetMapping("/count")
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<Long> countNouvelles() {
-        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        if (entrepriseId == null) return ResponseEntity.ok(0L);
-        long count = alerteDomainService
-                .findByFilter(entrepriseId, null, null, AlerteStatut.NOUVELLE, null, null, 0, 1)
-                .getTotalElements();
-        return ResponseEntity.ok(count);
+        return ResponseEntity.ok(alertService.countNouvelle());
     }
 
     @PatchMapping("/{id}/lue")
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<AlerteResponse> markAsRead(@PathVariable UUID id) {
-        var alerte = alerteDomainService.findById(id);
-        return ResponseEntity.ok(new AlerteResponse(alerteDomainService.markAsRead(alerte)));
+        var alerte = alertService.findById(id);
+        return ResponseEntity.ok(new AlerteResponse(alertService.markAsRead(alerte)));
     }
 
     @PatchMapping("/{id}/resolue")
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<AlerteResponse> markAsResolved(@PathVariable UUID id) {
-        var alerte = alerteDomainService.findById(id);
-        return ResponseEntity.ok(new AlerteResponse(alerteDomainService.markAsResolved(alerte)));
+        var alerte = alertService.findById(id);
+        return ResponseEntity.ok(new AlerteResponse(alertService.markAsResolved(alerte)));
     }
 }

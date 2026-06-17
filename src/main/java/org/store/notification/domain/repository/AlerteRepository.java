@@ -5,7 +5,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.notification.domain.enums.AlerteStatut;
+import org.store.notification.domain.enums.AlerteType;
 import org.store.notification.domain.model.Alerte;
+
+import java.util.List;
+import java.util.UUID;
 
 public interface AlerteRepository extends BaseRepository<Alerte> {
 
@@ -36,4 +41,11 @@ public interface AlerteRepository extends BaseRepository<Alerte> {
                                     @Param("fromStr")         String fromStr,
                                     @Param("toStr")           String toStr,
                                     Pageable pageable);
+
+    @Query("""
+    SELECT COUNT(a) FROM Alerte a WHERE a.entrepriseId = :entrepriseId
+    AND a.magasinId = :magasinId AND a.type IN :alerteTypes
+    AND a.statut = :statut
+""")
+    Long countNouvelles(UUID entrepriseId, UUID magasinId, List<AlerteType> alerteTypes , AlerteStatut statut);
 }

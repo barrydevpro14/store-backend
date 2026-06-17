@@ -5,23 +5,26 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.domain.model.Abonnement;
-import org.store.abonnement.domain.service.AbonnementDomainService;
+import org.store.achat.application.service.IFactureAchatService;
+import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.FactureAchat;
-import org.store.achat.domain.repository.FactureAchatRepository;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.notification.application.event.AbonnementExpiringEvent;
 import org.store.notification.application.event.FactureAchatOverdueEvent;
 import org.store.notification.application.event.FactureClientOverdueEvent;
+import org.store.notification.application.service.IAlertService;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.notification.domain.enums.AlerteStatut;
 import org.store.notification.domain.enums.AlerteType;
 import org.store.notification.domain.service.AlerteDomainService;
+import org.store.vente.application.service.IFactureClientService;
 import org.store.vente.domain.model.FactureClient;
-import org.store.vente.domain.repository.FactureClientRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -36,24 +39,22 @@ public class AlertScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(AlertScheduler.class);
 
-    private final AbonnementDomainService abonnementDomainService;
-    private final FactureClientRepository factureClientRepository;
-    private final FactureAchatRepository  factureAchatRepository;
+    private final IAbonnementService abonnementService;
+    private final IFactureClientService factureClientService;
+    private final IFactureAchatService factureAchatService;
     private final INotificationEventPublisher eventPublisher;
-    private final AlerteDomainService alerteDomainService;
+    private final IAlertService alertService;
     private final IMessageSourceService messageSourceService;
 
-    public AlertScheduler(AbonnementDomainService abonnementDomainService,
-                          FactureClientRepository factureClientRepository,
-                          FactureAchatRepository factureAchatRepository,
+    public AlertScheduler(IAbonnementService abonnementService, IFactureClientService factureClientService, IFactureAchatService factureAchatService,
                           INotificationEventPublisher eventPublisher,
-                          AlerteDomainService alerteDomainService,
+                           IAlertService alertService,
                           IMessageSourceService messageSourceService) {
-        this.abonnementDomainService = abonnementDomainService;
-        this.factureClientRepository = factureClientRepository;
-        this.factureAchatRepository  = factureAchatRepository;
+        this.abonnementService = abonnementService;
+        this.factureClientService = factureClientService;
+        this.factureAchatService = factureAchatService;
         this.eventPublisher          = eventPublisher;
-        this.alerteDomainService     = alerteDomainService;
+        this.alertService = alertService;
         this.messageSourceService    = messageSourceService;
     }
 
@@ -65,7 +66,7 @@ public class AlertScheduler {
 
     @Async
     public void runDailyAlertsAsync(){
-        checkAbonnementsExpiring();
+//        checkAbonnementsExpiring();
         checkFacturesClientOverdue();
         checkFacturesAchatOverdue();
     }
@@ -73,7 +74,7 @@ public class AlertScheduler {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
                 today, today.plusDays(1), today.plusDays(3), today.plusDays(5));
-        abonnementDomainService.findExpiringOnDates(alertDates).forEach(abonnement -> {
+        abonnementService.findExpiringOnDates(alertDates).forEach(abonnement -> {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(today, abonnement.getDateFin());
             alertAbonnementExpiring(abonnement, daysUntil);
         });
@@ -87,7 +88,7 @@ public class AlertScheduler {
         String msg = isToday
                 ? messageSourceService.getMessage("notification.abonnement.expiring.message.today", new Object[]{abonnement.getDateFin()}, Locale.FRENCH)
                 : messageSourceService.getMessage("notification.abonnement.expiring.message", new Object[]{daysUntilExpiry, abonnement.getDateFin()}, Locale.FRENCH);
-        alerteDomainService.create(AlerteType.ABONNEMENT_EXPIRING, AlerteStatut.NOUVELLE,
+        alertService.create(AlerteType.ABONNEMENT_EXPIRING, AlerteStatut.NOUVELLE,
                 titre, msg,
                 abonnement.getEntreprise().getId(), null, abonnement.getId(), daysUntilExpiry);
         eventPublisher.publishEvent(new AbonnementExpiringEvent(abonnement, daysUntilExpiry));
@@ -98,7 +99,7 @@ public class AlertScheduler {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
                 today, today.plusDays(1), today.plusDays(3), today.plusDays(5));
-        factureClientRepository.findDueOnDates(alertDates).forEach(facture -> {
+        factureClientService.findDueOnDates(alertDates , List.of(StatutFacture.NON_PAYEE , StatutFacture.PARTIELLEMENT_PAYEE)).forEach(facture -> {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(today, facture.getDateEcheance());
             alertFactureClientOverdue(facture, daysUntil);
         });
@@ -114,7 +115,7 @@ public class AlertScheduler {
         String msg = isToday
                 ? messageSourceService.getMessage("notification.facture.vente.overdue.message.today", new Object[]{facture.getNumero(), restant}, Locale.FRENCH)
                 : messageSourceService.getMessage("notification.facture.vente.overdue.message", new Object[]{facture.getNumero(), daysUntil, restant}, Locale.FRENCH);
-        alerteDomainService.create(AlerteType.FACTURE_VENTE_OVERDUE, AlerteStatut.NOUVELLE,
+        alertService.create(AlerteType.FACTURE_VENTE_OVERDUE, AlerteStatut.NOUVELLE,
                 titre, msg,
                 magasin.getEntreprise().getId(), magasin.getId(), facture.getId(), daysUntil);
         eventPublisher.publishEvent(new FactureClientOverdueEvent(facture, daysUntil));
@@ -125,7 +126,7 @@ public class AlertScheduler {
         LocalDate today = LocalDate.now();
         java.util.List<java.time.LocalDate> alertDates = java.util.List.of(
                 today, today.plusDays(1), today.plusDays(3), today.plusDays(5));
-        factureAchatRepository.findDueOnDates(alertDates).forEach(facture -> {
+        factureAchatService.findDueOnDates(alertDates , List.of(StatutFacture.NON_PAYEE , StatutFacture.PARTIELLEMENT_PAYEE)).forEach(facture -> {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(today, facture.getDateEcheance());
             alertFactureAchatOverdue(facture, daysUntil);
         });
@@ -141,7 +142,7 @@ public class AlertScheduler {
         String msg = isToday
                 ? messageSourceService.getMessage("notification.facture.achat.overdue.message.today", new Object[]{facture.getNumero(), restant}, Locale.FRENCH)
                 : messageSourceService.getMessage("notification.facture.achat.overdue.message", new Object[]{facture.getNumero(), daysUntil, restant}, Locale.FRENCH);
-        alerteDomainService.create(AlerteType.FACTURE_ACHAT_OVERDUE, AlerteStatut.NOUVELLE,
+        alertService.create(AlerteType.FACTURE_ACHAT_OVERDUE, AlerteStatut.NOUVELLE,
                 titre, msg,
                 magasin.getEntreprise().getId(), magasin.getId(), facture.getId(), daysUntil);
         eventPublisher.publishEvent(new FactureAchatOverdueEvent(facture, daysUntil));

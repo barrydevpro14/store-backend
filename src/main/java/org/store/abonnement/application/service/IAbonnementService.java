@@ -11,6 +11,8 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.entreprise.domain.model.Entreprise;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface IAbonnementService {
@@ -60,4 +62,6 @@ public interface IAbonnementService {
      * Used as the login subscription gate.
      */
     boolean hasActiveSubscription(UUID entrepriseId);
+
+    List<Abonnement> findExpiringOnDates(List<LocalDate> dates);
 }
