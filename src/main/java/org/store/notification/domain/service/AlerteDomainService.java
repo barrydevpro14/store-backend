@@ -12,6 +12,7 @@ import org.store.notification.domain.repository.AlerteRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -58,5 +59,9 @@ public class AlerteDomainService extends GlobalService<Alerte, AlerteRepository>
     public Alerte markAsResolved(Alerte alerte) {
         alerte.setStatut(AlerteStatut.RESOLUE);
         return save(alerte);
+    }
+
+    public Long countNouvelles(UUID entrepriseId, UUID magasinId, List<AlerteType> alerteTypes) {
+        return repository.countNouvelles(entrepriseId, magasinId, alerteTypes , AlerteStatut.NOUVELLE);
     }
 }

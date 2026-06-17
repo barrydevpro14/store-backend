@@ -7,6 +7,7 @@ import org.store.achat.application.dto.FactureAchatEcheanceFilter;
 import org.store.achat.application.dto.FactureAchatFilter;
 import org.store.achat.application.dto.FactureAchatResponse;
 import org.store.achat.application.service.IFactureAchatService;
+import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.FactureAchat;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.common.exceptions.EntityException;
@@ -14,6 +15,8 @@ import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -67,5 +70,15 @@ public class FactureAchatServiceImpl implements IFactureAchatService {
     public FactureAchat findByCommandeId(UUID commandeId) {
         return factureAchatDomainService.findByCommandeId(commandeId)
                 .orElseThrow(() -> new EntityException("factureAchat.notFoundForCommande", commandeId));
+    }
+
+    /**
+     * @param dates 
+     * @param statutFactures
+     * @return
+     */
+    @Override
+    public List<FactureAchat> findDueOnDates(List<LocalDate> dates, List<StatutFacture> statutFactures) {
+        return factureAchatDomainService.findDueOnDates(dates, statutFactures);
     }
 }

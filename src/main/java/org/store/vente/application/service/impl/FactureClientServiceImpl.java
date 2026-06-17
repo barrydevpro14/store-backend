@@ -3,6 +3,7 @@ package org.store.vente.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.exceptions.EntityException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
@@ -11,8 +12,11 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.FactureClientFilter;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.service.IFactureClientService;
+import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.service.FactureClientDomainService;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -53,5 +57,10 @@ public class FactureClientServiceImpl implements IFactureClientService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         return factureClientDomainService.findResponseById(id, currentUser.entrepriseId())
                 .orElseThrow(() -> new EntityException("factureClient.notFound", id));
+    }
+
+    @Override
+    public List<FactureClient> findDueOnDates(List<LocalDate> dates, List<StatutFacture> statutFactures) {
+        return factureClientDomainService.findDueOnDates(dates, statutFactures);
     }
 }

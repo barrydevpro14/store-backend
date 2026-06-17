@@ -1,6 +1,7 @@
 package org.store.achat.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.store.achat.application.dto.FactureAchatCreate;
 import org.store.achat.application.dto.FactureAchatEcheanceFilter;
@@ -13,6 +14,8 @@ import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -96,5 +99,9 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
         }
 
         return save(facture);
+    }
+
+    public List<FactureAchat> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures){
+        return repository.findDueOnDates(dates, statutFactures);
     }
 }
