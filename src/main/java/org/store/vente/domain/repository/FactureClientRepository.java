@@ -19,8 +19,8 @@ import java.util.UUID;
 
 public interface FactureClientRepository extends BaseRepository<FactureClient> {
 
-    @Query("SELECT COUNT(facture) FROM FactureClient facture WHERE facture.commande.magasin.id = :magasinId AND facture.statut = :statut")
-    long countByMagasinIdAndStatut(@Param("magasinId") UUID magasinId, @Param("statut") StatutFacture statut);
+    @Query("SELECT COUNT(facture) FROM FactureClient facture WHERE facture.commande.magasin.id = :magasinId AND facture.statut IN :statuts")
+    long countByMagasinIdAndStatut(@Param("magasinId") UUID magasinId, @Param("statuts") List<StatutFacture> statuts);
 
     Optional<FactureClient> findByCommandeId(UUID commandeId);
 
