@@ -1,5 +1,6 @@
 package org.store.users.application.dto;
 
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.users.domain.model.Employe;
 
 import java.util.UUID;
@@ -13,7 +14,7 @@ public record EmployeResponse(
         String adresse,
         String username,
         RoleSummary role,
-        UUID magasinId,
+        MagasinSummaryResponse magasin,
         boolean actif
 ) {
     public EmployeResponse(Employe employe) {
@@ -26,7 +27,7 @@ public record EmployeResponse(
                 employe.getAdresse(),
                 employe.getAccount().getUsername(),
                 new RoleSummary(employe.getAccount().getRole().getId(), employe.getAccount().getRole().getLibelle()),
-                employe.getMagasin().getId(),
+                new MagasinSummaryResponse(employe.getMagasin()),
                 employe.getAccount().isEnabled()
         );
     }

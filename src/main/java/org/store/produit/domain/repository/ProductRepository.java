@@ -17,8 +17,8 @@ public interface ProductRepository extends BaseRepository<Product> {
             SELECT new org.store.produit.application.dto.ProductResponse(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR :nom = '' OR LOWER(produit.nom) LIKE :nomPattern)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(produit.reference) LIKE :referencePattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(CONCAT(produit.nom,produit.reference)) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(CONCAT(produit.reference , produit.categoryProduct.libelle)) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
             ORDER BY produit.createdAt DESC
@@ -27,8 +27,8 @@ public interface ProductRepository extends BaseRepository<Product> {
             SELECT COUNT(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR :nom = '' OR LOWER(produit.nom) LIKE :nomPattern)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(produit.reference) LIKE :referencePattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(CONCAT(produit.nom,produit.reference)) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(CONCAT(produit.reference , produit.categoryProduct.libelle)) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
             """)
