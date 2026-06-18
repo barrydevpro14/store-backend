@@ -25,7 +25,7 @@ public record CommandeAchatResponse(
     public CommandeAchatResponse(CommandeAchat commande) {
         this(
                 commande.getId(),
-                commande.getReference(),
+                commande.getFacture() == null ? "--" : commande.getFacture().getNumero(),
                 commande.getStatut(),
                 new FournisseurSummaryResponse(commande.getFournisseur()),
                 commande.getDate(),

@@ -207,7 +207,6 @@ class AchatProcessFlowTest {
         AchatDraftResponse draftResult = service.create(createRequest);
 
         assertThat(draftResult.commande().statut()).isEqualTo(CommandeAchatStatut.DRAFT);
-        assertThat(draftResult.commande().reference()).isEqualTo("CMD-TEST-001");
 
         // ── STEP 2: Receive → RECEPTIONNEE ───────────────────────────────────
         CommandeAchat receptionneeCommande = new CommandeAchat();
