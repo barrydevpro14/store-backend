@@ -19,10 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
-import org.store.magasin.application.dto.MagasinFilter;
-import org.store.magasin.application.dto.MagasinRequest;
-import org.store.magasin.application.dto.MagasinResponse;
-import org.store.magasin.application.dto.MagasinStatsResponse;
+import org.store.magasin.application.dto.*;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.service.MagasinDomainService;
 import org.store.stock.application.dto.StockValuationResponse;
@@ -34,6 +31,7 @@ import org.store.vente.domain.service.FactureClientDomainService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -86,6 +84,12 @@ public class MagasinController {
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<MagasinResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(magasinService.findResponseById(id));
+    }
+
+    @GetMapping("/{id}/summary")
+    @PreAuthorize("hasAuthority('STORE_READ_ONE')")
+    public ResponseEntity<MagasinSummaryResponse> getMagasinById(@PathVariable UUID id) {
+        return ResponseEntity.ok(magasinService.findEmployeById(id));
     }
 
     @GetMapping("/{id}/stats")
@@ -158,5 +162,11 @@ public class MagasinController {
     public ResponseEntity<Void> deleteLogo(@PathVariable UUID id) {
         magasinService.deleteLogo(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAuthority('STORE_READ_ONE')")
+    @GetMapping("/active/entreprise")
+    public ResponseEntity<List<MagasinSummaryResponse>> getActiveEntreprise() {
+        return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise());
     }
 }

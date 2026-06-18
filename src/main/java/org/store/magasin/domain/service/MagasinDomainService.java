@@ -9,6 +9,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.repository.MagasinRepository;
 
@@ -49,6 +50,10 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
                 filter.actif(),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());
+    }
+
+    public List<MagasinSummaryResponse> findAllByEntreprise(UUID entrepriseId , boolean actif) {
+        return repository.findAllByEntreprise(entrepriseId , actif);
     }
 
     /** Pose ou remplace le logo. orphanRemoval supprime auto l'ancienne PieceJointe. */

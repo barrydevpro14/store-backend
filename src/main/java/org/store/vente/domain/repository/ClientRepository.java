@@ -24,8 +24,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             SELECT new org.store.vente.application.dto.ClientResponse(client)
             FROM Client client
             WHERE client.magasin.id = :magasinId
-              AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
-              AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
+              AND (:nomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone) ) LIKE :nomPattern)
+              AND (:prenomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :prenomPattern)
               AND client.createdAt >= :createdStart
               AND client.createdAt <  :createdEnd
             ORDER BY client.createdAt DESC
@@ -34,8 +34,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             SELECT COUNT(client)
             FROM Client client
             WHERE client.magasin.id = :magasinId
-              AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
-              AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
+              AND (:nomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :nomPattern)
+              AND (:prenomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :prenomPattern)
               AND client.createdAt >= :createdStart
               AND client.createdAt <  :createdEnd
             """)
@@ -50,8 +50,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             SELECT new org.store.vente.application.dto.ClientResponse(client)
             FROM Client client
             WHERE client.magasin.entreprise.id = :entrepriseId
-              AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
-              AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
+              AND (:nomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :nomPattern)
+              AND (:prenomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :prenomPattern)
               AND client.createdAt >= :createdStart
               AND client.createdAt <  :createdEnd
             ORDER BY client.createdAt DESC
@@ -60,8 +60,8 @@ public interface ClientRepository extends BaseRepository<Client> {
             SELECT COUNT(client)
             FROM Client client
             WHERE client.magasin.entreprise.id = :entrepriseId
-              AND (:nomPattern IS NULL OR LOWER(client.nom) LIKE :nomPattern)
-              AND (:prenomPattern IS NULL OR LOWER(client.prenom) LIKE :prenomPattern)
+              AND (:nomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :nomPattern)
+              AND (:prenomPattern IS NULL OR LOWER(CONCAT(client.nom , client.prenom , client.telephone)) LIKE :prenomPattern)
               AND client.createdAt >= :createdStart
               AND client.createdAt <  :createdEnd
             """)

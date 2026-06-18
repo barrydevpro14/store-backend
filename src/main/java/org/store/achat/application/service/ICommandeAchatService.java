@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.domain.model.CommandeAchat;
+import org.store.common.dto.DataCountResponse;
 
 import java.util.UUID;
 
@@ -20,4 +21,6 @@ public interface ICommandeAchatService {
 
     /** Vérifie que la commande appartient à l'entreprise du caller. Throw `ForbiddenException("commandeAchat.notOwned")` sinon. */
     CommandeAchat ensureBelongsToCurrentEntreprise(CommandeAchat commande);
+
+    DataCountResponse countDraft(UUID magasinId);
 }

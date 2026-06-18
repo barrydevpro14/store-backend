@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
 
 import java.util.List;
@@ -49,4 +50,16 @@ public interface MagasinRepository extends BaseRepository<Magasin> {
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);
+
+        @Query(value = """
+                    SELECT new org.store.magasin.application.dto.MagasinSummaryResponse(magasin)
+                    FROM Magasin magasin
+                    WHERE magasin.entreprise.id = :entrepriseId
+                    AND magasin.actif = :actif
+                    ORDER BY magasin.createdAt DESC
+                    """)
+        List<MagasinSummaryResponse> findAllByEntreprise(
+                @Param("entrepriseId") UUID entrepriseId,
+                @Param("actif") boolean actif
+               );
 }

@@ -7,8 +7,10 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IMagasinService {
@@ -30,7 +32,10 @@ public interface IMagasinService {
 
     MagasinResponse findResponseById(UUID id);
 
+    MagasinSummaryResponse findEmployeById(UUID id);
+
     Page<MagasinResponse> findAllByCurrentEntreprise(MagasinFilter filter);
+    List<MagasinSummaryResponse> findAllByCurrentEntreprise();
 
     MagasinResponse update(UUID id, MagasinRequest magasinRequest);
 

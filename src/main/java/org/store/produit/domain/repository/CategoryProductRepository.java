@@ -17,7 +17,7 @@ public interface CategoryProductRepository extends BaseRepository<CategoryProduc
             SELECT new org.store.produit.application.dto.CategoryProductResponse(category)
             FROM CategoryProduct category
             WHERE category.entreprise.id = :entrepriseId
-              AND (:libelle IS NULL OR :libelle = '' OR LOWER(category.libelle) LIKE :libellePattern)
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(CONCAT(category.libelle,category.description)) LIKE :libellePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', category.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', category.createdAt) <= CAST(:endDate AS date))
             ORDER BY category.createdAt DESC
@@ -26,7 +26,7 @@ public interface CategoryProductRepository extends BaseRepository<CategoryProduc
             SELECT COUNT(category)
             FROM CategoryProduct category
             WHERE category.entreprise.id = :entrepriseId
-              AND (:libelle IS NULL OR :libelle = '' OR LOWER(category.libelle) LIKE :libellePattern)
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(CONCAT(category.libelle,category.description)) LIKE :libellePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', category.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', category.createdAt) <= CAST(:endDate AS date))
             """)

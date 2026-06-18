@@ -21,8 +21,10 @@ public interface FournisseurRepository extends BaseRepository<Fournisseur> {
             SELECT new org.store.achat.application.dto.FournisseurResponse(fournisseur)
             FROM Fournisseur fournisseur
             WHERE (fournisseur.entreprise.id = :entrepriseId OR fournisseur.entreprise IS NULL)
-              AND (:nom IS NULL OR :nom = '' OR LOWER(fournisseur.nom) LIKE :nomPattern)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(fournisseur.reference) LIKE :referencePattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(fournisseur.nom) LIKE :nomPattern OR LOWER(fournisseur.prenom) LIKE :nomPattern
+              OR LOWER(fournisseur.telephone) LIKE :nomPattern OR LOWER(fournisseur.reference) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = ''  OR LOWER(fournisseur.nom) LIKE :referencePattern OR LOWER(fournisseur.prenom) LIKE :referencePattern
+              OR LOWER(fournisseur.telephone) LIKE :referencePattern OR LOWER(fournisseur.reference) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', fournisseur.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', fournisseur.createdAt) <= CAST(:endDate AS date))
             ORDER BY fournisseur.systeme DESC, fournisseur.createdAt DESC
@@ -31,8 +33,10 @@ public interface FournisseurRepository extends BaseRepository<Fournisseur> {
             SELECT COUNT(fournisseur)
             FROM Fournisseur fournisseur
             WHERE (fournisseur.entreprise.id = :entrepriseId OR fournisseur.entreprise IS NULL)
-              AND (:nom IS NULL OR :nom = '' OR LOWER(fournisseur.nom) LIKE :nomPattern)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(fournisseur.reference) LIKE :referencePattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(fournisseur.nom) LIKE :nomPattern OR LOWER(fournisseur.prenom) LIKE :nomPattern
+              OR LOWER(fournisseur.telephone) LIKE :nomPattern OR LOWER(fournisseur.reference) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(fournisseur.nom) LIKE :referencePattern OR LOWER(fournisseur.prenom) LIKE :referencePattern
+              OR LOWER(fournisseur.telephone) LIKE :referencePattern OR LOWER(fournisseur.reference) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', fournisseur.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', fournisseur.createdAt) <= CAST(:endDate AS date))
             """)
