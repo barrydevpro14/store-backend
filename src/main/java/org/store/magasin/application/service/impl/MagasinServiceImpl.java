@@ -1,5 +1,6 @@
 package org.store.magasin.application.service.impl;
 
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.application.service.IMagasinService;
 
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import org.store.security.application.enums.PermissionCode;
 import org.store.abonnement.application.service.AbonnementQuotaService;
 import org.store.security.application.service.ICurrentUserService;
 
+import java.util.List;
 import java.util.UUID;
 
 /** Manages the full lifecycle of a Magasin (CRUD, logo upload, access-control checks) scoped to the current user's entreprise. */
@@ -79,10 +81,21 @@ public class MagasinServiceImpl implements IMagasinService {
     }
 
     @Override
+    public MagasinSummaryResponse findEmployeById(UUID id) {
+        Magasin magasin = ensureAccessibleByCurrentUser(magasinDomainService.findById(id));
+        return new MagasinSummaryResponse(magasin);
+    }
+
+    @Override
     public Page<MagasinResponse> findAllByCurrentEntreprise(MagasinFilter filter) {
         validatorService.validate(filter);
         UserPrincipal currentUser = currentUserService.getCurrent();
         return magasinDomainService.findResponsesByFilter(filter, currentUser.entrepriseId());
+    }
+
+    @Override
+    public List<MagasinSummaryResponse> findAllByCurrentEntreprise() {
+        return magasinDomainService.findAllByEntreprise(currentUserService.getCurrent().entrepriseId() , true);
     }
 
     @Override

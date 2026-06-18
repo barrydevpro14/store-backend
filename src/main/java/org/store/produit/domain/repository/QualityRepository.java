@@ -17,7 +17,7 @@ public interface QualityRepository extends BaseRepository<Quality> {
             SELECT new org.store.produit.application.dto.QualityResponse(quality)
             FROM Quality quality
             WHERE quality.entreprise.id = :entrepriseId
-              AND (:libelle IS NULL OR :libelle = '' OR LOWER(quality.libelle) LIKE :libellePattern)
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(CONCAT(quality.libelle,quality.description)) LIKE :libellePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', quality.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', quality.createdAt) <= CAST(:endDate AS date))
             ORDER BY quality.createdAt DESC
@@ -26,7 +26,7 @@ public interface QualityRepository extends BaseRepository<Quality> {
             SELECT COUNT(quality)
             FROM Quality quality
             WHERE quality.entreprise.id = :entrepriseId
-              AND (:libelle IS NULL OR :libelle = '' OR LOWER(quality.libelle) LIKE :libellePattern)
+              AND (:libelle IS NULL OR :libelle = '' OR LOWER(CONCAT(quality.libelle,quality.description)) LIKE :libellePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', quality.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', quality.createdAt) <= CAST(:endDate AS date))
             """)

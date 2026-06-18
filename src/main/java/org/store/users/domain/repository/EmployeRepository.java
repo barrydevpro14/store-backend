@@ -25,8 +25,10 @@ public interface EmployeRepository extends BaseRepository<Employe> {
             SELECT new org.store.users.application.dto.EmployeResponse(employe)
             FROM Employe employe
             WHERE employe.magasin.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR :nom = '' OR LOWER(employe.nom) LIKE :nomPattern)
-              AND (:prenom IS NULL OR :prenom = '' OR LOWER(employe.prenom) LIKE :prenomPattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(employe.nom) LIKE :nomPattern
+                    OR LOWER(employe.prenom) LIKE :nomPattern)
+              AND (:prenom IS NULL OR :prenom = '' OR LOWER(employe.nom) LIKE :prenomPattern
+                OR LOWER(employe.prenom) LIKE :prenomPattern)
               AND (:role IS NULL OR :role = '' OR employe.account.role.libelle = :role)
               AND (:magasinId IS NULL OR employe.magasin.id = :magasinId)
               AND (:actif IS NULL OR employe.account.enabled = :actif)
@@ -38,8 +40,10 @@ public interface EmployeRepository extends BaseRepository<Employe> {
             SELECT COUNT(employe)
             FROM Employe employe
             WHERE employe.magasin.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR :nom = '' OR LOWER(employe.nom) LIKE :nomPattern)
-              AND (:prenom IS NULL OR :prenom = '' OR LOWER(employe.prenom) LIKE :prenomPattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(employe.nom) LIKE :nomPattern
+                    OR LOWER(employe.prenom) LIKE :nomPattern)
+              AND (:prenom IS NULL OR :prenom = '' OR LOWER(employe.nom) LIKE :prenomPattern
+                OR LOWER(employe.prenom) LIKE :prenomPattern)
               AND (:role IS NULL OR :role = '' OR employe.account.role.libelle = :role)
               AND (:magasinId IS NULL OR employe.magasin.id = :magasinId)
               AND (:actif IS NULL OR employe.account.enabled = :actif)

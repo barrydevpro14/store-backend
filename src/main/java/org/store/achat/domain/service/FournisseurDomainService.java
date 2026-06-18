@@ -47,12 +47,13 @@ public class FournisseurDomainService extends GlobalService<Fournisseur, Fournis
     }
 
     public Page<FournisseurResponse> findResponsesByFilter(FournisseurFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(
+        Page<FournisseurResponse> responsesByFilter = repository.findResponsesByFilter(
                 entrepriseId,
                 filter.nom(), LikePatternHelper.toLikePattern(filter.nom()),
                 filter.reference(), LikePatternHelper.toLikePattern(filter.reference()),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());
+        return responsesByFilter;
     }
 
     public Optional<Fournisseur> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {

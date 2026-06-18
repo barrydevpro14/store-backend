@@ -1,5 +1,6 @@
 package org.store.users.application.service;
 
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.users.application.service.impl.EmployeServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -103,7 +104,7 @@ class EmployeServiceImplTest {
     private EmployeResponse sampleResponse(String roleLibelle) {
         return new EmployeResponse(UUID.randomUUID(), "Doe", "John",
                 "john@example.com", "+221770000000", "Dakar", "john.emp",
-                new RoleSummary(ROLE_ID, roleLibelle), magasinId, true);
+                new RoleSummary(ROLE_ID, roleLibelle), new MagasinSummaryResponse(magasinId , "store-one"), true);
     }
 
     private Role roleWithId() {
