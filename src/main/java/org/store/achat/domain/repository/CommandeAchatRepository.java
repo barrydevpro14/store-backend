@@ -34,7 +34,13 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat> {
               AND (:fournisseurId IS NULL OR commande.fournisseur.id = :fournisseurId)
               AND (:statut IS NULL OR commande.statut = :statut)
               AND (:statutFacture IS NULL OR facture.statut = :statutFacture)
-              AND (:reference IS NULL OR :reference = '' OR facture.numero ILIKE CONCAT('%', :reference, '%'))
+              AND (:reference IS NULL OR :reference = '' OR LOWER(facture.numero) LIKE LOWER(CONCAT('%', :reference, '%'))
+              OR LOWER(
+                     CONCAT(
+                         COALESCE(commande.fournisseur.nom, ''),' ',
+                         COALESCE(commande.fournisseur.prenom, '')
+                     )
+                 ) LIKE LOWER(CONCAT('%', :reference, '%')))
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', commande.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', commande.createdAt) <= CAST(:endDate AS date))
             ORDER BY commande.createdAt DESC
