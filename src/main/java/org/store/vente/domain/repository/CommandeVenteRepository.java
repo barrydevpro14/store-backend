@@ -27,14 +27,21 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
             SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.statut, facture.montantPaye)
             FROM CommandeVente commande
             LEFT JOIN commande.facture facture
+            LEFT JOIN commande.client client
             LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
             WHERE commande.magasin.entreprise.id = :entrepriseId
               AND commande.magasin.id = :magasinId
-              AND (:clientId IS NULL OR commande.client.id = :clientId)
+              AND (:clientId IS NULL OR client.id = :clientId)
               AND (:vendeurId IS NULL OR account.user.id = :vendeurId)
               AND (:statut IS NULL OR commande.statut = :statut)
               AND (:statutFacture IS NULL OR facture.statut = :statutFacture)
-              AND (:reference IS NULL OR :reference = '' OR facture.numero ILIKE CONCAT('%', :reference, '%'))
+              AND (:reference IS NULL OR :reference = '' OR LOWER(facture.numero) LIKE LOWER(CONCAT('%', :reference, '%'))
+              OR LOWER(
+                     CONCAT(
+                         COALESCE(client.nom, ''),' ',
+                         COALESCE(client.prenom, '')
+                     )
+                 ) LIKE LOWER(CONCAT('%', :reference, '%')))
               AND (:montantMin IS NULL OR commande.montantTotal >= :montantMin)
               AND (:montantMax IS NULL OR commande.montantTotal <= :montantMax)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', commande.createdAt) >= CAST(:startDate AS date))
