@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.security.application.dto.AccountRequest;
 import org.store.security.application.dto.ResetPasswordRequest;
 import org.store.users.application.dto.EmployeFilter;
@@ -76,7 +77,7 @@ class EmployeControllerTest {
         UUID magasinId = UUID.randomUUID();
         UUID createdId = UUID.randomUUID();
         EmployeResponse response = new EmployeResponse(createdId, "Doe", "John",
-                "john@example.com", "+221770000000", "Dakar", "john.emp", new RoleSummary(ROLE_ID, "MANAGER"), magasinId, true);
+                "john@example.com", "+221770000000", "Dakar", "john.emp", new RoleSummary(ROLE_ID, "MANAGER"), new MagasinSummaryResponse(magasinId , "store-one"), true);
 
         when(employeService.create(any(EmployeRequest.class))).thenReturn(response);
 
@@ -86,7 +87,7 @@ class EmployeControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(createdId.toString()))
                 .andExpect(jsonPath("$.role.libelle").value("MANAGER"))
-                .andExpect(jsonPath("$.magasinId").value(magasinId.toString()));
+                .andExpect(jsonPath("$.magasin.id").value(magasinId.toString()));
     }
 
     @Test
@@ -108,7 +109,7 @@ class EmployeControllerTest {
 
     private EmployeResponse sampleResponse(UUID id, UUID magasinId) {
         return new EmployeResponse(id, "Doe", "John", "john@example.com", "+221770000000", "Dakar",
-                "john.emp", new RoleSummary(ROLE_ID, "SELLER"), magasinId, true);
+                "john.emp", new RoleSummary(ROLE_ID, "SELLER"), new MagasinSummaryResponse(magasinId , "store-one"), true);
     }
 
     @Test
