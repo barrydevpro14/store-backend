@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.service.ICommandeAchatService;
+import org.store.common.dto.DataCountResponse;
 
 
 import java.util.UUID;
@@ -47,5 +48,11 @@ public class CommandeAchatController {
     @PreAuthorize("hasAuthority('PURCHASE_READ')")
     public ResponseEntity<CommandeAchatResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(commandeAchatService.findResponseById(id));
+    }
+
+    @GetMapping("/pending-purchases/{magasinId}")
+    @PreAuthorize("hasAuthority('PURCHASE_READ')")
+    public ResponseEntity<DataCountResponse> countDraft(@PathVariable UUID magasinId) {
+        return ResponseEntity.ok(commandeAchatService.countDraft(magasinId));
     }
 }

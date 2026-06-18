@@ -6,8 +6,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.service.ICommandeAchatService;
+import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.service.CommandeAchatDomainService;
+import org.store.common.dto.DataCountResponse;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
@@ -62,5 +64,10 @@ public class CommandeAchatServiceImpl implements ICommandeAchatService {
                 currentUserService.getCurrent().entrepriseId(),
                 "commandeAchat.notOwned"
         );
+    }
+
+    @Override
+    public DataCountResponse countDraft(UUID magasinId) {
+        return new DataCountResponse(commandeAchatDomainService.countByMagasinIdAndStatut(magasinId, CommandeAchatStatut.DRAFT));
     }
 }
