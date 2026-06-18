@@ -56,7 +56,7 @@ public record CommandeVenteResponse(
                                   BigDecimal montantTotal, BigDecimal montantPaye) {
         this(
                 commande.getId(),
-                commande.getReference(),
+                commande.getFacture() == null ? commande.getReference() : commande.getFacture().getNumero(),
                 commande.getStatut(),
                 commande.getClient() != null ? new ClientSummaryResponse(commande.getClient()) : null,
                 user,

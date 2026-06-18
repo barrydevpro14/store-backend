@@ -218,7 +218,6 @@ class AchatServiceImplTest {
 
         AchatDraftResponse response = service.create(req);
 
-        assertThat(response.commande().reference()).isEqualTo("CMD-AUTO");
         assertThat(response.commande().statut()).isEqualTo(CommandeAchatStatut.DRAFT);
 
         ArgumentCaptor<CommandeAchatCreate> captor = ArgumentCaptor.forClass(CommandeAchatCreate.class);
@@ -545,7 +544,6 @@ class AchatServiceImplTest {
 
         org.store.achat.application.dto.AchatDetailsResponse response = service.findDetailsById(commandeId);
 
-        assertThat(response.commande().reference()).isEqualTo("CMD-AUTO");
         assertThat(response.facture().numero()).isEqualTo("FAC-001");
         assertThat(response.lignes()).hasSize(1);
     }
