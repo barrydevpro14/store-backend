@@ -34,7 +34,7 @@ public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
               AND (:vendeurId IS NULL OR account.user.id = :vendeurId)
               AND (:statut IS NULL OR commande.statut = :statut)
               AND (:statutFacture IS NULL OR facture.statut = :statutFacture)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(commande.reference) LIKE LOWER(CONCAT('%', :reference, '%')))
+              AND (:reference IS NULL OR :reference = '' OR facture.numero ILIKE CONCAT('%', :reference, '%'))
               AND (:montantMin IS NULL OR commande.montantTotal >= :montantMin)
               AND (:montantMax IS NULL OR commande.montantTotal <= :montantMax)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', commande.createdAt) >= CAST(:startDate AS date))

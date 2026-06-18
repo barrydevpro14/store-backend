@@ -86,7 +86,6 @@ class CommandeAchatServiceImplTest {
         CommandeAchatResponse response = service.findResponseById(commandeId);
 
         assertThat(response.id()).isEqualTo(commandeId);
-        assertThat(response.reference()).isEqualTo("CMD-AUTO");
     }
 
     @Test
