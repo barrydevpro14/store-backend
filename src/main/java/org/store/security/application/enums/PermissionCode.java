@@ -15,6 +15,8 @@ public enum PermissionCode {
     ROLE_UPDATE,
     ROLE_DELETE,
 
+    SYSTEM_ROLE_UPDATE,
+
     CONTACT_READ,
     CONTACT_RESPOND,
 
