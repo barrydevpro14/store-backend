@@ -7,6 +7,7 @@ import org.store.common.exceptions.EntityException;
 import org.store.common.service.ValidatorService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.entreprise.domain.service.EntrepriseDomainService;
+import org.store.security.application.dto.RoleListResponse;
 import org.store.security.application.dto.RoleRequest;
 import org.store.security.application.dto.RoleResponse;
 import org.store.security.application.dto.RoleUpdateRequest;
@@ -62,63 +63,55 @@ public class RoleServiceImpl implements IRoleService {
         return roleDomainService.findById(id);
     }
 
-    /**
-     * Returns roles visible to the current user:
-     * - ADMIN → all roles
-     * - OWNER → global (except ADMIN) + company custom
-     * - MANAGER/SELLER → assignable + active (global + company custom)
-     */
     @Override
-    public List<RoleResponse> findAllScoped() {
-        UserPrincipal caller = currentUserService.getCurrent();
-        boolean isAdmin = caller.hasPermission(PermissionCode.ADMIN_ACCESS);
+    public List<RoleListResponse> findAllSystem() {
+        return roleDomainService.findAllSystem();
+    }
 
-        if (isAdmin) {
-            return roleDomainService.findAllWithPermissions().stream()
-                    .map(RoleResponse::new)
-                    .toList();
-        }
+    @Override
+    public List<RoleListResponse> findAllEmployee() {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return roleDomainService.findAssignableByEntreprise(entrepriseId);
+    }
 
-        UUID entrepriseId = caller.entrepriseId();
-        List<Role> roles = roleDomainService.findByEntrepriseIdOrGlobal(entrepriseId);
+    @Override
+    public List<RoleListResponse> findAllForManagement() {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return roleDomainService.findAllByEntreprise(entrepriseId);
+    }
 
-        boolean isOwner = caller.hasPermission(PermissionCode.OWNER_ACCESS);
-        if (isOwner) {
-            return roles.stream()
-                    .filter(r -> !r.isSystemRole() || !r.getLibelle().equalsIgnoreCase("ADMIN"))
-                    .map(RoleResponse::new)
-                    .toList();
-        }
-
-        return roles.stream()
-                .filter(r -> r.isAssignableToEmploye() && r.isActif())
-                .map(RoleResponse::new)
-                .toList();
+    @Override
+    public RoleResponse findByIdWithPermissions(UUID id) {
+        return roleDomainService.findByIdWithPermissions(id)
+                .orElseThrow(() -> new EntityException("role.notFound", id.toString()));
     }
 
     @Override
     @Transactional
-    public RoleResponse create(RoleRequest request) {
+    public RoleResponse createSystemRole(RoleRequest request) {
         validatorService.validate(request);
 
-        UserPrincipal caller = currentUserService.getCurrent();
-        boolean isAdmin = caller.hasPermission(PermissionCode.ADMIN_ACCESS);
-
-        if (isAdmin) {
-            if (roleDomainService.findByLibelle(request.libelle()).isPresent()) {
-                throw new BadArgumentException("role.alreadyExists", request.libelle());
-            }
-            Role role = roleDomainService.create(request.libelle(), request.description(), true);
-            if (request.permissions() != null && !request.permissions().isEmpty()) {
-                roleDomainService.setPermissions(role, resolvePermissions(request.permissions()));
-            }
-            return new RoleResponse(role);
-        }
-
-        UUID entrepriseId = caller.entrepriseId();
-        if (roleDomainService.existsByLibelleAndEntreprise(request.libelle(), entrepriseId)) {
+        if (roleDomainService.findByLibelle(request.libelle()).isPresent()) {
             throw new BadArgumentException("role.alreadyExists", request.libelle());
         }
+
+        Role role = roleDomainService.create(request.libelle(), request.description(), true);
+
+        if (request.permissions() != null && !request.permissions().isEmpty()) {
+            roleDomainService.setPermissions(role, resolvePermissions(request.permissions()));
+        }
+
+        return new RoleResponse(role);
+    }
+
+    @Override
+    @Transactional
+    public RoleResponse createCustomRole(RoleRequest request) {
+        validatorService.validate(request);
+
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+
+        roleDomainService.ensureLibelleValidForCreate(request.libelle(), entrepriseId);
 
         Entreprise entreprise = entrepriseDomainService.findById(entrepriseId);
         Role role = roleDomainService.createCustom(request.libelle(), request.description(), entreprise);
@@ -132,14 +125,29 @@ public class RoleServiceImpl implements IRoleService {
 
     @Override
     @Transactional
+    public RoleResponse updateSystemRole(UUID id, RoleUpdateRequest request) {
+        validatorService.validate(request);
+
+        Role role = roleDomainService.findById(id);
+        if (!role.isSysteme()) {
+            throw new BadArgumentException("role.notSystemRole", role.getLibelle());
+        }
+
+        roleDomainService.findByLibelle(request.libelle())
+                .filter(found -> !found.getId().equals(id))
+                .ifPresent(found -> { throw new BadArgumentException("role.alreadyExists", request.libelle()); });
+
+        return new RoleResponse(roleDomainService.updateLibelleDescription(role, request.libelle(), request.description()));
+    }
+
+    @Override
+    @Transactional
     public RoleResponse update(UUID id, RoleUpdateRequest request) {
         validatorService.validate(request);
         Role role = ensureCustomAndOwned(id);
 
         UUID entrepriseId = role.getEntreprise().getId();
-        if (roleDomainService.existsByLibelleAndEntrepriseExcluding(request.libelle(), entrepriseId, id)) {
-            throw new BadArgumentException("role.alreadyExists", request.libelle());
-        }
+        roleDomainService.ensureLibelleValidForUpdate(request.libelle(), entrepriseId, id);
 
         return new RoleResponse(roleDomainService.updateLibelleDescription(role, request.libelle(), request.description()));
     }
@@ -148,6 +156,23 @@ public class RoleServiceImpl implements IRoleService {
     @Transactional
     public RoleResponse updatePermissions(UUID id, List<String> permissionCodes) {
         Role role = ensureCustomAndOwned(id);
+        roleDomainService.setPermissions(role, resolvePermissions(permissionCodes));
+        return new RoleResponse(role);
+    }
+
+    @Override
+    @Transactional
+    public RoleResponse updateSystemRolePermissions(UUID id, List<String> permissionCodes) {
+        UserPrincipal caller = currentUserService.getCurrent();
+        if (!caller.hasPermission(PermissionCode.ADMIN_ACCESS)) {
+            throw new BadArgumentException("role.systemRoleImmutable", id.toString());
+        }
+
+        Role role = roleDomainService.findById(id);
+        if (!role.isSysteme()) {
+            throw new BadArgumentException("role.notSystemRole", role.getLibelle());
+        }
+
         roleDomainService.setPermissions(role, resolvePermissions(permissionCodes));
         return new RoleResponse(role);
     }
@@ -176,8 +201,7 @@ public class RoleServiceImpl implements IRoleService {
         roleDomainService.delete(role);
     }
 
-    @Override
-    public Set<Permissions> resolvePermissions(List<String> codes) {
+    private Set<Permissions> resolvePermissions(List<String> codes) {
         Set<Permissions> result = new LinkedHashSet<>();
         codes.forEach(code -> permissionsDomainService.findByCode(code).ifPresent(result::add));
         return result;
@@ -185,7 +209,7 @@ public class RoleServiceImpl implements IRoleService {
 
     private Role ensureCustomAndOwned(UUID id) {
         Role role = roleDomainService.findById(id);
-        if (role.isSystemRole()) {
+        if (role.isSysteme()) {
             throw new BadArgumentException("role.systemRoleImmutable", role.getLibelle());
         }
         UserPrincipal caller = currentUserService.getCurrent();
