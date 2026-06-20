@@ -3,6 +3,7 @@ package org.store.security.domain.repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.security.application.dto.RoleListResponse;
 import org.store.security.domain.model.Role;
 
 import java.util.List;
@@ -11,30 +12,50 @@ import java.util.UUID;
 
 public interface RoleRepository extends BaseRepository<Role> {
 
-    /** Finds a global (system) role by name — entreprise must be null. */
-    @Query("SELECT r FROM Role r WHERE r.libelle = :libelle AND r.entreprise IS NULL")
+    /** Finds a system role by name (case-insensitive). */
+    @Query("SELECT r FROM Role r WHERE LOWER(r.libelle) = LOWER(:libelle) AND r.entreprise IS NULL")
     Optional<Role> findByLibelle(@Param("libelle") String libelle);
 
+    /** True if a system role with the given name already exists (case-insensitive). */
+    @Query("SELECT COUNT(r) > 0 FROM Role r WHERE LOWER(r.libelle) = LOWER(:libelle) AND r.entreprise IS NULL")
+    boolean existsByLibelleSystem(@Param("libelle") String libelle);
+
+    /** System roles only (entreprise IS NULL) — DTO projection, no permissions. */
+    @Query("""
+            SELECT new org.store.security.application.dto.RoleListResponse(r)
+            FROM Role r
+            WHERE r.entreprise IS NULL
+            ORDER BY r.libelle ASC
+            """)
+    List<RoleListResponse> findAllSystem();
+
+    /** Assignable active roles for a given company + global system assignable roles — DTO projection. */
+    @Query("""
+            SELECT new org.store.security.application.dto.RoleListResponse(r)
+            FROM Role r
+            WHERE r.assignableToEmploye = true
+            AND r.actif = true
+            AND (r.entreprise.id = :entrepriseId OR r.entreprise IS NULL)
+            ORDER BY r.libelle ASC
+            """)
+    List<RoleListResponse> findAssignableByEntreprise(@Param("entrepriseId") UUID entrepriseId);
+
     /**
-     * Roles visible to a given company:
-     * — company-scoped custom roles
-     * — global roles (entreprise = null) that have no company-scoped override with the same name (case-insensitive)
+     * All custom roles of a company (any status) + system assignable roles —
+     * for the OWNER role management page (settings).
      */
     @Query("""
-            SELECT r FROM Role r LEFT JOIN FETCH r.permissions
+            SELECT new org.store.security.application.dto.RoleListResponse(r)
+            FROM Role r
             WHERE r.entreprise.id = :entrepriseId
-               OR (r.entreprise IS NULL
-                   AND NOT EXISTS (
-                       SELECT 1 FROM Role cr
-                       WHERE cr.entreprise.id = :entrepriseId
-                         AND LOWER(cr.libelle) = LOWER(r.libelle)
-                   ))
+               OR (r.entreprise IS NULL AND r.assignableToEmploye = true)
+            ORDER BY r.libelle ASC
             """)
-    List<Role> findByEntrepriseIdOrGlobal(@Param("entrepriseId") UUID entrepriseId);
+    List<RoleListResponse> findAllByEntreprise(@Param("entrepriseId") UUID entrepriseId);
 
-    /** All roles — for ADMIN only. */
-    @Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions")
-    List<Role> findAllWithPermissions();
+    /** Single role with its permissions eagerly loaded — entity query, mapped to DTO in the service. */
+    @Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.id = :id")
+    Optional<Role> findByIdEager(@Param("id") UUID id);
 
     /** Check if any account is assigned to this role (prevents deletion). */
     @Query("SELECT COUNT(a) > 0 FROM Account a WHERE a.role = :role")

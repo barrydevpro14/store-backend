@@ -26,6 +26,10 @@ public class Role extends BaseEntity {
     @Column(name = "assignable_to_employe", nullable = false)
     private boolean assignableToEmploye;
 
+    /** Rôle système global (ADMIN, OWNER, MANAGER, SELLER…) — non lié à une entreprise. */
+    @Column(nullable = false)
+    private boolean systeme;
+
     /** `null` = rôle système global. Non-null = rôle personnalisé scoped à une entreprise. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "entreprise_id")
@@ -43,8 +47,4 @@ public class Role extends BaseEntity {
     )
     private Set<Permissions> permissions;
 
-    /** Returns true if this is a system (global) role — entreprise is null. */
-    public boolean isSystemRole() {
-        return entreprise == null;
-    }
 }
