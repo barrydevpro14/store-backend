@@ -1,0 +1,37 @@
+-- V48 : Marque les permissions assignables aux rôles custom (OWNER/MANAGER).
+--        Les permissions non marquées (auth, users, company, system…) restent
+--        réservées aux rôles système et ne peuvent pas être assignées via l'UI.
+
+ALTER TABLE permissions
+    ADD COLUMN assignable_to_custom_role BOOLEAN NOT NULL DEFAULT false;
+
+UPDATE permissions SET assignable_to_custom_role = true
+WHERE code IN (
+    -- Ventes
+    'SALES_ACCESS','SALE_CREATE','SALE_READ','SALE_UPDATE','SALE_DELETE',
+    'SALE_APPROVE','SALE_PAY','SALE_CANCEL',
+    -- Achats
+    'PURCHASES_ACCESS','PURCHASE_CREATE','PURCHASE_READ','PURCHASE_UPDATE','PURCHASE_DELETE',
+    'PURCHASE_APPROVE','PURCHASE_PAY','PURCHASE_CANCEL',
+    -- Stock
+    'STOCK_ACCESS','STOCK_READ','STOCK_ENTRY','STOCK_EXIT','STOCK_ADJUSTMENT',
+    'STOCK_INVENTORY','STOCK_TRANSFER','INVENTORY_ACCESS',
+    -- Clients
+    'CLIENT_CREATE','CLIENT_READ','CLIENT_UPDATE','CLIENT_DELETE',
+    -- Fournisseurs
+    'SUPPLIER_CREATE','SUPPLIER_READ','SUPPLIER_UPDATE','SUPPLIER_DELETE',
+    -- Produits
+    'SETTINGS_ACCESS','PRODUCT_CREATE','PRODUCT_READ','PRODUCT_UPDATE','PRODUCT_DELETE',
+    'PRODUCT_UPLOAD_IMAGE',
+    'CATEGORY_PRODUCT_CREATE','CATEGORY_PRODUCT_READ','CATEGORY_PRODUCT_UPDATE','CATEGORY_PRODUCT_DELETE',
+    'QUALITY_CREATE','QUALITY_READ','QUALITY_UPDATE','QUALITY_DELETE',
+    -- Dépenses
+    'EXPENSES_ACCESS','EXPENSE_CREATE','EXPENSE_READ','EXPENSE_UPDATE','EXPENSE_DELETE',
+    'EXPENSE_PAY','CATEGORY_EXPENSE_ACCESS',
+    -- Paiements
+    'PAYMENT_CREATE','PAYMENT_READ','PAYMENT_CANCEL','PAYMENT_REFUND',
+    -- Rapports (partiels)
+    'REPORT_STOCK','REPORT_SALES',
+    -- Employés (lecture seule)
+    'EMPLOYE_READ','STORE_READ_ONE'
+);
