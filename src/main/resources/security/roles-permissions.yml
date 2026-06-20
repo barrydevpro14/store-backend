@@ -21,6 +21,9 @@ permissions:
   - ROLE_UPDATE
   - ROLE_DELETE
 
+  # SYSTEM_ROLE management (system roles — ADMIN only)
+  - SYSTEM_ROLE_UPDATE
+
   # Module-level access tickets — gate the sidebar entry and the module shell.
   # Per-screen CRUD permissions still filter sub-nav tabs and row actions.
   - ENTREPRISE_ACCESS
@@ -228,6 +231,7 @@ roles:
       - ROLE_CREATE
       - ROLE_UPDATE
       - ROLE_DELETE
+      - SYSTEM_ROLE_UPDATE
       - COMPANY_CREATE
       - COMPANY_UPDATE
       - COMPANY_READ
@@ -517,34 +521,3 @@ roles:
       - REPORT_FINANCIAL
       - AUDIT_READ
       - SUBSCRIPTION_READ
-
-  - libelle: SELLER
-    description: Vendeur d'un magasin
-    assignableToEmploye: true
-    permissions:
-      - EMPLOYE_ACCESS
-      - SALES_ACCESS
-      - STOCK_ACCESS
-      - INVENTORY_ACCESS
-      - INVENTORY_READ
-      - AUTH_LOGIN
-      - AUTH_LOGOUT
-      - AUTH_REFRESH_TOKEN
-      - AUTH_RESET_PASSWORD
-      - AUTH_CHANGE_PASSWORD
-      - STORE_READ_ONE
-      - CATEGORY_PRODUCT_READ
-      - QUALITY_READ
-      - PRODUCT_READ
-      - SUPPLIER_READ
-      - CLIENT_CREATE
-      - CLIENT_READ
-      - STOCK_READ
-      - SALE_CREATE
-      - SALE_UPDATE
-      - SALE_DELETE
-      - SALE_READ
-      - SALE_PAY
-      - SALE_APPROVE
-      - PAYMENT_CREATE
-      - PAYMENT_READ

@@ -8,16 +8,14 @@ import java.util.UUID;
 
 /**
  * Lecture-seule d'un {@link Role}. Inclut la liste triée des codes de
- * permissions, le flag {@code assignableToEmploye}, et les champs
- * multi-tenant ajoutés en V36 : {@code entrepriseId} (null = rôle
- * système) et {@code actif}.
+ * permissions, le flag {@code assignableToEmploye}, {@code systeme} et {@code actif}.
  */
 public record RoleResponse(
         UUID id,
         String libelle,
         String description,
         boolean assignableToEmploye,
-        UUID entrepriseId,
+        boolean systeme,
         boolean actif,
         List<String> permissions
 ) {
@@ -27,7 +25,7 @@ public record RoleResponse(
                 role.getLibelle(),
                 role.getDescription(),
                 role.isAssignableToEmploye(),
-                role.getEntreprise() != null ? role.getEntreprise().getId() : null,
+                role.isSysteme(),
                 role.isActif(),
                 role.getPermissions().stream()
                         .map(Permissions::getCode)

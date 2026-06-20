@@ -1,8 +1,11 @@
 package org.store.security.domain.service;
 
 import org.springframework.stereotype.Service;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.security.application.dto.RoleListResponse;
+import org.store.security.application.dto.RoleResponse;
 import org.store.security.domain.model.Permissions;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.repository.RoleRepository;
@@ -24,12 +27,20 @@ public class RoleDomainService extends GlobalService<Role, RoleRepository> {
         return repository.findByLibelle(libelle);
     }
 
-    public List<Role> findAllWithPermissions() {
-        return repository.findAllWithPermissions();
+    public List<RoleListResponse> findAllSystem() {
+        return repository.findAllSystem();
     }
 
-    public List<Role> findByEntrepriseIdOrGlobal(UUID entrepriseId) {
-        return repository.findByEntrepriseIdOrGlobal(entrepriseId);
+    public Optional<RoleResponse> findByIdWithPermissions(UUID id) {
+        return repository.findByIdEager(id).map(RoleResponse::new);
+    }
+
+    public List<RoleListResponse> findAssignableByEntreprise(UUID entrepriseId) {
+        return repository.findAssignableByEntreprise(entrepriseId);
+    }
+
+    public List<RoleListResponse> findAllByEntreprise(UUID entrepriseId) {
+        return repository.findAllByEntreprise(entrepriseId);
     }
 
     public boolean existsUserWithRole(Role role) {
@@ -40,8 +51,30 @@ public class RoleDomainService extends GlobalService<Role, RoleRepository> {
         return repository.existsByLibelleAndEntreprise(libelle, entrepriseId);
     }
 
+    public boolean existsByLibelleSystem(String libelle) {
+        return repository.existsByLibelleSystem(libelle);
+    }
+
     public boolean existsByLibelleAndEntrepriseExcluding(String libelle, UUID entrepriseId, UUID excludeId) {
         return repository.existsByLibelleAndEntrepriseExcluding(libelle, entrepriseId, excludeId);
+    }
+
+    public void ensureLibelleValidForCreate(String libelle, UUID entrepriseId) {
+        if (existsByLibelleSystem(libelle)) {
+            throw new BadArgumentException("role.conflictsWithSystemRole", libelle);
+        }
+        if (existsByLibelleAndEntreprise(libelle, entrepriseId)) {
+            throw new BadArgumentException("role.alreadyExists", libelle);
+        }
+    }
+
+    public void ensureLibelleValidForUpdate(String libelle, UUID entrepriseId, UUID excludeId) {
+        if (existsByLibelleSystem(libelle)) {
+            throw new BadArgumentException("role.conflictsWithSystemRole", libelle);
+        }
+        if (existsByLibelleAndEntrepriseExcluding(libelle, entrepriseId, excludeId)) {
+            throw new BadArgumentException("role.alreadyExists", libelle);
+        }
     }
 
     /** Crée un rôle personnalisé scoped à une entreprise. */
@@ -50,6 +83,7 @@ public class RoleDomainService extends GlobalService<Role, RoleRepository> {
         role.setLibelle(libelle);
         role.setDescription(description);
         role.setAssignableToEmploye(true);
+        role.setSysteme(false);
         role.setEntreprise(entreprise);
         role.setActif(true);
         role.setPermissions(new LinkedHashSet<>());
@@ -62,6 +96,7 @@ public class RoleDomainService extends GlobalService<Role, RoleRepository> {
         role.setLibelle(libelle);
         role.setDescription(description);
         role.setAssignableToEmploye(assignableToEmploye);
+        role.setSysteme(true);
         role.setActif(true);
         role.setPermissions(new LinkedHashSet<>());
         return save(role);
