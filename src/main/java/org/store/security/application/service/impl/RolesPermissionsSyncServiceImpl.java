@@ -55,7 +55,7 @@ public class RolesPermissionsSyncServiceImpl implements IRolesPermissionsSyncSer
         RbacSyncContext context = new RbacSyncContext();
 
         syncPermissions(config, context);
-//        syncRoles(config, context);
+        syncRoles(config, context);
         List<String> orphanPermissions = findAndLogOrphanPermissions(context);
         List<String> orphanRoles = findAndLogOrphanRoles(config);
 
