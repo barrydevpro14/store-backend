@@ -1,6 +1,7 @@
 package org.store.notification.application.event;
 
-import org.store.abonnement.domain.model.PaiementAbonnement;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 /** Fired when an owner submits a subscription payment proof — ADMIN must validate or reject. */
-public record PaiementAbonnementSubmittedEvent(PaiementAbonnement paiement) {}
+public record PaiementAbonnementSubmittedEvent(UUID paiementId, String entrepriseSigle, BigDecimal montantFinal) {}

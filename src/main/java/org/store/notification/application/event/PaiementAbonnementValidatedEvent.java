@@ -1,6 +1,7 @@
 package org.store.notification.application.event;
 
-import org.store.abonnement.domain.model.PaiementAbonnement;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 /** Fired when an admin validates a subscription payment. */
-public record PaiementAbonnementValidatedEvent(PaiementAbonnement paiement) {}
+public record PaiementAbonnementValidatedEvent(UUID paiementId, UUID entrepriseId, BigDecimal montantFinal) {}

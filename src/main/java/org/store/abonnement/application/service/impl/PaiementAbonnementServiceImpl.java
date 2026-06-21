@@ -119,8 +119,9 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 new PaiementAbonnementCreationContext(abonnement, paiementAbonnementRequest, breakdown, preuveImage,
                         moyenPaiementService.findById(paiementAbonnementRequest.moyenPaiementId())));
 
+        String sigle = abonnement.getEntreprise() != null ? abonnement.getEntreprise().getSigle() : null;
         notificationEventPublisher.publishPaiementSubmitted(
-                new PaiementAbonnementSubmittedEvent(paiement));
+                new PaiementAbonnementSubmittedEvent(paiement.getId(), sigle, paiement.getMontantFinal()));
 
         return new PaiementAbonnementResponse(paiement);
     }
@@ -141,12 +142,16 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
         PaiementAbonnement validatedPaiement = paiementAbonnementDomainService.markAsValide(paiement);
 
-        notificationEventPublisher.publishPaiementValidated(new PaiementAbonnementValidatedEvent(validatedPaiement));
+        UUID entrepriseId   = abonnement.getEntreprise().getId();
+        String entrepriseSigle = abonnement.getEntreprise().getSigle();
+
+        notificationEventPublisher.publishPaiementValidated(
+                new PaiementAbonnementValidatedEvent(validatedPaiement.getId(), entrepriseId, validatedPaiement.getMontantFinal()));
 
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.PAIEMENT_ABONNEMENT_VALIDATED, AuditEntityType.PAIEMENT_ABONNEMENT,
-                validatedPaiement.getId(), abonnement.getEntreprise().getSigle(),
+                validatedPaiement.getId(), entrepriseSigle,
                 caller.accountId().toString(), caller.username(), caller.entrepriseId(), null, null));
 
         return new PaiementAbonnementResponse(validatedPaiement);
@@ -164,14 +169,18 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
         releaseReservedCouponIfAny(paiement.getAbonnement().getId());
 
+        UUID rejectEntrepriseId    = paiement.getAbonnement().getEntreprise().getId();
+        String rejectEntrepriseSigle = paiement.getAbonnement().getEntreprise().getSigle();
+
         PaiementAbonnement rejectedPaiement = paiementAbonnementDomainService.markAsRejete(paiement, rejectPaiementRequest.motifRejet());
 
-        notificationEventPublisher.publishPaiementRejected(new PaiementAbonnementRejectedEvent(rejectedPaiement));
+        notificationEventPublisher.publishPaiementRejected(
+                new PaiementAbonnementRejectedEvent(rejectedPaiement.getId(), rejectEntrepriseId, rejectPaiementRequest.motifRejet()));
 
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.PAIEMENT_ABONNEMENT_REJECTED, AuditEntityType.PAIEMENT_ABONNEMENT,
-                rejectedPaiement.getId(), rejectedPaiement.getAbonnement().getEntreprise().getSigle(),
+                rejectedPaiement.getId(), rejectEntrepriseSigle,
                 caller.accountId().toString(), caller.username(), caller.entrepriseId(), null, null));
 
         return new PaiementAbonnementResponse(rejectedPaiement);
