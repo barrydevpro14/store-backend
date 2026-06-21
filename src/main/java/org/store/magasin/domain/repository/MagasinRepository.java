@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
@@ -50,6 +51,17 @@ public interface MagasinRepository extends BaseRepository<Magasin> {
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);
+
+    @Query("""
+            SELECT new org.store.magasin.application.dto.MagasinCountResponse(
+                COUNT(m),
+                COUNT(CASE WHEN m.actif = true  THEN m.id ELSE null END),
+                COUNT(CASE WHEN m.actif = false THEN m.id ELSE null END)
+            )
+            FROM Magasin m
+            WHERE m.entreprise.id = :entrepriseId
+            """)
+    MagasinCountResponse countStatsByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
 
         @Query(value = """
                     SELECT new org.store.magasin.application.dto.MagasinSummaryResponse(magasin)

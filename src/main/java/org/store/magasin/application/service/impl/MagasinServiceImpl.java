@@ -16,6 +16,7 @@ import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
@@ -96,6 +97,11 @@ public class MagasinServiceImpl implements IMagasinService {
     @Override
     public List<MagasinSummaryResponse> findAllByCurrentEntreprise() {
         return magasinDomainService.findAllByEntreprise(currentUserService.getCurrent().entrepriseId() , true);
+    }
+
+    @Override
+    public MagasinCountResponse countByCurrentEntreprise() {
+        return magasinDomainService.countStatsByEntrepriseId(currentUserService.getCurrent().entrepriseId());
     }
 
     @Override
