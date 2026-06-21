@@ -50,7 +50,7 @@ public class LoginServiceImpl implements ILoginService {
         this.auditEventPublisher = auditEventPublisher;
     }
 
-    /** Authenticates the caller, runs the subscription gate, then issues the JWT pair. */
+    /** Authenticates the caller, then issues a full or restricted JWT pair depending on subscription state. */
     @Override
     @Transactional
     public AuthResponse login(LoginRequest loginRequest) {
@@ -60,9 +60,8 @@ public class LoginServiceImpl implements ILoginService {
 
         Account account = accountService.findByUsername(loginRequest.username());
         UserPrincipal principal = userPrincipalFactory.build(account);
-        ensureEntrepriseHasActiveSubscription(principal);
 
-        String accessToken = jwtService.generateToken(principal);
+        String accessToken = generateTokenForSubscriptionState(principal);
         String refreshToken = refreshTokenService.create(account);
 
         String details = "IP: " + RequestHelper.getClientIp() + " | UA: " + RequestHelper.getUserAgent();
@@ -76,15 +75,24 @@ public class LoginServiceImpl implements ILoginService {
     }
 
     /**
-     * Rejects callers whose entreprise has no active paid Abonnement and no live trial window.
-     * Skipped for ADMIN principals (no entreprise attached).
+     * Generates a full token for ADMIN and active-subscription callers.
+     * For an OWNER with expired subscription: emits a restricted token (subscription endpoints only).
+     * For an EMPLOYEE with expired subscription: blocks login entirely.
      */
-    public void ensureEntrepriseHasActiveSubscription(UserPrincipal principal) {
+    private String generateTokenForSubscriptionState(UserPrincipal principal) {
         if (principal.entrepriseId() == null) {
-            return;
+            return jwtService.generateToken(principal);
         }
-        if (!abonnementService.hasActiveSubscription(principal.entrepriseId())) {
-            throw new ForbiddenException("auth.subscription.required");
+
+        boolean isEmployee      = principal.magasinId() != null;
+        boolean hasSubscription = abonnementService.hasActiveSubscription(principal.entrepriseId());
+
+        if (hasSubscription) {
+            return jwtService.generateToken(principal);
         }
+        if (isEmployee) {
+            throw new ForbiddenException("auth.subscription.employee.expired");
+        }
+        return jwtService.generateRestrictedToken(principal);
     }
 }

@@ -19,7 +19,12 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
-import org.store.magasin.application.dto.*;
+import org.store.magasin.application.dto.MagasinCountResponse;
+import org.store.magasin.application.dto.MagasinFilter;
+import org.store.magasin.application.dto.MagasinRequest;
+import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinStatsResponse;
+import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.service.MagasinDomainService;
 import org.store.stock.application.dto.StockValuationResponse;
@@ -78,6 +83,12 @@ public class MagasinController {
                                                       @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(magasinService.findAllByCurrentEntreprise(
                 new MagasinFilter(nom, actif, startDate, endDate, page, size)));
+    }
+
+    @GetMapping("/count")
+    @PreAuthorize("hasAuthority('STORE_READ')")
+    public ResponseEntity<MagasinCountResponse> count() {
+        return ResponseEntity.ok(magasinService.countByCurrentEntreprise());
     }
 
     @GetMapping("/{id}")

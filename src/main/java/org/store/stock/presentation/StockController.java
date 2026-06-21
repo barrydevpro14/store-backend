@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.stock.application.dto.ExpiringLotResponse;
 import org.store.stock.application.dto.ExpiringLotsFilter;
+import org.store.common.dto.DataCountResponse;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
@@ -60,6 +61,12 @@ public class StockController {
         return ResponseEntity.ok(stockService.findBelowThresholdByCurrentEntreprise(
                 new StockFilter(magasinId, productId, page, size)
         ));
+    }
+
+    @GetMapping("/below-threshold/count")
+    @PreAuthorize("hasAuthority('STOCK_READ')")
+    public ResponseEntity<DataCountResponse> countBelowThreshold(@RequestParam UUID magasinId) {
+        return ResponseEntity.ok(new DataCountResponse(stockService.countBelowThresholdByCurrentEntreprise(magasinId)));
     }
 
     @GetMapping("/expiring-lots")

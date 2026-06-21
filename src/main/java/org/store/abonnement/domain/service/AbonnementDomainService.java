@@ -115,6 +115,29 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return repository.findByDateFinAndStatutActifOrTrial(date);
     }
 
+    /** Counts Abonnements created within an optional date range. Both bounds are optional. */
+    /** Returns true if the entreprise already has an EN_ATTENTE abonnement awaiting payment. */
+    public boolean hasPendingByEntreprise(UUID entrepriseId) {
+        return repository.existsByEntrepriseIdAndStatut(entrepriseId, AbonnementStatut.EN_ATTENTE);
+    }
+
+    public long countByCreatedBetween(String startDate, String endDate) {
+        return repository.countByCreatedBetween(startDate, endDate);
+    }
+
+    /**
+     * Annule un abonnement : EN_ATTENTE → EXPIRE (demande non aboutie),
+     * ACTIF / TRIAL / SUSPENDU → SUSPENDU (résiliation admin).
+     */
+    public Abonnement cancel(Abonnement abonnement) {
+        AbonnementStatut next = abonnement.getStatut() == AbonnementStatut.EN_ATTENTE
+                ? AbonnementStatut.EXPIRE
+                : AbonnementStatut.SUSPENDU;
+        abonnement.setStatut(next);
+        abonnement.setActif(false);
+        return save(abonnement);
+    }
+
     /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
     public List<Abonnement> findExpiringOnDates(List<LocalDate> dates) {
         return repository.findByDateFinInAndStatutActifOrTrial(dates , List.of(AbonnementStatut.ACTIF , AbonnementStatut.TRIAL));

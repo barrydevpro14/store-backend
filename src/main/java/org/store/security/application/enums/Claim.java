@@ -8,7 +8,8 @@ public enum Claim {
     USERNAME("username"),
     PERMISSIONS("permissions"),
     CURRENCY("currency"),
-    COUNTRY_NAME("countryName");
+    COUNTRY_NAME("countryName"),
+    SCOPE("scope");
 
     private final String key;
 

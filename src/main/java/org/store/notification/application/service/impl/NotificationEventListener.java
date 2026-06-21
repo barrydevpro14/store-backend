@@ -99,47 +99,44 @@ public class NotificationEventListener {
     @Async
     @EventListener
     public void onPaiementSubmitted(PaiementAbonnementSubmittedEvent event) {
-        var paiement   = event.paiement();
-        String sigle   = paiement.getAbonnement().getEntreprise().getSigle();
+        String sigle   = event.entrepriseSigle();
         String titre   = messageSourceService.getMessage("notification.paiement.submitted.titre", new Object[]{sigle});
         String message = messageSourceService.getMessage("notification.paiement.submitted.message",
-                new Object[]{sigle, paiement.getMontantFinal()});
+                new Object[]{sigle, event.montantFinal()});
 
         accountDomainService
                 .findAllByRoleLibelle("ADMIN")
                 .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
-        log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", paiement.getId());
+        log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", event.paiementId());
     }
 
     @Async
     @EventListener
     public void onPaiementValidated(PaiementAbonnementValidatedEvent event) {
-        var paiement   = event.paiement();
         String titre   = messageSourceService.getMessage("notification.paiement.validated.titre");
         String message = messageSourceService.getMessage("notification.paiement.validated.message",
-                new Object[]{paiement.getMontantFinal()});
+                new Object[]{event.montantFinal()});
 
         proprietaireDomainService
-                .findAccountByEntrepriseId(paiement.getAbonnement().getEntreprise().getId())
+                .findAccountByEntrepriseId(event.entrepriseId())
                 .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
-        log.info("PaiementValidated notification sent for paiement {}", paiement.getId());
+        log.info("PaiementValidated notification sent for paiement {}", event.paiementId());
     }
 
     @Async
     @EventListener
     public void onPaiementRejected(PaiementAbonnementRejectedEvent event) {
-        var paiement   = event.paiement();
         String titre   = messageSourceService.getMessage("notification.paiement.rejected.titre");
         String message = messageSourceService.getMessage("notification.paiement.rejected.message",
-                new Object[]{paiement.getMotifRejet()});
+                new Object[]{event.motifRejet()});
 
         proprietaireDomainService
-                .findAccountByEntrepriseId(paiement.getAbonnement().getEntreprise().getId())
+                .findAccountByEntrepriseId(event.entrepriseId())
                 .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
 
-        log.info("PaiementRejected notification sent for paiement {}", paiement.getId());
+        log.info("PaiementRejected notification sent for paiement {}", event.paiementId());
     }
 
     @Async

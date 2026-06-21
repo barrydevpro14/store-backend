@@ -65,6 +65,11 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         return repository.countByStatut(statut);
     }
 
+    /** Counts payments matching an optional statut and optional createdAt date range. */
+    public long countByStatutAndCreatedBetween(StatutPaiementAbonnement statut, String startDate, String endDate) {
+        return repository.countByStatutAndCreatedBetween(statut, startDate, endDate);
+    }
+
     /** Somme le montantFinal des paiements VALIDE dont la datePaiement tombe dans l'année donnée. */
     public BigDecimal sumValidatedRevenueForYear(int year) {
         LocalDate startOfYear = LocalDate.of(year, 1, 1);

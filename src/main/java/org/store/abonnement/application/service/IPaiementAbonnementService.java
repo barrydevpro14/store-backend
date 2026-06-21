@@ -44,4 +44,7 @@ public interface IPaiementAbonnementService {
      * Téléchargement de la preuve d'image. Scoping sur l'entreprise du caller (sauf ADMIN).
      */
     ImageDownloadResponse getPreuve(UUID paiementId);
+
+    /** ADMIN count — payments matching an optional statut and optional createdAt date range. */
+    long countByStatutAndCreatedBetween(String statut, String startDate, String endDate);
 }

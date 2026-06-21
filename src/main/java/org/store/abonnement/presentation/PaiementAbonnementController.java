@@ -21,6 +21,7 @@ import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
+import org.store.common.dto.DataCountResponse;
 import org.store.common.dto.ImageDownloadResponse;
 
 import java.util.UUID;
@@ -57,6 +58,15 @@ public class PaiementAbonnementController {
                                                                  @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(paiementAbonnementService.findAll(
                 new PaiementAbonnementFilter(statut, abonnementId, entrepriseId, startDate, endDate, page, size)));
+    }
+
+    @GetMapping("/count")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
+    public ResponseEntity<DataCountResponse> count(@RequestParam(required = false) String statut,
+                                                   @RequestParam(required = false) String startDate,
+                                                   @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(new DataCountResponse(
+                paiementAbonnementService.countByStatutAndCreatedBetween(statut, startDate, endDate)));
     }
 
     @GetMapping("/{id}")

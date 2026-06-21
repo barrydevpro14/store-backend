@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.store.property.JwtProperties;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.Claim;
+import org.store.security.application.enums.PermissionCode;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -23,6 +24,13 @@ import java.util.UUID;
 @Service
 public class JwtServiceImpl implements IJwtService {
     private final Logger logger = LoggerFactory.getLogger(JwtServiceImpl.class);
+
+    private static final List<String> RESTRICTED_PERMISSIONS = List.of(
+            PermissionCode.SUBSCRIPTION_CREATE.name(),
+            PermissionCode.SUBSCRIPTION_PAY.name(),
+            PermissionCode.SUBSCRIPTION_READ.name(),
+            PermissionCode.ENTREPRISE_ACCESS.name()
+    );
 
     private final JwtProperties properties;
     private final SecretKey secretKey;
@@ -34,6 +42,15 @@ public class JwtServiceImpl implements IJwtService {
 
     @Override
     public String generateToken(UserPrincipal principal) {
+        return buildToken(principal, principal.permissions(), "full");
+    }
+
+    @Override
+    public String generateRestrictedToken(UserPrincipal principal) {
+        return buildToken(principal, RESTRICTED_PERMISSIONS, "restricted");
+    }
+
+    private String buildToken(UserPrincipal principal, List<String> permissions, String scope) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + properties.expiration().accessToken().toMillis());
 
@@ -46,7 +63,8 @@ public class JwtServiceImpl implements IJwtService {
                 .claim(Claim.CURRENCY.getKey(), principal.currency())
                 .claim(Claim.COUNTRY_NAME.getKey(), principal.countryName())
                 .claim(Claim.ROLE.getKey(), principal.role())
-                .claim(Claim.PERMISSIONS.getKey(), principal.permissions())
+                .claim(Claim.PERMISSIONS.getKey(), permissions)
+                .claim(Claim.SCOPE.getKey(), scope)
                 .setIssuedAt(now)
                 .setExpiration(expiration)
                 .signWith(secretKey, SignatureAlgorithm.HS512)

@@ -1,5 +1,7 @@
 package org.store.security.application.service.impl;
 
+import org.store.abonnement.application.service.IAbonnementService;
+import org.store.common.exceptions.ForbiddenException;
 import org.store.security.application.service.IJwtService;
 import org.store.security.application.service.IRefreshTokenService;
 import org.store.security.application.service.IUserPrincipalFactory;
@@ -33,19 +35,22 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
     private final JwtProperties jwtProperties;
     private final IAuditEventPublisher auditEventPublisher;
     private final AuditLogDomainService auditLogDomainService;
+    private final IAbonnementService abonnementService;
 
     public RefreshTokenServiceImpl(RefreshTokenDomainService refreshTokenDomainService,
                                    IJwtService jwtService,
                                    IUserPrincipalFactory userPrincipalFactory,
                                    JwtProperties jwtProperties,
                                    IAuditEventPublisher auditEventPublisher,
-                                   AuditLogDomainService auditLogDomainService) {
+                                   AuditLogDomainService auditLogDomainService,
+                                   IAbonnementService abonnementService) {
         this.refreshTokenDomainService = refreshTokenDomainService;
         this.jwtService = jwtService;
         this.userPrincipalFactory = userPrincipalFactory;
         this.jwtProperties = jwtProperties;
         this.auditEventPublisher = auditEventPublisher;
         this.auditLogDomainService = auditLogDomainService;
+        this.abonnementService = abonnementService;
     }
 
     @Override
@@ -78,7 +83,7 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         }
 
         UserPrincipal principal = userPrincipalFactory.build(user.getAccount());
-        String accessToken = jwtService.generateToken(principal);
+        String accessToken = generateTokenForSubscriptionState(principal);
         return new AuthResponse(accessToken, refreshTokenValue);
     }
 
@@ -92,6 +97,23 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
                 publishLogoutAudit(token);
             }
         });
+    }
+
+    private String generateTokenForSubscriptionState(UserPrincipal principal) {
+        if (principal.entrepriseId() == null) {
+            return jwtService.generateToken(principal);
+        }
+
+        boolean isEmployee      = principal.magasinId() != null;
+        boolean hasSubscription = abonnementService.hasActiveSubscription(principal.entrepriseId());
+
+        if (hasSubscription) {
+            return jwtService.generateToken(principal);
+        }
+        if (isEmployee) {
+            throw new ForbiddenException("auth.subscription.employee.expired");
+        }
+        return jwtService.generateRestrictedToken(principal);
     }
 
     private void publishLogoutAudit(RefreshToken token) {
