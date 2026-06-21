@@ -61,4 +61,16 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);
+
+    /** Counts payments matching an optional statut and optional createdAt date range. */
+    @Query("""
+            SELECT COUNT(p)
+            FROM PaiementAbonnement p
+            WHERE (:statut IS NULL OR p.statut = :statut)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', p.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', p.createdAt) <= CAST(:endDate AS date))
+            """)
+    long countByStatutAndCreatedBetween(@Param("statut") StatutPaiementAbonnement statut,
+                                        @Param("startDate") String startDate,
+                                        @Param("endDate") String endDate);
 }

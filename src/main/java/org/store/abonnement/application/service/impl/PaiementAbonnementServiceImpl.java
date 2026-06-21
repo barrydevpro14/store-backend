@@ -177,6 +177,15 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return new PaiementAbonnementResponse(rejectedPaiement);
     }
 
+    /** ADMIN count — no auto-scoping; counts payments matching an optional statut + date range. */
+    @Override
+    public long countByStatutAndCreatedBetween(String statut, String startDate, String endDate) {
+        StatutPaiementAbonnement statutEnum = (statut == null || statut.isBlank())
+                ? null
+                : StatutPaiementAbonnement.valueOf(statut);
+        return paiementAbonnementDomainService.countByStatutAndCreatedBetween(statutEnum, startDate, endDate);
+    }
+
     /** Paginated filtered listing; auto-scoped to the caller's entreprise when the caller is not ADMIN. */
     @Override
     public Page<PaiementAbonnementResponse> findAll(PaiementAbonnementFilter filter) {
