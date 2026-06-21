@@ -21,6 +21,10 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     @Query("SELECT COUNT(abonnement) FROM Abonnement abonnement WHERE abonnement.statut = :statut")
     long countByStatut(@Param("statut") AbonnementStatut statut);
 
+    @Query("SELECT COUNT(a) > 0 FROM Abonnement a WHERE a.entreprise.id = :entrepriseId AND a.statut = :statut")
+    boolean existsByEntrepriseIdAndStatut(@Param("entrepriseId") UUID entrepriseId,
+                                          @Param("statut") AbonnementStatut statut);
+
     @Query("""
             SELECT abonnement
             FROM Abonnement abonnement

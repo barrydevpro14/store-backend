@@ -108,6 +108,10 @@ public class AbonnementServiceImpl implements IAbonnementService {
         UUID currentEntrepriseId = currentUser.entrepriseId();
         Entreprise entreprise = entrepriseService.findById(currentEntrepriseId);
 
+        if (abonnementDomainService.hasPendingByEntreprise(currentEntrepriseId)) {
+            throw new BadArgumentException("abonnement.alreadyPending");
+        }
+
         TypePlanAbonnement type = subscriptionTypeService.findById(subscribeRequest.typeId());
         ensureTypeActif(type);
         PlanAbonnement plan = type.getPlan();
@@ -163,6 +167,14 @@ public class AbonnementServiceImpl implements IAbonnementService {
         Abonnement abonnement = ensureBelongsToCurrentEntreprise(abonnementDomainService.findById(abonnementId));
         return new AbonnementResponse(
                 abonnementDomainService.setRenouvellementAuto(abonnement, renouvellementAutoRequest.renouvellementAuto()));
+    }
+
+    /** ADMIN — annule l'abonnement sans condition de statut. */
+    @Override
+    @Transactional
+    public AbonnementResponse cancelByAdmin(UUID abonnementId) {
+        Abonnement abonnement = abonnementDomainService.findById(abonnementId);
+        return new AbonnementResponse(abonnementDomainService.cancel(abonnement));
     }
 
     /** ADMIN count — no auto-scoping; counts all Abonnements in the given date range. */
@@ -245,7 +257,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
 
     /** Throws {@code BadArgumentException("subscriptionType.notSubscribable")} when the type is inactive. */
     public void ensureTypeActif(TypePlanAbonnement type) {
-        if (!type.isActif()) {
+        if (!type.isActif() || type.isTrial()) {
             throw new BadArgumentException("subscriptionType.notSubscribable");
         }
     }
