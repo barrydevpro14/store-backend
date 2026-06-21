@@ -84,15 +84,40 @@ class LoginServiceImplTest {
     }
 
     @Test
-    void should_reject_login_when_owner_has_no_active_subscription() {
+    void should_return_restricted_token_when_owner_has_expired_subscription() {
         LoginRequest request = new LoginRequest("john.doe", "S3cretPwd!");
         UUID entrepriseId = UUID.randomUUID();
         Account account = new Account();
         account.setId(UUID.randomUUID());
         account.setUsername("john.doe");
+        // magasinId = null → OWNER
         UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entrepriseId, null, "john.doe", null, null, "OWNER", List.of());
 
         when(accountService.findByUsername("john.doe")).thenReturn(account);
+        when(userPrincipalFactory.build(account)).thenReturn(principal);
+        when(abonnementService.hasActiveSubscription(entrepriseId)).thenReturn(false);
+        when(jwtService.generateRestrictedToken(principal)).thenReturn("restricted.token");
+        when(refreshTokenService.create(account)).thenReturn("refresh-uuid");
+
+        AuthResponse response = service.login(request);
+
+        assertThat(response.accessToken()).isEqualTo("restricted.token");
+        verify(jwtService, never()).generateToken(any());
+        verify(jwtService).generateRestrictedToken(principal);
+    }
+
+    @Test
+    void should_reject_login_when_employee_has_expired_subscription() {
+        LoginRequest request = new LoginRequest("alice", "S3cretPwd!");
+        UUID entrepriseId = UUID.randomUUID();
+        UUID magasinId = UUID.randomUUID();
+        Account account = new Account();
+        account.setId(UUID.randomUUID());
+        account.setUsername("alice");
+        // magasinId != null → EMPLOYEE
+        UserPrincipal principal = new UserPrincipal(account.getId(), UUID.randomUUID(), entrepriseId, magasinId, "alice", null, null, "SELLER", List.of());
+
+        when(accountService.findByUsername("alice")).thenReturn(account);
         when(userPrincipalFactory.build(account)).thenReturn(principal);
         when(abonnementService.hasActiveSubscription(entrepriseId)).thenReturn(false);
 
@@ -100,6 +125,7 @@ class LoginServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(jwtService, never()).generateToken(any());
+        verify(jwtService, never()).generateRestrictedToken(any());
         verify(refreshTokenService, never()).create(any());
     }
 

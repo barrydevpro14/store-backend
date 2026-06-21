@@ -30,6 +30,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
+import org.store.abonnement.application.service.IAbonnementService;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.service.AuditLogDomainService;
 
@@ -56,7 +57,7 @@ class RefreshTokenServiceImplTest {
                 "Bearer ",
                 new JwtProperties.Expiration(Duration.ofHours(1), Duration.ofDays(7))
         );
-        service = new RefreshTokenServiceImpl(refreshTokenDomainService, jwtService, userPrincipalFactory, jwtProperties, mock(IAuditEventPublisher.class), mock(AuditLogDomainService.class));
+        service = new RefreshTokenServiceImpl(refreshTokenDomainService, jwtService, userPrincipalFactory, jwtProperties, mock(IAuditEventPublisher.class), mock(AuditLogDomainService.class), mock(IAbonnementService.class));
     }
 
     @Test
