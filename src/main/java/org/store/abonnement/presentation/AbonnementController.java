@@ -20,6 +20,7 @@ import org.store.abonnement.application.dto.RenouvellementAutoRequest;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.common.dto.DataCountResponse;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -37,6 +38,13 @@ public class AbonnementController {
                                 ICurrentUserService currentUserService) {
         this.abonnementService = abonnementService;
         this.currentUserService = currentUserService;
+    }
+
+    @GetMapping("/count")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
+    public ResponseEntity<DataCountResponse> count(@RequestParam(required = false) String startDate,
+                                                   @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(new DataCountResponse(abonnementService.countByCreatedDateRange(startDate, endDate)));
     }
 
     @PostMapping("/subscribe")

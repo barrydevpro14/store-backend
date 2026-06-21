@@ -130,4 +130,13 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
     @Query("SELECT a FROM Abonnement a WHERE a.dateFin IN :dates AND a.statut IN :statuts")
     List<Abonnement> findByDateFinInAndStatutActifOrTrial(@Param("dates") List<LocalDate> dates , List<AbonnementStatut> statuts);
+
+    /** Counts all Abonnements whose createdAt falls within the given date range (both bounds optional). */
+    @Query("""
+            SELECT COUNT(a)
+            FROM Abonnement a
+            WHERE (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', a.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', a.createdAt) <= CAST(:endDate AS date))
+            """)
+    long countByCreatedBetween(@Param("startDate") String startDate, @Param("endDate") String endDate);
 }

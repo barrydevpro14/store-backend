@@ -115,6 +115,11 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return repository.findByDateFinAndStatutActifOrTrial(date);
     }
 
+    /** Counts Abonnements created within an optional date range. Both bounds are optional. */
+    public long countByCreatedBetween(String startDate, String endDate) {
+        return repository.countByCreatedBetween(startDate, endDate);
+    }
+
     /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
     public List<Abonnement> findExpiringOnDates(List<LocalDate> dates) {
         return repository.findByDateFinInAndStatutActifOrTrial(dates , List.of(AbonnementStatut.ACTIF , AbonnementStatut.TRIAL));

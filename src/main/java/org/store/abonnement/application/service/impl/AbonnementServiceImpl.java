@@ -165,6 +165,12 @@ public class AbonnementServiceImpl implements IAbonnementService {
                 abonnementDomainService.setRenouvellementAuto(abonnement, renouvellementAutoRequest.renouvellementAuto()));
     }
 
+    /** ADMIN count — no auto-scoping; counts all Abonnements in the given date range. */
+    @Override
+    public long countByCreatedDateRange(String startDate, String endDate) {
+        return abonnementDomainService.countByCreatedBetween(startDate, endDate);
+    }
+
     /** ADMIN listing — no auto-scoping; the caller sees every Abonnement. */
     @Override
     public Page<AbonnementResponse> findAll(AbonnementFilter filter) {

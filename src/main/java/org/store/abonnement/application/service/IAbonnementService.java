@@ -63,5 +63,8 @@ public interface IAbonnementService {
      */
     boolean hasActiveSubscription(UUID entrepriseId);
 
+    /** ADMIN count — number of Abonnements created within the given date range (both bounds optional). */
+    long countByCreatedDateRange(String startDate, String endDate);
+
     List<Abonnement> findExpiringOnDates(List<LocalDate> dates);
 }
