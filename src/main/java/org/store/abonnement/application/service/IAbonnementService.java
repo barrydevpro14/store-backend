@@ -63,5 +63,14 @@ public interface IAbonnementService {
      */
     boolean hasActiveSubscription(UUID entrepriseId);
 
+    /** ADMIN count — number of Abonnements created within the given date range (both bounds optional). */
+    long countByCreatedDateRange(String startDate, String endDate);
+
+    /**
+     * ADMIN — annule un abonnement : EN_ATTENTE → EXPIRE, ACTIF/TRIAL → SUSPENDU.
+     * Retourne l'abonnement mis à jour.
+     */
+    AbonnementResponse cancelByAdmin(UUID abonnementId);
+
     List<Abonnement> findExpiringOnDates(List<LocalDate> dates);
 }

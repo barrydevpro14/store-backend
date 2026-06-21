@@ -33,6 +33,11 @@ public interface IStockService {
     StockResponse updateThreshold(UUID id, StockThresholdRequest stockThresholdRequest);
 
     /**
+     * Nombre de stocks sous seuil pour le magasin ciblé, après vérification d'accès.
+     */
+    long countBelowThresholdByCurrentEntreprise(UUID magasinId);
+
+    /**
      * Calcule la valorisation totale du stock d'un magasin (SUM(qty × prixAchatMoyen))
      * après vérification d'accès magasin.
      */

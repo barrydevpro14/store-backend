@@ -3,6 +3,7 @@ package org.store.abonnement.presentation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.store.common.exceptions.EntityException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import org.store.abonnement.application.dto.RenouvellementAutoRequest;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.common.dto.DataCountResponse;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.UUID;
@@ -37,6 +39,19 @@ public class AbonnementController {
                                 ICurrentUserService currentUserService) {
         this.abonnementService = abonnementService;
         this.currentUserService = currentUserService;
+    }
+
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_VALIDATE')")
+    public ResponseEntity<AbonnementResponse> cancel(@PathVariable UUID id) {
+        return ResponseEntity.ok(abonnementService.cancelByAdmin(id));
+    }
+
+    @GetMapping("/count")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
+    public ResponseEntity<DataCountResponse> count(@RequestParam(required = false) String startDate,
+                                                   @RequestParam(required = false) String endDate) {
+        return ResponseEntity.ok(new DataCountResponse(abonnementService.countByCreatedDateRange(startDate, endDate)));
     }
 
     @PostMapping("/subscribe")
@@ -80,10 +95,14 @@ public class AbonnementController {
     @GetMapping("/me/current")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<CurrentAbonnementResponse> findMyCurrent() {
-        // ADMIN has no company → no subscription to return
         if (currentUserService.getCurrent().entrepriseId() == null) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(abonnementService.findMyCurrent());
+        try {
+            return ResponseEntity.ok(abonnementService.findMyCurrent());
+        } catch (EntityException e) {
+            // No active or trial subscription — return 204 instead of 406
+            return ResponseEntity.noContent().build();
+        }
     }
 }

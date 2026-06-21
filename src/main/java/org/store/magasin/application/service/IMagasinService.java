@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
@@ -36,6 +37,9 @@ public interface IMagasinService {
 
     Page<MagasinResponse> findAllByCurrentEntreprise(MagasinFilter filter);
     List<MagasinSummaryResponse> findAllByCurrentEntreprise();
+
+    /** Retourne total / actifs / inactifs pour l'entreprise du caller en une seule requête. */
+    MagasinCountResponse countByCurrentEntreprise();
 
     MagasinResponse update(UUID id, MagasinRequest magasinRequest);
 

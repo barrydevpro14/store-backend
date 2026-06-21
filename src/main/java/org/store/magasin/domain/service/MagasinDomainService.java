@@ -6,6 +6,7 @@ import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
@@ -76,5 +77,10 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
     /** Compte tous les magasins d'une entreprise (pour contrôle de quota). */
     public long countByEntrepriseId(UUID entrepriseId) {
         return repository.countByEntrepriseId(entrepriseId);
+    }
+
+    /** Retourne total / actifs / inactifs pour l'entreprise en une seule requête. */
+    public MagasinCountResponse countStatsByEntrepriseId(UUID entrepriseId) {
+        return repository.countStatsByEntrepriseId(entrepriseId);
     }
 }

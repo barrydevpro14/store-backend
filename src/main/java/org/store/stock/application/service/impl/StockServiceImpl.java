@@ -72,6 +72,13 @@ public class StockServiceImpl implements IStockService {
         return new StockResponse(updated);
     }
 
+    /** Compte les stocks sous seuil après vérification d'accès magasin. */
+    @Override
+    public long countBelowThresholdByCurrentEntreprise(UUID magasinId) {
+        magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
+        return stockDomainService.countBelowThreshold(magasinId);
+    }
+
     /** Calcule la valorisation après vérification d'accès magasin. */
     @Override
     public StockValuationResponse computeValuation(UUID magasinId) {
