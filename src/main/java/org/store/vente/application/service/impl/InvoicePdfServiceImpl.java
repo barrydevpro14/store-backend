@@ -7,7 +7,7 @@ import com.lowagie.text.pdf.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.tools.OwnershipHelper;
-import org.store.entreprise.domain.model.Entreprise;
+import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.service.IInvoicePdfService;
 import org.store.vente.domain.model.FactureClient;
@@ -23,7 +23,7 @@ import java.util.UUID;
 
 /**
  * Generates a PDF invoice for a client sale using OpenPDF.
- * Layout: company header / invoice metadata / lines table / totals / payments.
+ * Layout: store header / invoice metadata / lines table / totals / payments.
  */
 @Service
 @Transactional(readOnly = true)
@@ -58,21 +58,21 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
                 "factureClient.notOwned"
         );
 
-        Entreprise entreprise = facture.getCommande().getMagasin().getEntreprise();
+        Magasin magasin = facture.getCommande().getMagasin();
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
             PdfWriter.getInstance(doc, out);
             doc.open();
 
-            addHeader(doc, entreprise, facture);
+            addHeader(doc, magasin, facture);
             doc.add(Chunk.NEWLINE);
             addClientAndMeta(doc, facture);
             doc.add(Chunk.NEWLINE);
             addLinesTable(doc, facture);
             doc.add(Chunk.NEWLINE);
             addTotalsAndPayments(doc, facture);
-            addFooter(doc, entreprise);
+            addFooter(doc, magasin);
 
             doc.close();
             return out.toByteArray();
@@ -83,28 +83,26 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     /* ── Header ────────────────────────────────────────────────────────── */
 
-    private void addHeader(Document doc, Entreprise entreprise, FactureClient facture) throws DocumentException {
+    private void addHeader(Document doc, Magasin magasin, FactureClient facture) throws DocumentException {
         PdfPTable header = new PdfPTable(2);
         header.setWidthPercentage(100);
         header.setWidths(new float[]{55, 45});
 
-        // Company info
-        PdfPCell companyCell = new PdfPCell();
-        companyCell.setBorder(Rectangle.NO_BORDER);
-        companyCell.setPadding(8);
+        // Store info
+        PdfPCell storeCell = new PdfPCell();
+        storeCell.setBorder(Rectangle.NO_BORDER);
+        storeCell.setPadding(8);
 
         Font nameFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
         Font infoFont = new Font(Font.HELVETICA, 9, Font.NORMAL, GRAY_TEXT);
 
-        companyCell.addElement(new Paragraph(entreprise.getRaisonSociale(), nameFont));
-        if (isNotBlank(entreprise.getNinea()))
-            companyCell.addElement(new Paragraph("NINEA : " + entreprise.getNinea(), infoFont));
-        if (isNotBlank(entreprise.getRccm()))
-            companyCell.addElement(new Paragraph("RCCM : " + entreprise.getRccm(), infoFont));
-        if (isNotBlank(entreprise.getAdresse()))
-            companyCell.addElement(new Paragraph(entreprise.getAdresse(), infoFont));
+        storeCell.addElement(new Paragraph(magasin.getNom(), nameFont));
+        if (isNotBlank(magasin.getAdresse()))
+            storeCell.addElement(new Paragraph(magasin.getAdresse(), infoFont));
+        if (isNotBlank(magasin.getTelephone()))
+            storeCell.addElement(new Paragraph(magasin.getTelephone(), infoFont));
 
-        header.addCell(companyCell);
+        header.addCell(storeCell);
 
         // Invoice title block
         PdfPCell invoiceCell = new PdfPCell();
@@ -177,7 +175,6 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             Color bg = alt ? new Color(249, 250, 251) : Color.WHITE;
             alt = !alt;
 
-            // Product name + ref
             PdfPCell nameCell = new PdfPCell();
             nameCell.setBackgroundColor(bg);
             nameCell.setBorderColor(BORDER);
@@ -207,13 +204,13 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         Font valueFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
         Font boldFont  = new Font(Font.HELVETICA, 11, Font.BOLD, PRIMARY);
 
-        addTotalRow(totals, "Total HT",  formatAmount(facture.getMontantTotal()),  labelFont, valueFont, Color.WHITE);
+        addTotalRow(totals, "Total HT", formatAmount(facture.getMontantTotal()), labelFont, valueFont, Color.WHITE);
 
         var paiements = paiementVenteDomainService.findAllByFactureId(facture.getId());
         for (var p : paiements) {
             String label = "Paiement (" + (p.getMoyen() != null ? p.getMoyen().getLibelle() : "—") + ")";
             if (p.getDatePaiement() != null) label += " – " + p.getDatePaiement().format(DATE_FMT);
-            addTotalRow(totals, label, "– " + formatAmount(p.getMontant()), labelFont, valueFont, Color.WHITE);
+            addTotalRow(totals, label, formatAmount(p.getMontant()), labelFont, valueFont, Color.WHITE);
         }
 
         BigDecimal reste = facture.getMontantTotal().subtract(facture.getMontantPaye());
@@ -243,11 +240,11 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     /* ── Footer ────────────────────────────────────────────────────────── */
 
-    private void addFooter(Document doc, Entreprise entreprise) throws DocumentException {
+    private void addFooter(Document doc, Magasin magasin) throws DocumentException {
         doc.add(Chunk.NEWLINE);
         Font footerFont = new Font(Font.HELVETICA, 8, Font.ITALIC, GRAY_TEXT);
         String text = "Document généré par Store ERP";
-        if (isNotBlank(entreprise.getSigle())) text = entreprise.getSigle() + " – " + text;
+        if (isNotBlank(magasin.getNom())) text = magasin.getNom() + " – " + text;
         Paragraph footer = new Paragraph(text, footerFont);
         footer.setAlignment(Element.ALIGN_CENTER);
         doc.add(footer);
