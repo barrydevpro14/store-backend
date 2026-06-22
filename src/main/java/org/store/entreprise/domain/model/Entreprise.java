@@ -27,6 +27,7 @@ public class Entreprise extends AuditableEntity {
     private String ninea;
     private String rccm;
     private String adresse;
+    private String telephone;
     private boolean trialUsed = false;
     private boolean actif = true;
 

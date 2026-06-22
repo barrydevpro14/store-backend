@@ -33,12 +33,8 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         entreprise.setNinea(entrepriseRequest.ninea());
         entreprise.setRccm(entrepriseRequest.rccm());
         entreprise.setAdresse(entrepriseRequest.adresse());
-
-        if (entrepriseRequest.countryId() != null) {
-            Country country = countryDomainService.findById(entrepriseRequest.countryId());
-            entreprise.setCountry(country);
-        }
-
+        entreprise.setTelephone(entrepriseRequest.telephone());
+        entreprise.setCountry(countryDomainService.findById(entrepriseRequest.countryId()));
         entreprise.setTrialUsed(true);
         entreprise.setActif(true);
         return save(entreprise);
@@ -54,6 +50,17 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
                 filter.actif(),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());
+    }
+
+    public Entreprise update(Entreprise entreprise, EntrepriseRequest request) {
+        entreprise.setSigle(request.sigle());
+        entreprise.setRaisonSociale(request.raisonSociale());
+        entreprise.setNinea(request.ninea());
+        entreprise.setRccm(request.rccm());
+        entreprise.setAdresse(request.adresse());
+        entreprise.setTelephone(request.telephone());
+        entreprise.setCountry(countryDomainService.findById(request.countryId()));
+        return save(entreprise);
     }
 
     public Entreprise setLogo(Entreprise entreprise, PieceJointe pieceJointe) {

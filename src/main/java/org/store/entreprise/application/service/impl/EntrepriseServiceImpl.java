@@ -80,12 +80,7 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     public EntrepriseResponse updateCurrentUserEntreprise(EntrepriseRequest entrepriseRequest) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Entreprise entreprise = ensureBelongsToCurrentUser(entrepriseDomainService.findById(currentUser.entrepriseId()));
-        entreprise.setSigle(entrepriseRequest.sigle());
-        entreprise.setRaisonSociale(entrepriseRequest.raisonSociale());
-        entreprise.setNinea(entrepriseRequest.ninea());
-        entreprise.setRccm(entrepriseRequest.rccm());
-        entreprise.setAdresse(entrepriseRequest.adresse());
-        return new EntrepriseResponse(entrepriseDomainService.save(entreprise));
+        return new EntrepriseResponse(entrepriseDomainService.update(entreprise, entrepriseRequest));
     }
 
     @Override
@@ -99,12 +94,7 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     public EntrepriseResponse update(java.util.UUID id, EntrepriseRequest request) {
         validatorService.validate(request);
         Entreprise entreprise = entrepriseDomainService.findById(id);
-        entreprise.setSigle(request.sigle());
-        entreprise.setRaisonSociale(request.raisonSociale());
-        entreprise.setNinea(request.ninea());
-        entreprise.setRccm(request.rccm());
-        entreprise.setAdresse(request.adresse());
-        return new EntrepriseResponse(entrepriseDomainService.save(entreprise));
+        return new EntrepriseResponse(entrepriseDomainService.update(entreprise, request));
     }
 
     @Override
