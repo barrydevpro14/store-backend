@@ -39,6 +39,7 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
         magasin.setEntreprise(entreprise);
         magasin.setNom(magasinRequest.nom());
         magasin.setAdresse(magasinRequest.adresse());
+        magasin.setTelephone(magasinRequest.telephone());
         magasin.setActif(true);
         return save(magasin);
     }
