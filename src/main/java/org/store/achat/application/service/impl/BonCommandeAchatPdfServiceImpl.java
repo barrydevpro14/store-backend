@@ -10,14 +10,13 @@ import org.store.achat.application.service.IBonCommandeAchatPdfService;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.LigneCommandeAchat;
 import org.store.achat.domain.service.CommandeAchatDomainService;
+import org.store.common.service.IPdfService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
-import java.math.BigDecimal;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
@@ -28,19 +27,16 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfService {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final Color PRIMARY   = new Color(37, 99, 235);
-    private static final Color LIGHT_BG  = new Color(239, 246, 255);
-    private static final Color GRAY_TEXT = new Color(107, 114, 128);
-    private static final Color BORDER    = new Color(229, 231, 235);
-
     private final CommandeAchatDomainService commandeAchatDomainService;
     private final ICurrentUserService currentUserService;
+    private final IPdfService pdf;
 
     public BonCommandeAchatPdfServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
-                                           ICurrentUserService currentUserService) {
+                                           ICurrentUserService currentUserService,
+                                           IPdfService pdf) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.currentUserService = currentUserService;
+        this.pdf = pdf;
     }
 
     @Override
@@ -68,7 +64,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
             addLinesTable(doc, commande);
             doc.add(Chunk.NEWLINE);
             addTotal(doc, commande);
-            addFooter(doc, magasin);
+            pdf.addFooter(doc, magasin);
 
             doc.close();
             return out.toByteArray();
@@ -84,35 +80,22 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         header.setWidthPercentage(100);
         header.setWidths(new float[]{55, 45});
 
-        PdfPCell storeCell = new PdfPCell();
-        storeCell.setBorder(Rectangle.NO_BORDER);
-        storeCell.setPadding(8);
-
-        Font nameFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
-        Font infoFont = new Font(Font.HELVETICA, 9, Font.NORMAL, GRAY_TEXT);
-
-        storeCell.addElement(new Paragraph(magasin.getNom(), nameFont));
-        if (isNotBlank(magasin.getAdresse()))
-            storeCell.addElement(new Paragraph(magasin.getAdresse(), infoFont));
-        if (isNotBlank(magasin.getTelephone()))
-            storeCell.addElement(new Paragraph(magasin.getTelephone(), infoFont));
-
-        header.addCell(storeCell);
+        header.addCell(pdf.buildStoreCell(magasin));
 
         PdfPCell orderCell = new PdfPCell();
         orderCell.setBorder(Rectangle.NO_BORDER);
-        orderCell.setBackgroundColor(LIGHT_BG);
+        orderCell.setBackgroundColor(IPdfService.LIGHT_BG);
         orderCell.setPadding(12);
         orderCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
-        Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD, IPdfService.PRIMARY);
         Font refFont   = new Font(Font.HELVETICA, 11, Font.BOLD, Color.DARK_GRAY);
-        Font dateFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, GRAY_TEXT);
+        Font dateFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
 
-        orderCell.addElement(new Paragraph("BON DE COMMANDE", titleFont));
+        orderCell.addElement(new Paragraph(pdf.msg("pdf.achat.title"), titleFont));
         orderCell.addElement(new Paragraph(commande.getReference(), refFont));
         if (commande.getDate() != null)
-            orderCell.addElement(new Paragraph("Date : " + commande.getDate().format(DATE_FMT), dateFont));
+            orderCell.addElement(new Paragraph(pdf.msg("pdf.label.date") + " : " + commande.getDate().format(IPdfService.DATE_FMT), dateFont));
 
         header.addCell(orderCell);
         doc.add(header);
@@ -124,17 +107,17 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         if (commande.getFournisseur() == null) return;
 
         Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
-        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, GRAY_TEXT);
+        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
         var fournisseur = commande.getFournisseur();
 
-        PdfPCell cell = sectionCell("FOURNISSEUR");
-        cell.addElement(new Paragraph(nullToEmpty(fournisseur.getNom()), valueFont));
-        if (isNotBlank(fournisseur.getTelephone()))
+        PdfPCell cell = pdf.sectionCell(pdf.msg("pdf.achat.section.fournisseur"));
+        cell.addElement(new Paragraph(pdf.nullToEmpty(fournisseur.getNom()), valueFont));
+        if (pdf.isNotBlank(fournisseur.getTelephone()))
             cell.addElement(new Paragraph(fournisseur.getTelephone(), infoFont));
-        if (isNotBlank(fournisseur.getAdresse()))
+        if (pdf.isNotBlank(fournisseur.getAdresse()))
             cell.addElement(new Paragraph(fournisseur.getAdresse(), infoFont));
-        if (isNotBlank(fournisseur.getReference()))
-            cell.addElement(new Paragraph("Réf. : " + fournisseur.getReference(), infoFont));
+        if (pdf.isNotBlank(fournisseur.getReference()))
+            cell.addElement(new Paragraph(pdf.msg("pdf.label.ref") + " : " + fournisseur.getReference(), infoFont));
 
         PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(50);
@@ -150,19 +133,23 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         table.setWidthPercentage(100);
 
         Font headFont = new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE);
-        String[] headers = {"Produit", "Réf.", "Qté", "Prix achat"};
-        for (String h : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(h, headFont));
-            cell.setBackgroundColor(PRIMARY);
+        String[] headers = {
+            pdf.msg("pdf.achat.table.produit"),
+            pdf.msg("pdf.achat.table.reference"),
+            pdf.msg("pdf.achat.table.quantite"),
+            pdf.msg("pdf.achat.table.prixAchat")
+        };
+        for (int i = 0; i < headers.length; i++) {
+            PdfPCell cell = new PdfPCell(new Phrase(headers[i], headFont));
+            cell.setBackgroundColor(IPdfService.PRIMARY);
             cell.setPadding(7);
             cell.setBorder(Rectangle.NO_BORDER);
-            boolean isRight = h.equals("Qté") || h.equals("Prix achat");
-            cell.setHorizontalAlignment(isRight ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+            cell.setHorizontalAlignment(i >= 2 ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
             table.addCell(cell);
         }
 
         Font lineFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
-        Font refFont  = new Font(Font.HELVETICA, 8, Font.NORMAL, GRAY_TEXT);
+        Font refFont  = new Font(Font.HELVETICA, 8, Font.NORMAL, IPdfService.GRAY_TEXT);
         boolean alt   = false;
 
         for (LigneCommandeAchat ligne : commande.getLignes()) {
@@ -171,18 +158,25 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
 
             PdfPCell nameCell = new PdfPCell();
             nameCell.setBackgroundColor(bg);
-            nameCell.setBorderColor(BORDER);
+            nameCell.setBorderColor(IPdfService.BORDER);
             nameCell.setPadding(6);
-            String nom = ligne.getProductFournisseur().getProduct().getNom();
-            String ref = ligne.getProductFournisseur().getProduct().getReference();
+            var product = ligne.getProductFournisseur().getProduct();
+            String nom = product.getNom();
+            String ref = product.getReference();
             nameCell.addElement(new Paragraph(nom, lineFont));
-            if (isNotBlank(ref))
+            if (pdf.isNotBlank(ref))
                 nameCell.addElement(new Paragraph(ref, refFont));
+            var category = product.getCategoryProduct();
+            if (category != null && pdf.isNotBlank(category.getLibelle()))
+                nameCell.addElement(new Paragraph(pdf.msg("pdf.label.category") + " : " + category.getLibelle(), refFont));
+            var quality = ligne.getProductFournisseur().getQuality();
+            if (quality != null && pdf.isNotBlank(quality.getLibelle()))
+                nameCell.addElement(new Paragraph(pdf.msg("pdf.label.qualite") + " : " + quality.getLibelle(), refFont));
             table.addCell(nameCell);
 
-            table.addCell(textCell(nullToEmpty(ref), refFont, bg));
-            table.addCell(numCell(String.valueOf(ligne.getQuantite()), lineFont, bg));
-            table.addCell(numCell(formatAmount(ligne.getPrixAchat()), lineFont, bg));
+            table.addCell(pdf.textCell(pdf.nullToEmpty(ref), refFont, bg));
+            table.addCell(pdf.numCell(String.valueOf(ligne.getQuantite()), lineFont, bg));
+            table.addCell(pdf.numCell(pdf.formatAmount(ligne.getPrixAchat()), lineFont, bg));
         }
 
         doc.add(table);
@@ -194,71 +188,9 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         PdfPTable totals = new PdfPTable(new float[]{65, 35});
         totals.setWidthPercentage(100);
 
-        Font boldFont = new Font(Font.HELVETICA, 11, Font.BOLD, PRIMARY);
-
-        PdfPCell lc = new PdfPCell(new Phrase("Total", boldFont));
-        lc.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        lc.setBorderColor(BORDER);
-        lc.setBackgroundColor(LIGHT_BG);
-        lc.setPadding(8);
-        totals.addCell(lc);
-
-        PdfPCell vc = new PdfPCell(new Phrase(formatAmount(commande.getMontantTotal()), boldFont));
-        vc.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        vc.setBorderColor(BORDER);
-        vc.setBackgroundColor(LIGHT_BG);
-        vc.setPadding(8);
-        totals.addCell(vc);
+        Font boldFont = new Font(Font.HELVETICA, 11, Font.BOLD, IPdfService.PRIMARY);
+        pdf.addTotalRow(totals, pdf.msg("pdf.achat.total"), pdf.formatAmount(commande.getMontantTotal()), boldFont, boldFont, IPdfService.LIGHT_BG);
 
         doc.add(totals);
     }
-
-    /* ── Footer ────────────────────────────────────────────────────────── */
-
-    private void addFooter(Document doc, Magasin magasin) throws DocumentException {
-        doc.add(Chunk.NEWLINE);
-        Font footerFont = new Font(Font.HELVETICA, 8, Font.ITALIC, GRAY_TEXT);
-        String text = "Document généré par Store ERP";
-        if (isNotBlank(magasin.getNom())) text = magasin.getNom() + " – " + text;
-        Paragraph footer = new Paragraph(text, footerFont);
-        footer.setAlignment(Element.ALIGN_CENTER);
-        doc.add(footer);
-    }
-
-    /* ── Helpers ───────────────────────────────────────────────────────── */
-
-    private PdfPCell sectionCell(String title) {
-        PdfPCell cell = new PdfPCell();
-        cell.setBorder(Rectangle.BOX);
-        cell.setBorderColor(BORDER);
-        cell.setPadding(10);
-        cell.addElement(new Paragraph(title, new Font(Font.HELVETICA, 8, Font.BOLD, GRAY_TEXT)));
-        cell.addElement(Chunk.NEWLINE);
-        return cell;
-    }
-
-    private PdfPCell textCell(String text, Font font, Color bg) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setBorderColor(BORDER);
-        cell.setBackgroundColor(bg);
-        cell.setPadding(6);
-        return cell;
-    }
-
-    private PdfPCell numCell(String text, Font font, Color bg) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cell.setBorderColor(BORDER);
-        cell.setBackgroundColor(bg);
-        cell.setPadding(6);
-        return cell;
-    }
-
-    private String formatAmount(BigDecimal amount) {
-        if (amount == null) return "0";
-        return String.format("%,.0f", amount);
-    }
-
-    private boolean isNotBlank(String s) { return s != null && !s.isBlank(); }
-    private String nullToEmpty(String s)  { return s == null ? "" : s; }
 }

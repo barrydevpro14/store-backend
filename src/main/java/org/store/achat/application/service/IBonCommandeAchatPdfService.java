@@ -1,7 +1,8 @@
 package org.store.achat.application.service;
 
-import org.store.common.service.IPdfService;
+import java.util.UUID;
 
 /** Generates the PDF bytes for a purchase order. Scoped to the current user's entreprise. */
-public interface IBonCommandeAchatPdfService extends IPdfService {
+public interface IBonCommandeAchatPdfService {
+    byte[] generate(UUID id);
 }
