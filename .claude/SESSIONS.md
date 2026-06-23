@@ -9,6 +9,25 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-23 — "Open" button on alerts → jump to payment page
+
+### Backend
+
+- **fix(notification): commandeId instead of factureId on overdue alerts** — `AlertScheduler.alertFactureClientOverdue` and `alertFactureAchatOverdue` now persist `facture.getCommande().getId()` as the alerte's `entityId` (was `facture.getId()`). Reason: the existing detail pages `/dashboard/ventes/[id]` and `/dashboard/achats/[id]` take a commandeId, not a factureId — switching the persisted id lets the frontend link directly without a lookup endpoint. Existing alertes in DB still point to the old factureId → their button 404s, acceptable since these alerts are short-lived (overdue/expiring).
+
+### Frontend
+
+- **feat(alerte): Open icon-button on AlertesPage** — `ExternalLink` icon button (variant ghost, h-7 w-7) placed before mark-lue / mark-resolue on every non-RESOLUE alert. Helper `buildAlerteHref(alerte)` extracted above `return`, local `openHref` variable per `.map` iteration. Link styled via `buttonVariants({...})` (Button does not support `asChild` per the @base-ui/react note in PROJECT.md). Mapping: `FACTURE_VENTE_OVERDUE → /dashboard/ventes/{entityId}`, `FACTURE_ACHAT_OVERDUE → /dashboard/achats/{entityId}`, `ABONNEMENT_EXPIRING → /dashboard/entreprise/abonnement/souscrire`. `STOCK_BELOW_THRESHOLD` has no button. New i18n key `dashboard.alertes.actions.open` (FR "Ouvrir" / EN "Open"). No permission check on the button — the target page's PermissionGuard handles 403.
+
+### État final
+- Backend: `mvn compile` BUILD SUCCESS. 1 commit pushed to `dev-barry` (c371664).
+- Frontend: `tsc --noEmit` exit 0. 1 commit pushed to `dev-barry` (63eaf94).
+- Branch: `dev-barry`.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-06-22 — Session courte : identification bug PDF facture (nom magasin vs entreprise)
 
 ### Backend
