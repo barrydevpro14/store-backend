@@ -356,6 +356,7 @@ public class AchatServiceImpl implements IAchatService {
         ensureNotLastLigne(commande);
 
         BigDecimal lineTotal = ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()));
+        commande.getLignes().remove(ligne);
         ligneCommandeAchatDomainService.delete(ligne);
         commandeAchatDomainService.updateMontantTotal(commande, commande.getMontantTotal().subtract(lineTotal));
     }

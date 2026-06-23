@@ -27,6 +27,7 @@ public class Magasin extends AuditableEntity {
 
     private String nom;
     private String adresse;
+    private String telephone;
     private boolean actif = true;
 
     @ManyToOne

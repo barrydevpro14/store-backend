@@ -67,12 +67,12 @@ class MagasinControllerTest {
     }
 
     private MagasinResponse sample() {
-        return new MagasinResponse(magasinId, "Magasin Centre", "Dakar Centre", true, entrepriseId, null);
+        return new MagasinResponse(magasinId, "Magasin Centre", "Dakar Centre", null, true, entrepriseId, null);
     }
 
     @Test
     void should_return_201_with_created_magasin() throws Exception {
-        MagasinRequest body = new MagasinRequest("Magasin Centre", "Dakar Centre");
+        MagasinRequest body = new MagasinRequest("Magasin Centre", "Dakar Centre", null);
         when(magasinService.create(any(MagasinRequest.class))).thenReturn(sample());
 
         mockMvc.perform(post(MagasinController.BASE_PATH)
@@ -135,8 +135,8 @@ class MagasinControllerTest {
 
     @Test
     void should_return_200_when_update() throws Exception {
-        MagasinRequest body = new MagasinRequest("Renommé", "Nouvelle adresse");
-        MagasinResponse updated = new MagasinResponse(magasinId, "Renommé", "Nouvelle adresse", true, entrepriseId, null);
+        MagasinRequest body = new MagasinRequest("Renommé", "Nouvelle adresse", null);
+        MagasinResponse updated = new MagasinResponse(magasinId, "Renommé", "Nouvelle adresse", null, true, entrepriseId, null);
         when(magasinService.update(eq(magasinId), any(MagasinRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put(MagasinController.BASE_PATH + "/" + magasinId)
@@ -149,7 +149,7 @@ class MagasinControllerTest {
     @Test
     void should_return_200_when_activate() throws Exception {
         when(magasinService.activate(eq(magasinId)))
-                .thenReturn(new MagasinResponse(magasinId, "M", "A", true, entrepriseId, null));
+                .thenReturn(new MagasinResponse(magasinId, "M", "A", null, true, entrepriseId, null));
 
         mockMvc.perform(patch(MagasinController.BASE_PATH + "/" + magasinId + "/activate"))
                 .andExpect(status().isOk())
@@ -161,7 +161,7 @@ class MagasinControllerTest {
     @Test
     void should_return_200_when_deactivate() throws Exception {
         when(magasinService.deactivate(eq(magasinId)))
-                .thenReturn(new MagasinResponse(magasinId, "M", "A", false, entrepriseId, null));
+                .thenReturn(new MagasinResponse(magasinId, "M", "A", null, false, entrepriseId, null));
 
         mockMvc.perform(patch(MagasinController.BASE_PATH + "/" + magasinId + "/deactivate"))
                 .andExpect(status().isOk())

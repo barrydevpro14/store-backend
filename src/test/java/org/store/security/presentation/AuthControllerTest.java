@@ -198,8 +198,8 @@ class AuthControllerTest {
         return new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
                 new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
-                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", UUID.fromString("11111111-1111-1111-1111-111111111111")),
-                new MagasinRequest("Magasin Centre", "Dakar Centre")
+                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", UUID.fromString("11111111-1111-1111-1111-111111111111"), null),
+                new MagasinRequest("Magasin Centre", "Dakar Centre", null)
         );
     }
 }

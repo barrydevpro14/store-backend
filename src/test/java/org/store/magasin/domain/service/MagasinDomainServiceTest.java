@@ -27,7 +27,7 @@ class MagasinDomainServiceTest {
 
     @Test
     void create_should_construct_magasin_with_entreprise_and_active() {
-        MagasinRequest request = new MagasinRequest("Magasin Centre", "Dakar Centre");
+        MagasinRequest request = new MagasinRequest("Magasin Centre", "Dakar Centre", null);
         Entreprise entreprise = new Entreprise();
         when(repository.save(any(Magasin.class))).thenAnswer(inv -> inv.getArgument(0));
 

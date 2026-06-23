@@ -110,6 +110,7 @@ public class MagasinServiceImpl implements IMagasinService {
         Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
         magasin.setNom(magasinRequest.nom());
         magasin.setAdresse(magasinRequest.adresse());
+        magasin.setTelephone(magasinRequest.telephone());
         return new MagasinResponse(magasinDomainService.save(magasin));
     }
 

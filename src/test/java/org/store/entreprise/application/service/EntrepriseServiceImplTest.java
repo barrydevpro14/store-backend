@@ -62,7 +62,7 @@ class EntrepriseServiceImplTest {
     void create_should_delegate_to_domain_service() {
         EntrepriseRequest request = new EntrepriseRequest(
                 "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"
-        , null);
+        , null, null);
         Proprietaire proprietaire = new Proprietaire();
         Entreprise expected = new Entreprise();
         when(entrepriseDomainService.create(request, proprietaire)).thenReturn(expected);
@@ -85,14 +85,19 @@ class EntrepriseServiceImplTest {
 
     @Test
     void updateCurrentUserEntreprise_should_apply_changes() {
-        EntrepriseRequest request = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", null);
+        EntrepriseRequest request = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", null, null);
+        Entreprise updated = new Entreprise();
+        updated.setId(entrepriseId);
+        updated.setSigle("NEW");
+        updated.setRaisonSociale("NEW SARL");
+        updated.setNinea("N2");
         when(currentUserService.getCurrent()).thenReturn(proprietaire(entrepriseId));
         when(entrepriseDomainService.findById(entrepriseId)).thenReturn(entreprise);
-        when(entrepriseDomainService.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(entrepriseDomainService.update(any(Entreprise.class), any(EntrepriseRequest.class))).thenReturn(updated);
 
         EntrepriseResponse response = service.updateCurrentUserEntreprise(request);
 
-        assertThat(response.sigle()).isEqualTo("NEW", null);
+        assertThat(response.sigle()).isEqualTo("NEW");
         assertThat(response.raisonSociale()).isEqualTo("NEW SARL");
         assertThat(response.ninea()).isEqualTo("N2");
     }
@@ -134,7 +139,7 @@ class EntrepriseServiceImplTest {
         org.store.entreprise.application.dto.EntrepriseFilter filter =
                 new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, null, null, 0, 10);
         EntrepriseResponse sample = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
-                "N", "R", "A", null, true, true, null);
+                "N", "R", "A", null, null, true, true, null);
         Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
         when(entrepriseDomainService.findResponsesByFilter(filter)).thenReturn(page);
 
@@ -148,13 +153,17 @@ class EntrepriseServiceImplTest {
     void update_should_apply_changes_via_domain_service() {
         Entreprise existing = new Entreprise();
         existing.setId(entrepriseId);
+        Entreprise updated = new Entreprise();
+        updated.setId(entrepriseId);
+        updated.setSigle("NEW");
+        updated.setRaisonSociale("NEW SARL");
         when(entrepriseDomainService.findById(entrepriseId)).thenReturn(existing);
-        when(entrepriseDomainService.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(entrepriseDomainService.update(any(Entreprise.class), any(EntrepriseRequest.class))).thenReturn(updated);
 
         EntrepriseResponse response = service.update(entrepriseId,
-                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr", null));
+                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr", null, null));
 
-        assertThat(response.sigle()).isEqualTo("NEW", null);
+        assertThat(response.sigle()).isEqualTo("NEW");
         assertThat(response.raisonSociale()).isEqualTo("NEW SARL");
     }
 

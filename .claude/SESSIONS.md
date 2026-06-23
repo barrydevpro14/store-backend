@@ -9,33 +9,74 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-06-15/16 — SpEL suppression complète, responsive fixes, alertes jour J, fix ADMIN alertes
+**Date:** 2026-06-22 — Session courte : identification bug PDF facture (nom magasin vs entreprise)
 
 ### Backend
 
-- **fix(PSQLException):** Cause racine identifiée — SpEL `:#{}` passe les params null avec `Types.OTHER` que PostgreSQL rejette. Pattern unifié : params individuels `@Param`, dates en String + `CAST(:date AS date)`.
-- **fix(SpEL — tous repositories):** 23 repositories corrigés — plus aucun `:#{#filter.X}` dans le codebase. Pattern : supprimer `@Param("filter")`, déclarer chaque champ en `@Param` distinct, `LikePatternHelper` pour les LIKE, `CAST AS date` pour les dates. Modules : achat (CommandeAchat, FactureAchat, Fournisseur), vente (CommandeVente, FactureClient), inventaire, stock (Stock, MouvementStock, EntreeStock, SortieStock), depense (Depense, CategoryDepense), magasin, entreprise, employe, produit (Product, Quality, CategoryProduct), abonnement (Abonnement, PlanAbonnement, Coupon, Promotion, TypePlanAbonnement, PaiementAbonnement), contact, notification, audit. AlerteRepository migré sentinels → String + CAST natif.
-- **fix(rbac):** `INVENTORY_READ` ajouté sur OWNER et MANAGER — endpoints GET inventaire bloquaient sans cette permission.
-- **fix(alertes ADMIN):** `AlerteController` retourne page vide quand `entrepriseId == null` (ADMIN SaaS) — évite de ramener toutes les alertes de toutes les entreprises.
-- **feat(alertes jour J):** Ajout de `today` dans les 3 listes `alertDates`. Clés i18n `.today` dédiées ("aujourd'hui"/"today") pour éviter "dans 0 jour(s)". Abonnement + FactureClient + FactureAchat.
-- **Branche active :** `dev-barry` créée depuis `dev` à `3ca55ce`. Règle ajoutée dans `CLAUDE.md` — jamais pousser sur `dev` ou `main`.
-
-### Frontend
-
-- **fix(responsive — formulaires):** `CreateVenteDialog` : produit L1, quantité+prix L2 sur mobile. `AddAchatLineRow` : produit L1, qualité L2, quantité+prix L3, lot+date L4. `AddLigneDialog` (inventaire) : produit L1, quantité+prix L2.
-- **fix(responsive — pages):** Bouton "Nouvelle vente/achat" : texte masqué sur mobile (`hidden sm:inline`), icône seule.
-- **fix(responsive — auth layout):** `min-h-screen` + scroll entier au lieu de `h-screen overflow-hidden`. Header visible à tout moment sur tablette. Fonds décoratifs en `fixed`.
-- **fix(responsive — navbar publique):** `NavbarMobileMenu` intégré dans `Navbar.tsx`. Login/Register masqués sur mobile (`hidden md:flex`), disponibles dans le drawer.
-- **fix(audit — stale draft):** `AuditPage.handleSearch` capturait `draft` par closure stale. Ajout `draftRef` mis à jour synchronement dans `handleDraftChange` — filtre date correct à la sélection.
-- **fix(NavbarMobileMenu.tsx):** Fichier untracked depuis le début, jamais commité — ajouté au dépôt.
+- **fix(pdf) — identified, not yet implemented**: `InvoicePdfServiceImpl.addHeader()` prints `entreprise.getRaisonSociale()` and `entreprise.getAdresse()` in the invoice header. Should use `magasin.getNom()` + `magasin.getAdresse()` instead. NINEA/RCCM kept (company fiscal IDs). `addFooter()` also needs `magasin.getNom()` instead of `entreprise.getSigle()`. Task logged in TODO.md (`🟡 Normal priority / Backend`).
 
 ### État final
-- Backend : 874/874 tests verts. Zéro SpEL dans le codebase.
-- Branche : `dev-barry` (backend + frontend). Merge vers `dev` à faire via MR/PR.
+- No code changed. Task added to TODO.md.
+- Branch: `dev-barry`.
+
+---
 
 ## 🗂 Previous session
 
-**Date:** 2026-06-14 — Responsive, alertes/notifications config, inventaire scindé, achat montant restant, UX fixes
+**Date:** 2026-06-21 — Paginated-as-count cleanup, subscription expiry flow, admin abonnement actions
+
+### Backend
+
+- **feat(count endpoints):** `GET /stocks/below-threshold/count`, `GET /abonnements/count`, `GET /paiements-abonnement/count`, `GET /magasins/count` — eliminates all size:1 paginated queries used only for totalElements. `MagasinCountResponse(total, actifs, inactifs)` via single JPQL `COUNT(CASE WHEN ...)`.
+- **fix(api params):** `createdStartDate/EndDate → startDate/endDate` in abonnement-admin, paiement-abonnement, and magasin api adapters (frontend params were silently ignored by the backend).
+- **feat(security): restricted JWT** — Expired-subscription OWNER gets a token restricted to `[SUBSCRIPTION_CREATE, SUBSCRIPTION_PAY, SUBSCRIPTION_READ, ENTREPRISE_ACCESS]` + scope=`"restricted"` claim. EMPLOYEE with expired subscription is blocked at login with `auth.subscription.employee.expired`. Same check applied in `RefreshTokenServiceImpl` → auto-upgrade to full token after ADMIN validates.
+- **fix(paiement-abonnement): lazy proxy in @Async events** — `PaiementAbonnementSubmittedEvent`, `ValidatedEvent`, `RejectedEvent` now carry primitives (`UUID`, `String`, `BigDecimal`) instead of JPA entities. Prevents `IllegalStateException: Illegal pop()` in `@Async` threads where the Hibernate session is closed.
+- **fix(abonnement): GET /me/current → 204 instead of 406** — `AbonnementController.findMyCurrent` catches `EntityException` and returns `noContent()` when no active/trial subscription. Previously returned 406.
+- **feat(abonnement): cancel endpoint** — `PATCH /abonnements/{id}/cancel` (SUBSCRIPTION_VALIDATE). EN_ATTENTE → EXPIRE, ACTIF/TRIAL → SUSPENDU.
+- **fix(abonnement): block trial-type subscription** — `ensureTypeActif` now also checks `type.isTrial()` → `BadArgumentException`.
+- **feat(abonnement): pending guard** — `subscribe()` throws if an EN_ATTENTE abonnement already exists for the entreprise.
+
+### Frontend
+
+- **feat(security): SubscriptionExpiredOverlay** — `DashboardShell` detects `user.scope === 'restricted'` and renders the overlay instead of page content (except under `/dashboard/entreprise`). Button → `/dashboard/entreprise/abonnement/souscrire`. `EntrepriseLayout` allows restricted-scope users through its `PermissionGuard`.
+- **fix(abonnement): owner paiements** — Banner when last payment for pending abonnement is `REJETE` (shows motif + re-submit CTA). `useMyPendingAbonnement` now polls every 30 s.
+- **fix(abonnement): owner subscribe** — Shows warning banner + disabled if an EN_ATTENTE abonnement already pending. `MyAbonnementPage` shows empty state + subscribe CTA when no active subscription (was blank after 204 fix).
+- **feat(abonnement): admin cancel** — `AbonnementTable` shows "Annuler" button for EN_ATTENTE/ACTIF/TRIAL rows. `AbonnementListPage` wires `useAdminCancelAbonnement` + `ConfirmDialog`.
+- **feat(abonnement): admin paiements auto-filter** — Clicking "Gérer les paiements" on an EN_ATTENTE row navigates to `/paiements?abonnementId=xxx`; `PaiementsAdminPage` reads query param and auto-triggers search.
+- **fix(filters): justify-end** — Filter button aligned right on all 9 admin filter components.
+- **feat(abonnement): owner Mes abonnements page** — New route `/dashboard/entreprise/abonnement/historique` with statut + date-range filters (deferred search). New nav tab in entreprise sub-nav.
+- **fix(i18n):** `moyenRequired`, `cancel` keys added where missing.
+
+### État final
+- Backend: 876/876 tests green. 3 commits pushed to `dev-barry`.
+- Frontend: 326/326 tests green, 0 TS errors. 8 commits pushed to `dev-barry`.
+- Branch: `dev-barry`. Merge to `dev` via MR/PR.
+
+## 🗂 Previous session
+
+**Date:** 2026-06-20 — RBAC role management regressions fixed + system roles CRUD for ADMIN
+
+### Backend
+
+- **feat(rbac): PermissionGroup vertical slice + V46** — New `PermissionGroup` domain (model, JPA repo, domain service, app service, DTO, controller). Two endpoints: `GET /permission-groups` (SYSTEM_ROLE_UPDATE) and `GET /permission-groups/employee` (ROLE_CREATE). Replaces all hardcoded `PERMISSION_GROUPS` maps in frontend dialogs.
+- **feat(rbac): RoleListResponse + V47/V48** — Lightweight `RoleListResponse` (no permissions) for list endpoints. `RoleResponse` remains the full DTO for `GET /roles/{id}`. V47 adds unique constraint on role libelle per company scope. V48 adds `assignable_to_custom_role` column on permissions.
+- **fix(rbac): findByIdWithPermissions — NonUniqueResultException** — Root cause: `SELECT new RoleResponse(r) FROM Role r LEFT JOIN FETCH r.permissions` with N permissions produced N rows → `NonUniqueResultException`. Fixed by switching to entity query `findByIdEager` and mapping to DTO in the domain service.
+- **refactor(rbac): Role.systeme column + V49** — New persisted `boolean systeme` column. V49 backfills from `entreprise_id IS NULL`. Removes `isSystemRole()` — callers use Lombok `isSysteme()`. `create()` sets `systeme=true`, `createCustom()` sets `systeme=false`. Replaces `entrepriseId:UUID` with `systeme:boolean` in both DTOs — cleaner API contract.
+- **feat(rbac): updateSystemRole for ADMIN — PATCH /roles/{id}/system** — New endpoint (SYSTEM_ROLE_UPDATE) to update libelle/description of a system role. Service validates `isSysteme()` + libelle uniqueness at system scope.
+
+### Frontend
+
+- **fix(rbac — regression): RoleDetailDialog restored** — Dialog was disconnected after the list-endpoint refactor. Now accepts `roleId: string|null`, fetches via `useRoleById` internally, groups permissions via `useEmployeePermissionGroups` API (no more hardcoded `PERMISSION_GROUPS` map).
+- **fix(rbac — regression): AssignPermissionsDialog pre-checked permissions** — Was broken because the list endpoint no longer carries permissions. Dialog now fetches the role by ID and initialises selected set from `roleQuery.data.permissions`.
+- **feat(rbac): system roles page for ADMIN** — New `/dashboard/administration/roles-systeme` tab (SYSTEM_ROLE_UPDATE guard). `SystemRolesPage` with Detail / Edit / Gérer les permissions actions. `CreateSystemRoleDialog` (libelle + description + full permission checklist via `usePermissionGroups`). `EditSystemRoleDialog` (calls `PATCH /roles/{id}/system`). `SystemRolePermissionsDialog` for existing roles.
+- **refactor(rbac): RoleTable and EmployeForm** — `RoleTable` uses `RoleListResponse`; `isCustom` derived from `!systeme`. `EmployeForm` simplifies assignable role filter (flag-based, no client-side permission inspection).
+
+### État final
+- Backend: compile propre, all 4 new backend commits pushed to `dev-barry`.
+- Frontend: tsc propre, 4 new frontend commits pushed to `dev-barry`.
+- Branche : `dev-barry`. Merge vers `dev` à faire via MR/PR.
+
+**Date:** 2026-06-15/16 — SpEL suppression complète, responsive fixes, alertes jour J, fix ADMIN alertes
 
 ### Backend
 
