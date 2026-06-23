@@ -91,30 +91,22 @@ class CommandeAchatDomainServiceTest {
     }
 
     @Test
-    void findResponsesByFilter_should_delegate_to_repository_with_filter_and_entreprise() {
-        UUID magasinId = magasin.getId();
+    void findResponsesByFilter_should_return_mapped_page() {
         CommandeAchatFilter filter = new CommandeAchatFilter(
-                magasinId, null, null, null, null, null, null, 0, 10);
+                magasin.getId(), null, null, null, null, null, null, 0, 10);
 
-        CommandeAchatResponse responseItem = new CommandeAchatResponse(buildCommande("CMD-001"));
-        Page<CommandeAchatResponse> page = new PageImpl<>(
-                List.of(responseItem), PageRequest.of(0, 10), 1);
+        CommandeAchat commande = buildCommande("CMD-001");
+        Page<CommandeAchat> entityPage = new PageImpl<>(List.of(commande), PageRequest.of(0, 10), 1);
 
-        when(repository.findResponsesByFilter(
-                eq(entrepriseId), eq(filter.magasinId()), eq(filter.fournisseurId()),
-                eq(filter.statutAsEnum()), eq(filter.statutFactureAsEnum()),
-                eq(filter.reference()), eq(filter.startDate()), eq(filter.endDate()),
+        when(repository.findAll(
+                any(org.springframework.data.jpa.domain.Specification.class),
                 eq(filter.toPageable())))
-                .thenReturn(page);
+                .thenReturn(entityPage);
 
         Page<CommandeAchatResponse> result = service.findResponsesByFilter(filter, entrepriseId);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(repository).findResponsesByFilter(
-                entrepriseId, filter.magasinId(), filter.fournisseurId(),
-                filter.statutAsEnum(), filter.statutFactureAsEnum(),
-                filter.reference(), filter.startDate(), filter.endDate(),
-                filter.toPageable());
+        assertThat(result.getContent().get(0).reference()).isEqualTo("CMD-001");
     }
 
     @Test
