@@ -11,6 +11,7 @@ public record EntrepriseRequest(
         String ninea,
         String rccm,
         @NotBlank String adresse,
-        @NotNull UUID countryId
+        @NotNull UUID countryId,
+        String telephone
 ) {
 }

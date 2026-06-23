@@ -94,7 +94,7 @@ class AchatControllerTest {
 
     private CommandeAchatResponse draftCommandeResponse() {
         return new CommandeAchatResponse(
-                commandeId, "CMD-AUTO", CommandeAchatStatut.DRAFT,
+                commandeId, "CMD-AUTO", null, CommandeAchatStatut.DRAFT,
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00",
                 java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO
@@ -103,7 +103,7 @@ class AchatControllerTest {
 
     private CommandeAchatResponse receptionneeCommandeResponse() {
         return new CommandeAchatResponse(
-                commandeId, "CMD-AUTO", CommandeAchatStatut.RECEPTIONNEE,
+                commandeId, "CMD-AUTO", null, CommandeAchatStatut.RECEPTIONNEE,
                 new FournisseurSummaryResponse(fournisseurId, "Fournisseur Chine"),
                 LocalDate.of(2026, 5, 15), List.of(), null, "2026-05-15 10:00:00",
                 new java.math.BigDecimal("1000.00"), java.math.BigDecimal.ZERO

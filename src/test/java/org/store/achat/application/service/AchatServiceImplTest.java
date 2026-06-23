@@ -456,7 +456,7 @@ class AchatServiceImplTest {
         LigneCommandeAchat ligne1 = sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"));
         LigneCommandeAchat ligne2 = sampleLigne(50, new BigDecimal("12.00"), new BigDecimal("18.00"));
         ligne2.setId(UUID.randomUUID());
-        commande.setLignes(List.of(ligne1, ligne2));
+        commande.setLignes(new ArrayList<>(List.of(ligne1, ligne2)));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);

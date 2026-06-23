@@ -23,6 +23,7 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
             FROM PaiementVente paiement
             WHERE paiement.facture.id = :factureId
               AND paiement.facture.commande.magasin.entreprise.id = :entrepriseId
+            ORDER BY paiement.datePaiement DESC
             """)
     Page<PaiementVenteResponse> findResponsesByFactureId(@Param("factureId") UUID factureId,
                                                         @Param("entrepriseId") UUID entrepriseId,

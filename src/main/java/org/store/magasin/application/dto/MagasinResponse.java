@@ -9,6 +9,7 @@ public record MagasinResponse(
         UUID id,
         String nom,
         String adresse,
+        String telephone,
         boolean actif,
         UUID entrepriseId,
         String logo
@@ -18,6 +19,7 @@ public record MagasinResponse(
                 magasin.getId(),
                 magasin.getNom(),
                 magasin.getAdresse(),
+                magasin.getTelephone(),
                 magasin.isActif(),
                 magasin.getEntreprise().getId(),
                 magasin.getLogo() != null ? MagasinController.BASE_PATH + "/" + magasin.getId() + "/logo" : null

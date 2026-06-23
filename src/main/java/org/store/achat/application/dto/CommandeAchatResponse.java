@@ -12,6 +12,7 @@ import java.util.UUID;
 public record CommandeAchatResponse(
         UUID id,
         String reference,
+        String numeroFacture,       // null when no facture (DRAFT)
         CommandeAchatStatut statut,
         FournisseurSummaryResponse fournisseur,
         LocalDate dateCommande,
@@ -19,13 +20,14 @@ public record CommandeAchatResponse(
         StatutFacture statutFacture,
         String createdAt,
         BigDecimal montantTotal,
-        BigDecimal montantRestant  // null when no facture exists yet (DRAFT)
+        BigDecimal montantRestant   // null when no facture exists yet (DRAFT)
 ) {
     /** Constructeur unique — lit facture et montantTotal depuis la commande. */
     public CommandeAchatResponse(CommandeAchat commande) {
         this(
                 commande.getId(),
-                commande.getFacture() == null ? "--" : commande.getFacture().getNumero(),
+                commande.getReference(),
+                commande.getFacture() != null ? commande.getFacture().getNumero() : null,
                 commande.getStatut(),
                 new FournisseurSummaryResponse(commande.getFournisseur()),
                 commande.getDate(),

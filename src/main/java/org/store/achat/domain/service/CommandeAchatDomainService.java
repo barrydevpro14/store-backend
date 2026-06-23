@@ -8,6 +8,7 @@ import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.achat.domain.model.CommandeAchat;
+import org.store.achat.application.criteria.CommandeAchatSpecification;
 import org.store.achat.domain.repository.CommandeAchatRepository;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.ReferenceHelper;
@@ -40,16 +41,10 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
     }
 
     public Page<CommandeAchatResponse> findResponsesByFilter(CommandeAchatFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(
-                entrepriseId,
-                filter.magasinId(),
-                filter.fournisseurId(),
-                filter.statutAsEnum(),
-                filter.statutFactureAsEnum(),
-                filter.reference(),
-                filter.startDate(),
-                filter.endDate(),
+        Page<CommandeAchat> page = repository.findAll(
+                CommandeAchatSpecification.search(filter, entrepriseId),
                 filter.toPageable());
+        return page.map(CommandeAchatResponse::new);
     }
 
     /** Bascule la commande en statut RECEPTIONNEE quand toutes les lignes ont été totalement reçues. */

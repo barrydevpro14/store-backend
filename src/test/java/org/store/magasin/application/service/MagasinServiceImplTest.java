@@ -75,7 +75,7 @@ class MagasinServiceImplTest {
 
     @Test
     void create_should_delegate_to_domain_service() {
-        MagasinRequest request = new MagasinRequest("Magasin Centre", "Dakar Centre");
+        MagasinRequest request = new MagasinRequest("Magasin Centre", "Dakar Centre", null);
         Magasin expected = magasinIn(entreprise);
         when(magasinDomainService.create(request, entreprise)).thenReturn(expected);
 
@@ -86,7 +86,7 @@ class MagasinServiceImplTest {
 
     @Test
     void create_response_should_scope_to_current_entreprise() {
-        MagasinRequest request = new MagasinRequest("Magasin Plage", "Saly");
+        MagasinRequest request = new MagasinRequest("Magasin Plage", "Saly", null);
         Magasin created = magasinIn(entreprise);
         created.setNom("Magasin Plage");
         created.setAdresse("Saly");
@@ -179,7 +179,7 @@ class MagasinServiceImplTest {
     @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
         MagasinFilter filter = new MagasinFilter("centre", true, null, null, 0, 10);
-        MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "Centre-ville", "Adr", true, entrepriseId, null);
+        MagasinResponse first = new MagasinResponse(UUID.randomUUID(), "Centre-ville", "Adr", null, true, entrepriseId, null);
         Page<MagasinResponse> page = new PageImpl<>(List.of(first), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -198,7 +198,7 @@ class MagasinServiceImplTest {
         when(magasinDomainService.findById(magasinId)).thenReturn(magasin);
         when(magasinDomainService.save(any(Magasin.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        MagasinResponse response = service.update(magasinId, new MagasinRequest("Nouveau", "Nouvelle adresse"));
+        MagasinResponse response = service.update(magasinId, new MagasinRequest("Nouveau", "Nouvelle adresse", null));
 
         assertThat(response.nom()).isEqualTo("Nouveau");
         assertThat(response.adresse()).isEqualTo("Nouvelle adresse");
@@ -212,7 +212,7 @@ class MagasinServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(magasinDomainService.findById(magasinId)).thenReturn(foreign);
 
-        MagasinRequest updateReq = new MagasinRequest("x", "y");
+        MagasinRequest updateReq = new MagasinRequest("x", "y", null);
 
         assertThatThrownBy(() -> service.update(magasinId, updateReq))
                 .isInstanceOf(ForbiddenException.class);

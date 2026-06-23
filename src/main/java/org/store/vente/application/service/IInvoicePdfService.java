@@ -2,7 +2,7 @@ package org.store.vente.application.service;
 
 import java.util.UUID;
 
+/** Generates the PDF bytes for a client invoice. Scoped to the current user's entreprise. */
 public interface IInvoicePdfService {
-    /** Generates the PDF bytes for a client invoice. Scoped to current user's entreprise. */
-    byte[] generateFactureClientPdf(UUID factureId);
+    byte[] generate(UUID id);
 }
