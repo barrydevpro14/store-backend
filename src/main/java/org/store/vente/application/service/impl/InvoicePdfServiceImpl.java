@@ -48,7 +48,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
     }
 
     @Override
-    public byte[] generateFactureClientPdf(UUID factureId) {
+    public byte[] generate(UUID factureId) {
         FactureClient facture = factureClientDomainService.findById(factureId);
 
         OwnershipHelper.ensureOwnership(
