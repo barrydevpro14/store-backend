@@ -16,7 +16,12 @@ import java.util.UUID;
 
 public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
 
-    List<PaiementVente> findAllByFactureId(UUID factureId);
+    @Query("""
+            SELECT paiement FROM PaiementVente paiement
+            WHERE paiement.facture.id = :factureId
+            ORDER BY paiement.datePaiement DESC
+            """)
+    List<PaiementVente> findAllByFactureId(@Param("factureId") UUID factureId);
 
     @Query("""
             SELECT new org.store.vente.application.dto.PaiementVenteResponse(paiement)
