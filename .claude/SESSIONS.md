@@ -9,6 +9,30 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-06-24 — PDF achat + vente : refonte colonnes du tableau lignes + compaction sections client/fournisseur
+
+### Backend
+
+- **feat(pdf vente): colonne produit `nom(ref)` + nouvelle colonne `Catégorie / Qualité`** — `InvoicePdfServiceImpl.addLinesTable` passe de 4 à 5 colonnes (widths `{32, 23, 12, 16, 17}`). Colonne **Produit** affiche `nom(ref)` sur une seule ligne (fallback `nom` si ref vide) au lieu de `nom` + sous-lignes `Réf:`, `Cat.`, `Qualité`. Nouvelle colonne **Catégorie / Qualité** : `categoryLibelle / qualityLibelle` (fallback `cat` seul, `qual` seul, ou `—`). Helpers privés `buildProductLabel(nom, ref)` et `buildCategoryQualityLabel(category, quality)`.
+- **feat(pdf achat): même refonte + suppression colonne `Référence` dédiée** — `BonCommandeAchatPdfServiceImpl.addLinesTable` passe de 4 à 4 colonnes (widths `{35, 30, 12, 23}`). Colonne **Référence** dédiée supprimée (redondante avec `nom(ref)`). Mêmes helpers que vente. Clé i18n `pdf.achat.table.reference` supprimée (FR + EN).
+- **feat(pdf): nouvelle clé i18n partagée `pdf.table.categorieQualite`** — FR `Catégorie / Qualité`, EN `Category / Quality`. Utilisée par vente + achat.
+- **feat(pdf vente): compaction section client sur 2 lignes** — `addClientAndMeta` : ligne 1 `nom prenom`, ligne 2 `telephone / email / adresse` (séparateur ` / `, parties vides filtrées). Helper privé `joinNonBlank(separator, parts...)`. Avant : 3 lignes (`nom prenom`, `telephone`, `email`) — adresse n'apparaissait pas du tout.
+- **feat(pdf achat): compaction section fournisseur sur 2 lignes** — `addSupplier` : ligne 1 `nom prenom / ref`, ligne 2 `telephone / email / adresse`. Avant : 4 lignes (`nom` seul, `telephone`, `adresse`, `Réf. : xxx`) — `prenom` et `email` n'apparaissaient pas. Même helper `joinNonBlank` que vente.
+
+### État final
+- Backend : `./mvnw compile` BUILD SUCCESS. **Aucun commit créé** — modifs en attente sur le working tree, branche `dev-barry`.
+- Frontend : non touché.
+- Branch : `dev-barry`.
+
+### Open follow-ups
+- 4 fichiers modifiés non commités : `BonCommandeAchatPdfServiceImpl.java`, `InvoicePdfServiceImpl.java`, `messages.properties`, `messages_en.properties`. À commiter (commits atomiques recommandés : 1) refonte colonnes tableau lignes + i18n, 2) compaction sections contacts).
+- Tests non relancés (`./mvnw test`) — modifs purement template PDF mais à exécuter avant push pour sécurité.
+- Bug `fix(pdf): invoice header — store name vs company name` (toujours dans TODO 🟡) toujours non traité.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-06-23 — "Open" button on alerts → jump to payment page
 
 ### Backend

@@ -262,6 +262,8 @@ Current state: 7 entities (`Abonnement`, `PlanAbonnement`, `TypeAbonnement`, `Pa
 - [x] **`PermissionsDomainService.findAllByRoleId`** — JPQL projection on `role_permission`, returns `List<String>` of codes. Avoids LAZY access. Used by `UserPrincipalFactoryImpl`, `UserDetailsServiceImpl`, `EmployeServiceImpl`
 - [x] **`EmployeResponse(Employe)`** — secondary constructor that extracts fields from the entity (convention applicable to all `<X>Response`)
 - [x] **`FONCTIONNALITIES.md`** at the backend root — summary of the 5 business application services (auth × 4 + employee)
+- [x] **PDF achat + vente — refonte colonnes tableau lignes** (2026-06-24) — Colonne produit affiche `nom(ref)` sur une seule ligne (au lieu de nom + sous-lignes `Réf:`, `Cat.`, `Qualité`). Nouvelle colonne dédiée **Catégorie / Qualité** (`cat / qual`, fallback `cat` seul, `qual` seul, ou `—`). Colonne `Référence` dédiée du PDF achat supprimée (redondante). Nouvelle clé i18n partagée `pdf.table.categorieQualite`. Clé `pdf.achat.table.reference` supprimée. Helpers privés `buildProductLabel` + `buildCategoryQualityLabel` dans les deux impl.
+- [x] **PDF achat + vente — compaction sections contacts** (2026-06-24) — Section client (vente) et section fournisseur (achat) passent à 2 lignes max : ligne 1 `nom prenom [/ ref]`, ligne 2 `telephone / email / adresse` (parties vides filtrées). Helper privé `joinNonBlank(separator, parts...)` dans les deux impl. `prenom` (fournisseur) et `email` / `adresse` (fournisseur + client) qui n'apparaissaient pas dans le PDF sont maintenant visibles.
 
 ---
 
