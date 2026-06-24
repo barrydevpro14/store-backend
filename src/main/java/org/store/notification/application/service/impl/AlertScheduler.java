@@ -117,7 +117,7 @@ public class AlertScheduler {
                 : messageSourceService.getMessage("notification.facture.vente.overdue.message", new Object[]{facture.getNumero(), daysUntil, restant}, Locale.FRENCH);
         alertService.create(AlerteType.FACTURE_VENTE_OVERDUE, AlerteStatut.NOUVELLE,
                 titre, msg,
-                magasin.getEntreprise().getId(), magasin.getId(), facture.getId(), daysUntil);
+                magasin.getEntreprise().getId(), magasin.getId(), facture.getCommande().getId(), daysUntil);
         eventPublisher.publishEvent(new FactureClientOverdueEvent(facture, daysUntil));
         log.info("FactureClientDue alert persisted: facture {} due in {} days", facture.getNumero(), daysUntil);
     }
@@ -144,7 +144,7 @@ public class AlertScheduler {
                 : messageSourceService.getMessage("notification.facture.achat.overdue.message", new Object[]{facture.getNumero(), daysUntil, restant}, Locale.FRENCH);
         alertService.create(AlerteType.FACTURE_ACHAT_OVERDUE, AlerteStatut.NOUVELLE,
                 titre, msg,
-                magasin.getEntreprise().getId(), magasin.getId(), facture.getId(), daysUntil);
+                magasin.getEntreprise().getId(), magasin.getId(), facture.getCommande().getId(), daysUntil);
         eventPublisher.publishEvent(new FactureAchatOverdueEvent(facture, daysUntil));
         log.info("FactureAchatDue alert persisted: facture {} due in {} days", facture.getNumero(), daysUntil);
     }
