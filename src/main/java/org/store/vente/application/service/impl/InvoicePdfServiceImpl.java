@@ -114,15 +114,18 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     private void addClientAndMeta(Document doc, FactureClient facture) throws DocumentException {
         Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
+        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
 
         PdfPCell clientCell = pdf.sectionCell(pdf.msg("pdf.vente.section.client"));
         if (facture.getCommande().getClient() != null) {
             var client = facture.getCommande().getClient();
-            clientCell.addElement(new Paragraph(client.getNom() + " " + pdf.nullToEmpty(client.getPrenom()), valueFont));
-            if (pdf.isNotBlank(client.getTelephone()))
-                clientCell.addElement(new Paragraph(client.getTelephone(), new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT)));
-            if (pdf.isNotBlank(client.getEmail()))
-                clientCell.addElement(new Paragraph(client.getEmail(), new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT)));
+            String identityLine = joinNonBlank(" ", client.getNom(), client.getPrenom());
+            String contactLine  = joinNonBlank(" / ", client.getTelephone(), client.getEmail(), client.getAdresse());
+
+            if (pdf.isNotBlank(identityLine))
+                clientCell.addElement(new Paragraph(identityLine, valueFont));
+            if (pdf.isNotBlank(contactLine))
+                clientCell.addElement(new Paragraph(contactLine, infoFont));
         } else {
             clientCell.addElement(new Paragraph(pdf.msg("pdf.vente.client.anonyme"), new Font(Font.HELVETICA, 9, Font.ITALIC, IPdfService.GRAY_TEXT)));
         }
@@ -132,6 +135,16 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         meta.setHorizontalAlignment(Element.ALIGN_LEFT);
         meta.addCell(clientCell);
         doc.add(meta);
+    }
+
+    private String joinNonBlank(String separator, String... parts) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (!pdf.isNotBlank(part)) continue;
+            if (sb.length() > 0) sb.append(separator);
+            sb.append(part);
+        }
+        return sb.toString();
     }
 
     /* ── Lines table ───────────────────────────────────────────────────── */

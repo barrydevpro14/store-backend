@@ -113,19 +113,33 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         var fournisseur = commande.getFournisseur();
 
         PdfPCell cell = pdf.sectionCell(pdf.msg("pdf.achat.section.fournisseur"));
-        cell.addElement(new Paragraph(pdf.nullToEmpty(fournisseur.getNom()), valueFont));
-        if (pdf.isNotBlank(fournisseur.getTelephone()))
-            cell.addElement(new Paragraph(fournisseur.getTelephone(), infoFont));
-        if (pdf.isNotBlank(fournisseur.getAdresse()))
-            cell.addElement(new Paragraph(fournisseur.getAdresse(), infoFont));
-        if (pdf.isNotBlank(fournisseur.getReference()))
-            cell.addElement(new Paragraph(pdf.msg("pdf.label.ref") + " : " + fournisseur.getReference(), infoFont));
+
+        String identityLine = joinNonBlank(" / ",
+                joinNonBlank(" ", fournisseur.getNom(), fournisseur.getPrenom()),
+                fournisseur.getReference());
+        String contactLine = joinNonBlank(" / ",
+                fournisseur.getTelephone(), fournisseur.getEmail(), fournisseur.getAdresse());
+
+        if (pdf.isNotBlank(identityLine))
+            cell.addElement(new Paragraph(identityLine, valueFont));
+        if (pdf.isNotBlank(contactLine))
+            cell.addElement(new Paragraph(contactLine, infoFont));
 
         PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(50);
         table.setHorizontalAlignment(Element.ALIGN_LEFT);
         table.addCell(cell);
         doc.add(table);
+    }
+
+    private String joinNonBlank(String separator, String... parts) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (!pdf.isNotBlank(part)) continue;
+            if (sb.length() > 0) sb.append(separator);
+            sb.append(part);
+        }
+        return sb.toString();
     }
 
     /* ── Lines table ───────────────────────────────────────────────────── */
