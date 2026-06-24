@@ -13,6 +13,8 @@ import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.common.service.IPdfService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.magasin.domain.model.Magasin;
+import org.store.produit.domain.model.CategoryProduct;
+import org.store.produit.domain.model.Quality;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.awt.*;
@@ -129,13 +131,13 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
     /* ── Lines table ───────────────────────────────────────────────────── */
 
     private void addLinesTable(Document doc, CommandeAchat commande) throws DocumentException {
-        PdfPTable table = new PdfPTable(new float[]{40, 20, 15, 25});
+        PdfPTable table = new PdfPTable(new float[]{35, 30, 12, 23});
         table.setWidthPercentage(100);
 
         Font headFont = new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE);
         String[] headers = {
             pdf.msg("pdf.achat.table.produit"),
-            pdf.msg("pdf.achat.table.reference"),
+            pdf.msg("pdf.table.categorieQualite"),
             pdf.msg("pdf.achat.table.quantite"),
             pdf.msg("pdf.achat.table.prixAchat")
         };
@@ -144,42 +146,41 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
             cell.setBackgroundColor(IPdfService.PRIMARY);
             cell.setPadding(7);
             cell.setBorder(Rectangle.NO_BORDER);
-            cell.setHorizontalAlignment(i >= 2 ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+            cell.setHorizontalAlignment(i <= 1 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
             table.addCell(cell);
         }
 
         Font lineFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
-        Font refFont  = new Font(Font.HELVETICA, 8, Font.NORMAL, IPdfService.GRAY_TEXT);
         boolean alt   = false;
 
         for (LigneCommandeAchat ligne : commande.getLignes()) {
             Color bg = alt ? new Color(249, 250, 251) : Color.WHITE;
             alt = !alt;
 
-            PdfPCell nameCell = new PdfPCell();
-            nameCell.setBackgroundColor(bg);
-            nameCell.setBorderColor(IPdfService.BORDER);
-            nameCell.setPadding(6);
             var product = ligne.getProductFournisseur().getProduct();
-            String nom = product.getNom();
-            String ref = product.getReference();
-            nameCell.addElement(new Paragraph(nom, lineFont));
-            if (pdf.isNotBlank(ref))
-                nameCell.addElement(new Paragraph(ref, refFont));
-            var category = product.getCategoryProduct();
-            if (category != null && pdf.isNotBlank(category.getLibelle()))
-                nameCell.addElement(new Paragraph(pdf.msg("pdf.label.category") + " : " + category.getLibelle(), refFont));
             var quality = ligne.getProductFournisseur().getQuality();
-            if (quality != null && pdf.isNotBlank(quality.getLibelle()))
-                nameCell.addElement(new Paragraph(pdf.msg("pdf.label.qualite") + " : " + quality.getLibelle(), refFont));
-            table.addCell(nameCell);
 
-            table.addCell(pdf.textCell(pdf.nullToEmpty(ref), refFont, bg));
+            table.addCell(pdf.textCell(buildProductLabel(product.getNom(), product.getReference()), lineFont, bg));
+            table.addCell(pdf.textCell(buildCategoryQualityLabel(product.getCategoryProduct(), quality), lineFont, bg));
             table.addCell(pdf.numCell(String.valueOf(ligne.getQuantite()), lineFont, bg));
             table.addCell(pdf.numCell(pdf.formatAmount(ligne.getPrixAchat()), lineFont, bg));
         }
 
         doc.add(table);
+    }
+
+    private String buildProductLabel(String nom, String ref) {
+        return pdf.isNotBlank(ref) ? nom + "(" + ref + ")" : pdf.nullToEmpty(nom);
+    }
+
+    private String buildCategoryQualityLabel(CategoryProduct category, Quality quality) {
+        String categoryLabel = category != null && pdf.isNotBlank(category.getLibelle()) ? category.getLibelle() : null;
+        String qualityLabel  = quality != null && pdf.isNotBlank(quality.getLibelle()) ? quality.getLibelle() : null;
+
+        if (categoryLabel != null && qualityLabel != null) return categoryLabel + " / " + qualityLabel;
+        if (categoryLabel != null) return categoryLabel;
+        if (qualityLabel != null) return qualityLabel;
+        return "—";
     }
 
     /* ── Total ─────────────────────────────────────────────────────────── */
