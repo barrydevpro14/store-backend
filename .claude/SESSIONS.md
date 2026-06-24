@@ -9,7 +9,7 @@
 
 ## 📌 Latest session
 
-**Date:** 2026-06-24 — PDF achat + vente : refonte colonnes du tableau lignes + compaction sections client/fournisseur
+**Date:** 2026-06-24 — PDF refonte (colonnes + compaction contacts) + AlertesPage (dialog inline + tooltips + payment icon) + migration legacy alertes
 
 ### Backend
 
@@ -18,16 +18,24 @@
 - **feat(pdf): nouvelle clé i18n partagée `pdf.table.categorieQualite`** — FR `Catégorie / Qualité`, EN `Category / Quality`. Utilisée par vente + achat.
 - **feat(pdf vente): compaction section client sur 2 lignes** — `addClientAndMeta` : ligne 1 `nom prenom`, ligne 2 `telephone / email / adresse` (séparateur ` / `, parties vides filtrées). Helper privé `joinNonBlank(separator, parts...)`. Avant : 3 lignes (`nom prenom`, `telephone`, `email`) — adresse n'apparaissait pas du tout.
 - **feat(pdf achat): compaction section fournisseur sur 2 lignes** — `addSupplier` : ligne 1 `nom prenom / ref`, ligne 2 `telephone / email / adresse`. Avant : 4 lignes (`nom` seul, `telephone`, `adresse`, `Réf. : xxx`) — `prenom` et `email` n'apparaissaient pas. Même helper `joinNonBlank` que vente.
+- **fix(alerte): backfill entity_id factureId → commandeId (V51)** — Migration Flyway one-shot. Les alertes créées avant `c371664` pointent encore sur `facture.id` ; après le switch frontend vers le dialog inline qui attend `commande.id`, ces alertes legacy renvoyaient un 406. Migration : `UPDATE alerte SET entity_id = fa.commande_id FROM facture_achat fa WHERE alerte.entity_id = fa.id AND alerte.type = 'FACTURE_ACHAT_OVERDUE'` (idem `facture_vente`). Idempotente. À appliquer au prochain boot du backend.
+
+### Frontend
+
+- **feat(alerte): open details dialog instead of navigating** — `AlertesPage.tsx` : remplacement du `<Link>` qui naviguait vers `/dashboard/ventes/{id}` / `/dashboard/achats/{id}` par un `<Button onClick>` qui ouvre `<VenteDetailsDialog>` / `<AchatDetailsDialog>` inline (mêmes signatures que sur `VentesPage` / `AchatsPage`). 2 nouveaux states locaux `venteDetailsId` / `achatDetailsId`. Handlers extraits au-dessus du `return` (`handleOpenAlerte`, `handleVenteDetailsOpenChange`, `handleAchatDetailsOpenChange`, `isAlerteOpenable`). `ABONNEMENT_EXPIRING` reste un `<Link>` vers la page souscription (pas de dialog).
+- **chore(ui): install shadcn Tooltip component** — Généré via `npx shadcn@latest add tooltip`. Wraps `@base-ui/react Tooltip` primitive (déjà présent comme dépendance). Fichier `src/common/presentation/ui/tooltip.tsx`.
+- **feat(alerte): payment icon + tooltips on action buttons** — Icône `ExternalLink` remplacée par `CreditCard` sur les 3 boutons "open" (vente, achat, souscription abonnement). Tous les boutons d'action (`Ouvrir`, `Marquer lue`, `Marquer résolue`) enveloppés dans `<Tooltip>` avec pattern `<TooltipTrigger render={<Button|Link>}>` (`@base-ui/react`) + `<TooltipContent>` affichant `t('actions.xxx')`. Page enveloppée dans `<TooltipProvider>`.
 
 ### État final
-- Backend : `./mvnw compile` BUILD SUCCESS. **Aucun commit créé** — modifs en attente sur le working tree, branche `dev-barry`.
-- Frontend : non touché.
+- Backend : `./mvnw compile` BUILD SUCCESS. 4 commits poussés sur `dev-barry` (`64e6bb2` refonte colonnes, `81b579a` compaction contacts, `33faa99` docs intermédiaire, `c015572` V51 migration).
+- Frontend : `npx tsc --noEmit` exit 0. 3 commits poussés sur `dev-barry` (`0660b6c` dialog inline, `4fe0b1e` install shadcn Tooltip, `9001f7d` payment icon + tooltips).
 - Branch : `dev-barry`.
 
 ### Open follow-ups
-- 4 fichiers modifiés non commités : `BonCommandeAchatPdfServiceImpl.java`, `InvoicePdfServiceImpl.java`, `messages.properties`, `messages_en.properties`. À commiter (commits atomiques recommandés : 1) refonte colonnes tableau lignes + i18n, 2) compaction sections contacts).
-- Tests non relancés (`./mvnw test`) — modifs purement template PDF mais à exécuter avant push pour sécurité.
+- **Redémarrer le backend** (`./mvnw spring-boot:run`) pour appliquer la migration V51. Tant que ce n'est pas fait, les anciennes alertes 406-eront toujours sur le bouton "Ouvrir".
+- Tests non relancés (`./mvnw test` + `npx vitest run`) — modifs purement template PDF + composant UI sans logique, mais à valider visuellement avant de cascader vers `dev`.
 - Bug `fix(pdf): invoice header — store name vs company name` (toujours dans TODO 🟡) toujours non traité.
+- Le `<TooltipProvider>` est local à `AlertesPage` — à promouvoir au niveau du `DashboardShell` quand d'autres écrans adopteront le pattern Tooltip.
 
 ---
 
