@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
+import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -50,6 +51,11 @@ public interface IEntrepriseService {
      * Lecture d'une entreprise par id (ADMIN).
      */
     EntrepriseResponse findResponseById(UUID id);
+
+    /**
+     * Lecture détaillée d'une entreprise par id avec son propriétaire (ADMIN).
+     */
+    EntrepriseDetailResponse findDetailById(UUID id);
 
     /**
      * Activation d'une entreprise (ADMIN).
