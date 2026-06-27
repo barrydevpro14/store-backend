@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
+import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -67,8 +68,8 @@ public class EntrepriseController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('COMPANY_READ')")
-    public ResponseEntity<EntrepriseResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(entrepriseService.findResponseById(id));
+    public ResponseEntity<EntrepriseDetailResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(entrepriseService.findDetailById(id));
     }
 
     @PutMapping("/{id}")
