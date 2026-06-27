@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
@@ -68,6 +69,10 @@ class EntrepriseControllerTest {
         return new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", null, null, true, true, null);
     }
 
+    private EntrepriseDetailResponse sampleDetail() {
+        return new EntrepriseDetailResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", null, null, true, true, null, null);
+    }
+
     private RegisterPropertyRequest validRegisterBody() {
         return new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
@@ -103,7 +108,7 @@ class EntrepriseControllerTest {
 
     @Test
     void should_return_200_when_admin_gets_by_id() throws Exception {
-        when(entrepriseService.findResponseById(eq(entrepriseId))).thenReturn(sample());
+        when(entrepriseService.findDetailById(eq(entrepriseId))).thenReturn(sampleDetail());
 
         mockMvc.perform(get(EntrepriseController.BASE_PATH + "/" + entrepriseId))
                 .andExpect(status().isOk())

@@ -12,6 +12,7 @@ import org.store.common.tools.OwnershipHelper;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
+import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -100,6 +101,12 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     @Override
     public EntrepriseResponse findResponseById(UUID id) {
         return new EntrepriseResponse(entrepriseDomainService.findById(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EntrepriseDetailResponse findDetailById(UUID id) {
+        return new EntrepriseDetailResponse(entrepriseDomainService.findById(id));
     }
 
     @Override
