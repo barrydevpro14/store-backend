@@ -755,18 +755,15 @@ header: `${t('montantTotal')} (${currencyLabel})`,
 cell: ({ row }) => <span className="tabular-nums">{format.number(row.original.montantTotal)}</span>
 ```
 
-**How to build `currencyLabel`:** use `Intl.NumberFormat.formatToParts` with the app locale to extract the currency symbol. This resolves `XOF → F CFA`, `EUR → €`, etc. Add it as a `useMemo` in the component:
+**How to build `currencyLabel`:** call the shared hook `useCurrencyLabel()` (in `@/common/application/use-currency-label`). It internally resolves the active currency + locale and returns the localized symbol (`XOF → F CFA`, `EUR → €`, etc.), with a fallback to the raw ISO code.
 
 ```ts
-const locale = useLocale()
-const currency = useCurrency()
-const currencyLabel = useMemo(() => {
-  try {
-    const parts = new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'symbol' }).formatToParts(0)
-    return parts.find((p) => p.type === 'currency')?.value ?? currency
-  } catch { return currency }
-}, [locale, currency])
+import { useCurrencyLabel } from '@/common/application/use-currency-label'
+
+const currencyLabel = useCurrencyLabel()
 ```
+
+**Forbidden:** inline `Intl.NumberFormat(...).formatToParts(0)` + `useMemo` to resolve the currency symbol. The hook is the single source of truth — keep the conversion in one place so every header reads the same symbol.
 
 Add `currencyLabel` to the `useMemo` deps array for the columns definition.
 
