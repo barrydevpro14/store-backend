@@ -2,7 +2,7 @@ package org.store.produit.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -66,8 +66,9 @@ public class ProductController {
     @PreAuthorize("hasAuthority('PRODUCT_READ')")
     public ResponseEntity<Page<ProductSearchResponse>> search(@RequestParam(value = "q", required = false) String searchTerm,
                                                               @RequestParam(required = false) UUID magasinId,
-                                                              Pageable pageable) {
-        return ResponseEntity.ok(productSearchService.search(searchTerm, magasinId, pageable));
+                                                              @RequestParam(defaultValue = "0") int page,
+                                                              @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(productSearchService.search(searchTerm, magasinId, PageRequest.of(page, size)));
     }
 
     @GetMapping("/{id}")

@@ -21,10 +21,10 @@ public interface StockRepository extends BaseRepository<Stock> {
             FROM Stock stock
             WHERE stock.magasin.entreprise.id = :entrepriseId
               AND stock.magasin.id = :magasinId
-              AND (:productId IS NULL OR stock.productFournisseur.product.id = :productId)
               AND (:productName IS NULL OR :productName = ''
                    OR LOWER(stock.productFournisseur.product.nom) LIKE :productNamePattern
-                   OR LOWER(COALESCE(stock.productFournisseur.product.reference, '')) LIKE :productNamePattern)
+                   OR LOWER(COALESCE(stock.productFournisseur.product.reference, '')) LIKE :productNamePattern
+                   OR LOWER(stock.productFournisseur.product.categoryProduct.libelle) LIKE :productNamePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', stock.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', stock.createdAt) <= CAST(:endDate AS date))
             ORDER BY stock.createdAt DESC
@@ -32,7 +32,6 @@ public interface StockRepository extends BaseRepository<Stock> {
     Page<StockResponse> findResponsesByFilter(
             @Param("entrepriseId") UUID entrepriseId,
             @Param("magasinId") UUID magasinId,
-            @Param("productId") UUID productId,
             @Param("productName") String productName,
             @Param("productNamePattern") String productNamePattern,
             @Param("startDate") String startDate,

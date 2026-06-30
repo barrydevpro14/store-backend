@@ -40,14 +40,12 @@ class MouvementStockServiceImplTest {
 
     private UUID entrepriseId;
     private UUID magasinId;
-    private UUID productId;
     private UUID stockId;
 
     @BeforeEach
     void setUp() {
         entrepriseId = UUID.randomUUID();
         magasinId = UUID.randomUUID();
-        productId = UUID.randomUUID();
         stockId = UUID.randomUUID();
     }
 
@@ -57,7 +55,7 @@ class MouvementStockServiceImplTest {
 
     @Test
     void list_should_validate_filter_and_delegate_with_currentUser_entrepriseId() {
-        MouvementStockFilter filter = new MouvementStockFilter(magasinId, productId, stockId, "ENTREE_ACHAT", null, null, 0, 10);
+        MouvementStockFilter filter = new MouvementStockFilter(magasinId, "clou", stockId, "ENTREE_ACHAT", null, null, 0, 10);
         Page<MouvementStockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());

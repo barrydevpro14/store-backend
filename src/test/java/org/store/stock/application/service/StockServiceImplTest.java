@@ -18,6 +18,7 @@ import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
@@ -124,7 +125,7 @@ class StockServiceImplTest {
 
     @Test
     void list_should_validate_filter_and_delegate_with_currentUser_entrepriseId() {
-        StockFilter filter = new StockFilter(magasinId, productId, 0, 10);
+        StockFilter filter = new StockFilter(magasinId, null, null, null, 0, 10);
         Page<StockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -139,7 +140,7 @@ class StockServiceImplTest {
 
     @Test
     void findBelowThreshold_should_validate_and_delegate() {
-        StockFilter filter = new StockFilter(magasinId, null, 0, 10);
+        BelowThresholdFilter filter = new BelowThresholdFilter(magasinId, null, 0, 10);
         Page<StockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());

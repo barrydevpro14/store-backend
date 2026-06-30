@@ -17,18 +17,22 @@ public interface ProductRepository extends BaseRepository<Product> {
             SELECT new org.store.produit.application.dto.ProductResponse(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR :nom = '' OR LOWER(CONCAT(produit.nom,produit.reference)) LIKE :nomPattern)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(CONCAT(produit.reference , produit.categoryProduct.libelle)) LIKE :referencePattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(CONCAT(produit.nom,produit.reference)) LIKE :nomPattern
+              OR LOWER(produit.categoryProduct.libelle) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(produit.reference) LIKE :referencePattern
+               OR LOWER(produit.categoryProduct.libelle) LIKE :referencePattern OR LOWER(produit.nom) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
-            ORDER BY produit.createdAt DESC
+            ORDER BY produit.nom ASC
             """,
            countQuery = """
             SELECT COUNT(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
-              AND (:nom IS NULL OR :nom = '' OR LOWER(CONCAT(produit.nom,produit.reference)) LIKE :nomPattern)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(CONCAT(produit.reference , produit.categoryProduct.libelle)) LIKE :referencePattern)
+              AND (:nom IS NULL OR :nom = '' OR LOWER(CONCAT(produit.nom,produit.reference)) LIKE :nomPattern
+              OR LOWER(produit.categoryProduct.libelle) LIKE :nomPattern)
+              AND (:reference IS NULL OR :reference = '' OR LOWER(CONCAT(produit.reference , produit.categoryProduct.libelle)) LIKE :referencePattern
+              OR LOWER(produit.nom) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
             """)
@@ -60,7 +64,8 @@ public interface ProductRepository extends BaseRepository<Product> {
             WHERE produit.entreprise.id = :entrepriseId
               AND (:searchPattern IS NULL
                    OR LOWER(produit.nom) LIKE :searchPattern
-                   OR LOWER(produit.reference) LIKE :searchPattern)
+                   OR LOWER(produit.reference) LIKE :searchPattern
+                   OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
               AND EXISTS (
                   SELECT 1 FROM EntreeStock entree
                   WHERE entree.produit = produit
@@ -68,6 +73,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                     AND entree.quantiteRestante > 0
                     AND entree.annulee = false
               )
+            ORDER BY produit.nom ASC
             """)
     Page<Product> searchByEntrepriseWithActiveLots(@Param("searchPattern") String searchPattern,
                                                    @Param("magasinId") UUID magasinId,

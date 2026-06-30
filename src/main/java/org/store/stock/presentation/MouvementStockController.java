@@ -31,14 +31,14 @@ public class MouvementStockController {
     @PreAuthorize("hasAuthority('STOCK_READ')")
     public ResponseEntity<Page<MouvementStockResponse>> list(@RequestParam UUID magasinId,
                                                              @RequestParam(required = false) UUID stockId,
-                                                             @RequestParam(required = false) UUID productId,
+                                                             @RequestParam(required = false) String productName,
                                                              @RequestParam(required = false) String type,
                                                              @RequestParam(required = false) String startDate,
                                                              @RequestParam(required = false) String endDate,
                                                              @RequestParam(defaultValue = "0") int page,
                                                              @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(mouvementStockService.findAllByCurrentEntreprise(
-                new MouvementStockFilter(magasinId, productId, stockId, type, startDate, endDate, page, size)
+                new MouvementStockFilter(magasinId, productName, stockId, type, startDate, endDate, page, size)
         ));
     }
 }

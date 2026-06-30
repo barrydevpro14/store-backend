@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.ExpiringLotResponse;
 import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.common.dto.DataCountResponse;
@@ -41,14 +42,13 @@ public class StockController {
     @GetMapping
     @PreAuthorize("hasAuthority('STOCK_READ')")
     public ResponseEntity<Page<StockResponse>> list(@RequestParam UUID magasinId,
-                                                    @RequestParam(required = false) UUID productId,
                                                     @RequestParam(required = false) String productName,
                                                     @RequestParam(required = false) String startDate,
                                                     @RequestParam(required = false) String endDate,
                                                     @RequestParam(defaultValue = "0") int page,
                                                     @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(stockService.findAllByCurrentEntreprise(
-                new StockFilter(magasinId, productId, productName, startDate, endDate, page, size)
+                new StockFilter(magasinId, productName, startDate, endDate, page, size)
         ));
     }
 
@@ -59,7 +59,7 @@ public class StockController {
                                                                   @RequestParam(defaultValue = "0") int page,
                                                                   @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(stockService.findBelowThresholdByCurrentEntreprise(
-                new StockFilter(magasinId, productId, page, size)
+                new BelowThresholdFilter(magasinId, productId, page, size)
         ));
     }
 
