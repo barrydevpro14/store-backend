@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.store.common.tools.EnumHelper;
+import org.store.common.tools.LikePatternHelper;
 import org.store.common.validation.DatePattern;
 import org.store.common.validation.EnumValue;
 import org.store.stock.domain.enums.MouvementStockType;
@@ -13,7 +14,7 @@ import java.util.UUID;
 
 public record MouvementStockFilter(
         @NotNull UUID magasinId,
-        UUID productId,
+        String productName,
         UUID stockId,
         @EnumValue(enumClass = MouvementStockType.class) String type,
         @DatePattern String startDate,
@@ -23,6 +24,10 @@ public record MouvementStockFilter(
 ) {
     public MouvementStockType typeAsEnum() {
         return EnumHelper.parse(MouvementStockType.class, type);
+    }
+
+    public String productNamePattern() {
+        return LikePatternHelper.toLikePattern(productName);
     }
 
     public Pageable toPageable() {
