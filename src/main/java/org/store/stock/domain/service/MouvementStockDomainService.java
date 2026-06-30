@@ -34,7 +34,8 @@ public class MouvementStockDomainService extends GlobalService<MouvementStock, M
         return repository.findResponsesByFilter(
                 entrepriseId,
                 filter.magasinId(),
-                filter.productId(),
+                filter.productName(),
+                filter.productNamePattern(),
                 filter.stockId(),
                 filter.typeAsEnum(),
                 filter.startDate(),

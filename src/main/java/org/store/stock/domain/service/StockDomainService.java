@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
@@ -32,7 +33,6 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         return repository.findResponsesByFilter(
                 entrepriseId,
                 filter.magasinId(),
-                filter.productId(),
                 filter.productName(),
                 filter.productNamePattern(),
                 filter.startDate(),
@@ -40,7 +40,7 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
                 filter.toPageable());
     }
 
-    public Page<StockResponse> findResponsesBelowThreshold(StockFilter filter, UUID entrepriseId) {
+    public Page<StockResponse> findResponsesBelowThreshold(BelowThresholdFilter filter, UUID entrepriseId) {
         return repository.findResponsesBelowThreshold(entrepriseId, filter.magasinId(), filter.toPageable());
     }
 

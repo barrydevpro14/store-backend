@@ -92,7 +92,7 @@ class MouvementStockControllerTest {
 
         mockMvc.perform(get(MouvementStockController.BASE_PATH)
                         .param("magasinId", magasinId.toString())
-                        .param("productId", productId.toString())
+                        .param("productName", "clou")
                         .param("stockId", stockId.toString())
                         .param("type", "ENTREE_ACHAT")
                         .param("startDate", "2026-05-01")
@@ -101,6 +101,6 @@ class MouvementStockControllerTest {
                         .param("size", "5"))
                 .andExpect(status().isOk());
 
-        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, productId, stockId, "ENTREE_ACHAT", "2026-05-01", "2026-05-14", 1, 5)));
+        verify(mouvementStockService).findAllByCurrentEntreprise(eq(new MouvementStockFilter(magasinId, "clou", stockId, "ENTREE_ACHAT", "2026-05-01", "2026-05-14", 1, 5)));
     }
 }

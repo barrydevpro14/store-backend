@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
@@ -56,7 +57,7 @@ public class StockServiceImpl implements IStockService {
 
     /** Valide le filter puis délègue la query "below threshold" scopée par entreprise du caller. */
     @Override
-    public Page<StockResponse> findBelowThresholdByCurrentEntreprise(StockFilter filter) {
+    public Page<StockResponse> findBelowThresholdByCurrentEntreprise(BelowThresholdFilter filter) {
         validatorService.validate(filter);
         return stockDomainService.findResponsesBelowThreshold(filter, currentUserService.getCurrent().entrepriseId());
     }
