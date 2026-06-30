@@ -23,7 +23,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                OR LOWER(produit.categoryProduct.libelle) LIKE :referencePattern OR LOWER(produit.nom) LIKE :referencePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', produit.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', produit.createdAt) <= CAST(:endDate AS date))
-            ORDER BY produit.createdAt DESC
+            ORDER BY produit.nom ASC
             """,
            countQuery = """
             SELECT COUNT(produit)
