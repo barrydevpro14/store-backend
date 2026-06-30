@@ -60,7 +60,8 @@ public interface ProductRepository extends BaseRepository<Product> {
             WHERE produit.entreprise.id = :entrepriseId
               AND (:searchPattern IS NULL
                    OR LOWER(produit.nom) LIKE :searchPattern
-                   OR LOWER(produit.reference) LIKE :searchPattern)
+                   OR LOWER(produit.reference) LIKE :searchPattern
+                   OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
               AND EXISTS (
                   SELECT 1 FROM EntreeStock entree
                   WHERE entree.produit = produit
