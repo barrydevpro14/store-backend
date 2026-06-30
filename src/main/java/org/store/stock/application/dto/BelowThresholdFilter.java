@@ -4,23 +4,15 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.store.common.tools.LikePatternHelper;
-import org.store.common.validation.DatePattern;
 
 import java.util.UUID;
 
-public record StockFilter(
+public record BelowThresholdFilter(
         @NotNull UUID magasinId,
-        String productName,
-        @DatePattern String startDate,
-        @DatePattern String endDate,
+        UUID productId,
         @Min(0) int page,
         @Min(1) int size
 ) {
-    public String productNamePattern() {
-        return LikePatternHelper.toLikePattern(productName);
-    }
-
     public Pageable toPageable() {
         return PageRequest.of(page, size);
     }

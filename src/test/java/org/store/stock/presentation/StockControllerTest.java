@@ -13,6 +13,7 @@ import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
+import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.ExpiringLotResponse;
 import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.application.dto.StockFilter;
@@ -96,7 +97,7 @@ class StockControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(stockId.toString()));
 
-        verify(stockService).findAllByCurrentEntreprise(eq(new StockFilter(magasinId, null, 0, 10)));
+        verify(stockService).findAllByCurrentEntreprise(eq(new StockFilter(magasinId, null, null, null, 0, 10)));
     }
 
     @Test
@@ -106,25 +107,25 @@ class StockControllerTest {
 
         mockMvc.perform(get(StockController.BASE_PATH)
                         .param("magasinId", magasinId.toString())
-                        .param("productId", productId.toString())
+                        .param("productName", "clou")
                         .param("page", "1")
                         .param("size", "5"))
                 .andExpect(status().isOk());
 
-        verify(stockService).findAllByCurrentEntreprise(eq(new StockFilter(magasinId, productId, 1, 5)));
+        verify(stockService).findAllByCurrentEntreprise(eq(new StockFilter(magasinId, "clou", null, null, 1, 5)));
     }
 
     @Test
     void should_return_200_with_page_when_list_below_threshold() throws Exception {
         Page<StockResponse> page = new PageImpl<>(List.of(sample()), PageRequest.of(0, 10), 1);
-        when(stockService.findBelowThresholdByCurrentEntreprise(any(StockFilter.class))).thenReturn(page);
+        when(stockService.findBelowThresholdByCurrentEntreprise(any(BelowThresholdFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(StockController.BASE_PATH + "/below-threshold")
                         .param("magasinId", magasinId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(stockId.toString()));
 
-        verify(stockService).findBelowThresholdByCurrentEntreprise(eq(new StockFilter(magasinId, null, 0, 10)));
+        verify(stockService).findBelowThresholdByCurrentEntreprise(eq(new BelowThresholdFilter(magasinId, null, 0, 10)));
     }
 
     @Test
