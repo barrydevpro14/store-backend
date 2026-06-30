@@ -48,7 +48,7 @@ public interface ProductRepository extends BaseRepository<Product> {
 
     Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 
-    boolean existsByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
+    boolean existsByReferenceAndNomAndEntrepriseId(String reference, String nom, UUID entrepriseId);
 
     /**
      * Recherche produits par nom OU référence avec lots actifs dans

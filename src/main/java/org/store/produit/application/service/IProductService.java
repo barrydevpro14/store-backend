@@ -50,9 +50,9 @@ public interface IProductService {
     Product ensureBelongsToCurrentEntreprise(Product product);
 
     /**
-     * Vérifie qu'aucun produit de l'entreprise donnée ne porte déjà cette référence. Throw `UniqueResourceException("product.reference.alreadyExists")` sinon.
+     * Vérifie qu'aucun produit de l'entreprise donnée ne porte déjà ce couple (reference, nom). Throw `UniqueResourceException("product.referenceNom.alreadyExists")` sinon.
      */
-    void ensureReferenceAvailable(String reference, UUID entrepriseId);
+    void ensureReferenceAndNomAvailable(String reference, String nom, UUID entrepriseId);
 
     /**
      * Téléverse une image principale (remplace l'existante) pour un produit de l'entreprise du caller.

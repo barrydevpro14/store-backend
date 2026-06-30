@@ -6,8 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.EntityException;
-import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.common.tools.OwnershipHelper;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
@@ -51,12 +51,12 @@ public class ProductServiceImpl implements IProductService {
         this.uploadFileService = uploadFileService;
     }
 
-    /** Crée un produit après vérification de l'unicité de la référence et de l'appartenance de la catégorie à l'entreprise du caller. */
+    /** Crée un produit après vérification de l'unicité (reference, nom) et de l'appartenance de la catégorie à l'entreprise du caller. */
     @Override
     @Transactional
     public ProductResponse create(ProductRequest productRequest) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        ensureReferenceAvailable(productRequest.reference(), entrepriseId);
+        ensureReferenceAndNomAvailable(productRequest.reference(), productRequest.nom(), entrepriseId);
         CategoryProduct categoryProduct = categoryProductService.ensureBelongsToCurrentEntreprise(
                 categoryProductService.findById(productRequest.categoryProductId()));
         Entreprise entreprise = entrepriseService.findById(entrepriseId);
@@ -84,14 +84,18 @@ public class ProductServiceImpl implements IProductService {
         return productDomainService.findResponsesByFilter(filter, entrepriseId);
     }
 
-    /** Met à jour les champs du produit après contrôle d'appartenance, d'unicité (si reference changée) et de cohérence catégorie. */
+    /** Met à jour les champs du produit après contrôle d'appartenance, d'unicité (reference, nom) si l'un des deux change, et de cohérence catégorie. */
     @Override
     @Transactional
     public ProductResponse update(UUID id, ProductRequest productRequest) {
         Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(id));
-        if (!product.getReference().equals(productRequest.reference())) {
-            ensureReferenceAvailable(productRequest.reference(), product.getEntreprise().getId());
+
+        boolean referenceChanged = !product.getReference().equals(productRequest.reference());
+        boolean nomChanged = !product.getNom().equals(productRequest.nom());
+        if (referenceChanged || nomChanged) {
+            ensureReferenceAndNomAvailable(productRequest.reference(), productRequest.nom(), product.getEntreprise().getId());
         }
+
         CategoryProduct categoryProduct = categoryProductService.ensureBelongsToCurrentEntreprise(
                 categoryProductService.findById(productRequest.categoryProductId()));
         product.setNom(productRequest.nom());
@@ -120,11 +124,11 @@ public class ProductServiceImpl implements IProductService {
         );
     }
 
-    /** Lève `UniqueResourceException` si la référence est déjà utilisée dans l'entreprise. */
+    /** Lève `UniqueResourceException` si le couple (reference, nom) est déjà utilisé dans l'entreprise. */
     @Override
-    public void ensureReferenceAvailable(String reference, UUID entrepriseId) {
-        if (productDomainService.existsByReferenceAndEntrepriseId(reference, entrepriseId)) {
-            throw new UniqueResourceException("product.reference.alreadyExists", reference);
+    public void ensureReferenceAndNomAvailable(String reference, String nom, UUID entrepriseId) {
+        if (productDomainService.existsByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId)) {
+            throw new UniqueResourceException("product.referenceNom.alreadyExists", reference, nom);
         }
     }
 
