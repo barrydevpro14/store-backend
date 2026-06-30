@@ -37,7 +37,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -97,7 +96,6 @@ class ProductServiceImplTest {
         Product saved = sampleProduct(entreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(productDomainService.existsByReferenceAndEntrepriseId("PN-195-65-R15", entrepriseId)).thenReturn(false);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
@@ -113,10 +111,11 @@ class ProductServiceImplTest {
     }
 
     @Test
-    void create_should_throw_when_reference_already_exists() {
-        ProductRequest request = new ProductRequest("x", "PN-DUP", null, categoryId);
+    void create_should_throw_when_reference_and_nom_already_exist() {
+        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-DUP", null, categoryId);
+
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(productDomainService.existsByReferenceAndEntrepriseId("PN-DUP", entrepriseId)).thenReturn(true);
+        when(productDomainService.existsByReferenceAndNomAndEntrepriseId("PN-DUP", "Pneu 195/65 R15", entrepriseId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UniqueResourceException.class);
@@ -129,7 +128,6 @@ class ProductServiceImplTest {
         ProductRequest request = new ProductRequest("x", "PN-OK", null, categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(productDomainService.existsByReferenceAndEntrepriseId("PN-OK", entrepriseId)).thenReturn(false);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category))
                 .thenThrow(new ForbiddenException("categoryProduct.notOwned"));
@@ -199,9 +197,9 @@ class ProductServiceImplTest {
     }
 
     @Test
-    void update_should_skip_unicity_check_when_reference_unchanged() {
+    void update_should_skip_unicity_check_when_reference_and_nom_unchanged() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("x", "PN-195-65-R15", null, categoryId);
+        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Nouvelle desc", categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
@@ -211,17 +209,17 @@ class ProductServiceImplTest {
 
         service.update(productId, request);
 
-        verify(productDomainService, never()).existsByReferenceAndEntrepriseId(any(), any());
+        verify(productDomainService, never()).existsByReferenceAndNomAndEntrepriseId(any(), any(), any());
     }
 
     @Test
-    void update_should_throw_when_new_reference_taken() {
+    void update_should_throw_when_new_reference_and_nom_taken() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("x", "PN-NEW", null, categoryId);
+        ProductRequest request = new ProductRequest("Autre nom", "PN-NEW", null, categoryId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
-        when(productDomainService.existsByReferenceAndEntrepriseId("PN-NEW", entrepriseId)).thenReturn(true);
+        when(productDomainService.existsByReferenceAndNomAndEntrepriseId("PN-NEW", "Autre nom", entrepriseId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.update(productId, request))
                 .isInstanceOf(UniqueResourceException.class);
@@ -308,14 +306,6 @@ class ProductServiceImplTest {
         ProductResponse response = service.findResponseById(productId);
 
         assertThat(response.image()).isNull();
-    }
-
-    @Test
-    void ensureReferenceAvailable_should_throw_when_taken() {
-        when(productDomainService.existsByReferenceAndEntrepriseId(eq("PN-1"), eq(entrepriseId))).thenReturn(true);
-
-        assertThatThrownBy(() -> service.ensureReferenceAvailable("PN-1", entrepriseId))
-                .isInstanceOf(UniqueResourceException.class);
     }
 
     @Test

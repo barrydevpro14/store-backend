@@ -43,8 +43,8 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         return repository.findByReferenceAndEntrepriseId(reference, entrepriseId);
     }
 
-    public boolean existsByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {
-        return repository.existsByReferenceAndEntrepriseId(reference, entrepriseId);
+    public boolean existsByReferenceAndNomAndEntrepriseId(String reference, String nom, UUID entrepriseId) {
+        return repository.existsByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId);
     }
 
     public Page<Product> searchByEntrepriseWithActiveLots(String searchTerm, UUID magasinId, UUID entrepriseId, Pageable pageable) {
