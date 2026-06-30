@@ -68,6 +68,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                     AND entree.quantiteRestante > 0
                     AND entree.annulee = false
               )
+            ORDER BY produit.nom ASC
             """)
     Page<Product> searchByEntrepriseWithActiveLots(@Param("searchPattern") String searchPattern,
                                                    @Param("magasinId") UUID magasinId,
