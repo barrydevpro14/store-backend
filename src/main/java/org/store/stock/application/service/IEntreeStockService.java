@@ -10,10 +10,11 @@ import java.util.UUID;
 public interface IEntreeStockService {
 
     /**
-     * Création d'une entrée stock manuelle : crée le lot (EntreeStock), met à jour le Stock agrégé
-     * (quantité disponible + prix d'achat moyen pondéré) et journalise le mouvement (ENTREE_ACHAT).
+     * Enregistrement d'entrées stock multi-lignes pour un même fournisseur, sans passer par une CommandeAchat
+     * (cas du démarrage d'un magasin avec stock physique préexistant). Pour chaque ligne : findOrCreate du
+     * ProductFournisseur, création du lot (EntreeStock), upsert du Stock agrégé (PMP) et journal ENTREE_INITIAL.
      */
-    EntreeStockResponse create(EntreeStockRequest entreeStockRequest);
+    List<EntreeStockResponse> create(EntreeStockRequest entreeStockRequest);
 
     /**
      * Retourne les lots actifs (quantiteRestante > 0) d'un magasin pour la liste de produits donnée,

@@ -9,6 +9,39 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-07-01 — Stock entry refactor: behave like an achat receive without CommandeAchat (multi-line, `ENTREE_INITIAL`, single global audit)
+
+### Backend
+
+- **feat(stock): `POST /api/v1/stocks/entries` refactored to a multi-line achat-style receive without CommandeAchat** — Use case: a store boots the app with pre-existing physical stock and wants to register it in one shot, without going through the full purchase pipeline. Mirrors `AchatServiceImpl.receive` behaviour minus the commande/facture/paiement artefacts.
+- **`EntreeStockRequest` refactored to wrapper `(magasinId, fournisseurId, lignes[])`** — Breaking API shape change (was mono-line with `productFournisseurId + prixAchat + numeroLot + dateExpiration + commentaire`). Frontend not yet consuming this endpoint, so no compat shim.
+- **New DTO `LigneEntreeStockRequest`** — Fields calqués sur `LigneAchatRequest` : `productId`, `qualityId`, `quantite`, `prixAchat`, `prixVente`, `numeroLot`, `dateExpiration`. `commentaire` retiré (décision produit).
+- **`IEntreeStockService.create` returns `List<EntreeStockResponse>`** — one response per ligne. Controller updated accordingly.
+- **`EntreeStockServiceImpl` rewritten** — per line: `ensurePrixVenteGreaterThanPrixAchat` → `productFournisseurService.findOrCreate(...)` (calqué sur Achat) → `EntreeStock` create (`commandeAchat = null`) → `stockDomainService.createOrUpdateEntry` (PMP recalc) → `journalize(ENTREE_INITIAL)` → `applyPrixVenteFromPurchase`. Extracted private helpers `materializeLine`, `resolveProductFournisseur`, `publishAuditEvent` (≤ 3 params each, blank-line-separated blocks with Javadoc — cf. règles rule 34, 36).
+- **New enum value `MouvementStockType.ENTREE_INITIAL`** — journalized instead of `ENTREE_ACHAT` for these manual entries, to keep audit clear that it's not tied to a purchase.
+- **Migration V52 `add_entree_initial_to_mouvement_stock_check`** — DROP + ADD idempotent de la contrainte `mouvement_stock_type_check` pour inclure `ENTREE_INITIAL`. Nécessaire car `V1__init_schema.sql:311` liste explicitement les valeurs autorisées.
+- **New `AuditAction.STOCK_INITIAL_ENTRY`** — 1 seul event global publié par batch (pas 1 par ligne), `entityId = null` (multi-stock affecté), `entityLabel = "ENTREE INITIAL"`, `magasinId = magasin.getId()`.
+- **Tests réécrits** — 7 tests service (mono-ligne / multi-ligne / audit global / stock existant / validation marge / scoping magasin / scoping fournisseur), 9 tests controller (happy path array + 8 validations bean).
+
+### État final
+
+- **Aucun test lancé** (`./mvnw test` non joué — à faire avant commit).
+- **Aucun commit** — modifs uniquement en local, working tree pending.
+- Branch: `dev-barry`.
+
+### Open follow-ups
+
+- **Bloqueur local non résolu** : la migration V51 (`uk_product_entreprise_reference_nom`) échoue en local sur un doublon `(entreprise_id, MOT-CAM, Moteur Camion)`. Utilisateur a dit qu'il règle ça de son côté (FK-blocked delete). Diagnostic SQL fourni pendant la session (compteurs FK par UUID).
+- **Lancer `./mvnw test`** avant de committer — vérifier notamment que les tests transverses (`MouvementStockControllerTest`, `AchatServiceImplTest`, `AjustementStockServiceImplTest`) ne cassent pas malgré l'ajout de la valeur d'enum + la migration V52.
+- **Documentation à revoir** : `FEATURES.md:524`, `FEATURES.md:1298`, `MODULES_OVERVIEW.md`, `TODO.md:40` référencent encore l'ancien shape mono-ligne + journal `ENTREE_ACHAT` pour cet endpoint. À rafraîchir dans une session dédiée (hors scope de celle-ci).
+- **Frontend pas encore consommateur** — quand il le deviendra, il faudra construire le body sous la forme wrapper `{ magasinId, fournisseurId, lignes: [...] }` et gérer une réponse `array` au lieu d'un objet.
+- **Question business restée ouverte** : mode "bootstrap" par magasin (vendre sans stock initial connu) — discuté puis mis de côté pour privilégier cette refonte. À rouvrir si le besoin réapparaît lors de l'onboarding client.
+- **Décision annexe évitée** : `MouvementStockType.ENTREE_ACHAT` reste tel quel (aurait pu être renommé `ENTREE`, refusé pour ne pas casser Achat).
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-06-24 — PDF refonte (colonnes + compaction contacts) + AlertesPage (dialog inline + tooltips + payment icon) + migration legacy alertes
 
 ### Backend
