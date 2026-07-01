@@ -12,6 +12,8 @@ import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
 import org.store.stock.application.service.IEntreeStockService;
 
+import java.util.List;
+
 @RestController
 @RequestMapping(EntreeStockController.BASE_PATH)
 public class EntreeStockController {
@@ -26,7 +28,7 @@ public class EntreeStockController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('STOCK_ENTRY')")
-    public ResponseEntity<EntreeStockResponse> create(@Valid @RequestBody EntreeStockRequest entreeStockRequest) {
+    public ResponseEntity<List<EntreeStockResponse>> create(@Valid @RequestBody EntreeStockRequest entreeStockRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(entreeStockService.create(entreeStockRequest));
     }
 }
