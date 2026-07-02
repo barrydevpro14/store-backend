@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: store-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - store-postgres-data:/var/lib/postgresql/data
+    networks:
+      - store-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  store:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: store-backend:latest
+    container_name: store-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      URL_DATABASE: postgres:5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+      RBAC_SYNC: ${RBAC_SYNC:-false}
+      RBAC_ADMIN_PASSWORD: ${RBAC_ADMIN_PASSWORD}
+
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      FRONTEND_URL: ${FRONTEND_URL}
+
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_SSL: ${MAIL_SSL:-true}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+
+      SUBSCRIPTION_TRIAL_DAYS: ${SUBSCRIPTION_TRIAL_DAYS:-30}
+      SALE_CANCEL_WINDOW_HOURS: ${SALE_CANCEL_WINDOW_HOURS:-24}
+      PURCHASE_CANCEL_WINDOW_HOURS: ${PURCHASE_CANCEL_WINDOW_HOURS:-24}
+      ALERT_DAILY: ${ALERT_DAILY:-0 0 8 * * *}
+      LOG_HTTP_MAX_PAYLOAD_LENGTH: ${LOG_HTTP_MAX_PAYLOAD_LENGTH:-2048}
+    networks:
+      - store-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  store-postgres-data:
+    name: store-postgres-data
+
+networks:
+  store-net:
+    name: store-net
+    driver: bridge
