@@ -35,3 +35,7 @@ build/
 ### SonarQube scanner cache ###
 .scannerwork/
 .claude/.obsidian/
+
+### Environment ###
+.env
+.env.*
