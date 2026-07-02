@@ -11,6 +11,11 @@ services:
       - store-postgres-data:/var/lib/postgresql/data
     networks:
       - store-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -59,6 +64,11 @@ services:
       LOG_HTTP_MAX_PAYLOAD_LENGTH: ${LOG_HTTP_MAX_PAYLOAD_LENGTH:-2048}
     networks:
       - store-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
       interval: 30s
