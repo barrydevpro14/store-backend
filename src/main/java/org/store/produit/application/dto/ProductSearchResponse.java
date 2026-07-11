@@ -27,4 +27,8 @@ public record ProductSearchResponse(
                 productFournisseurs
         );
     }
+
+    public ProductSearchResponse(Product product) {
+        this(product, null, List.of());
+    }
 }

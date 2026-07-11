@@ -68,6 +68,19 @@ public class ProductSearchServiceImpl implements IProductSearchService {
         return productsPage.map(product -> buildSearchResponse(product, lotsByProductId.getOrDefault(product.getId(), List.of())));
     }
 
+    /** Recherche produits de l'entreprise sans filtre de stock, pour les contextes d'ajout de stock : vérifie l'accès au magasin puis retourne les produits sans info de stock ni PF. */
+    @Override
+    public Page<ProductSearchResponse> searchAll(String searchTerm, UUID magasinId, Pageable pageable) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        UUID effectiveMagasinId = resolveSearchMagasinId(currentUser, magasinId);
+        magasinService.ensureAccessibleByCurrentUser(magasinService.findById(effectiveMagasinId));
+
+        String normalizedSearchTerm = (searchTerm == null || searchTerm.isBlank()) ? null : searchTerm.trim();
+
+        return productDomainService.searchResponsesByEntreprise(
+                normalizedSearchTerm, currentUser.entrepriseId(), pageable);
+    }
+
     /** Résout le magasinId pour la recherche : pour un EMPLOYE absence de paramètre = son magasin ; pour un OWNER le paramètre est obligatoire. */
     @Override
     public UUID resolveSearchMagasinId(UserPrincipal currentUser, UUID requestedMagasinId) {

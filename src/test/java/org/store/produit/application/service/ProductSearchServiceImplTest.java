@@ -169,6 +169,56 @@ class ProductSearchServiceImplTest {
         verify(entreeStockService, never()).findActiveLotsByMagasinAndProductIds(any(), any());
     }
 
+    @Test
+    void searchAll_should_throw_when_proprietaire_and_magasinId_absent() {
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+
+        PageRequest pageable = PageRequest.of(0, 10);
+
+        assertThatThrownBy(() -> service.searchAll("clou", null, pageable))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(productDomainService, never()).searchResponsesByEntreprise(any(), any(), any());
+    }
+
+    @Test
+    void searchAll_should_return_products_without_stock_check() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Product product = sampleProduct();
+        ProductSearchResponse expected = new ProductSearchResponse(product);
+
+        when(currentUserService.getCurrent()).thenReturn(vendeur(magasinId));
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(productDomainService.searchResponsesByEntreprise("clou", entrepriseId, pageable))
+                .thenReturn(new PageImpl<>(List.of(expected), pageable, 1));
+
+        Page<ProductSearchResponse> result = service.searchAll("clou", null, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        ProductSearchResponse productResponse = result.getContent().get(0);
+        assertThat(productResponse.id()).isEqualTo(productId);
+        assertThat(productResponse.quantiteEnStock()).isNull();
+        assertThat(productResponse.productFournisseurs()).isEmpty();
+
+        verify(entreeStockService, never()).findActiveLotsByMagasinAndProductIds(any(), any());
+    }
+
+    @Test
+    void searchAll_should_return_empty_page_when_no_match() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(productDomainService.searchResponsesByEntreprise("absent", entrepriseId, pageable))
+                .thenReturn(Page.empty(pageable));
+
+        Page<ProductSearchResponse> result = service.searchAll("absent", magasinId, pageable);
+
+        assertThat(result.getContent()).isEmpty();
+    }
+
     private EntreeStock buildLot(Product product, BigDecimal prixVente, int quantiteRestante) {
         Fournisseur fournisseur = new Fournisseur();
         fournisseur.setId(UUID.randomUUID());

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.produit.application.dto.ProductResponse;
+import org.store.produit.application.dto.ProductSearchResponse;
 import org.store.produit.domain.model.Product;
 
 import java.util.Optional;
@@ -79,4 +80,33 @@ public interface ProductRepository extends BaseRepository<Product> {
                                                    @Param("magasinId") UUID magasinId,
                                                    @Param("entrepriseId") UUID entrepriseId,
                                                    Pageable pageable);
+
+    /**
+     * Recherche produits par nom OU référence dans une entreprise, SANS
+     * filtre de stock. Utilisé par les contextes d'ajout de stock
+     * (achat, entrée stock initiale) où l'absence de stock est justement
+     * la raison d'ajouter le produit.
+     */
+    @Query(value = """
+            SELECT new org.store.produit.application.dto.ProductSearchResponse(produit)
+            FROM Product produit
+            WHERE produit.entreprise.id = :entrepriseId
+              AND (:searchPattern IS NULL
+                   OR LOWER(produit.nom) LIKE :searchPattern
+                   OR LOWER(produit.reference) LIKE :searchPattern
+                   OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
+            ORDER BY produit.nom ASC
+            """,
+           countQuery = """
+            SELECT COUNT(produit)
+            FROM Product produit
+            WHERE produit.entreprise.id = :entrepriseId
+              AND (:searchPattern IS NULL
+                   OR LOWER(produit.nom) LIKE :searchPattern
+                   OR LOWER(produit.reference) LIKE :searchPattern
+                   OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
+            """)
+    Page<ProductSearchResponse> searchResponsesByEntreprise(@Param("searchPattern") String searchPattern,
+                                                            @Param("entrepriseId") UUID entrepriseId,
+                                                            Pageable pageable);
 }
