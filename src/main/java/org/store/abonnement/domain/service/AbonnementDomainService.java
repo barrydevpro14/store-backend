@@ -105,6 +105,11 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
                 filter.toPageable());
     }
 
+    /** Returns the entreprise's EN_ATTENTE Abonnement projected as a response, or empty when none. */
+    public Optional<AbonnementResponse> findPendingResponseByEntreprise(UUID entrepriseId) {
+        return repository.findPendingResponseByEntreprise(entrepriseId);
+    }
+
     /** Compte le nombre d'abonnements dans un statut donné. */
     public long countByStatut(AbonnementStatut statut) {
         return repository.countByStatut(statut);

@@ -69,6 +69,14 @@ public class PaiementAbonnementController {
                 paiementAbonnementService.countByStatutAndCreatedBetween(statut, startDate, endDate)));
     }
 
+    @GetMapping("/me/pending")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
+    public ResponseEntity<PaiementAbonnementResponse> findMyPending() {
+        return paiementAbonnementService.findMyPending()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<PaiementAbonnementResponse> getById(@PathVariable UUID id) {
