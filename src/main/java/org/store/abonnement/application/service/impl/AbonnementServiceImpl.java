@@ -214,6 +214,13 @@ public class AbonnementServiceImpl implements IAbonnementService {
         return buildCurrent(current);
     }
 
+    /** Returns the caller's EN_ATTENTE Abonnement, or empty when none. */
+    @Override
+    public java.util.Optional<AbonnementResponse> findMyPending() {
+        UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
+        return abonnementDomainService.findPendingResponseByEntreprise(currentEntrepriseId);
+    }
+
     /** Builds the current-view: AbonnementResponse + days left + plan features (works for ACTIF and TRIAL). */
     @Override
     public CurrentAbonnementResponse buildCurrent(Abonnement abonnement) {

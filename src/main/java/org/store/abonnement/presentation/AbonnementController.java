@@ -105,4 +105,15 @@ public class AbonnementController {
             return ResponseEntity.noContent().build();
         }
     }
+
+    @GetMapping("/me/pending")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
+    public ResponseEntity<AbonnementResponse> findMyPending() {
+        if (currentUserService.getCurrent().entrepriseId() == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return abonnementService.findMyPending()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
 }

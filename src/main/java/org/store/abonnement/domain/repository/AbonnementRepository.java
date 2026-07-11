@@ -35,6 +35,21 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     Optional<Abonnement> findFirstByEntrepriseAndStatut(@Param("entrepriseId") UUID entrepriseId,
                                                        @Param("statut") AbonnementStatut statut);
 
+    /**
+     * Loads the entreprise's pending (EN_ATTENTE) Abonnement as a projected response, joins fetched
+     * for a single round-trip. At most one EN_ATTENTE row exists per entreprise (subscribe guard).
+     */
+    @Query("""
+            SELECT new org.store.abonnement.application.dto.AbonnementResponse(abonnement)
+            FROM Abonnement abonnement
+            LEFT JOIN FETCH abonnement.entreprise
+            LEFT JOIN FETCH abonnement.typePlanAbonnement type
+            LEFT JOIN FETCH type.plan
+            WHERE abonnement.entreprise.id = :entrepriseId
+              AND abonnement.statut        = org.store.abonnement.domain.enums.AbonnementStatut.EN_ATTENTE
+            """)
+    Optional<AbonnementResponse> findPendingResponseByEntreprise(@Param("entrepriseId") UUID entrepriseId);
+
     @Query("""
             SELECT MAX(abonnement.dateFin)
             FROM Abonnement abonnement

@@ -45,6 +45,13 @@ public interface IAbonnementService {
      */
     CurrentAbonnementResponse findMyCurrent();
 
+    /**
+     * Returns the caller's EN_ATTENTE Abonnement (created by subscribe, awaiting first paiement)
+     * or empty when none. Consumed by the frontend to decide whether to prompt for payment
+     * submission or hide the subscribe catalog.
+     */
+    java.util.Optional<AbonnementResponse> findMyPending();
+
     /** Throws {@code BadArgumentException("plan.notSubscribable")} if the plan is inactive, hidden or marked trial. */
     void ensurePlanSubscribable(PlanAbonnement plan);
 

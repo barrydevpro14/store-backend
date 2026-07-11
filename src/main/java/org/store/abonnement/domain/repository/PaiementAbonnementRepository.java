@@ -11,11 +11,32 @@ import org.store.common.repository.BaseRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbonnement> {
 
     boolean existsByAbonnementIdAndStatut(UUID abonnementId, StatutPaiementAbonnement statut);
+
+    /**
+     * Loads the entreprise's latest EN_ATTENTE_VALIDATION Paiement attached to its pending
+     * (EN_ATTENTE) Abonnement, projected as a response. Returns empty when the OWNER hasn't
+     * submitted a paiement yet — used by the frontend to toggle the "soumettre" CTA.
+     */
+    @Query("""
+            SELECT new org.store.abonnement.application.dto.PaiementAbonnementResponse(paiement)
+            FROM PaiementAbonnement paiement
+            LEFT JOIN FETCH paiement.abonnement abonnement
+            LEFT JOIN FETCH abonnement.entreprise
+            LEFT JOIN FETCH abonnement.typePlanAbonnement type
+            LEFT JOIN FETCH type.plan
+            WHERE abonnement.entreprise.id = :entrepriseId
+              AND abonnement.statut        = org.store.abonnement.domain.enums.AbonnementStatut.EN_ATTENTE
+              AND paiement.statut          = org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
+            ORDER BY paiement.createdAt DESC
+            """)
+    java.util.List<PaiementAbonnementResponse> findPendingResponsesByEntreprise(@Param("entrepriseId") UUID entrepriseId,
+                                                                                org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT COUNT(p) FROM PaiementAbonnement p WHERE p.statut = :statut")
     long countByStatut(@Param("statut") StatutPaiementAbonnement statut);

@@ -47,4 +47,12 @@ public interface IPaiementAbonnementService {
 
     /** ADMIN count — payments matching an optional statut and optional createdAt date range. */
     long countByStatutAndCreatedBetween(String statut, String startDate, String endDate);
+
+    /**
+     * Returns the caller's currently pending Paiement (statut EN_ATTENTE_VALIDATION on the
+     * EN_ATTENTE Abonnement), or empty when none. Used by the OWNER dashboard to decide whether
+     * to keep the "soumettre un paiement" CTA visible or replace it with a "en cours de validation"
+     * banner.
+     */
+    java.util.Optional<PaiementAbonnementResponse> findMyPending();
 }

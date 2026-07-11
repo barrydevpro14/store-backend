@@ -195,6 +195,16 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return paiementAbonnementDomainService.countByStatutAndCreatedBetween(statutEnum, startDate, endDate);
     }
 
+    /** Returns the caller's pending Paiement (EN_ATTENTE_VALIDATION), or empty when none. */
+    @Override
+    public java.util.Optional<PaiementAbonnementResponse> findMyPending() {
+        UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
+        if (currentEntrepriseId == null) {
+            return java.util.Optional.empty();
+        }
+        return paiementAbonnementDomainService.findPendingResponseByEntreprise(currentEntrepriseId);
+    }
+
     /** Paginated filtered listing; auto-scoped to the caller's entreprise when the caller is not ADMIN. */
     @Override
     public Page<PaiementAbonnementResponse> findAll(PaiementAbonnementFilter filter) {

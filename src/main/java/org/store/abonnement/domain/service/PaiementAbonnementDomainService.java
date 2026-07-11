@@ -14,7 +14,11 @@ import org.store.common.service.GlobalService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.data.domain.PageRequest;
 
 @Service
 public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonnement, PaiementAbonnementRepository> {
@@ -47,6 +51,15 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
 
     public Page<PaiementAbonnementResponse> findResponses(PaiementAbonnementFilter filter) {
         return repository.findResponsesByFilter(filter.statutAsEnum(), filter.abonnementId(), filter.entrepriseId(), filter.startDate(), filter.endDate(), filter.toPageable());
+    }
+
+    /**
+     * Returns the entreprise's pending Paiement (statut EN_ATTENTE_VALIDATION on the EN_ATTENTE
+     * Abonnement) projected as a response, or empty when nothing has been submitted yet.
+     */
+    public Optional<PaiementAbonnementResponse> findPendingResponseByEntreprise(UUID entrepriseId) {
+        List<PaiementAbonnementResponse> rows = repository.findPendingResponsesByEntreprise(entrepriseId, PageRequest.of(0, 1));
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     public PaiementAbonnement markAsValide(PaiementAbonnement paiement) {
