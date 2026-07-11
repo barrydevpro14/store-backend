@@ -17,6 +17,13 @@ public interface IProductSearchService {
      */
     Page<ProductSearchResponse> search(String searchTerm, UUID magasinId, Pageable pageable);
 
+    /**
+     * Recherche produits de l'entreprise SANS filtre de stock, pour les contextes d'ajout de stock (achat, entrée initiale).
+     * Le magasinId sert uniquement au contrôle d'accès (obligatoire pour un OWNER, implicite pour un EMPLOYE) : la liste de produits reste entreprise-wide.
+     * Retourne 1 ligne par produit avec sous-liste des PF existants (sans quantité en stock).
+     */
+    Page<ProductSearchResponse> searchAll(String searchTerm, UUID magasinId, Pageable pageable);
+
     /** Résout le magasinId effectif : paramètre fourni, ou magasin de l'employé connecté. */
     UUID resolveSearchMagasinId(UserPrincipal currentUser, UUID requestedMagasinId);
 }

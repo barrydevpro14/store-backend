@@ -71,6 +71,15 @@ public class ProductController {
         return ResponseEntity.ok(productSearchService.search(searchTerm, magasinId, PageRequest.of(page, size)));
     }
 
+    @GetMapping("/search/all")
+    @PreAuthorize("hasAuthority('PRODUCT_READ')")
+    public ResponseEntity<Page<ProductSearchResponse>> searchAll(@RequestParam(value = "q", required = false) String searchTerm,
+                                                                 @RequestParam(required = false) UUID magasinId,
+                                                                 @RequestParam(defaultValue = "0") int page,
+                                                                 @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(productSearchService.searchAll(searchTerm, magasinId, PageRequest.of(page, size)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('PRODUCT_READ')")
     public ResponseEntity<ProductResponse> getById(@PathVariable UUID id) {
