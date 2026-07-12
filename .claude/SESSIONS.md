@@ -9,6 +9,42 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-07-11 — Product search without stock filter (achat + entrée-stock) + abonnement /me/pending endpoints + OWNER paiement-submit auto-logout + select overflow fix
+
+### Backend
+
+- **feat(product): new `GET /api/v1/products/search/all` (PRODUCT_READ)** — same magasin access check as `/search`, but no stock `EXISTS` clause. Dedicated to add-stock contexts (achat + entrée initiale) where the very absence of stock is the reason to add the product. Frontend was previously calling `/search` for these contexts — which silently excluded zero-stock products, blocking exactly the use case they exist for.
+- **`ProductSearchResponse` — new `(Product)` secondary constructor** — defaults `quantiteEnStock = null` + `productFournisseurs = []`. Prerequisite for the rule 24 JPQL projection.
+- **`ProductRepository.searchResponsesByEntreprise`** — JPQL `SELECT new ProductSearchResponse(produit)` with explicit `countQuery`. Ordered `nom ASC`.
+- **Tests** — 3 new service tests (throws-when-no-magasinId / happy path / empty page) + 1 new controller test. 23/23 on the two impacted classes.
+- **feat(abonnement): new `GET /abonnements/me/pending` + `GET /paiements-abonnement/me/pending` (SUBSCRIPTION_READ)** — 204 when nothing pending. Replace the prior size=1 pagination hack on the frontend. Both use JPQL projection with `LEFT JOIN FETCH` on entreprise / type / plan for single-round-trip access. Enum-scoped queries: `AbonnementStatut.EN_ATTENTE` + `StatutPaiementAbonnement.EN_ATTENTE_VALIDATION`.
+
+### Frontend
+
+- **feat(product): new hook `useProductSearchAll`** — mirror of `useProductSearch` on `/products/search/all`, distinct queryKey (`product-search-all`). `AddAchatLineRow` + `AddEntreeStockLineRow` rewired to this hook. `AddVenteLineRow` untouched (vente still needs stock-filtered search).
+- **feat(abonnement): wire `/me/pending` endpoints** — new hook `useMyPendingPaiement`, refactor `useMyPendingAbonnement` (was paginated size=1). `MyPaiementsPage`: adds "en cours de validation" banner; hides pending + last-rejected banners when a paiement is in flight. `SubscribePage`: hides plan catalog while a paiement is pending.
+- **feat(abonnement): force logout after paiement submit** — `SubmitPaiementDialog`: on successful submission, closes the dialog + `toast.info('loggingOut')` + `useLogout().mutate()`. Rationale: pre-submit JWT still carries stale scope/permissions; forced re-login avoids the race between banner state and actual subscription state. Also restructures `DialogContent` to stick to top on mobile.
+- **fix(select): prevent overflow of long value + trigger** — Tailwind class tweaks in `select.tsx` (`min-w-0`, `truncate`, `max-w-[calc(100vw-2rem)]`), chevron `shrink-0`.
+
+### État final
+
+- Backend: 23/23 on impacted product tests; full `./mvnw test` not run. `./mvnw compile` green. 2 commits pushed to `dev-barry` (`6fd7999`, `8f4c6ca`).
+- Frontend: `npx tsc --noEmit` exit 0; vitest not run; no manual UI check. 4 commits pushed to `dev-barry` (`c36fa88`, `aabb9d3`, `1ee57e8`, `6070aa9`).
+- Branch on both repos: `dev-barry`. Working trees clean at session close.
+- Uncommitted abonnement work found at session start (author = user) was reviewed and committed as-is per split (BE-1 + FE-1 + FE-2 + FE-3).
+
+### Open follow-ups
+
+- **Vercel** — deploys every branch by default; user wants only `main` to deploy. Two options offered (dashboard setting vs. committed `vercel.json` with `git.deploymentEnabled`). Decision not yet made.
+- **Full backend `./mvnw test`** not run — regression risk on other suites given the abonnement domain-service changes.
+- **Frontend `vitest run`** not run — regression risk on `MyPaiementsPage` + `SubscribePage` tests.
+- **Manual UI check** on: achat + entrée-stock (product search now shows zero-stock products), OWNER paiement flow (banner appears + auto-logout on submit), select component (long labels no longer overflow).
+- **From previous session (2026-07-01)**: `./mvnw test` still not run on the stock entry refactor (`ENTREE_INITIAL`, V52 migration). That follow-up is now stale but still open.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-07-01 — Stock entry refactor: behave like an achat receive without CommandeAchat (multi-line, `ENTREE_INITIAL`, single global audit)
 
 ### Backend

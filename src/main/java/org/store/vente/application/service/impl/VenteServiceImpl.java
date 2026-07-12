@@ -41,6 +41,7 @@ import org.store.vente.application.dto.FactureClientCreate;
 import org.store.vente.application.dto.FactureClientResponse;
 import org.store.vente.application.dto.LigneCommandeVenteCreate;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
+import org.store.vente.application.dto.LigneLivraisonRequest;
 import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.PaiementVenteCreate;
@@ -55,6 +56,7 @@ import org.store.vente.application.dto.VenteValidateRequest;
 import org.store.vente.application.service.IClientService;
 import org.store.vente.application.service.IVenteService;
 import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.enums.LivraisonStatut;
 import org.store.vente.domain.model.Client;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
@@ -291,6 +293,61 @@ public class VenteServiceImpl implements IVenteService {
         ligneCommandeVenteDomainService.delete(ligne);
     }
 
+    /** Met à jour la quantité livrée d'une ligne d'une vente VALIDATE et publie l'event audit. */
+    @Override
+    @Transactional
+    public LigneCommandeVenteResponse updateLigneLivraison(UUID commandeId, UUID ligneId, LigneLivraisonRequest request) {
+        validatorService.validate(request);
+
+        CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
+        ensureCommandeIsValidated(commande);
+
+        LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
+        ensureQuantiteLivreeWithinRange(request.quantiteLivree(), ligne.getQuantite());
+
+        int previousQuantiteLivree = ligne.getQuantiteLivree();
+        LivraisonStatut previousStatut = ligne.getLivraisonStatut();
+
+        LigneCommandeVente updated = ligneCommandeVenteDomainService.applyLivraison(ligne, request.quantiteLivree());
+
+        publishLivraisonAuditEvent(commande, updated, previousQuantiteLivree, previousStatut);
+
+        return new LigneCommandeVenteResponse(updated);
+    }
+
+    /** Lève BadArgument si la commande n'est pas en VALIDATE (draft ou annulée). */
+    public void ensureCommandeIsValidated(CommandeVente commande) {
+        if (commande.getStatut() != CommandeVenteStatut.VALIDATE) {
+            throw new BadArgumentException("commandeVente.livraison.notValidated", commande.getStatut().name());
+        }
+    }
+
+    /** Lève BadArgument si {@code quantiteLivree} est hors de [0, quantite]. */
+    public void ensureQuantiteLivreeWithinRange(int quantiteLivree, int quantite) {
+        if (quantiteLivree > quantite) {
+            throw new BadArgumentException("ligneVente.livraison.quantiteExceedsOrdered",
+                    String.valueOf(quantiteLivree), String.valueOf(quantite));
+        }
+    }
+
+    /** Publie l'event audit avec l'historique (previous → new) dans le champ details. */
+    private void publishLivraisonAuditEvent(CommandeVente commande, LigneCommandeVente ligne,
+                                             int previousQuantiteLivree, LivraisonStatut previousStatut) {
+        UserPrincipal caller = currentUserService.getCurrent();
+
+        String details = String.format(
+                "ligneId=%s;quantiteLivree=%d->%d;livraisonStatut=%s->%s",
+                ligne.getId(), previousQuantiteLivree, ligne.getQuantiteLivree(),
+                previousStatut.name(), ligne.getLivraisonStatut().name()
+        );
+
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.SALE_LIGNE_DELIVERY_UPDATED, AuditEntityType.COMMANDE_VENTE,
+                commande.getId(), commande.getReference(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(),
+                commande.getMagasin().getId(), details));
+    }
+
     /** Supprime une commande DRAFT sans effet stock (abandon de saisie). */
     @Override
     @Transactional
@@ -352,6 +409,8 @@ public class VenteServiceImpl implements IVenteService {
 
         Optional<FactureClient> facture = factureClientDomainService.findByCommandeId(cancelled.getId());
         facture.ifPresent(factureClientDomainService::cancel);
+
+        cancelled.getLignes().forEach(ligne -> ligneCommandeVenteDomainService.applyLivraison(ligne, 0));
 
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(

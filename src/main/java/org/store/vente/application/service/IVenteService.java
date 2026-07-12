@@ -4,6 +4,7 @@ import org.store.vente.application.dto.AnnulationVenteRequest;
 import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.springframework.data.domain.Page;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
+import org.store.vente.application.dto.LigneLivraisonRequest;
 import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
@@ -54,6 +55,14 @@ public interface IVenteService {
      * Supprime une ligne d'une commande DRAFT. Refuse si dernière ligne (commande vide interdite).
      */
     void deleteLigne(UUID commandeId, UUID ligneId);
+
+    /**
+     * Met à jour la quantité livrée d'une ligne d'une commande {@code VALIDATE} et recalcule
+     * automatiquement le {@code LivraisonStatut} (LIVREE / NON_LIVREE / PARTIELLEMENT_LIVREE).
+     * Publie un event audit {@code SALE_LIGNE_DELIVERY_UPDATED}. Refuse si commande non validée
+     * ou si {@code quantiteLivree > quantite} de la ligne.
+     */
+    LigneCommandeVenteResponse updateLigneLivraison(UUID commandeId, UUID ligneId, LigneLivraisonRequest request);
 
     /**
      * Détails d'une vente : commande + facture éventuelle (null si DRAFT) + lignes + paiements.

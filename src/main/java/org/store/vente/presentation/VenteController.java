@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.vente.application.dto.AnnulationVenteRequest;
 import org.store.vente.application.dto.AnnulationVenteResponse;
 import org.store.vente.application.dto.LigneCommandeVenteResponse;
+import org.store.vente.application.dto.LigneLivraisonRequest;
 import org.store.vente.application.dto.LigneVenteRequest;
 import org.store.vente.application.dto.LigneVenteUpdateRequest;
 import org.store.vente.application.dto.VenteDetailsResponse;
@@ -89,6 +91,15 @@ public class VenteController {
                                             @PathVariable UUID ligneId) {
         venteService.deleteLigne(commandeId, ligneId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/orders/{commandeId}/lignes/{ligneId}/livraison")
+    @PreAuthorize("hasAuthority('SALE_UPDATE')")
+    public ResponseEntity<LigneCommandeVenteResponse> updateLigneLivraison(
+            @PathVariable UUID commandeId,
+            @PathVariable UUID ligneId,
+            @Valid @RequestBody LigneLivraisonRequest ligneLivraisonRequest) {
+        return ResponseEntity.ok(venteService.updateLigneLivraison(commandeId, ligneId, ligneLivraisonRequest));
     }
 
     @DeleteMapping("/{commandeId}")
