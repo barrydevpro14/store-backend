@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.common.base.AuditableEntity;
+import org.store.common.model.PieceJointe;
 import org.store.magasin.domain.model.Magasin;
 
 import java.math.BigDecimal;
@@ -52,4 +53,8 @@ public class CommandeAchat extends AuditableEntity {
 
     @OneToOne(mappedBy = "commande", fetch = FetchType.LAZY)
     private FactureAchat facture;
+
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "piece_jointe_id")
+    private PieceJointe pieceJointe;
 }
