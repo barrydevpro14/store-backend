@@ -5,6 +5,7 @@ import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.common.dto.DataCountResponse;
+import org.store.common.dto.ImageDownloadResponse;
 
 import java.util.UUID;
 
@@ -23,4 +24,7 @@ public interface ICommandeAchatService {
     CommandeAchat ensureBelongsToCurrentEntreprise(CommandeAchat commande);
 
     DataCountResponse countDraft(UUID magasinId);
+
+    /** Retourne le binaire et le content-type de la pièce jointe. */
+    ImageDownloadResponse getPieceJointe(UUID commandeId);
 }
