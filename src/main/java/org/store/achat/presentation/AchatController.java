@@ -3,6 +3,7 @@ package org.store.achat.presentation;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.achat.application.dto.AchatDraftResponse;
 import org.store.achat.application.dto.LigneAchatRequest;
@@ -103,5 +106,19 @@ public class AchatController {
     public ResponseEntity<AnnulationAchatResponse> cancel(@PathVariable UUID commandeId,
                                                           @Valid @RequestBody AnnulationAchatRequest annulationAchatRequest) {
         return ResponseEntity.ok(achatService.cancel(commandeId, annulationAchatRequest));
+    }
+
+    @PostMapping(value = "/{commandeId}/piece-jointe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    public ResponseEntity<String> uploadPieceJointe(@PathVariable UUID commandeId,
+                                                    @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(achatService.uploadPieceJointe(commandeId, file));
+    }
+
+    @DeleteMapping("/{commandeId}/piece-jointe")
+    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    public ResponseEntity<Void> deletePieceJointe(@PathVariable UUID commandeId) {
+        achatService.deletePieceJointe(commandeId);
+        return ResponseEntity.noContent().build();
     }
 }

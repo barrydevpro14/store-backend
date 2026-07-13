@@ -2,6 +2,7 @@ package org.store.achat.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.store.achat.application.dto.AchatDetailsResponse;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
@@ -40,9 +41,12 @@ import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.achat.domain.service.FactureAchatDomainService;
 import org.store.achat.domain.service.LigneCommandeAchatDomainService;
 import org.store.achat.domain.service.PaiementAchatDomainService;
+import org.store.achat.presentation.CommandeAchatController;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.model.PieceJointe;
+import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
@@ -98,6 +102,7 @@ public class AchatServiceImpl implements IAchatService {
     private final ICurrentUserService currentUserService;
     private final IAuditEventPublisher auditEventPublisher;
     private final IMoyenPaiementService moyenPaiementService;
+    private final IUploadFileService uploadFileService;
 
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
@@ -114,7 +119,8 @@ public class AchatServiceImpl implements IAchatService {
                             PurchaseProperties purchaseProperties,
                             ICurrentUserService currentUserService,
                             IAuditEventPublisher auditEventPublisher,
-                            IMoyenPaiementService moyenPaiementService) {
+                            IMoyenPaiementService moyenPaiementService,
+                            IUploadFileService uploadFileService) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
@@ -131,6 +137,7 @@ public class AchatServiceImpl implements IAchatService {
         this.currentUserService = currentUserService;
         this.auditEventPublisher = auditEventPublisher;
         this.moyenPaiementService = moyenPaiementService;
+        this.uploadFileService = uploadFileService;
     }
 
     /** Crée la commande DRAFT et ses lignes (validations PF + prix), sans toucher au stock ni à la facture. */
@@ -537,6 +544,41 @@ public class AchatServiceImpl implements IAchatService {
         if (atLeastOneConsumed) {
             throw new BadArgumentException("commandeAchat.cancel.lotAlreadyConsumed");
         }
+    }
+
+    /** Téléverse (ou remplace) la pièce jointe et journalise l'ajout. */
+    @Override
+    @Transactional
+    public String uploadPieceJointe(UUID commandeId, MultipartFile file) {
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        PieceJointe pieceJointe = uploadFileService.buildImage(file);
+        commande.setPieceJointe(pieceJointe);
+        commandeAchatDomainService.save(commande);
+
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.PIECE_JOINTE_AJOUTEE, AuditEntityType.COMMANDE_ACHAT,
+                commande.getId(), commande.getReference(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(),
+                commande.getMagasin().getId(), null));
+
+        return CommandeAchatController.BASE_PATH + "/" + commandeId + "/piece-jointe";
+    }
+
+    /** Supprime la pièce jointe (idempotent via orphanRemoval) et journalise la suppression. */
+    @Override
+    @Transactional
+    public void deletePieceJointe(UUID commandeId) {
+        CommandeAchat commande = commandeAchatService.ensureBelongsToCurrentEntreprise(commandeAchatService.findById(commandeId));
+        commande.setPieceJointe(null);
+        commandeAchatDomainService.save(commande);
+
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.PIECE_JOINTE_SUPPRIMEE, AuditEntityType.COMMANDE_ACHAT,
+                commande.getId(), commande.getReference(),
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(),
+                commande.getMagasin().getId(), null));
     }
 
     /** Décrémente le stock agrégé de la quantité du lot, marque le lot comme annulé et journalise un RETOUR_FOURNISSEUR. */
