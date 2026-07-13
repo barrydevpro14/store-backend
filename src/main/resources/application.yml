@@ -63,6 +63,7 @@ upload:
     - image/png
     - image/webp
     - image/gif
+    - application/pdf
 
 subscription:
   trial-days: ${SUBSCRIPTION_TRIAL_DAYS:30}
