@@ -15,6 +15,7 @@ import org.store.achat.application.dto.CommandeAchatResponse;
 import org.store.achat.application.service.IBonCommandeAchatPdfService;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.common.dto.DataCountResponse;
+import org.store.common.dto.ImageDownloadResponse;
 
 import java.util.UUID;
 
@@ -69,5 +70,14 @@ public class CommandeAchatController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"bon-commande-" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @GetMapping("/{id}/piece-jointe")
+    @PreAuthorize("hasAuthority('PURCHASE_READ')")
+    public ResponseEntity<byte[]> getPieceJointe(@PathVariable UUID id) {
+        ImageDownloadResponse download = commandeAchatService.getPieceJointe(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .body(download.content());
     }
 }

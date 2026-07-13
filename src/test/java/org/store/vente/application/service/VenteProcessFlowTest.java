@@ -396,6 +396,7 @@ class VenteProcessFlowTest {
         cancelledCommande.setMotifAnnulation(MotifAnnulationVente.ERREUR_SAISIE);
         cancelledCommande.setCommentaireAnnulation("Annulation test");
         cancelledCommande.setDateAnnulation(LocalDateTime.now());
+        cancelledCommande.setLignes(new ArrayList<>());
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
         when(saleProperties.cancelWindowHours()).thenReturn(24);

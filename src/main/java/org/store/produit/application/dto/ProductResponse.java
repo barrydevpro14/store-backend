@@ -1,6 +1,7 @@
 package org.store.produit.application.dto;
 
 import org.store.produit.domain.model.Product;
+import org.store.produit.presentation.ProductController;
 
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ public record ProductResponse(
                 product.getDescription(),
                 new CategoryProductSummaryResponse(product.getCategoryProduct()),
                 product.getEntreprise().getId(),
-                product.getImagePrincipal() != null ? "/api/v1/products/" + product.getId() + "/image" : null
+                product.getImagePrincipal() != null ? ProductController.BASE_PATH + "/" + product.getId() + "/image" : null
         );
     }
 }

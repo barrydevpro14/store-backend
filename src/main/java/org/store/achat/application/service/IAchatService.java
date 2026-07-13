@@ -8,6 +8,7 @@ import org.store.achat.application.dto.AchatResponse;
 import org.store.achat.application.dto.AnnulationAchatRequest;
 import org.store.achat.application.dto.AnnulationAchatResponse;
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 import org.store.achat.application.dto.LigneAchatRequest;
 import org.store.achat.application.dto.LigneAchatUpdateRequest;
 import org.store.achat.application.dto.LigneCommandeAchatResponse;
@@ -79,4 +80,10 @@ public interface IAchatService {
 
     /** Valide l'unicité ou génère un numéro de facture au format FACT-yyyyMMdd-HHmmssSSS. */
     String resolveNumeroFacture(String numero);
+
+    /** Téléverse (ou remplace) la pièce jointe d'une commande et retourne son URL de téléchargement. */
+    String uploadPieceJointe(UUID commandeId, MultipartFile file);
+
+    /** Supprime la pièce jointe d'une commande (idempotent via orphanRemoval). */
+    void deletePieceJointe(UUID commandeId);
 }

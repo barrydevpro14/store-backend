@@ -3,6 +3,7 @@ package org.store.achat.application.dto;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.achat.domain.model.CommandeAchat;
+import org.store.achat.presentation.CommandeAchatController;
 import org.store.common.tools.DateHelper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,7 +21,8 @@ public record CommandeAchatResponse(
         StatutFacture statutFacture,
         String createdAt,
         BigDecimal montantTotal,
-        BigDecimal montantRestant   // null when no facture exists yet (DRAFT)
+        BigDecimal montantRestant,   // null when no facture exists yet (DRAFT)
+        String pieceJointe
 ) {
     /** Constructeur unique — lit facture et montantTotal depuis la commande. */
     public CommandeAchatResponse(CommandeAchat commande) {
@@ -37,7 +39,8 @@ public record CommandeAchatResponse(
                 commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
                 commande.getFacture() != null
                         ? commande.getFacture().getMontantTotal().subtract(commande.getFacture().getMontantPaye())
-                        : commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO
+                        : commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
+                commande.getPieceJointe() != null ? CommandeAchatController.BASE_PATH + "/" + commande.getId() + "/piece-jointe" : null
         );
     }
 }

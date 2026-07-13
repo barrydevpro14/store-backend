@@ -10,6 +10,9 @@ import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.common.dto.DataCountResponse;
+import org.store.common.dto.ImageDownloadResponse;
+import org.store.common.exceptions.EntityException;
+import org.store.common.model.PieceJointe;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
@@ -70,4 +73,15 @@ public class CommandeAchatServiceImpl implements ICommandeAchatService {
     public DataCountResponse countDraft(UUID magasinId) {
         return new DataCountResponse(commandeAchatDomainService.countByMagasinIdAndStatut(magasinId, CommandeAchatStatut.DRAFT));
     }
+
+    @Override
+    public ImageDownloadResponse getPieceJointe(UUID commandeId) {
+        CommandeAchat commande = ensureBelongsToCurrentEntreprise(commandeAchatDomainService.findById(commandeId));
+        PieceJointe pieceJointe = commande.getPieceJointe();
+        if (pieceJointe == null) {
+            throw new EntityException("commandeAchat.pieceJointe.notFound");
+        }
+        return new ImageDownloadResponse(pieceJointe.getDocument(), pieceJointe.getContentType());
+    }
+
 }
