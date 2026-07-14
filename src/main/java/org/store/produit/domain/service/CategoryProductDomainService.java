@@ -22,7 +22,7 @@ public class CategoryProductDomainService extends GlobalService<CategoryProduct,
 
     public CategoryProduct create(CategoryProductRequest categoryProductRequest, Entreprise entreprise) {
         CategoryProduct categoryProduct = new CategoryProduct();
-        categoryProduct.setLibelle(categoryProductRequest.libelle());
+        categoryProduct.setLibelle(categoryProductRequest.libelle().toLowerCase());
         categoryProduct.setDescription(categoryProductRequest.description());
         categoryProduct.setEntreprise(entreprise);
         return save(categoryProduct);

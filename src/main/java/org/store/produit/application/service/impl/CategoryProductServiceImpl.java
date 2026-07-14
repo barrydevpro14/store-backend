@@ -73,7 +73,7 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         if (!categoryProduct.getLibelle().equals(categoryProductRequest.libelle())) {
             ensureLibelleAvailable(categoryProductRequest.libelle(), categoryProduct.getEntreprise().getId());
         }
-        categoryProduct.setLibelle(categoryProductRequest.libelle());
+        categoryProduct.setLibelle(categoryProductRequest.libelle().toLowerCase());
         categoryProduct.setDescription(categoryProductRequest.description());
         return new CategoryProductResponse(categoryProductDomainService.save(categoryProduct));
     }
@@ -100,7 +100,7 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
     /** Lève `UniqueResourceException` si le libellé est déjà utilisé dans l'entreprise. */
     @Override
     public void ensureLibelleAvailable(String libelle, UUID entrepriseId) {
-        if (categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle, entrepriseId)) {
+        if (categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle.toLowerCase(), entrepriseId)) {
             throw new UniqueResourceException("categoryProduct.libelle.alreadyExists", libelle);
         }
     }
