@@ -1477,7 +1477,7 @@ Repos involved : `CommandeVenteRepository.countByMagasinAndDay / sumQuantiteLign
 2. **Client section** : name, phone, email — or "Client anonyme" if no client.
 3. **Lines table** : product nom + ref, quantité, prix unitaire, total HT. Alternating row background.
 4. **Totals + payments** : total HT, one row per payment (moyen + date), remaining balance highlighted green (paid) or amber (due).
-5. **Footer** : `{entreprise.sigle} – Document généré par Store ERP`.
+5. **Footer** : `{entreprise.sigle} – Document généré par BHANTIC ERP`.
 
 **Scoping** : `OwnershipHelper.ensureOwnership` checks `facture.commande.magasin.entreprise.id` against current user's JWT `entrepriseId`.
 
