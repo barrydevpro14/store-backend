@@ -73,7 +73,7 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         if (!categoryProduct.getLibelle().equals(categoryProductRequest.libelle())) {
             ensureLibelleAvailable(categoryProductRequest.libelle(), categoryProduct.getEntreprise().getId());
         }
-        categoryProduct.setLibelle(categoryProductRequest.libelle());
+        categoryProduct.setLibelle(categoryProductRequest.libelle().toUpperCase());
         categoryProduct.setDescription(categoryProductRequest.description());
         return new CategoryProductResponse(categoryProductDomainService.save(categoryProduct));
     }
