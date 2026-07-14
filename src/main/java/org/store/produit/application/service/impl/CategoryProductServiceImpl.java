@@ -100,7 +100,7 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
     /** Lève `UniqueResourceException` si le libellé est déjà utilisé dans l'entreprise. */
     @Override
     public void ensureLibelleAvailable(String libelle, UUID entrepriseId) {
-        if (categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle, entrepriseId)) {
+        if (categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle.toUpperCase(), entrepriseId)) {
             throw new UniqueResourceException("categoryProduct.libelle.alreadyExists", libelle);
         }
     }

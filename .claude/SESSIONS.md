@@ -9,6 +9,47 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-07-13 — PieceJointe on CommandeAchat (backend + frontend) + PDF support + "Preuve" label
+
+### Backend
+
+- **feat(achat): V54 Flyway migration** — `ALTER TABLE commande_achat ADD COLUMN piece_jointe_id UUID REFERENCES piece_jointe(id)`.
+- **feat(achat): `CommandeAchat.pieceJointe`** — `@OneToOne(fetch=LAZY, cascade=ALL, orphanRemoval=true) @JoinColumn(name="piece_jointe_id")`. Setting `null` triggers orphan removal automatically.
+- **feat(achat): `CommandeAchatResponse.pieceJointe`** — URL `GET /api/v1/commandes-achat/{id}/piece-jointe` when set, `null` otherwise. Uses `CommandeAchatController.BASE_PATH` (not a hardcoded string).
+- **feat(achat): read side** — `ICommandeAchatService.getPieceJointe(UUID)` + `CommandeAchatServiceImpl` impl (throws `commandeAchat.pieceJointe.notFound` if null). `GET /api/v1/commandes-achat/{id}/piece-jointe` (PURCHASE_READ) in `CommandeAchatController`.
+- **feat(achat): write side** — `IAchatService.uploadPieceJointe/deletePieceJointe` + `AchatServiceImpl` impl (both `@Transactional`). `POST /api/v1/achats/{id}/piece-jointe` multipart + `DELETE /api/v1/achats/{id}/piece-jointe` (both PURCHASE_UPDATE) in `AchatController`.
+- **feat(audit): `PIECE_JOINTE_AJOUTEE` + `PIECE_JOINTE_SUPPRIMEE`** added to `AuditAction` enum. Published in upload/delete impl via `IAuditEventPublisher`.
+- **feat(upload): `application/pdf` added** to `upload.allowed-image-types` in `application.yml`.
+- **fix(produit): `ProductResponse`** — switched hardcoded `/api/v1/products/` path to `ProductController.BASE_PATH`.
+- **Test fixes** — `AchatControllerTest`: 12th `pieceJointe` arg added to `CommandeAchatResponse` constructors. `VenteControllerTest` + `VenteProcessFlowTest`: fixed for `quantiteLivree` + `LivraisonStatut` fields (from prior `f26898c` commit).
+
+### Frontend
+
+- **`CommandeAchat` type**: `pieceJointe: string | null` added.
+- **`ICommandeAchatRepository`**: `uploadPieceJointe(commandeId, file)` + `deletePieceJointe(commandeId)` methods.
+- **`commande-achat-api`**: both methods implemented via `POST/DELETE /api/v1/achats/{id}/piece-jointe`.
+- **3 new hooks** (one file each, rule 52): `useUploadPieceJointeAchat`, `useDeletePieceJointeAchat`, `useViewPieceJointeAchat` (fetches blob via `GET /commandes-achat/{id}/piece-jointe`, opens in new tab, revokes URL after 60 s).
+- **`AchatDetailsContent.tsx`**: piece jointe action bar above the PDF button — view button (when set), delete button (when set + PURCHASE_UPDATE), upload input + button (when not set + PURCHASE_UPDATE). `ConfirmDialog` for delete.
+- **i18n FR/EN**: `dashboard.achats.details.pieceJointe.{view, upload, delete, confirmDelete.*}` + `dashboard.achats.toasts.{pieceJointeUploaded, pieceJointeDeleted}`.
+- **Upload label**: "Preuve" (FR) / "Proof" (EN). Input `accept="image/*,application/pdf"`.
+
+### État final
+
+- Backend: `npx tsc --noEmit` N/A; `./mvnw test` not run this session. `./mvnw compile` assumed clean (all test fixes applied). 9 commits pushed to `dev-barry`.
+- Frontend: `npx tsc --noEmit` exit 0; 332/332 vitest green (verified before work started). 10 commits pushed to `dev-barry`.
+- Branch on both repos: `dev-barry`. Working trees clean at session close.
+
+### Open follow-ups
+
+- **`./mvnw test`** not run — verify no regression on `AchatControllerTest`, `CommandeAchatServiceImplTest`, `AchatServiceImplTest` with the new pieceJointe fields.
+- **Manual UI check**: piece jointe bar on DRAFT and RECEPTIONNEE orders (no bar on ANNULEE), PDF upload and view (blob in new tab), delete confirmation dialog.
+- **LivraisonStatut + quantiteLivree** (`f26898c` / `084e346`) — frontend not yet consuming these fields on the details page.
+- **From 2026-07-11**: Vercel branch-deploy setting still undecided. `./mvnw test` still not run on the abonnement domain-service + product search changes.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-07-11 — Product search without stock filter (achat + entrée-stock) + abonnement /me/pending endpoints + OWNER paiement-submit auto-logout + select overflow fix
 
 ### Backend
