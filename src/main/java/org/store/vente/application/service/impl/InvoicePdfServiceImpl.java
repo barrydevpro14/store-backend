@@ -13,6 +13,7 @@ import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Quality;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.service.IInvoicePdfService;
+import org.store.vente.domain.enums.LivraisonStatut;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
 import org.store.vente.domain.service.FactureClientDomainService;
@@ -150,7 +151,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
     /* ── Lines table ───────────────────────────────────────────────────── */
 
     private void addLinesTable(Document doc, FactureClient facture) throws DocumentException {
-        PdfPTable table = new PdfPTable(new float[]{32, 23, 12, 16, 17});
+        PdfPTable table = new PdfPTable(new float[]{25, 18, 7, 8, 16, 13, 13});
         table.setWidthPercentage(100);
 
         Font headFont = new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE);
@@ -158,6 +159,8 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             pdf.msg("pdf.vente.table.produit"),
             pdf.msg("pdf.table.categorieQualite"),
             pdf.msg("pdf.vente.table.quantite"),
+            pdf.msg("pdf.vente.table.quantiteLivree"),
+            pdf.msg("pdf.vente.table.livraisonStatut"),
             pdf.msg("pdf.vente.table.prixUnitaire"),
             pdf.msg("pdf.vente.table.totalHt")
         };
@@ -183,11 +186,35 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             table.addCell(pdf.textCell(buildProductLabel(product.getNom(), product.getReference()), lineFont, bg));
             table.addCell(pdf.textCell(buildCategoryQualityLabel(product.getCategoryProduct(), quality), lineFont, bg));
             table.addCell(pdf.numCell(String.valueOf(ligne.getQuantite()), lineFont, bg));
+            table.addCell(pdf.numCell(String.valueOf(ligne.getQuantiteLivree()), lineFont, bg));
+            table.addCell(buildLivraisonStatutCell(ligne.getLivraisonStatut(), lineFont));
             table.addCell(pdf.numCell(pdf.formatAmount(ligne.getPrixUnitaire()), lineFont, bg));
             table.addCell(pdf.numCell(pdf.formatAmount(ligne.getMontantTotal()), lineFont, bg));
         }
 
         doc.add(table);
+    }
+
+    private PdfPCell buildLivraisonStatutCell(LivraisonStatut statut, Font baseFont) {
+        String label = statut != null ? pdf.msg("pdf.vente.livraison." + statut.name()) : "—";
+        Color bg = livraisonStatutBackground(statut);
+
+        Font font = new Font(baseFont.getFamily(), baseFont.getSize(), Font.BOLD, Color.DARK_GRAY);
+        PdfPCell cell = new PdfPCell(new Phrase(label, font));
+        cell.setBackgroundColor(bg);
+        cell.setPadding(5);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        return cell;
+    }
+
+    private Color livraisonStatutBackground(LivraisonStatut statut) {
+        if (statut == null) return Color.WHITE;
+        return switch (statut) {
+            case LIVREE                -> new Color(220, 252, 231);
+            case NON_LIVREE            -> new Color(254, 226, 226);
+            case PARTIELLEMENT_LIVREE  -> new Color(254, 249, 195);
+        };
     }
 
     private String buildProductLabel(String nom, String ref) {

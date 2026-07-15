@@ -9,7 +9,7 @@ spring:
   config:
     import: optional:classpath:email.yml
   application:
-    name: store
+    name: bhantic
   servlet:
     multipart:
       enabled: true
