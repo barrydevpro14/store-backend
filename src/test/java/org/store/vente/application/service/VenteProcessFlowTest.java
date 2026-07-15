@@ -102,6 +102,7 @@ class VenteProcessFlowTest {
     @Mock private INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private org.store.paiement.application.service.IMoyenPaiementService moyenPaiementService;
+    @Mock private org.store.sequence.application.service.IDocumentSequenceService documentSequenceService;
 
     @InjectMocks
     private VenteServiceImpl service;
@@ -202,6 +203,7 @@ class VenteProcessFlowTest {
         lenient().when(currentUserService.getCurrent()).thenReturn(new UserPrincipal(
                 vendeurAccountId, null, entrepriseId, magasinId,
                 "vendeur1", null, null, "SELLER", List.of()));
+        lenient().when(documentSequenceService.generateReference(any(), any())).thenReturn("VTE-TEST-SEQ");
     }
 
     // ── Scenario 1: Happy path — CREATE DRAFT → VALIDATE ─────────────────────

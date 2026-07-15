@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.store.common.service.GlobalService;
-import org.store.common.tools.ReferenceHelper;
+
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.FactureClientCreate;
 import org.store.vente.application.dto.FactureClientFilter;
@@ -39,11 +39,6 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
         facture.setMontantPaye(BigDecimal.ZERO);
         facture.setStatut(StatutFacture.NON_PAYEE);
         return save(facture);
-    }
-
-    /** Génère un numéro de facture unique au format FACT-yyyyMMdd-HHmmssSSS. */
-    public String generateNumero() {
-        return ReferenceHelper.generate("FACT");
     }
 
     public Optional<FactureClient> findByCommandeId(UUID commandeId) {

@@ -64,6 +64,8 @@ import org.store.stock.domain.service.EntreeStockDomainService;
 import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.StockDomainService;
 import org.store.paiement.application.service.IMoyenPaiementService;
+import org.store.sequence.application.service.IDocumentSequenceService;
+import org.store.sequence.domain.enums.TypeDocument;
 
 import org.springframework.data.domain.Page;
 
@@ -103,6 +105,7 @@ public class AchatServiceImpl implements IAchatService {
     private final IAuditEventPublisher auditEventPublisher;
     private final IMoyenPaiementService moyenPaiementService;
     private final IUploadFileService uploadFileService;
+    private final IDocumentSequenceService documentSequenceService;
 
     public AchatServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
@@ -120,7 +123,8 @@ public class AchatServiceImpl implements IAchatService {
                             ICurrentUserService currentUserService,
                             IAuditEventPublisher auditEventPublisher,
                             IMoyenPaiementService moyenPaiementService,
-                            IUploadFileService uploadFileService) {
+                            IUploadFileService uploadFileService,
+                            IDocumentSequenceService documentSequenceService) {
         this.commandeAchatDomainService = commandeAchatDomainService;
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
@@ -138,6 +142,7 @@ public class AchatServiceImpl implements IAchatService {
         this.auditEventPublisher = auditEventPublisher;
         this.moyenPaiementService = moyenPaiementService;
         this.uploadFileService = uploadFileService;
+        this.documentSequenceService = documentSequenceService;
     }
 
     /** Crée la commande DRAFT et ses lignes (validations PF + prix), sans toucher au stock ni à la facture. */
@@ -153,7 +158,7 @@ public class AchatServiceImpl implements IAchatService {
 
         CommandeAchat commande = commandeAchatDomainService.create(new CommandeAchatCreate(
                 fournisseur, magasin, achatRequest.dateCommande(),
-                commandeAchatDomainService.generateReference(),
+                documentSequenceService.generateReference(magasin.getId(), TypeDocument.COMMANDE_ACHAT),
                 CommandeAchatStatut.DRAFT
         ));
 
@@ -225,7 +230,7 @@ public class AchatServiceImpl implements IAchatService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         FactureAchatCreateRequest factureRequest = achatReceiveRequest.facture();
-        String numero = resolveNumeroFacture(factureRequest.numero());
+        String numero = resolveNumeroFacture(factureRequest.numero(), commande.getMagasin().getId());
 
         FactureAchat facture = factureAchatDomainService.create(new FactureAchatCreate(
                 commande, numero,
@@ -275,9 +280,9 @@ public class AchatServiceImpl implements IAchatService {
      * format `FACT-yyyyMMdd-HHmmssSSS`.
      */
     @Override
-    public String resolveNumeroFacture(String numero) {
+    public String resolveNumeroFacture(String numero, UUID magasinId) {
         if (numero == null || numero.isBlank()) {
-            return factureAchatDomainService.generateNumero();
+            return documentSequenceService.generateReference(magasinId, TypeDocument.FACTURE_ACHAT);
         }
 
         String trimmed = numero.trim();

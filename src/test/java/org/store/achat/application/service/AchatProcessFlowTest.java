@@ -90,6 +90,7 @@ class AchatProcessFlowTest {
     @Mock private org.store.security.application.service.ICurrentUserService currentUserService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private IMoyenPaiementService moyenPaiementService;
+    @Mock private org.store.sequence.application.service.IDocumentSequenceService documentSequenceService;
 
     private static final UUID MOYEN_WAVE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
@@ -116,6 +117,7 @@ class AchatProcessFlowTest {
                 new org.store.security.application.dto.UserPrincipal(
                         UUID.randomUUID(), null, UUID.randomUUID(), null,
                         "manager", null, null, "OWNER", List.of()));
+        lenient().when(documentSequenceService.generateReference(any(), any())).thenReturn("CMD-TEST-SEQ");
 
         magasinId           = UUID.randomUUID();
         fournisseurId       = UUID.randomUUID();

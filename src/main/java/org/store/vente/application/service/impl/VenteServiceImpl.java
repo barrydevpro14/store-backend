@@ -68,6 +68,8 @@ import org.store.vente.domain.service.LigneCommandeVenteDomainService;
 import org.store.notification.application.event.VenteValidatedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.paiement.application.service.IMoyenPaiementService;
+import org.store.sequence.application.service.IDocumentSequenceService;
+import org.store.sequence.domain.enums.TypeDocument;
 import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import org.springframework.data.domain.Page;
@@ -111,6 +113,7 @@ public class VenteServiceImpl implements IVenteService {
     private final INotificationEventPublisher notificationEventPublisher;
     private final IAuditEventPublisher auditEventPublisher;
     private final IMoyenPaiementService moyenPaiementService;
+    private final IDocumentSequenceService documentSequenceService;
 
     public VenteServiceImpl(CommandeVenteDomainService commandeVenteDomainService,
                             LigneCommandeVenteDomainService ligneCommandeVenteDomainService,
@@ -130,7 +133,8 @@ public class VenteServiceImpl implements IVenteService {
                             SaleProperties saleProperties,
                             INotificationEventPublisher notificationEventPublisher,
                             IAuditEventPublisher auditEventPublisher,
-                            IMoyenPaiementService moyenPaiementService) {
+                            IMoyenPaiementService moyenPaiementService,
+                            IDocumentSequenceService documentSequenceService) {
         this.commandeVenteDomainService = commandeVenteDomainService;
         this.ligneCommandeVenteDomainService = ligneCommandeVenteDomainService;
         this.factureClientDomainService = factureClientDomainService;
@@ -150,6 +154,7 @@ public class VenteServiceImpl implements IVenteService {
         this.notificationEventPublisher = notificationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
         this.moyenPaiementService = moyenPaiementService;
+        this.documentSequenceService = documentSequenceService;
     }
 
     /** Crée une commande de vente DRAFT + ses lignes (validations prix + scoping PF), sans toucher au stock. */
@@ -167,7 +172,7 @@ public class VenteServiceImpl implements IVenteService {
 
         CommandeVente commande = commandeVenteDomainService.create(new CommandeVenteCreate(
                 client, magasin, dateVente,
-                commandeVenteDomainService.generateReference(),
+                documentSequenceService.generateReference(magasin.getId(), TypeDocument.COMMANDE_CLIENT),
                 CommandeVenteStatut.DRAFT
         ));
 
@@ -239,7 +244,7 @@ public class VenteServiceImpl implements IVenteService {
         }
 
         FactureClient facture = factureClientDomainService.create(new FactureClientCreate(
-                commande, factureClientDomainService.generateNumero(),
+                commande, documentSequenceService.generateReference(commande.getMagasin().getId(), TypeDocument.FACTURE_CLIENT),
                 commande.getDate(), venteValidateRequest.dateEcheance(), montantTotal
         ));
 
