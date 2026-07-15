@@ -91,6 +91,8 @@ class AchatServiceImplTest {
     @Mock private org.store.security.application.service.ICurrentUserService currentUserService;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private IMoyenPaiementService moyenPaiementService;
+    @Mock private org.store.common.service.IUploadFileService uploadFileService;
+    @Mock private org.store.sequence.application.service.IDocumentSequenceService documentSequenceService;
 
     private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -205,7 +207,7 @@ class AchatServiceImplTest {
         when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
         when(productFournisseurService.findOrCreate(any())).thenReturn(new org.store.produit.application.dto.ProductFournisseurResponse(productFournisseur));
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
-        when(commandeAchatDomainService.generateReference()).thenReturn("CMD-AUTO");
+        when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.COMMANDE_ACHAT))).thenReturn("CMD-AUTO");
         when(commandeAchatDomainService.create(any(CommandeAchatCreate.class))).thenReturn(commande);
         when(commandeAchatDomainService.findById(commande.getId())).thenReturn(commande);
         LigneCommandeAchat mockLigne = new LigneCommandeAchat();

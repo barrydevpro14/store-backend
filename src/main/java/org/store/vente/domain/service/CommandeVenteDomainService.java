@@ -3,7 +3,7 @@ package org.store.vente.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
-import org.store.common.tools.ReferenceHelper;
+
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.CommandeVenteFilter;
@@ -34,11 +34,6 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         commande.setReference(commandeVenteCreate.reference());
         commande.setStatut(commandeVenteCreate.statut());
         return save(commande);
-    }
-
-    /** Génère une référence unique au format VTE-yyyyMMdd-HHmmssSSS. */
-    public String generateReference() {
-        return ReferenceHelper.generate("VTE");
     }
 
     /** Listing paginé filtré scopé entreprise (projection JPQL, user toujours null). */

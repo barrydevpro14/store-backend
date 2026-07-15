@@ -75,7 +75,7 @@ class CategoryProductServiceImplTest {
         CategoryProduct created = sampleCategory(entreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("Pneus", entrepriseId)).thenReturn(false);
+        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("pneus", entrepriseId)).thenReturn(false);
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
         when(categoryProductDomainService.create(request, entreprise)).thenReturn(created);
 
@@ -91,7 +91,7 @@ class CategoryProductServiceImplTest {
         CategoryProductRequest request = new CategoryProductRequest("Pneus", null);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("Pneus", entrepriseId)).thenReturn(true);
+        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("pneus", entrepriseId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UniqueResourceException.class);
@@ -145,12 +145,12 @@ class CategoryProductServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(categoryProductDomainService.findById(categoryId)).thenReturn(category);
-        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("Filtres", entrepriseId)).thenReturn(false);
+        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("filtres", entrepriseId)).thenReturn(false);
         when(categoryProductDomainService.save(any(CategoryProduct.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CategoryProductResponse response = service.update(categoryId, request);
 
-        assertThat(response.libelle()).isEqualTo("Filtres");
+        assertThat(response.libelle()).isEqualTo("filtres");
         assertThat(response.description()).isEqualTo("Cat. filtres");
     }
 
@@ -175,7 +175,7 @@ class CategoryProductServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(categoryProductDomainService.findById(categoryId)).thenReturn(category);
-        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("Filtres", entrepriseId)).thenReturn(true);
+        when(categoryProductDomainService.existsByLibelleAndEntrepriseId("filtres", entrepriseId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.update(categoryId, request))
                 .isInstanceOf(UniqueResourceException.class);
@@ -247,7 +247,7 @@ class CategoryProductServiceImplTest {
 
     @Test
     void ensureLibelleAvailable_should_throw_when_taken() {
-        when(categoryProductDomainService.existsByLibelleAndEntrepriseId(eq("Pneus"), eq(entrepriseId))).thenReturn(true);
+        when(categoryProductDomainService.existsByLibelleAndEntrepriseId(eq("pneus"), eq(entrepriseId))).thenReturn(true);
 
         assertThatThrownBy(() -> service.ensureLibelleAvailable("Pneus", entrepriseId))
                 .isInstanceOf(UniqueResourceException.class);

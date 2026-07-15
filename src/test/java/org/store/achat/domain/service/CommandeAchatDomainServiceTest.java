@@ -77,20 +77,6 @@ class CommandeAchatDomainServiceTest {
     }
 
     @Test
-    void generateReference_should_return_string_starting_with_CMD() {
-        String reference = service.generateReference();
-
-        assertThat(reference).startsWith("CMD-");
-        assertThat(reference).isNotBlank();
-    }
-
-    @Test
-    void generateReference_should_match_expected_format() {
-        String ref = service.generateReference();
-        assertThat(ref).matches("CMD-\\d{8}-\\d{9}");
-    }
-
-    @Test
     void findResponsesByFilter_should_return_mapped_page() {
         CommandeAchatFilter filter = new CommandeAchatFilter(
                 magasin.getId(), null, null, null, null, null, null, 0, 10);

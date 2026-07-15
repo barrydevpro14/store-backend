@@ -11,7 +11,7 @@ import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.application.criteria.CommandeAchatSpecification;
 import org.store.achat.domain.repository.CommandeAchatRepository;
 import org.store.common.service.GlobalService;
-import org.store.common.tools.ReferenceHelper;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,11 +33,6 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
         commande.setReference(commandeAchatCreate.reference());
         commande.setStatut(commandeAchatCreate.statut());
         return save(commande);
-    }
-
-    /** Génère une référence unique au format CMD-yyyyMMdd-HHmmssSSS. */
-    public String generateReference() {
-        return ReferenceHelper.generate("CMD");
     }
 
     public Page<CommandeAchatResponse> findResponsesByFilter(CommandeAchatFilter filter, UUID entrepriseId) {

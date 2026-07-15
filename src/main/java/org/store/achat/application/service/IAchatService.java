@@ -79,7 +79,7 @@ public interface IAchatService {
     FactureAchat applyOptionalInitialPaiement(FactureAchat facture, BigDecimal montantTotal, PaiementAchatRequest paiementAchatRequest);
 
     /** Valide l'unicité ou génère un numéro de facture au format FACT-yyyyMMdd-HHmmssSSS. */
-    String resolveNumeroFacture(String numero);
+    String resolveNumeroFacture(String numero, UUID magasinId);
 
     /** Téléverse (ou remplace) la pièce jointe d'une commande et retourne son URL de téléchargement. */
     String uploadPieceJointe(UUID commandeId, MultipartFile file);

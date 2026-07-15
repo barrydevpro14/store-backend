@@ -100,6 +100,7 @@ class VenteServiceImplTest {
     @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private IMoyenPaiementService moyenPaiementService;
+    @Mock private org.store.sequence.application.service.IDocumentSequenceService documentSequenceService;
 
     private static final UUID MOYEN_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -228,7 +229,7 @@ class VenteServiceImplTest {
         when(employeService.findCurrentUser()).thenReturn(vendeur);
         when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
+        when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.COMMANDE_CLIENT))).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
         when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(100, new BigDecimal("10.00")));
@@ -252,7 +253,7 @@ class VenteServiceImplTest {
         when(employeService.findCurrentUser()).thenReturn(vendeur);
         when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(commandeVenteDomainService.generateReference()).thenReturn("VTE-AUTO");
+        when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.COMMANDE_CLIENT))).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
         when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(100, new BigDecimal("10.00")));
@@ -301,7 +302,7 @@ class VenteServiceImplTest {
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
+        when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.FACTURE_CLIENT))).thenReturn("FAC-VTE-AUTO");
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(commandeVenteDomainService.validate(commande)).thenAnswer(inv -> {
             commande.setStatut(CommandeVenteStatut.VALIDATE);
@@ -339,7 +340,7 @@ class VenteServiceImplTest {
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
-        when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
+        when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.FACTURE_CLIENT))).thenReturn("FAC-VTE-AUTO");
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(factureClientDomainService.applyPaiement(facture, new BigDecimal("500.00"))).thenReturn(factureAfterPaiement);
         when(commandeVenteDomainService.validate(commande)).thenReturn(commande);
@@ -370,7 +371,7 @@ class VenteServiceImplTest {
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
-        when(factureClientDomainService.generateNumero()).thenReturn("FAC-VTE-AUTO");
+        when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.FACTURE_CLIENT))).thenReturn("FAC-VTE-AUTO");
         when(factureClientDomainService.create(any())).thenReturn(facture);
         when(factureClientDomainService.applyPaiement(facture, new BigDecimal("500.00"))).thenReturn(facture);
         when(commandeVenteDomainService.validate(commande)).thenReturn(commande);
