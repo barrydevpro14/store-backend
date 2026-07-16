@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.activite.domain.model.ActiviteEconomique;
 import org.store.common.base.AuditableEntity;
 import org.store.common.model.PieceJointe;
 import org.store.country.domain.model.Country;
@@ -51,4 +52,8 @@ public class Entreprise extends AuditableEntity {
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "logo_id")
     private PieceJointe logo;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "activite_economique_id", nullable = false)
+    private ActiviteEconomique activiteEconomique;
 }

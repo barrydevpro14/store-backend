@@ -5,12 +5,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.store.common.validation.DatePattern;
 
+import java.util.UUID;
+
 public record EntrepriseFilter(
         String sigle,
         String raisonSociale,
         String ninea,
         String rccm,
         Boolean actif,
+        UUID activiteEconomiqueId,
         @DatePattern String startDate,
         @DatePattern String endDate,
         @Min(0) int page,

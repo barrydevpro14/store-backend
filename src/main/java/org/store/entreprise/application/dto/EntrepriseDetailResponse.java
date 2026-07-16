@@ -1,5 +1,6 @@
 package org.store.entreprise.application.dto;
 
+import org.store.activite.application.dto.ActiviteEconomiqueSummaryResponse;
 import org.store.country.application.dto.CountryResponse;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.entreprise.presentation.EntrepriseController;
@@ -19,7 +20,8 @@ public record EntrepriseDetailResponse(
         boolean actif,
         boolean trialUsed,
         String logo,
-        ProprietaireSummaryResponse proprietaire
+        ProprietaireSummaryResponse proprietaire,
+        ActiviteEconomiqueSummaryResponse activiteEconomique
 ) {
     public EntrepriseDetailResponse(Entreprise entreprise) {
         this(
@@ -34,7 +36,9 @@ public record EntrepriseDetailResponse(
                 entreprise.isActif(),
                 entreprise.isTrialUsed(),
                 entreprise.getLogo() != null ? EntrepriseController.BASE_PATH + "/me/logo" : null,
-                entreprise.getProprietaire() != null ? new ProprietaireSummaryResponse(entreprise.getProprietaire()) : null
+                entreprise.getProprietaire() != null ? new ProprietaireSummaryResponse(entreprise.getProprietaire()) : null,
+                entreprise.getActiviteEconomique() != null
+                        ? new ActiviteEconomiqueSummaryResponse(entreprise.getActiviteEconomique()) : null
         );
     }
 }
