@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.tools.DateHelper;
@@ -36,6 +37,6 @@ public record CommandeAchatFilter(
 
 
     public Pageable toPageable() {
-        return PageRequest.of(page, size);
+        return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 }
