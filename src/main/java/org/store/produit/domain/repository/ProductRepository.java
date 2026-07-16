@@ -49,7 +49,8 @@ public interface ProductRepository extends BaseRepository<Product> {
 
     Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId);
 
-    boolean existsByReferenceAndNomAndEntrepriseId(String reference, String nom, UUID entrepriseId);
+    @Query("SELECT COUNT(p) > 0 FROM Product p WHERE LOWER(p.reference) = LOWER(:reference) AND LOWER(p.nom) = LOWER(:nom) AND p.entreprise.id = :entrepriseId")
+    boolean existsByReferenceAndNomAndEntrepriseId(@Param("reference") String reference, @Param("nom") String nom, @Param("entrepriseId") UUID entrepriseId);
 
     /**
      * Recherche produits par nom OU référence avec lots actifs dans

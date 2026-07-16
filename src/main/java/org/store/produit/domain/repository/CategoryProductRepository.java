@@ -40,5 +40,6 @@ public interface CategoryProductRepository extends BaseRepository<CategoryProduc
 
     Optional<CategoryProduct> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
 
-    boolean existsByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
+    @Query("SELECT COUNT(p) > 0 FROM CategoryProduct p WHERE LOWER(p.libelle) = LOWER(:libelle) AND p.entreprise.id = :entrepriseId")
+    boolean existsByLibelleAndEntrepriseId(@Param("libelle") String libelle, @Param("entrepriseId") UUID entrepriseId);
 }
