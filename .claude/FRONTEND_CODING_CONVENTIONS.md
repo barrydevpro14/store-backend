@@ -775,6 +775,84 @@ Add `currencyLabel` to the `useMemo` deps array for the columns definition.
 
 ---
 
+### 57. React Hook Form + Zod — schema is the single source of truth
+
+**Every new form using `react-hook-form` + `zod` must follow this pattern. Existing forms are not migrated unless a functional change or significant maintenance requires it.**
+
+**Root cause of the build error this rule prevents:**
+`z.coerce.number()` has `Input: unknown, Output: number`. A manually declared `type FormValues = { field: number }` implies `Input: number`, creating an `Input` mismatch that TypeScript catches at build time (`Resolver<unknown, …>` not assignable to `Resolver<FormValues, …>`).
+
+**Required — 5 rules:**
+
+**1. Declare the schema outside the component. Use `z.enum()` for fixed value sets. Structural constraints (`min`, `max`, `.int()`) belong in the schema — not in `superRefine`:**
+```ts
+const documentSequenceSchema = z.object({
+  typeDocument: z.enum(TYPE_DOCUMENT_VALUES),
+
+  prefixe: z.string().min(1).max(10),
+
+  prochaineSequence: z.coerce.number().min(1),
+
+  longueurSequence: z.coerce.number().int().min(1).max(20),
+})
+```
+
+**2. Derive types from the schema — never declare `FormValues` manually:**
+```ts
+// ❌ Forbidden — manual type diverges from Zod Input/Output
+type FormValues = { prochaineSequence: number }
+
+// ✅ Required — schema is the single source of truth
+type FormInput  = z.input<typeof documentSequenceSchema>   // unknown for coerced fields
+type FormValues = z.output<typeof documentSequenceSchema>  // number after coercion
+```
+
+**3. `superRefine()` is for contextual / business rules only — structural constraints stay in the schema:**
+```ts
+// ✅ Contextual: typeDocument required only in create mode
+const schema = useMemo(
+  () =>
+    documentSequenceSchema.superRefine((data, ctx) => {
+      if (isCreate && !data.typeDocument) {
+        ctx.addIssue({ code: 'custom', path: ['typeDocument'], message: t('validation.typeDocumentRequired') })
+      }
+    }),
+  [isCreate, t],
+)
+
+// ❌ Structural rule in superRefine — move it to the base schema
+documentSequenceSchema.superRefine((data, ctx) => {
+  if (data.prefixe.length < 1) ctx.addIssue({ code: 'custom', path: ['prefixe'], message: '...' })
+})
+```
+
+**4. Wire `useForm` — three generics required when schema uses `z.coerce`. `TContext = unknown` avoids `no-explicit-any`:**
+```ts
+const form = useForm<FormInput, unknown, FormValues>({
+  resolver: zodResolver(schema),
+  mode: 'onTouched',
+  defaultValues,
+})
+```
+
+**5. `z.enum()` eliminates casts — `field.value` and `getValues()` are already the enum type:**
+```tsx
+// ✅ No cast needed
+<Combobox value={field.value} … />
+tType(form.getValues('typeDocument'))
+```
+
+**Forbidden:**
+- Manually declaring a `type FormValues = { ... }` alongside a Zod schema.
+- Putting structural constraints in `superRefine` — only contextual / business rules go there.
+- Using `z.string()` where `z.enum()` is possible.
+- Ignoring `Input` / `Output` differences introduced by `z.coerce.*` or `.transform()`.
+- Using `any` as `TContext` in `useForm` — use `unknown`.
+
+**Reference implementation:** `DocumentSequenceForm.tsx`.
+
+---
+
 ## Logs / debug
 
 - **No `console.log` in production**. Temporarily acceptable in dev, remove before committing.

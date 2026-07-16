@@ -15,7 +15,8 @@ public interface CategoryDepenseRepository extends BaseRepository<CategoryDepens
 
     Optional<CategoryDepense> findByNomAndEntrepriseId(String nom, UUID entrepriseId);
 
-    boolean existsByNomAndEntrepriseId(String nom, UUID entrepriseId);
+    @Query("SELECT COUNT(c) > 0 FROM CategoryDepense c WHERE LOWER(c.nom) = LOWER(:nom) AND c.entreprise.id = :entrepriseId")
+    boolean existsByNomAndEntrepriseId(@Param("nom") String nom, @Param("entrepriseId") UUID entrepriseId);
 
     @Query(value = """
             SELECT new org.store.depense.application.dto.CategoryDepenseResponse(category)
