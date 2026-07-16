@@ -12,6 +12,7 @@ public record EntrepriseRequest(
         String rccm,
         @NotBlank String adresse,
         @NotNull UUID countryId,
-        String telephone
+        String telephone,
+        @NotNull UUID activiteEconomiqueId
 ) {
 }

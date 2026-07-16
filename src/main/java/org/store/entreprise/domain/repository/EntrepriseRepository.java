@@ -21,6 +21,7 @@ public interface EntrepriseRepository extends BaseRepository<Entreprise> {
               AND (:ninea IS NULL OR :ninea = '' OR LOWER(entreprise.ninea) LIKE :nineaPattern)
               AND (:rccm IS NULL OR :rccm = '' OR LOWER(entreprise.rccm) LIKE :rccmPattern)
               AND (:actif IS NULL OR entreprise.actif = :actif)
+              AND (:activiteEconomiqueId IS NULL OR entreprise.activiteEconomique.id = :activiteEconomiqueId)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', entreprise.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', entreprise.createdAt) <= CAST(:endDate AS date))
             ORDER BY entreprise.createdAt DESC
@@ -33,6 +34,7 @@ public interface EntrepriseRepository extends BaseRepository<Entreprise> {
               AND (:ninea IS NULL OR :ninea = '' OR LOWER(entreprise.ninea) LIKE :nineaPattern)
               AND (:rccm IS NULL OR :rccm = '' OR LOWER(entreprise.rccm) LIKE :rccmPattern)
               AND (:actif IS NULL OR entreprise.actif = :actif)
+              AND (:activiteEconomiqueId IS NULL OR entreprise.activiteEconomique.id = :activiteEconomiqueId)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', entreprise.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', entreprise.createdAt) <= CAST(:endDate AS date))
             """)
@@ -46,6 +48,7 @@ public interface EntrepriseRepository extends BaseRepository<Entreprise> {
             @Param("rccm") String rccm,
             @Param("rccmPattern") String rccmPattern,
             @Param("actif") Boolean actif,
+            @Param("activiteEconomiqueId") java.util.UUID activiteEconomiqueId,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);

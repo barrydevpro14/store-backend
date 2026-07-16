@@ -1,5 +1,6 @@
 package org.store.entreprise.application.dto;
 
+import org.store.activite.application.dto.ActiviteEconomiqueSummaryResponse;
 import org.store.country.application.dto.CountryResponse;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.entreprise.presentation.EntrepriseController;
@@ -17,7 +18,8 @@ public record EntrepriseResponse(
         CountryResponse country,
         boolean actif,
         boolean trialUsed,
-        String logo
+        String logo,
+        ActiviteEconomiqueSummaryResponse activiteEconomique
 ) {
     public EntrepriseResponse(Entreprise entreprise) {
         this(
@@ -31,7 +33,9 @@ public record EntrepriseResponse(
                 entreprise.getCountry() != null ? new CountryResponse(entreprise.getCountry()) : null,
                 entreprise.isActif(),
                 entreprise.isTrialUsed(),
-                entreprise.getLogo() != null ? EntrepriseController.BASE_PATH + "/me/logo" : null
+                entreprise.getLogo() != null ? EntrepriseController.BASE_PATH + "/me/logo" : null,
+                entreprise.getActiviteEconomique() != null
+                        ? new ActiviteEconomiqueSummaryResponse(entreprise.getActiviteEconomique()) : null
         );
     }
 }

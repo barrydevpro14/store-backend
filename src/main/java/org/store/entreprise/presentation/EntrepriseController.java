@@ -58,12 +58,13 @@ public class EntrepriseController {
                                                          @RequestParam(required = false) String ninea,
                                                          @RequestParam(required = false) String rccm,
                                                          @RequestParam(required = false) Boolean actif,
+                                                         @RequestParam(required = false) UUID activiteEconomiqueId,
                                                          @RequestParam(required = false) String startDate,
                                                          @RequestParam(required = false) String endDate,
                                                          @RequestParam(defaultValue = "0") int page,
                                                          @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(entrepriseService.findAll(
-                new EntrepriseFilter(sigle, raisonSociale, ninea, rccm, actif, startDate, endDate, page, size)));
+                new EntrepriseFilter(sigle, raisonSociale, ninea, rccm, actif, activiteEconomiqueId, startDate, endDate, page, size)));
     }
 
     @GetMapping("/{id}")

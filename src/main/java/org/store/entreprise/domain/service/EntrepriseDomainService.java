@@ -2,6 +2,7 @@ package org.store.entreprise.domain.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.store.activite.domain.service.ActiviteEconomiqueDomainService;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
@@ -18,11 +19,14 @@ import org.store.users.domain.model.Proprietaire;
 public class EntrepriseDomainService extends GlobalService<Entreprise, EntrepriseRepository> {
 
     private final CountryDomainService countryDomainService;
+    private final ActiviteEconomiqueDomainService activiteEconomiqueDomainService;
 
     public EntrepriseDomainService(EntrepriseRepository repository,
-                                    CountryDomainService countryDomainService) {
+                                   CountryDomainService countryDomainService,
+                                   ActiviteEconomiqueDomainService activiteEconomiqueDomainService) {
         super(repository);
         this.countryDomainService = countryDomainService;
+        this.activiteEconomiqueDomainService = activiteEconomiqueDomainService;
     }
 
     public Entreprise create(EntrepriseRequest entrepriseRequest, Proprietaire proprietaire) {
@@ -37,6 +41,7 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         entreprise.setCountry(countryDomainService.findById(entrepriseRequest.countryId()));
         entreprise.setTrialUsed(true);
         entreprise.setActif(true);
+        applyActivite(entreprise, entrepriseRequest);
         return save(entreprise);
     }
 
@@ -48,6 +53,7 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
                 filter.ninea(), LikePatternHelper.toLikePattern(filter.ninea()),
                 filter.rccm(), LikePatternHelper.toLikePattern(filter.rccm()),
                 filter.actif(),
+                filter.activiteEconomiqueId(),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());
     }
@@ -60,7 +66,14 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         entreprise.setAdresse(request.adresse());
         entreprise.setTelephone(request.telephone());
         entreprise.setCountry(countryDomainService.findById(request.countryId()));
+        applyActivite(entreprise, request);
         return save(entreprise);
+    }
+
+    /** Résout et applique l'activité économique depuis la requête. */
+    private void applyActivite(Entreprise entreprise, EntrepriseRequest request) {
+        entreprise.setActiviteEconomique(
+                activiteEconomiqueDomainService.findById(request.activiteEconomiqueId()));
     }
 
     public Entreprise setLogo(Entreprise entreprise, PieceJointe pieceJointe) {
