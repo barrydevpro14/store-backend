@@ -1,6 +1,6 @@
 workflow:
   rules:
-    - when: never
+    - when: always
     # Original rules — uncomment to re-enable CI:
     # - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_BRANCH == "main"
