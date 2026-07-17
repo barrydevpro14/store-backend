@@ -104,4 +104,31 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
             throw new UniqueResourceException("categoryProduct.libelle.alreadyExists", libelle);
         }
     }
+
+    /** Retourne true si une catégorie portant ce libellé existe pour l'entreprise du caller. */
+    @Override
+    public boolean existsByLibelle(String libelle) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle.toLowerCase(), entrepriseId);
+    }
+
+    /**
+     * Retourne la catégorie existante (libellé normalisé) ou en crée une nouvelle pour l'entreprise du caller.
+     * Utilisé par l'import produit pour résoudre les catégories à la volée.
+     */
+    @Override
+    @Transactional
+    public CategoryProduct findOrCreateByLibelle(String libelle) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        String normalised = libelle.toLowerCase();
+
+        return categoryProductDomainService.findByLibelleAndEntrepriseId(normalised, entrepriseId)
+                .orElseGet(() -> {
+                    Entreprise entreprise = entrepriseService.findById(entrepriseId);
+                    CategoryProduct category = new CategoryProduct();
+                    category.setLibelle(normalised);
+                    category.setEntreprise(entreprise);
+                    return categoryProductDomainService.save(category);
+                });
+    }
 }

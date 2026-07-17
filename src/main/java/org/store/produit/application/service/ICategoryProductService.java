@@ -49,4 +49,16 @@ public interface ICategoryProductService {
      * Vérifie qu'aucune catégorie de l'entreprise donnée ne porte déjà ce libellé. Throw `UniqueResourceException("categoryProduct.libelle.alreadyExists")` sinon.
      */
     void ensureLibelleAvailable(String libelle, UUID entrepriseId);
+
+    /**
+     * Retourne true si une catégorie portant ce libellé existe déjà pour l'entreprise du caller.
+     */
+    boolean existsByLibelle(String libelle);
+
+    /**
+     * Retourne la catégorie dont le libellé correspond (insensible à la casse) pour l'entreprise
+     * du caller, ou en crée une automatiquement si elle n'existe pas encore.
+     * Utilisé par l'import produit pour résoudre les catégories à la volée.
+     */
+    CategoryProduct findOrCreateByLibelle(String libelle);
 }

@@ -132,6 +132,13 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /** Retourne true si un produit avec ce couple (reference, nom) existe pour l'entreprise du caller. */
+    @Override
+    public boolean existsByReferenceAndNom(String reference, String nom) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return productDomainService.existsByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId);
+    }
+
     /** Téléverse une image principale (remplace l'ancienne via orphanRemoval) après contrôle d'appartenance et validation MIME. */
     @Override
     @Transactional

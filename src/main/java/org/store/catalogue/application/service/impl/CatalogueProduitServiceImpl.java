@@ -1,0 +1,149 @@
+package org.store.catalogue.application.service.impl;
+
+import org.apache.poi.ss.usermodel.*;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.store.activite.domain.model.ActiviteEconomique;
+import org.store.activite.domain.service.ActiviteEconomiqueDomainService;
+import org.store.catalogue.application.dto.CatalogueImportResult;
+import org.store.catalogue.application.dto.CatalogueProduitFilter;
+import org.store.catalogue.application.dto.CatalogueUserFilter;
+import org.store.catalogue.application.dto.CatalogueProduitResponse;
+import org.store.catalogue.application.dto.CatalogueProduitSummaryResponse;
+import org.store.catalogue.application.dto.CatalogueProduitUpdateRequest;
+import org.store.catalogue.application.service.ICatalogueProduitService;
+import org.store.catalogue.domain.model.CatalogueProduit;
+import org.store.catalogue.domain.service.CatalogueProduitDomainService;
+import org.store.common.exceptions.BadArgumentException;
+import org.store.entreprise.application.service.IEntrepriseService;
+import org.store.security.application.service.ICurrentUserService;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Gestion du catalogue Bhantic : consultation par entreprise,
+ * import bulk Excel et mise à jour/suppression par l'ADMIN.
+ */
+@Service
+public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
+
+    private final CatalogueProduitDomainService catalogueProduitDomainService;
+    private final ActiviteEconomiqueDomainService activiteEconomiqueDomainService;
+    private final ICurrentUserService currentUserService;
+    private final IEntrepriseService entrepriseService;
+
+    public CatalogueProduitServiceImpl(
+            CatalogueProduitDomainService catalogueProduitDomainService,
+            ActiviteEconomiqueDomainService activiteEconomiqueDomainService,
+            ICurrentUserService currentUserService,
+            IEntrepriseService entrepriseService
+    ) {
+        this.catalogueProduitDomainService = catalogueProduitDomainService;
+        this.activiteEconomiqueDomainService = activiteEconomiqueDomainService;
+        this.currentUserService = currentUserService;
+        this.entrepriseService = entrepriseService;
+    }
+
+    @Override
+    public Page<CatalogueProduitSummaryResponse> findByCurrentEntreprise(CatalogueUserFilter filter) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        UUID activiteEconomiqueId = entrepriseService.findById(entrepriseId).getActiviteEconomique().getId();
+
+        CatalogueProduitFilter fullFilter = new CatalogueProduitFilter(
+                activiteEconomiqueId,
+                filter.reference(), filter.libelle(), filter.categorie(),
+                filter.createdStartDate(), filter.createdEndDate(),
+                filter.page(), filter.size()
+        );
+
+        return catalogueProduitDomainService.findByFilter(fullFilter);
+    }
+
+    @Override
+    public Page<CatalogueProduitSummaryResponse> findByFilter(CatalogueProduitFilter filter) {
+        return catalogueProduitDomainService.findByFilter(filter);
+    }
+
+    @Override
+    @Transactional
+    public CatalogueImportResult importFromFile(MultipartFile file, UUID activiteEconomiqueId) {
+        ActiviteEconomique activite = activiteEconomiqueDomainService.findById(activiteEconomiqueId);
+
+        int imported = 0;
+        int ignored = 0;
+        List<String> errors = new ArrayList<>();
+
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                try {
+                    String reference = cellValue(row, 0);
+                    String libelle = cellValue(row, 1);
+                    String categorie = cellValue(row, 2);
+                    String description = cellValue(row, 3);
+
+                    if (reference.isBlank() || libelle.isBlank()) {
+                        errors.add("Ligne " + (i + 1) + " : référence et libellé obligatoires");
+                        continue;
+                    }
+
+                    if (catalogueProduitDomainService.existsByReferenceAndLibelleAndActiviteEconomiqueId(reference, libelle, activiteEconomiqueId)) {
+                        ignored++;
+                        continue;
+                    }
+
+                    CatalogueProduit entry = new CatalogueProduit();
+                    entry.setActiviteEconomique(activite);
+                    entry.setReference(reference);
+                    entry.setLibelle(libelle);
+                    entry.setCategorie(categorie.isBlank() ? null : categorie);
+                    entry.setDescription(description.isBlank() ? null : description);
+
+                    catalogueProduitDomainService.save(entry);
+                    imported++;
+
+                } catch (Exception e) {
+                    errors.add("Ligne " + (i + 1) + " : " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new BadArgumentException("catalogue.import.fileReadError");
+        }
+
+        return new CatalogueImportResult(imported, ignored, errors);
+    }
+
+    @Override
+    @Transactional
+    public CatalogueProduitResponse update(UUID id, CatalogueProduitUpdateRequest request) {
+        CatalogueProduit catalogue = catalogueProduitDomainService.findById(id);
+        catalogue.setReference(request.reference());
+        catalogue.setLibelle(request.libelle());
+        catalogue.setCategorie(request.categorie());
+        catalogue.setDescription(request.description());
+
+        return new CatalogueProduitResponse(catalogueProduitDomainService.save(catalogue));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID id) {
+        catalogueProduitDomainService.deleteById(id);
+    }
+
+    private String cellValue(Row row, int col) {
+        Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) return "";
+        DataFormatter formatter = new DataFormatter();
+        return formatter.formatCellValue(cell).trim();
+    }
+}

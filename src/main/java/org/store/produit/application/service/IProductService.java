@@ -55,6 +55,12 @@ public interface IProductService {
     void ensureReferenceAndNomAvailable(String reference, String nom, UUID entrepriseId);
 
     /**
+     * Retourne true si un produit avec ce couple (reference, nom) existe déjà
+     * pour l'entreprise du caller. Utilisé par l'import pour la détection des doublons.
+     */
+    boolean existsByReferenceAndNom(String reference, String nom);
+
+    /**
      * Téléverse une image principale (remplace l'existante) pour un produit de l'entreprise du caller.
      */
     ProductResponse uploadImagePrincipal(UUID id, MultipartFile file);
