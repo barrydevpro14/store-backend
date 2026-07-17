@@ -66,18 +66,18 @@ class EntrepriseControllerTest {
     }
 
     private EntrepriseResponse sample() {
-        return new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", null, null, true, true, null);
+        return new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", null, null, true, true, null, null);
     }
 
     private EntrepriseDetailResponse sampleDetail() {
-        return new EntrepriseDetailResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", null, null, true, true, null, null);
+        return new EntrepriseDetailResponse(entrepriseId, "ACME", "ACME SARL", "N", "R", "Dakar", null, null, true, true, null, null, null);
     }
 
     private RegisterPropertyRequest validRegisterBody() {
         return new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
                 new UtilisateurRequest("Doe", "John", "john@example.com", "+221770000000", "Dakar"),
-                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", UUID.fromString("11111111-1111-1111-1111-111111111111"), null),
+                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", UUID.fromString("11111111-1111-1111-1111-111111111111"), null, UUID.fromString("22222222-2222-2222-2222-222222222222")),
                 new MagasinRequest("Magasin Centre", "Dakar Centre", null)
         );
     }
@@ -129,7 +129,7 @@ class EntrepriseControllerTest {
     @Test
     void should_return_200_when_admin_deactivates() throws Exception {
         EntrepriseResponse deactivated = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
-                "N", "R", "Dakar", null, null, false, true, null);
+                "N", "R", "Dakar", null, null, false, true, null, null);
         when(entrepriseService.deactivate(eq(entrepriseId))).thenReturn(deactivated);
 
         mockMvc.perform(patch(EntrepriseController.BASE_PATH + "/" + entrepriseId + "/deactivate"))
@@ -150,9 +150,9 @@ class EntrepriseControllerTest {
 
     @Test
     void should_return_200_when_proprietaire_updates_his_own() throws Exception {
-        EntrepriseRequest body = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", UUID.fromString("11111111-1111-1111-1111-111111111111"), null);
+        EntrepriseRequest body = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", UUID.fromString("11111111-1111-1111-1111-111111111111"), null, UUID.fromString("22222222-2222-2222-2222-222222222222"));
         EntrepriseResponse updated = new EntrepriseResponse(entrepriseId, "NEW", "NEW SARL",
-                "N2", "R2", "Adr2", null, null, true, true, null);
+                "N2", "R2", "Adr2", null, null, true, true, null, null);
         when(entrepriseService.updateCurrentUserEntreprise(any(EntrepriseRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put(EntrepriseController.BASE_PATH + "/me")
