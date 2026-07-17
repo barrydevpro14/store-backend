@@ -59,6 +59,7 @@ public enum PermissionCode {
 
     STOCK_READ,
     STOCK_ENTRY,
+    STOCK_IMPORT,
     STOCK_EXIT,
     STOCK_ADJUSTMENT,
     STOCK_INVENTORY,

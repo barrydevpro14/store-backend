@@ -10,6 +10,7 @@ import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.domain.model.Product;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IProductService {
@@ -59,6 +60,11 @@ public interface IProductService {
      * pour l'entreprise du caller. Utilisé par l'import pour la détection des doublons.
      */
     boolean existsByReferenceAndNom(String reference, String nom);
+
+    /**
+     * Recherche un produit par son couple (reference, nom) pour l'entreprise du caller.
+     */
+    Optional<Product> findByReferenceAndNom(String reference, String nom);
 
     /**
      * Téléverse une image principale (remplace l'existante) pour un produit de l'entreprise du caller.

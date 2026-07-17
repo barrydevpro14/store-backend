@@ -15,6 +15,7 @@ import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.QualityDomainService;
 import org.store.security.application.service.ICurrentUserService;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -103,5 +104,12 @@ public class QualityServiceImpl implements IQualityService {
         if (qualityDomainService.existsByLibelleAndEntrepriseId(libelle, entrepriseId)) {
             throw new UniqueResourceException("quality.libelle.alreadyExists", libelle);
         }
+    }
+
+    /** Recherche une qualité par son libellé pour l'entreprise du caller. */
+    @Override
+    public Optional<Quality> findByLibelle(String libelle) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return qualityDomainService.findByLibelleAndEntrepriseId(libelle, entrepriseId);
     }
 }
