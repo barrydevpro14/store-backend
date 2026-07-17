@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.catalogue.application.dto.CatalogueImportResult;
 import org.store.catalogue.application.dto.CatalogueProduitFilter;
-import org.store.catalogue.application.dto.CatalogueUserFilter;
 import org.store.catalogue.application.dto.CatalogueProduitResponse;
 import org.store.catalogue.application.dto.CatalogueProduitSummaryResponse;
 import org.store.catalogue.application.dto.CatalogueProduitUpdateRequest;
 import org.store.catalogue.application.service.ICatalogueProduitService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -31,17 +31,8 @@ public class CatalogueProduitController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('CATALOGUE_PRODUIT_READ')")
-    public ResponseEntity<Page<CatalogueProduitSummaryResponse>> list(
-            @RequestParam(required = false) String reference,
-            @RequestParam(required = false) String libelle,
-            @RequestParam(required = false) String categorie,
-            @RequestParam(required = false) String createdStartDate,
-            @RequestParam(required = false) String createdEndDate,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size
-    ) {
-        return ResponseEntity.ok(catalogueProduitService.findByCurrentEntreprise(
-                new CatalogueUserFilter(reference, libelle, categorie, createdStartDate, createdEndDate, page, size)));
+    public ResponseEntity<List<CatalogueProduitSummaryResponse>> list() {
+        return ResponseEntity.ok(catalogueProduitService.findByCurrentEntreprise());
     }
 
     @GetMapping("/by-activite")

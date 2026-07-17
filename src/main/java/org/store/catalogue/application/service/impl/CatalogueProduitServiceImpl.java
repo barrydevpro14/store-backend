@@ -9,7 +9,6 @@ import org.store.activite.domain.model.ActiviteEconomique;
 import org.store.activite.domain.service.ActiviteEconomiqueDomainService;
 import org.store.catalogue.application.dto.CatalogueImportResult;
 import org.store.catalogue.application.dto.CatalogueProduitFilter;
-import org.store.catalogue.application.dto.CatalogueUserFilter;
 import org.store.catalogue.application.dto.CatalogueProduitResponse;
 import org.store.catalogue.application.dto.CatalogueProduitSummaryResponse;
 import org.store.catalogue.application.dto.CatalogueProduitUpdateRequest;
@@ -50,18 +49,11 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
     }
 
     @Override
-    public Page<CatalogueProduitSummaryResponse> findByCurrentEntreprise(CatalogueUserFilter filter) {
+    public List<CatalogueProduitSummaryResponse> findByCurrentEntreprise() {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         UUID activiteEconomiqueId = entrepriseService.findById(entrepriseId).getActiviteEconomique().getId();
 
-        CatalogueProduitFilter fullFilter = new CatalogueProduitFilter(
-                activiteEconomiqueId,
-                filter.reference(), filter.libelle(), filter.categorie(),
-                filter.createdStartDate(), filter.createdEndDate(),
-                filter.page(), filter.size()
-        );
-
-        return catalogueProduitDomainService.findByFilter(fullFilter);
+        return catalogueProduitDomainService.findSummariesByActiviteEconomiqueId(activiteEconomiqueId);
     }
 
     @Override
