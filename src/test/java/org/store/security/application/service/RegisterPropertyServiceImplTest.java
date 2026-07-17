@@ -64,7 +64,7 @@ class RegisterPropertyServiceImplTest {
         validRequest = new RegisterPropertyRequest(
                 new AccountRequest("john.doe", "S3cretPwd!"),
                 new UtilisateurRequest("Doe", "John", "john@example.com", "+221700000000", "Dakar"),
-                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", null, null),
+                new EntrepriseRequest("ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", null, null, null),
                 new MagasinRequest("Magasin Centre", "Dakar Centre", null)
         );
     }

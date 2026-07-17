@@ -62,7 +62,7 @@ class EntrepriseServiceImplTest {
     void create_should_delegate_to_domain_service() {
         EntrepriseRequest request = new EntrepriseRequest(
                 "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar"
-        , null, null);
+        , null, null, null);
         Proprietaire proprietaire = new Proprietaire();
         Entreprise expected = new Entreprise();
         when(entrepriseDomainService.create(request, proprietaire)).thenReturn(expected);
@@ -85,7 +85,7 @@ class EntrepriseServiceImplTest {
 
     @Test
     void updateCurrentUserEntreprise_should_apply_changes() {
-        EntrepriseRequest request = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", null, null);
+        EntrepriseRequest request = new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr2", null, null, null);
         Entreprise updated = new Entreprise();
         updated.setId(entrepriseId);
         updated.setSigle("NEW");
@@ -137,9 +137,9 @@ class EntrepriseServiceImplTest {
     @Test
     void findAll_should_delegate_filter_to_domain_service() {
         org.store.entreprise.application.dto.EntrepriseFilter filter =
-                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, null, null, 0, 10);
+                new org.store.entreprise.application.dto.EntrepriseFilter("ACME", null, null, null, true, null, null, null, 0, 10);
         EntrepriseResponse sample = new EntrepriseResponse(entrepriseId, "ACME", "ACME SARL",
-                "N", "R", "A", null, null, true, true, null);
+                "N", "R", "A", null, null, true, true, null, null);
         Page<EntrepriseResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
         when(entrepriseDomainService.findResponsesByFilter(filter)).thenReturn(page);
 
@@ -161,7 +161,7 @@ class EntrepriseServiceImplTest {
         when(entrepriseDomainService.update(any(Entreprise.class), any(EntrepriseRequest.class))).thenReturn(updated);
 
         EntrepriseResponse response = service.update(entrepriseId,
-                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr", null, null));
+                new EntrepriseRequest("NEW", "NEW SARL", "N2", "R2", "Adr", null, null, null));
 
         assertThat(response.sigle()).isEqualTo("NEW");
         assertThat(response.raisonSociale()).isEqualTo("NEW SARL");

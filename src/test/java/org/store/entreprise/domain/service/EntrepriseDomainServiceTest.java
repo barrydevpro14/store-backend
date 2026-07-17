@@ -6,6 +6,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.activite.domain.model.ActiviteEconomique;
+import org.store.activite.domain.service.ActiviteEconomiqueDomainService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
 import org.store.entreprise.application.dto.EntrepriseRequest;
@@ -29,17 +31,23 @@ class EntrepriseDomainServiceTest {
     @Mock
     private CountryDomainService countryDomainService;
 
+    @Mock
+    private ActiviteEconomiqueDomainService activiteEconomiqueDomainService;
+
     @InjectMocks
     private EntrepriseDomainService service;
 
     @Test
     void create_should_construct_entreprise_with_proprietaire_trial_used_and_active() {
         UUID countryId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID activiteId = UUID.fromString("22222222-2222-2222-2222-222222222222");
         Country country = new Country();
+        ActiviteEconomique activite = new ActiviteEconomique();
         EntrepriseRequest request = new EntrepriseRequest(
-                "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", countryId, null);
+                "ACME", "ACME SARL", "NINEA-123", "RCCM-456", "Dakar", countryId, null, activiteId);
         Proprietaire proprietaire = new Proprietaire();
         when(countryDomainService.findById(countryId)).thenReturn(country);
+        when(activiteEconomiqueDomainService.findById(activiteId)).thenReturn(activite);
         when(repository.save(any(Entreprise.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Entreprise result = service.create(request, proprietaire);

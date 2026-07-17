@@ -73,7 +73,7 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
         if (!categoryProduct.getLibelle().equalsIgnoreCase(categoryProductRequest.libelle())) {
             ensureLibelleAvailable(categoryProductRequest.libelle(), categoryProduct.getEntreprise().getId());
         }
-        categoryProduct.setLibelle(categoryProductRequest.libelle());
+        categoryProduct.setLibelle(categoryProductRequest.libelle().toLowerCase());
         categoryProduct.setDescription(categoryProductRequest.description());
         return new CategoryProductResponse(categoryProductDomainService.save(categoryProduct));
     }
@@ -100,8 +100,35 @@ public class CategoryProductServiceImpl implements ICategoryProductService {
     /** Lève `UniqueResourceException` si le libellé est déjà utilisé dans l'entreprise. */
     @Override
     public void ensureLibelleAvailable(String libelle, UUID entrepriseId) {
-        if (categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle, entrepriseId)) {
+        if (categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle.toLowerCase(), entrepriseId)) {
             throw new UniqueResourceException("categoryProduct.libelle.alreadyExists", libelle);
         }
+    }
+
+    /** Retourne true si une catégorie portant ce libellé existe pour l'entreprise du caller. */
+    @Override
+    public boolean existsByLibelle(String libelle) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return categoryProductDomainService.existsByLibelleAndEntrepriseId(libelle.toLowerCase(), entrepriseId);
+    }
+
+    /**
+     * Retourne la catégorie existante (libellé normalisé) ou en crée une nouvelle pour l'entreprise du caller.
+     * Utilisé par l'import produit pour résoudre les catégories à la volée.
+     */
+    @Override
+    @Transactional
+    public CategoryProduct findOrCreateByLibelle(String libelle) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        String normalised = libelle.toLowerCase();
+
+        return categoryProductDomainService.findByLibelleAndEntrepriseId(normalised, entrepriseId)
+                .orElseGet(() -> {
+                    Entreprise entreprise = entrepriseService.findById(entrepriseId);
+                    CategoryProduct category = new CategoryProduct();
+                    category.setLibelle(normalised);
+                    category.setEntreprise(entreprise);
+                    return categoryProductDomainService.save(category);
+                });
     }
 }
