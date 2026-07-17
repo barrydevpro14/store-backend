@@ -1,6 +1,5 @@
 package org.store.catalogue.application.service.impl;
 
-import org.apache.poi.ss.usermodel.*;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +14,12 @@ import org.store.catalogue.application.dto.CatalogueProduitUpdateRequest;
 import org.store.catalogue.application.service.ICatalogueProduitService;
 import org.store.catalogue.domain.model.CatalogueProduit;
 import org.store.catalogue.domain.service.CatalogueProduitDomainService;
-import org.store.common.exceptions.BadArgumentException;
+import org.store.common.dto.ExcelParseResult;
+import org.store.common.dto.ExcelProductRow;
+import org.store.common.service.IExcelProductRowService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.security.application.service.ICurrentUserService;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -35,17 +35,20 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
     private final ActiviteEconomiqueDomainService activiteEconomiqueDomainService;
     private final ICurrentUserService currentUserService;
     private final IEntrepriseService entrepriseService;
+    private final IExcelProductRowService excelProductRowService;
 
     public CatalogueProduitServiceImpl(
             CatalogueProduitDomainService catalogueProduitDomainService,
             ActiviteEconomiqueDomainService activiteEconomiqueDomainService,
             ICurrentUserService currentUserService,
-            IEntrepriseService entrepriseService
+            IEntrepriseService entrepriseService,
+            IExcelProductRowService excelProductRowService
     ) {
         this.catalogueProduitDomainService = catalogueProduitDomainService;
         this.activiteEconomiqueDomainService = activiteEconomiqueDomainService;
         this.currentUserService = currentUserService;
         this.entrepriseService = entrepriseService;
+        this.excelProductRowService = excelProductRowService;
     }
 
     @Override
@@ -63,52 +66,35 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
 
     @Override
     @Transactional
-    public CatalogueImportResult importFromFile(MultipartFile file, UUID activiteEconomiqueId) {
+    public CatalogueImportResult importFromFile(MultipartFile multipartFile, UUID activiteEconomiqueId) {
         ActiviteEconomique activite = activiteEconomiqueDomainService.findById(activiteEconomiqueId);
+        ExcelParseResult parseResult = excelProductRowService.parseRows(multipartFile);
 
         int imported = 0;
         int ignored = 0;
-        List<String> errors = new ArrayList<>();
+        List<String> errors = new ArrayList<>(parseResult.errors());
 
-        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
-
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null) continue;
-
-                try {
-                    String reference = cellValue(row, 0);
-                    String libelle = cellValue(row, 1);
-                    String categorie = cellValue(row, 2);
-                    String description = cellValue(row, 3);
-
-                    if (reference.isBlank() || libelle.isBlank()) {
-                        errors.add("Ligne " + (i + 1) + " : référence et libellé obligatoires");
-                        continue;
-                    }
-
-                    if (catalogueProduitDomainService.existsByReferenceAndLibelleAndActiviteEconomiqueId(reference, libelle, activiteEconomiqueId)) {
-                        ignored++;
-                        continue;
-                    }
-
-                    CatalogueProduit entry = new CatalogueProduit();
-                    entry.setActiviteEconomique(activite);
-                    entry.setReference(reference);
-                    entry.setLibelle(libelle);
-                    entry.setCategorie(categorie.isBlank() ? null : categorie);
-                    entry.setDescription(description.isBlank() ? null : description);
-
-                    catalogueProduitDomainService.save(entry);
-                    imported++;
-
-                } catch (Exception e) {
-                    errors.add("Ligne " + (i + 1) + " : " + e.getMessage());
+        for (ExcelProductRow excelRow : parseResult.rows()) {
+            try {
+                if (catalogueProduitDomainService.existsByReferenceAndLibelleAndActiviteEconomiqueId(
+                        excelRow.reference(), excelRow.libelle(), activiteEconomiqueId)) {
+                    ignored++;
+                    continue;
                 }
+
+                CatalogueProduit entry = new CatalogueProduit();
+                entry.setActiviteEconomique(activite);
+                entry.setReference(excelRow.reference());
+                entry.setLibelle(excelRow.libelle());
+                entry.setDescription(excelRow.description());
+                entry.setCategorie(excelRow.categorie());
+
+                catalogueProduitDomainService.save(entry);
+                imported++;
+
+            } catch (Exception exception) {
+                errors.add(excelRow.reference() + " : " + exception.getMessage());
             }
-        } catch (IOException e) {
-            throw new BadArgumentException("catalogue.import.fileReadError");
         }
 
         return new CatalogueImportResult(imported, ignored, errors);
@@ -132,10 +118,4 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
         catalogueProduitDomainService.deleteById(id);
     }
 
-    private String cellValue(Row row, int col) {
-        Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-        if (cell == null) return "";
-        DataFormatter formatter = new DataFormatter();
-        return formatter.formatCellValue(cell).trim();
-    }
 }

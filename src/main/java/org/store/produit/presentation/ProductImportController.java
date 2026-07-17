@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.store.produit.application.dto.ProductImportRequest;
 import org.store.produit.application.dto.ProductImportResult;
 import org.store.produit.application.service.IProductImportService;
@@ -24,5 +25,11 @@ public class ProductImportController {
     @PreAuthorize("hasAuthority('PRODUCT_IMPORT')")
     public ResponseEntity<ProductImportResult> importProducts(@Valid @RequestBody ProductImportRequest request) {
         return ResponseEntity.ok(productImportService.importProducts(request));
+    }
+
+    @PostMapping("/file")
+    @PreAuthorize("hasAuthority('PRODUCT_IMPORT')")
+    public ResponseEntity<ProductImportResult> importFromFile(@RequestParam("file") MultipartFile multipartFile) {
+        return ResponseEntity.ok(productImportService.importFromFile(multipartFile));
     }
 }
