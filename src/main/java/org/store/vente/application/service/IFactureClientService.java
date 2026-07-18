@@ -18,6 +18,8 @@ public interface IFactureClientService {
 
     DataCountResponse countAllUnpaid(UUID magasingId);
 
+    FactureClient findById(UUID id);
+
     FactureClientResponse findResponseById(UUID id);
 
     List<FactureClient> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures);

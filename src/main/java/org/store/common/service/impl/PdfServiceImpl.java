@@ -11,6 +11,8 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
+import org.store.common.dto.PdfColor;
+import org.store.common.dto.PdfColors;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.common.service.IPdfService;
 import org.store.entreprise.domain.model.Entreprise;
@@ -52,9 +54,9 @@ public class PdfServiceImpl implements IPdfService {
     public PdfPCell sectionCell(String title) {
         PdfPCell cell = new PdfPCell();
         cell.setBorder(Rectangle.BOX);
-        cell.setBorderColor(BORDER);
+        cell.setBorderColor(PdfColor.BORDER.color());
         cell.setPadding(10);
-        cell.addElement(new Paragraph(title, new Font(Font.HELVETICA, 8, Font.BOLD, GRAY_TEXT)));
+        cell.addElement(new Paragraph(title, new Font(Font.HELVETICA, 8, Font.BOLD, PdfColor.GRAY_TEXT.color())));
         cell.addElement(Chunk.NEWLINE);
         return cell;
     }
@@ -62,7 +64,7 @@ public class PdfServiceImpl implements IPdfService {
     @Override
     public PdfPCell textCell(String text, Font font, Color bg) {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setBorderColor(BORDER);
+        cell.setBorderColor(PdfColor.BORDER.color());
         cell.setBackgroundColor(bg);
         cell.setPadding(6);
         return cell;
@@ -72,7 +74,7 @@ public class PdfServiceImpl implements IPdfService {
     public PdfPCell numCell(String text, Font font, Color bg) {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
         cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cell.setBorderColor(BORDER);
+        cell.setBorderColor(PdfColor.BORDER.color());
         cell.setBackgroundColor(bg);
         cell.setPadding(6);
         return cell;
@@ -83,24 +85,24 @@ public class PdfServiceImpl implements IPdfService {
                             Font labelFont, Font valueFont, Color bg) {
         PdfPCell lc = new PdfPCell(new Phrase(label, labelFont));
         lc.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        lc.setBorderColor(BORDER);
+        lc.setBorderColor(PdfColor.BORDER.color());
         lc.setBackgroundColor(bg);
         lc.setPadding(6);
         table.addCell(lc);
 
         PdfPCell vc = new PdfPCell(new Phrase(value, valueFont));
         vc.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        vc.setBorderColor(BORDER);
+        vc.setBorderColor(PdfColor.BORDER.color());
         vc.setBackgroundColor(bg);
         vc.setPadding(6);
         table.addCell(vc);
     }
 
     @Override
-    public PdfPCell buildStoreCell(Magasin magasin) {
+    public PdfPCell buildStoreCell(Magasin magasin, PdfColors colors) {
         PdfPCell cell = new PdfPCell();
         cell.setBorder(Rectangle.NO_BORDER);
-        cell.setBackgroundColor(LIGHT_BG);
+        cell.setBackgroundColor(colors.lightBg());
         cell.setPadding(12);
 
         Entreprise entreprise = magasin.getEntreprise();
@@ -108,12 +110,12 @@ public class PdfServiceImpl implements IPdfService {
         addLogoIfPresent(cell, entreprise);
 
         if (isNotBlank(entreprise.getSigle()))
-            cell.addElement(new Paragraph(entreprise.getSigle(), new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY)));
+            cell.addElement(new Paragraph(entreprise.getSigle(), new Font(Font.HELVETICA, 16, Font.BOLD, colors.primary())));
 
-        Font infoFont = new Font(Font.HELVETICA, 9, Font.NORMAL, GRAY_TEXT);
+        Font infoFont = new Font(Font.HELVETICA, 9, Font.NORMAL, colors.primary());
 
         if (isNotBlank(entreprise.getRaisonSociale()))
-            cell.addElement(new Paragraph(entreprise.getRaisonSociale(), new Font(Font.HELVETICA, 10, Font.NORMAL, GRAY_TEXT)));
+            cell.addElement(new Paragraph(entreprise.getRaisonSociale(), new Font(Font.HELVETICA, 10, Font.NORMAL, colors.primary())));
         if (isNotBlank(entreprise.getNinea()))
             cell.addElement(new Paragraph(msg("pdf.label.ninea") + " : " + entreprise.getNinea(), infoFont));
         if (isNotBlank(entreprise.getRccm()))
@@ -122,6 +124,32 @@ public class PdfServiceImpl implements IPdfService {
             cell.addElement(new Paragraph(msg("pdf.label.adresse") + " : " + entreprise.getAdresse(), infoFont));
 
         return cell;
+    }
+
+    @Override
+    public PdfColors resolveColors(String couleurPrimaire) {
+        if (couleurPrimaire == null || couleurPrimaire.isBlank()) return PdfColors.defaults();
+        try {
+            Color primary = hexToColor(couleurPrimaire);
+            return new PdfColors(primary, lighten(primary, 0.85f));
+        } catch (NumberFormatException ignored) {
+            return PdfColors.defaults();
+        }
+    }
+
+    private static Color hexToColor(String hex) {
+        int r = Integer.parseInt(hex.substring(1, 3), 16);
+        int g = Integer.parseInt(hex.substring(3, 5), 16);
+        int b = Integer.parseInt(hex.substring(5, 7), 16);
+        return new Color(r, g, b);
+    }
+
+    /** Blends {@code color} toward white by {@code factor} (0 = original, 1 = white). */
+    private static Color lighten(Color color, float factor) {
+        int r = Math.round(color.getRed()   + (255 - color.getRed())   * factor);
+        int g = Math.round(color.getGreen() + (255 - color.getGreen()) * factor);
+        int b = Math.round(color.getBlue()  + (255 - color.getBlue())  * factor);
+        return new Color(r, g, b);
     }
 
     /** Renders the entreprise logo above the company name; silently skips if absent or unreadable. */
@@ -151,8 +179,8 @@ public class PdfServiceImpl implements IPdfService {
 
         private final String footerText;
         private final String stampLabel;
-        private static final Font FOOTER_FONT  = new Font(Font.HELVETICA, 9, Font.ITALIC,  IPdfService.GRAY_TEXT);
-        private static final Font LABEL_FONT   = new Font(Font.HELVETICA, 8, Font.NORMAL,  IPdfService.GRAY_TEXT);
+        private static final Font FOOTER_FONT  = new Font(Font.HELVETICA, 9, Font.ITALIC,  PdfColor.GRAY_TEXT.color());
+        private static final Font LABEL_FONT   = new Font(Font.HELVETICA, 8, Font.NORMAL,  PdfColor.GRAY_TEXT.color());
         private static final float BOX_HEIGHT  = 55f;
         private static final float BOX_GAP     = 20f;
         private static final float FOOTER_OFFSET = 12f;
@@ -188,7 +216,7 @@ public class PdfServiceImpl implements IPdfService {
             cb.saveState();
             cb.setLineDash(3f, 3f);
             cb.setLineWidth(0.5f);
-            cb.setColorStroke(IPdfService.GRAY_TEXT);
+            cb.setColorStroke(PdfColor.GRAY_TEXT.color());
             cb.rectangle(x, y, w, h);
             cb.stroke();
             cb.restoreState();
