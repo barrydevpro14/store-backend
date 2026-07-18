@@ -1,10 +1,9 @@
 package org.store.common.service;
 
-import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
 import com.lowagie.text.Font;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import org.store.magasin.domain.model.Magasin;
 
 import java.awt.*;
@@ -39,5 +38,6 @@ public interface IPdfService {
 
     PdfPCell buildStoreCell(Magasin magasin);
 
-    void addFooter(Document doc, Magasin magasin) throws DocumentException;
+    /** Registers a PdfPageEventHelper on the writer that draws the footer on every page. Must be called before doc.open(). */
+    void configureFooter(PdfWriter writer, Magasin magasin);
 }

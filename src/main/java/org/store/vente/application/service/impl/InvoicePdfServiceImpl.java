@@ -61,8 +61,9 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         Magasin magasin = facture.getCommande().getMagasin();
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
-            PdfWriter.getInstance(doc, out);
+            Document doc = new Document(PageSize.A4, 40, 40, 40, 120);
+            PdfWriter writer = PdfWriter.getInstance(doc, out);
+            pdf.configureFooter(writer, magasin);
             doc.open();
 
             addHeader(doc, magasin, facture);
@@ -72,7 +73,6 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             addLinesTable(doc, facture);
             doc.add(Chunk.NEWLINE);
             addTotalsAndPayments(doc, facture);
-            pdf.addFooter(doc, magasin);
 
             doc.close();
             return out.toByteArray();

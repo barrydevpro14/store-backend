@@ -2,12 +2,18 @@ package org.store.common.service.impl;
 
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
+import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
+import com.lowagie.text.pdf.ColumnText;
+import com.lowagie.text.pdf.PdfContentByte;
+import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.common.service.IPdfService;
+import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.domain.model.Magasin;
 
 import java.awt.*;
@@ -94,24 +100,98 @@ public class PdfServiceImpl implements IPdfService {
     public PdfPCell buildStoreCell(Magasin magasin) {
         PdfPCell cell = new PdfPCell();
         cell.setBorder(Rectangle.NO_BORDER);
-        cell.setPadding(8);
-        cell.addElement(new Paragraph(magasin.getNom(), new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY)));
+        cell.setBackgroundColor(LIGHT_BG);
+        cell.setPadding(12);
+
+        Entreprise entreprise = magasin.getEntreprise();
+
+        addLogoIfPresent(cell, entreprise);
+
+        if (isNotBlank(entreprise.getSigle()))
+            cell.addElement(new Paragraph(entreprise.getSigle(), new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY)));
+
         Font infoFont = new Font(Font.HELVETICA, 9, Font.NORMAL, GRAY_TEXT);
-        if (isNotBlank(magasin.getAdresse()))
-            cell.addElement(new Paragraph(magasin.getAdresse(), infoFont));
-        if (isNotBlank(magasin.getTelephone()))
-            cell.addElement(new Paragraph(magasin.getTelephone(), infoFont));
+
+        if (isNotBlank(entreprise.getRaisonSociale()))
+            cell.addElement(new Paragraph(entreprise.getRaisonSociale(), new Font(Font.HELVETICA, 10, Font.NORMAL, GRAY_TEXT)));
+        if (isNotBlank(entreprise.getNinea()))
+            cell.addElement(new Paragraph(msg("pdf.label.ninea") + " : " + entreprise.getNinea(), infoFont));
+        if (isNotBlank(entreprise.getRccm()))
+            cell.addElement(new Paragraph(msg("pdf.label.rccm") + " : " + entreprise.getRccm(), infoFont));
+        if (isNotBlank(entreprise.getAdresse()))
+            cell.addElement(new Paragraph(msg("pdf.label.adresse") + " : " + entreprise.getAdresse(), infoFont));
+
         return cell;
     }
 
+    /** Renders the entreprise logo above the company name; silently skips if absent or unreadable. */
+    private void addLogoIfPresent(PdfPCell cell, Entreprise entreprise) {
+        if (entreprise.getLogo() == null || entreprise.getLogo().getDocument() == null) return;
+        try {
+            Image logo = Image.getInstance(entreprise.getLogo().getDocument());
+            logo.scaleToFit(100, 60);
+            cell.addElement(logo);
+        } catch (Exception ignored) { }
+    }
+
     @Override
-    public void addFooter(Document doc, Magasin magasin) throws DocumentException {
-        doc.add(Chunk.NEWLINE);
-        Font footerFont = new Font(Font.HELVETICA, 8, Font.ITALIC, GRAY_TEXT);
-        String text = msg("pdf.label.footer");
-        if (isNotBlank(magasin.getNom())) text = magasin.getNom() + " – " + text;
-        Paragraph footer = new Paragraph(text, footerFont);
-        footer.setAlignment(Element.ALIGN_CENTER);
-        doc.add(footer);
+    public void configureFooter(PdfWriter writer, Magasin magasin) {
+        writer.setPageEvent(new FooterPageEvent(buildFooterText(magasin), msg("pdf.label.cachetSignature")));
+    }
+
+    private String buildFooterText(Magasin magasin) {
+        StringBuilder sb = new StringBuilder(msg("pdf.label.footer"));
+        if (isNotBlank(magasin.getNom())) sb.append(" ").append(magasin.getNom());
+        if (isNotBlank(magasin.getTelephone())) sb.append(" – ").append(magasin.getTelephone());
+        if (isNotBlank(magasin.getAdresse())) sb.append(" – ").append(magasin.getAdresse());
+        return sb.toString();
+    }
+
+    private static final class FooterPageEvent extends PdfPageEventHelper {
+
+        private final String footerText;
+        private final String stampLabel;
+        private static final Font FOOTER_FONT  = new Font(Font.HELVETICA, 9, Font.ITALIC,  IPdfService.GRAY_TEXT);
+        private static final Font LABEL_FONT   = new Font(Font.HELVETICA, 8, Font.NORMAL,  IPdfService.GRAY_TEXT);
+        private static final float BOX_HEIGHT  = 55f;
+        private static final float BOX_GAP     = 20f;
+        private static final float FOOTER_OFFSET = 12f;
+
+        FooterPageEvent(String footerText, String stampLabel) {
+            this.footerText = footerText;
+            this.stampLabel = stampLabel;
+        }
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            PdfContentByte cb = writer.getDirectContent();
+            float left     = document.left();
+            float right    = document.right();
+            float boxWidth = (right - left - BOX_GAP) / 2f;
+            float boxTop   = document.bottom() - 8f;
+            float boxBottom = boxTop - BOX_HEIGHT;
+
+            drawDashedBox(cb, left, boxBottom, boxWidth, BOX_HEIGHT);
+            drawDashedBox(cb, left + boxWidth + BOX_GAP, boxBottom, boxWidth, BOX_HEIGHT);
+
+            ColumnText.showTextAligned(cb, Element.ALIGN_LEFT,
+                    new Phrase(stampLabel, LABEL_FONT), left + 4, boxTop - 9, 0);
+            ColumnText.showTextAligned(cb, Element.ALIGN_LEFT,
+                    new Phrase(stampLabel, LABEL_FONT), left + boxWidth + BOX_GAP + 4, boxTop - 9, 0);
+
+            ColumnText.showTextAligned(cb, Element.ALIGN_CENTER,
+                    new Phrase(footerText, FOOTER_FONT),
+                    (left + right) / 2f, boxBottom - FOOTER_OFFSET, 0);
+        }
+
+        private static void drawDashedBox(PdfContentByte cb, float x, float y, float w, float h) {
+            cb.saveState();
+            cb.setLineDash(3f, 3f);
+            cb.setLineWidth(0.5f);
+            cb.setColorStroke(IPdfService.GRAY_TEXT);
+            cb.rectangle(x, y, w, h);
+            cb.stroke();
+            cb.restoreState();
+        }
     }
 }
