@@ -23,12 +23,12 @@ import org.store.stock.application.dto.LigneEntreeStockRequest;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IMouvementStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
-import org.store.stock.domain.service.MouvementStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
 
 import java.util.List;
 import java.util.UUID;
@@ -46,8 +46,8 @@ import java.util.UUID;
 public class EntreeStockServiceImpl implements IEntreeStockService {
 
     private final EntreeStockDomainService entreeStockDomainService;
-    private final StockDomainService stockDomainService;
-    private final MouvementStockDomainService mouvementStockDomainService;
+    private final IStockService stockService;
+    private final IMouvementStockService mouvementStockService;
     private final IMagasinService magasinService;
     private final IFournisseurService fournisseurService;
     private final IProductFournisseurService productFournisseurService;
@@ -55,16 +55,16 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
     private final IAuditEventPublisher auditEventPublisher;
 
     public EntreeStockServiceImpl(EntreeStockDomainService entreeStockDomainService,
-                                  StockDomainService stockDomainService,
-                                  MouvementStockDomainService mouvementStockDomainService,
+                                  IStockService stockService,
+                                  IMouvementStockService mouvementStockService,
                                   IMagasinService magasinService,
                                   IFournisseurService fournisseurService,
                                   IProductFournisseurService productFournisseurService,
                                   ICurrentUserService currentUserService,
                                   IAuditEventPublisher auditEventPublisher) {
         this.entreeStockDomainService = entreeStockDomainService;
-        this.stockDomainService = stockDomainService;
-        this.mouvementStockDomainService = mouvementStockDomainService;
+        this.stockService = stockService;
+        this.mouvementStockService = mouvementStockService;
         this.magasinService = magasinService;
         this.fournisseurService = fournisseurService;
         this.productFournisseurService = productFournisseurService;
@@ -76,6 +76,34 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
     @Override
     public List<EntreeStock> findActiveLotsByMagasinAndProductIds(UUID magasinId, List<UUID> productIds) {
         return entreeStockDomainService.findActiveLotsByMagasinAndProductIds(magasinId, productIds);
+    }
+
+    @Override
+    public List<EntreeStock> findAvailableLotsForFifo(UUID magasinId, UUID productFournisseurId) {
+        return entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId);
+    }
+
+    @Override
+    @Transactional
+    public void saveLot(EntreeStock lot) {
+        entreeStockDomainService.save(lot);
+    }
+
+    @Override
+    @Transactional
+    public EntreeStock createEntreeStock(EntreeStockCreate entreeStockCreate) {
+        return entreeStockDomainService.create(entreeStockCreate);
+    }
+
+    @Override
+    public List<EntreeStock> findByCommandeAchatId(UUID commandeAchatId) {
+        return entreeStockDomainService.findByCommandeAchatId(commandeAchatId);
+    }
+
+    @Override
+    @Transactional
+    public void markAsAnnulee(EntreeStock lot) {
+        entreeStockDomainService.markAsAnnulee(lot);
     }
 
     /**
@@ -108,7 +136,7 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         ProductFournisseur productFournisseur = resolveProductFournisseur(fournisseur, ligne);
         Product produit = productFournisseur.getProduct();
 
-        int stockAvant = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
+        int stockAvant = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .map(Stock::getQuantiteDisponible)
                 .orElse(0);
 
@@ -118,10 +146,10 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 ligne.numeroLot(), ligne.dateExpiration(),
                 null));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(
+        Stock stock = stockService.createOrUpdateEntry(
                 new StockEntryContext(magasin, productFournisseur, ligne.quantite(), ligne.prixAchat()));
 
-        mouvementStockDomainService.journalize(stock, new MouvementJournalize(
+        mouvementStockService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_INITIAL,
                 ligne.quantite(),
                 stockAvant,

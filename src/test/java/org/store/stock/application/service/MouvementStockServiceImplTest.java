@@ -12,10 +12,12 @@ import org.springframework.data.domain.PageRequest;
 import org.store.common.service.ValidatorService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.MouvementStockFilter;
 import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.service.impl.MouvementStockServiceImpl;
 import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.MouvementStockDomainService;
 
 import java.time.LocalDate;
@@ -66,6 +68,17 @@ class MouvementStockServiceImplTest {
         verify(validatorService).validate(filter);
         verify(mouvementStockDomainService).findResponsesByFilter(eq(filter), eq(entrepriseId));
         assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    void journalize_should_delegate_to_domain_service() {
+        Stock stock = new Stock();
+        stock.setId(UUID.randomUUID());
+        MouvementJournalize cmd = new MouvementJournalize(MouvementStockType.ENTREE_ACHAT, 50, 100, 150, "CMD-001", null);
+
+        service.journalize(stock, cmd);
+
+        verify(mouvementStockDomainService).journalize(stock, cmd);
     }
 
     @Test

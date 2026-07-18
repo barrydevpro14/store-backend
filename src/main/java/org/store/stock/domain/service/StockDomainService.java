@@ -80,7 +80,8 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
      * Crée ou met à jour le stock agrégé d'un (magasin, produit) lors d'une entrée :
      * incrémente la quantité disponible et recalcule le prix d'achat moyen pondéré
      * via la formule {@code (qtyAvant × prixMoyenAvant + quantite × prixAchat) / qtyApres}
-     * (scale 2, arrondi HALF_UP). Si aucun stock n'existe pour la paire, il est initialisé à zéro avant le calcul.
+     * (scale 6, arrondi HALF_UP). L'arrondi à 2 décimales est appliqué uniquement à l'affichage dans {@link org.store.stock.application.dto.StockResponse}.
+     * Si aucun stock n'existe pour la paire, il est initialisé à zéro avant le calcul.
      */
     public Stock createOrUpdateEntry(StockEntryContext context) {
         Stock stock = findByMagasinIdAndProductFournisseurId(context.magasin().getId(), context.productFournisseur().getId())
@@ -92,7 +93,7 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         BigDecimal prixMoyenAvant = stock.getPrixAchatMoyen() != null ? stock.getPrixAchatMoyen() : BigDecimal.ZERO;
         BigDecimal nouvelleMoyenne = prixMoyenAvant.multiply(BigDecimal.valueOf(qtyAvant))
                 .add(context.prixAchat().multiply(BigDecimal.valueOf(context.quantite())))
-                .divide(BigDecimal.valueOf(qtyApres), 2, RoundingMode.HALF_UP);
+                .divide(BigDecimal.valueOf(qtyApres), 6, RoundingMode.HALF_UP);
 
         stock.setQuantiteDisponible(qtyApres);
         stock.setPrixAchatMoyen(nouvelleMoyenne);

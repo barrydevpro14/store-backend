@@ -57,12 +57,12 @@ import org.store.property.PurchaseProperties;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.StockEntryContext;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IMouvementStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
-import org.store.stock.domain.service.EntreeStockDomainService;
-import org.store.stock.domain.service.MouvementStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
 import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.sequence.application.service.IDocumentSequenceService;
 import org.store.sequence.domain.enums.TypeDocument;
@@ -92,9 +92,9 @@ public class AchatServiceImpl implements IAchatService {
     private final LigneCommandeAchatDomainService ligneCommandeAchatDomainService;
     private final FactureAchatDomainService factureAchatDomainService;
     private final PaiementAchatDomainService paiementAchatDomainService;
-    private final EntreeStockDomainService entreeStockDomainService;
-    private final StockDomainService stockDomainService;
-    private final MouvementStockDomainService mouvementStockDomainService;
+    private final IEntreeStockService entreeStockService;
+    private final IStockService stockService;
+    private final IMouvementStockService mouvementStockService;
     private final IMagasinService magasinService;
     private final IFournisseurService fournisseurService;
     private final IProductFournisseurService productFournisseurService;
@@ -111,9 +111,9 @@ public class AchatServiceImpl implements IAchatService {
                             LigneCommandeAchatDomainService ligneCommandeAchatDomainService,
                             FactureAchatDomainService factureAchatDomainService,
                             PaiementAchatDomainService paiementAchatDomainService,
-                            EntreeStockDomainService entreeStockDomainService,
-                            StockDomainService stockDomainService,
-                            MouvementStockDomainService mouvementStockDomainService,
+                            IEntreeStockService entreeStockService,
+                            IStockService stockService,
+                            IMouvementStockService mouvementStockService,
                             IMagasinService magasinService,
                             IFournisseurService fournisseurService,
                             IProductFournisseurService productFournisseurService,
@@ -129,9 +129,9 @@ public class AchatServiceImpl implements IAchatService {
         this.ligneCommandeAchatDomainService = ligneCommandeAchatDomainService;
         this.factureAchatDomainService = factureAchatDomainService;
         this.paiementAchatDomainService = paiementAchatDomainService;
-        this.entreeStockDomainService = entreeStockDomainService;
-        this.stockDomainService = stockDomainService;
-        this.mouvementStockDomainService = mouvementStockDomainService;
+        this.entreeStockService = entreeStockService;
+        this.stockService = stockService;
+        this.mouvementStockService = mouvementStockService;
         this.magasinService = magasinService;
         this.fournisseurService = fournisseurService;
         this.productFournisseurService = productFournisseurService;
@@ -303,19 +303,19 @@ public class AchatServiceImpl implements IAchatService {
         Product produit = productFournisseur.getProduct();
         int quantite = ligne.getQuantite();
 
-        int stockAvant = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
+        int stockAvant = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .map(Stock::getQuantiteDisponible).orElse(0);
 
-        entreeStockDomainService.create(new EntreeStockCreate(
+        entreeStockService.createEntreeStock(new EntreeStockCreate(
                 magasin, produit, productFournisseur,
                 quantite, ligne.getPrixAchat(),
                 ligne.getNumeroLot(), ligne.getDateExpiration(),
                 commande
         ));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, quantite, ligne.getPrixAchat()));
+        Stock stock = stockService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, quantite, ligne.getPrixAchat()));
 
-        mouvementStockDomainService.journalize(stock, new MouvementJournalize(
+        mouvementStockService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.ENTREE_ACHAT,
                 quantite, stockAvant, stock.getQuantiteDisponible(),
                 commande.getReference(),
@@ -475,7 +475,7 @@ public class AchatServiceImpl implements IAchatService {
         ensureWithinCancelWindow(commande);
         ensureNoPaiementRecorded(commande);
 
-        List<EntreeStock> lots = entreeStockDomainService.findByCommandeAchatId(commande.getId());
+        List<EntreeStock> lots = entreeStockService.findByCommandeAchatId(commande.getId());
         ensureNoLotConsumed(lots);
 
         RetraitStockResult retrait = lots.stream()
@@ -590,14 +590,14 @@ public class AchatServiceImpl implements IAchatService {
     public RetraitStockResult withdrawStockForLot(CommandeAchat commande, EntreeStock lot) {
         int quantite = lot.getQuantiteRestante();
 
-        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(lot.getMagasin().getId(), lot.getProductFournisseur().getId())
+        Stock stock = stockService.findByMagasinAndProductFournisseur(lot.getMagasin().getId(), lot.getProductFournisseur().getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         int stockAvant = stock.getQuantiteDisponible();
 
-        Stock updated = stockDomainService.decrement(stock, quantite);
-        entreeStockDomainService.markAsAnnulee(lot);
+        Stock updated = stockService.decrement(stock, quantite);
+        entreeStockService.markAsAnnulee(lot);
 
-        mouvementStockDomainService.journalize(updated, new MouvementJournalize(
+        mouvementStockService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.RETOUR_FOURNISSEUR,
                 quantite,
                 stockAvant,

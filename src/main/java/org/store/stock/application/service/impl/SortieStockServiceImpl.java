@@ -17,17 +17,17 @@ import org.store.stock.application.dto.SortieStockCreate;
 import org.store.stock.application.dto.SortieStockForVente;
 import org.store.stock.application.dto.SortieStockRequest;
 import org.store.stock.application.dto.SortieStockResponse;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IMouvementStockService;
 import org.store.stock.application.service.ISortieStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.SortieStock;
 import org.store.stock.domain.model.Stock;
-import org.store.stock.domain.service.EntreeStockDomainService;
 import org.store.notification.application.event.StockBelowThresholdEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
-import org.store.stock.domain.service.MouvementStockDomainService;
 import org.store.stock.domain.service.SortieStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,25 +40,25 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class SortieStockServiceImpl implements ISortieStockService {
 
-    private final EntreeStockDomainService entreeStockDomainService;
+    private final IEntreeStockService entreeStockService;
     private final SortieStockDomainService sortieStockDomainService;
-    private final StockDomainService stockDomainService;
-    private final MouvementStockDomainService mouvementStockDomainService;
+    private final IStockService stockService;
+    private final IMouvementStockService mouvementStockService;
     private final IMagasinService magasinService;
     private final IProductFournisseurService productFournisseurService;
     private final INotificationEventPublisher notificationEventPublisher;
 
-    public SortieStockServiceImpl(EntreeStockDomainService entreeStockDomainService,
+    public SortieStockServiceImpl(IEntreeStockService entreeStockService,
                                   SortieStockDomainService sortieStockDomainService,
-                                  StockDomainService stockDomainService,
-                                  MouvementStockDomainService mouvementStockDomainService,
+                                  IStockService stockService,
+                                  IMouvementStockService mouvementStockService,
                                   IMagasinService magasinService,
                                   IProductFournisseurService productFournisseurService,
                                   INotificationEventPublisher notificationEventPublisher) {
-        this.entreeStockDomainService = entreeStockDomainService;
+        this.entreeStockService = entreeStockService;
         this.sortieStockDomainService = sortieStockDomainService;
-        this.stockDomainService = stockDomainService;
-        this.mouvementStockDomainService = mouvementStockDomainService;
+        this.stockService = stockService;
+        this.mouvementStockService = mouvementStockService;
         this.magasinService = magasinService;
         this.productFournisseurService = productFournisseurService;
         this.notificationEventPublisher = notificationEventPublisher;
@@ -72,24 +72,24 @@ public class SortieStockServiceImpl implements ISortieStockService {
         ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
                 productFournisseurService.findById(sortieStockRequest.productFournisseurId()));
 
-        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
+        Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         int stockAvant = stock.getQuantiteDisponible();
         if (stockAvant < sortieStockRequest.quantite()) {
             throw new BadArgumentException("stock.exit.insufficientQuantity", stockAvant, sortieStockRequest.quantite());
         }
 
-        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasin.getId(), productFournisseur.getId());
+        List<EntreeStock> lots = entreeStockService.findAvailableLotsForFifo(magasin.getId(), productFournisseur.getId());
         List<SortieStockResponse> sorties = consumeFifo(lots,
                 new LotConsumptionContext(sortieStockRequest.quantite(), sortieStockRequest.prixVente(), null));
 
-        Stock updated = stockDomainService.decrement(stock, sortieStockRequest.quantite());
+        Stock updated = stockService.decrement(stock, sortieStockRequest.quantite());
 
         if (updated.getSeuilApprovisionnement() > 0 && updated.getQuantiteDisponible() <= updated.getSeuilApprovisionnement()) {
             notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
         }
 
-        mouvementStockDomainService.journalize(updated, new MouvementJournalize(
+        mouvementStockService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.SORTIE_VENTE,
                 sortieStockRequest.quantite(),
                 stockAvant,
@@ -109,11 +109,11 @@ public class SortieStockServiceImpl implements ISortieStockService {
         ProductFournisseur productFournisseur = sortieStockForVente.productFournisseur();
         Product produit = productFournisseur.getProduct();
 
-        Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
+        Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
         int stockAvant = stock.getQuantiteDisponible();
 
-        List<EntreeStock> lots = entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasin.getId(), productFournisseur.getId());
+        List<EntreeStock> lots = entreeStockService.findAvailableLotsForFifo(magasin.getId(), productFournisseur.getId());
         int totalDisponible = lots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
         if (totalDisponible < sortieStockForVente.quantite()) {
             throw new BadArgumentException("stock.exit.insufficientQuantity", totalDisponible, sortieStockForVente.quantite());
@@ -123,7 +123,7 @@ public class SortieStockServiceImpl implements ISortieStockService {
                 sortieStockForVente.quantite(), sortieStockForVente.prixVente(), sortieStockForVente.ligneVente()
         ));
 
-        Stock updated = stockDomainService.decrement(stock, sortieStockForVente.quantite());
+        Stock updated = stockService.decrement(stock, sortieStockForVente.quantite());
 
         if (updated.getSeuilApprovisionnement() > 0 && updated.getQuantiteDisponible() <= updated.getSeuilApprovisionnement()) {
             notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
@@ -133,7 +133,7 @@ public class SortieStockServiceImpl implements ISortieStockService {
                 ? sortieStockForVente.ligneVente().getCommande().getReference()
                 : null;
 
-        mouvementStockDomainService.journalize(updated, new MouvementJournalize(
+        mouvementStockService.journalize(updated, new MouvementJournalize(
                 MouvementStockType.SORTIE_VENTE,
                 sortieStockForVente.quantite(),
                 stockAvant,
@@ -166,7 +166,7 @@ public class SortieStockServiceImpl implements ISortieStockService {
         int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
 
         lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
-        entreeStockDomainService.save(lot);
+        entreeStockService.saveLot(lot);
 
         SortieStock sortie = sortieStockDomainService.create(new SortieStockCreate(
                 lot, aConsommer, context.prixVente(), context.ligneVente()

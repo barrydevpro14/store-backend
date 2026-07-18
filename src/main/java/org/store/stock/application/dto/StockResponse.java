@@ -8,6 +8,7 @@ import org.store.produit.domain.model.Quality;
 import org.store.stock.domain.model.Stock;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
 public record StockResponse(
@@ -29,7 +30,7 @@ public record StockResponse(
                 toQuality(stock.getProductFournisseur().getQuality()),
                 stock.getQuantiteDisponible(),
                 stock.getSeuilApprovisionnement(),
-                stock.getPrixAchatMoyen(),
+                stock.getPrixAchatMoyen() != null ? stock.getPrixAchatMoyen().setScale(2, RoundingMode.HALF_UP) : null,
                 DateHelper.format(stock.getCreatedAt()),
                 DateHelper.format(stock.getUpdatedAt())
         );
