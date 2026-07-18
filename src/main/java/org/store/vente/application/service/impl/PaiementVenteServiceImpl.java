@@ -22,6 +22,7 @@ import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -52,6 +53,13 @@ public class PaiementVenteServiceImpl implements IPaiementVenteService {
     }
 
     /** Retourne les paiements de la facture filtres par l'entreprise du caller (page vide si la facture n'appartient pas a l'entreprise). */
+    @Override
+    public List<PaiementVenteResponse> findAllByFactureId(UUID factureId) {
+        return paiementVenteDomainService.findAllByFactureId(factureId).stream()
+                .map(PaiementVenteResponse::new)
+                .toList();
+    }
+
     @Override
     public Page<PaiementVenteResponse> findByFactureId(UUID factureId, Pageable pageable) {
         UserPrincipal currentUser = currentUserService.getCurrent();

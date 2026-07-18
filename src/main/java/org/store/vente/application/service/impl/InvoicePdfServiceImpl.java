@@ -7,17 +7,22 @@ import com.lowagie.text.pdf.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.IPdfService;
+import org.store.common.dto.PdfColor;
+import org.store.common.dto.PdfColors;
+import org.store.common.tools.DateHelper;
 import org.store.common.tools.OwnershipHelper;
+import org.store.entreprise.application.service.IEntrepriseSettingService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Quality;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.vente.application.dto.PaiementVenteResponse;
+import org.store.vente.application.service.IFactureClientService;
 import org.store.vente.application.service.IInvoicePdfService;
+import org.store.vente.application.service.IPaiementVenteService;
 import org.store.vente.domain.enums.LivraisonStatut;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
-import org.store.vente.domain.service.FactureClientDomainService;
-import org.store.vente.domain.service.PaiementVenteDomainService;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -32,24 +37,27 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
-    private final FactureClientDomainService factureClientDomainService;
-    private final PaiementVenteDomainService paiementVenteDomainService;
+    private final IFactureClientService factureClientService;
+    private final IPaiementVenteService paiementVenteService;
     private final ICurrentUserService currentUserService;
     private final IPdfService pdf;
+    private final IEntrepriseSettingService entrepriseSettingService;
 
-    public InvoicePdfServiceImpl(FactureClientDomainService factureClientDomainService,
-                                  PaiementVenteDomainService paiementVenteDomainService,
+    public InvoicePdfServiceImpl(IFactureClientService factureClientService,
+                                  IPaiementVenteService paiementVenteService,
                                   ICurrentUserService currentUserService,
-                                  IPdfService pdf) {
-        this.factureClientDomainService = factureClientDomainService;
-        this.paiementVenteDomainService = paiementVenteDomainService;
+                                  IPdfService pdf,
+                                  IEntrepriseSettingService entrepriseSettingService) {
+        this.factureClientService = factureClientService;
+        this.paiementVenteService = paiementVenteService;
         this.currentUserService = currentUserService;
         this.pdf = pdf;
+        this.entrepriseSettingService = entrepriseSettingService;
     }
 
     @Override
     public byte[] generate(UUID factureId) {
-        FactureClient facture = factureClientDomainService.findById(factureId);
+        FactureClient facture = factureClientService.findById(factureId);
 
         OwnershipHelper.ensureOwnership(
                 facture,
@@ -59,20 +67,21 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         );
 
         Magasin magasin = facture.getCommande().getMagasin();
+        PdfColors colors = resolveColors();
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
-            PdfWriter.getInstance(doc, out);
+            Document doc = new Document(PageSize.A4, 40, 40, 40, 120);
+            PdfWriter writer = PdfWriter.getInstance(doc, out);
+            pdf.configureFooter(writer, magasin);
             doc.open();
 
-            addHeader(doc, magasin, facture);
+            addHeader(doc, magasin, facture, colors);
             doc.add(Chunk.NEWLINE);
             addClientAndMeta(doc, facture);
             doc.add(Chunk.NEWLINE);
-            addLinesTable(doc, facture);
+            addLinesTable(doc, facture, colors);
             doc.add(Chunk.NEWLINE);
-            addTotalsAndPayments(doc, facture);
-            pdf.addFooter(doc, magasin);
+            addTotalsAndPayments(doc, facture, colors);
 
             doc.close();
             return out.toByteArray();
@@ -81,31 +90,35 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         }
     }
 
+    private PdfColors resolveColors() {
+        return pdf.resolveColors(entrepriseSettingService.getMySettings().couleurPrimaire());
+    }
+
     /* ── Header ────────────────────────────────────────────────────────── */
 
-    private void addHeader(Document doc, Magasin magasin, FactureClient facture) throws DocumentException {
+    private void addHeader(Document doc, Magasin magasin, FactureClient facture, PdfColors colors) throws DocumentException {
         PdfPTable header = new PdfPTable(2);
         header.setWidthPercentage(100);
         header.setWidths(new float[]{55, 45});
 
-        header.addCell(pdf.buildStoreCell(magasin));
+        header.addCell(pdf.buildStoreCell(magasin, colors));
 
         PdfPCell invoiceCell = new PdfPCell();
         invoiceCell.setBorder(Rectangle.NO_BORDER);
-        invoiceCell.setBackgroundColor(IPdfService.LIGHT_BG);
+        invoiceCell.setBackgroundColor(colors.primary());
         invoiceCell.setPadding(12);
         invoiceCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
-        Font titleFont = new Font(Font.HELVETICA, 20, Font.BOLD, IPdfService.PRIMARY);
-        Font numFont   = new Font(Font.HELVETICA, 11, Font.BOLD, Color.DARK_GRAY);
-        Font dateFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
+        Font titleFont = new Font(Font.HELVETICA, 20, Font.BOLD, Color.WHITE);
+        Font numFont   = new Font(Font.HELVETICA, 11, Font.BOLD, Color.WHITE);
+        Font dateFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.WHITE);
 
         invoiceCell.addElement(new Paragraph(pdf.msg("pdf.vente.title"), titleFont));
         invoiceCell.addElement(new Paragraph(facture.getNumero(), numFont));
         if (facture.getDate() != null)
-            invoiceCell.addElement(new Paragraph(pdf.msg("pdf.label.date") + " : " + facture.getDate().format(IPdfService.DATE_FMT), dateFont));
+            invoiceCell.addElement(new Paragraph(pdf.msg("pdf.label.date") + " : " + DateHelper.formatDisplay(facture.getDate()), dateFont));
         if (facture.getDateEcheance() != null)
-            invoiceCell.addElement(new Paragraph(pdf.msg("pdf.label.echeance") + " : " + facture.getDateEcheance().format(IPdfService.DATE_FMT), dateFont));
+            invoiceCell.addElement(new Paragraph(pdf.msg("pdf.label.echeance") + " : " + DateHelper.formatDisplay(facture.getDateEcheance()), dateFont));
 
         header.addCell(invoiceCell);
         doc.add(header);
@@ -115,7 +128,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     private void addClientAndMeta(Document doc, FactureClient facture) throws DocumentException {
         Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
-        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
+        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, PdfColor.GRAY_TEXT.color());
 
         PdfPCell clientCell = pdf.sectionCell(pdf.msg("pdf.vente.section.client"));
         if (facture.getCommande().getClient() != null) {
@@ -128,7 +141,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             if (pdf.isNotBlank(contactLine))
                 clientCell.addElement(new Paragraph(contactLine, infoFont));
         } else {
-            clientCell.addElement(new Paragraph(pdf.msg("pdf.vente.client.anonyme"), new Font(Font.HELVETICA, 9, Font.ITALIC, IPdfService.GRAY_TEXT)));
+            clientCell.addElement(new Paragraph(pdf.msg("pdf.vente.client.anonyme"), new Font(Font.HELVETICA, 9, Font.ITALIC, PdfColor.GRAY_TEXT.color())));
         }
 
         PdfPTable meta = new PdfPTable(1);
@@ -150,7 +163,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     /* ── Lines table ───────────────────────────────────────────────────── */
 
-    private void addLinesTable(Document doc, FactureClient facture) throws DocumentException {
+    private void addLinesTable(Document doc, FactureClient facture, PdfColors colors) throws DocumentException {
         PdfPTable table = new PdfPTable(new float[]{25, 18, 7, 8, 16, 13, 13});
         table.setWidthPercentage(100);
 
@@ -166,7 +179,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         };
         for (int i = 0; i < headers.length; i++) {
             PdfPCell cell = new PdfPCell(new Phrase(headers[i], headFont));
-            cell.setBackgroundColor(IPdfService.PRIMARY);
+            cell.setBackgroundColor(colors.primary());
             cell.setPadding(7);
             cell.setBorder(Rectangle.NO_BORDER);
             cell.setHorizontalAlignment(i <= 1 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
@@ -233,21 +246,21 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     /* ── Totals & payments ─────────────────────────────────────────────── */
 
-    private void addTotalsAndPayments(Document doc, FactureClient facture) throws DocumentException {
+    private void addTotalsAndPayments(Document doc, FactureClient facture, PdfColors colors) throws DocumentException {
         PdfPTable totals = new PdfPTable(new float[]{65, 35});
         totals.setWidthPercentage(100);
 
-        Font labelFont = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
+        Font labelFont = new Font(Font.HELVETICA, 9, Font.NORMAL, PdfColor.GRAY_TEXT.color());
         Font valueFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
-        Font boldFont  = new Font(Font.HELVETICA, 11, Font.BOLD, IPdfService.PRIMARY);
+        Font boldFont  = new Font(Font.HELVETICA, 11, Font.BOLD, colors.primary());
 
         pdf.addTotalRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(facture.getMontantTotal()), labelFont, valueFont, Color.WHITE);
 
-        var paiements = paiementVenteDomainService.findAllByFactureId(facture.getId());
-        for (var p : paiements) {
-            String label = pdf.msg("pdf.vente.totals.paiement") + " (" + (p.getMoyen() != null ? p.getMoyen().getLibelle() : "—") + ")";
-            if (p.getDatePaiement() != null) label += " – " + p.getDatePaiement().format(IPdfService.DATE_FMT);
-            pdf.addTotalRow(totals, label, pdf.formatAmount(p.getMontant()), labelFont, valueFont, Color.WHITE);
+        var paiements = paiementVenteService.findAllByFactureId(facture.getId());
+        for (PaiementVenteResponse p : paiements) {
+            String label = pdf.msg("pdf.vente.totals.paiement") + " (" + (p.moyen() != null ? p.moyen().libelle() : "—") + ")";
+            if (p.datePaiement() != null) label += " – " + DateHelper.formatDisplay(p.datePaiement());
+            pdf.addTotalRow(totals, label, pdf.formatAmount(p.montant()), labelFont, valueFont, Color.WHITE);
         }
 
         BigDecimal reste = facture.getMontantTotal().subtract(facture.getMontantPaye());

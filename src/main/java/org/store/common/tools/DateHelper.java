@@ -9,6 +9,7 @@ public final class DateHelper {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_DISPLAY_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /** Sentinel lower bound used to avoid IS NULL type-inference issues with PostgreSQL (2000-01-01). */
     public static final LocalDateTime SENTINEL_START = LocalDateTime.of(2000, 1, 1, 0, 0, 0);
@@ -47,5 +48,10 @@ public final class DateHelper {
     /** Formate une LocalDate en String "yyyy-MM-dd". Retourne null si null. */
     public static String format(LocalDate date) {
         return date != null ? date.format(DATE_FORMAT) : null;
+    }
+
+    /** Formate une LocalDate en String "dd/MM/yyyy" pour l'affichage (PDF, UI). Retourne null si null. */
+    public static String formatDisplay(LocalDate date) {
+        return date != null ? date.format(DATE_DISPLAY_FORMAT) : null;
     }
 }

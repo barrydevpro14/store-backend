@@ -60,6 +60,11 @@ public class FactureClientServiceImpl implements IFactureClientService {
 
     /** GET by id : projection JPQL scopée par l'entreprise du caller, throw notFound si absent. */
     @Override
+    public FactureClient findById(UUID id) {
+        return factureClientDomainService.findById(id);
+    }
+
+    @Override
     public FactureClientResponse findResponseById(UUID id) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         return factureClientDomainService.findResponseById(id, currentUser.entrepriseId())

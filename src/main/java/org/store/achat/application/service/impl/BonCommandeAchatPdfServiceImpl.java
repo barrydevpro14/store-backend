@@ -7,11 +7,15 @@ import com.lowagie.text.pdf.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.service.IBonCommandeAchatPdfService;
+import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.achat.domain.model.LigneCommandeAchat;
-import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.common.service.IPdfService;
+import org.store.common.dto.PdfColor;
+import org.store.common.dto.PdfColors;
+import org.store.common.tools.DateHelper;
 import org.store.common.tools.OwnershipHelper;
+import org.store.entreprise.application.service.IEntrepriseSettingService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Quality;
@@ -29,21 +33,24 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfService {
 
-    private final CommandeAchatDomainService commandeAchatDomainService;
+    private final ICommandeAchatService commandeAchatService;
     private final ICurrentUserService currentUserService;
     private final IPdfService pdf;
+    private final IEntrepriseSettingService entrepriseSettingService;
 
-    public BonCommandeAchatPdfServiceImpl(CommandeAchatDomainService commandeAchatDomainService,
+    public BonCommandeAchatPdfServiceImpl(ICommandeAchatService commandeAchatService,
                                            ICurrentUserService currentUserService,
-                                           IPdfService pdf) {
-        this.commandeAchatDomainService = commandeAchatDomainService;
+                                           IPdfService pdf,
+                                           IEntrepriseSettingService entrepriseSettingService) {
+        this.commandeAchatService = commandeAchatService;
         this.currentUserService = currentUserService;
         this.pdf = pdf;
+        this.entrepriseSettingService = entrepriseSettingService;
     }
 
     @Override
     public byte[] generate(UUID commandeId) {
-        CommandeAchat commande = commandeAchatDomainService.findById(commandeId);
+        CommandeAchat commande = commandeAchatService.findById(commandeId);
 
         OwnershipHelper.ensureOwnership(
                 commande,
@@ -53,20 +60,21 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         );
 
         Magasin magasin = commande.getMagasin();
+        PdfColors colors = resolveColors();
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
-            PdfWriter.getInstance(doc, out);
+            Document doc = new Document(PageSize.A4, 40, 40, 40, 120);
+            PdfWriter writer = PdfWriter.getInstance(doc, out);
+            pdf.configureFooter(writer, magasin);
             doc.open();
 
-            addHeader(doc, magasin, commande);
+            addHeader(doc, magasin, commande, colors);
             doc.add(Chunk.NEWLINE);
             addSupplier(doc, commande);
             doc.add(Chunk.NEWLINE);
-            addLinesTable(doc, commande);
+            addLinesTable(doc, commande, colors);
             doc.add(Chunk.NEWLINE);
-            addTotal(doc, commande);
-            pdf.addFooter(doc, magasin);
+            addTotal(doc, commande, colors);
 
             doc.close();
             return out.toByteArray();
@@ -75,29 +83,33 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         }
     }
 
+    private PdfColors resolveColors() {
+        return pdf.resolveColors(entrepriseSettingService.getMySettings().couleurPrimaire());
+    }
+
     /* ── Header ────────────────────────────────────────────────────────── */
 
-    private void addHeader(Document doc, Magasin magasin, CommandeAchat commande) throws DocumentException {
+    private void addHeader(Document doc, Magasin magasin, CommandeAchat commande, PdfColors colors) throws DocumentException {
         PdfPTable header = new PdfPTable(2);
         header.setWidthPercentage(100);
         header.setWidths(new float[]{55, 45});
 
-        header.addCell(pdf.buildStoreCell(magasin));
+        header.addCell(pdf.buildStoreCell(magasin, colors));
 
         PdfPCell orderCell = new PdfPCell();
         orderCell.setBorder(Rectangle.NO_BORDER);
-        orderCell.setBackgroundColor(IPdfService.LIGHT_BG);
+        orderCell.setBackgroundColor(colors.primary());
         orderCell.setPadding(12);
         orderCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
-        Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD, IPdfService.PRIMARY);
-        Font refFont   = new Font(Font.HELVETICA, 11, Font.BOLD, Color.DARK_GRAY);
-        Font dateFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
+        Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD, Color.WHITE);
+        Font refFont   = new Font(Font.HELVETICA, 11, Font.BOLD, Color.WHITE);
+        Font dateFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.WHITE);
 
         orderCell.addElement(new Paragraph(pdf.msg("pdf.achat.title"), titleFont));
         orderCell.addElement(new Paragraph(commande.getReference(), refFont));
         if (commande.getDate() != null)
-            orderCell.addElement(new Paragraph(pdf.msg("pdf.label.date") + " : " + commande.getDate().format(IPdfService.DATE_FMT), dateFont));
+            orderCell.addElement(new Paragraph(pdf.msg("pdf.label.date") + " : " + DateHelper.formatDisplay(commande.getDate()), dateFont));
 
         header.addCell(orderCell);
         doc.add(header);
@@ -109,7 +121,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         if (commande.getFournisseur() == null) return;
 
         Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
-        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, IPdfService.GRAY_TEXT);
+        Font infoFont  = new Font(Font.HELVETICA, 9, Font.NORMAL, PdfColor.GRAY_TEXT.color());
         var fournisseur = commande.getFournisseur();
 
         PdfPCell cell = pdf.sectionCell(pdf.msg("pdf.achat.section.fournisseur"));
@@ -144,7 +156,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
 
     /* ── Lines table ───────────────────────────────────────────────────── */
 
-    private void addLinesTable(Document doc, CommandeAchat commande) throws DocumentException {
+    private void addLinesTable(Document doc, CommandeAchat commande, PdfColors colors) throws DocumentException {
         PdfPTable table = new PdfPTable(new float[]{35, 30, 12, 23});
         table.setWidthPercentage(100);
 
@@ -157,7 +169,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
         };
         for (int i = 0; i < headers.length; i++) {
             PdfPCell cell = new PdfPCell(new Phrase(headers[i], headFont));
-            cell.setBackgroundColor(IPdfService.PRIMARY);
+            cell.setBackgroundColor(colors.primary());
             cell.setPadding(7);
             cell.setBorder(Rectangle.NO_BORDER);
             cell.setHorizontalAlignment(i <= 1 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
@@ -199,12 +211,12 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
 
     /* ── Total ─────────────────────────────────────────────────────────── */
 
-    private void addTotal(Document doc, CommandeAchat commande) throws DocumentException {
+    private void addTotal(Document doc, CommandeAchat commande, PdfColors colors) throws DocumentException {
         PdfPTable totals = new PdfPTable(new float[]{65, 35});
         totals.setWidthPercentage(100);
 
-        Font boldFont = new Font(Font.HELVETICA, 11, Font.BOLD, IPdfService.PRIMARY);
-        pdf.addTotalRow(totals, pdf.msg("pdf.achat.total"), pdf.formatAmount(commande.getMontantTotal()), boldFont, boldFont, IPdfService.LIGHT_BG);
+        Font boldFont = new Font(Font.HELVETICA, 11, Font.BOLD, colors.primary());
+        pdf.addTotalRow(totals, pdf.msg("pdf.achat.total"), pdf.formatAmount(commande.getMontantTotal()), boldFont, boldFont, colors.lightBg());
 
         doc.add(totals);
     }
