@@ -24,6 +24,7 @@ import org.store.produit.domain.service.ProductDomainService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -137,6 +138,13 @@ public class ProductServiceImpl implements IProductService {
     public boolean existsByReferenceAndNom(String reference, String nom) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         return productDomainService.existsByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId);
+    }
+
+    /** Recherche un produit par son couple (reference, nom) pour l'entreprise du caller. */
+    @Override
+    public Optional<Product> findByReferenceAndNom(String reference, String nom) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return productDomainService.findByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId);
     }
 
     /** Téléverse une image principale (remplace l'ancienne via orphanRemoval) après contrôle d'appartenance et validation MIME. */

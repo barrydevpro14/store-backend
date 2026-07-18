@@ -16,7 +16,9 @@ import org.store.produit.application.dto.ProductSummaryResponse;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
 import org.store.stock.application.dto.LigneEntreeStockRequest;
+import org.store.stock.application.dto.StockImportResult;
 import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IStockImportService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,8 +26,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,6 +38,7 @@ class EntreeStockControllerTest {
 
     private MockMvc mockMvc;
     private IEntreeStockService entreeStockService;
+    private IStockImportService stockImportService;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID entreeStockId;
@@ -45,12 +50,13 @@ class EntreeStockControllerTest {
     @BeforeEach
     void setUp() {
         entreeStockService = mock(IEntreeStockService.class);
+        stockImportService = mock(IStockImportService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new EntreeStockController(entreeStockService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new EntreeStockController(entreeStockService, stockImportService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();
@@ -184,5 +190,19 @@ class EntreeStockControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void should_return_200_with_import_result_when_file_uploaded() throws Exception {
+        StockImportResult result = new StockImportResult(2, 0, List.of());
+        when(stockImportService.importFromFile(any(), eq(magasinId), eq(fournisseurId))).thenReturn(result);
+
+        mockMvc.perform(multipart(EntreeStockController.BASE_PATH + "/file")
+                        .file("file", "col1,col2".getBytes())
+                        .param("magasinId", magasinId.toString())
+                        .param("fournisseurId", fournisseurId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lignesImportees").value(2))
+                .andExpect(jsonPath("$.lignesIgnorees").value(0));
     }
 }

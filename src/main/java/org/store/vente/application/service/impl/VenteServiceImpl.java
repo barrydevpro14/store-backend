@@ -341,14 +341,14 @@ public class VenteServiceImpl implements IVenteService {
         UserPrincipal caller = currentUserService.getCurrent();
 
         String details = String.format(
-                "ligneId=%s;quantiteLivree=%d->%d;livraisonStatut=%s->%s",
-                ligne.getId(), previousQuantiteLivree, ligne.getQuantiteLivree(),
+                "Produit=%s;quantiteLivree=%d->%d;livraisonStatut=%s->%s",
+                ligne.getProduct().getNom().concat("("+ligne.getProduct().getReference()+")"), previousQuantiteLivree, ligne.getQuantiteLivree(),
                 previousStatut.name(), ligne.getLivraisonStatut().name()
         );
 
         auditEventPublisher.publish(new AuditEvent(
                 AuditAction.SALE_LIGNE_DELIVERY_UPDATED, AuditEntityType.COMMANDE_VENTE,
-                commande.getId(), commande.getReference(),
+                commande.getFacture().getId(), commande.getFacture().getNumero(),
                 caller.accountId().toString(), caller.username(), caller.entrepriseId(),
                 commande.getMagasin().getId(), details));
     }

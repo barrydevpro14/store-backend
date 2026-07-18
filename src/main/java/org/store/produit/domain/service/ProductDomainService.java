@@ -40,8 +40,8 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         return repository.findResponsesByFilter(entrepriseId, filter.nom(), LikePatternHelper.toLikePattern(filter.nom()), filter.reference(), LikePatternHelper.toLikePattern(filter.reference()), filter.startDate(), filter.endDate(), filter.toPageable());
     }
 
-    public Optional<Product> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {
-        return repository.findByReferenceAndEntrepriseId(reference, entrepriseId);
+    public Optional<Product> findByReferenceAndNomAndEntrepriseId(String reference, String nom, UUID entrepriseId) {
+        return repository.findByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId);
     }
 
     public boolean existsByReferenceAndNomAndEntrepriseId(String reference, String nom, UUID entrepriseId) {

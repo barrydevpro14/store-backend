@@ -6,6 +6,7 @@ import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.domain.model.Quality;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IQualityService {
@@ -49,4 +50,9 @@ public interface IQualityService {
      * Vérifie qu'aucune qualité de l'entreprise donnée ne porte déjà ce libellé. Throw `UniqueResourceException("quality.libelle.alreadyExists")` sinon.
      */
     void ensureLibelleAvailable(String libelle, UUID entrepriseId);
+
+    /**
+     * Recherche une qualité par son libellé pour l'entreprise du caller.
+     */
+    Optional<Quality> findByLibelle(String libelle);
 }
