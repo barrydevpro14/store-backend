@@ -7,6 +7,7 @@ import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.BelowThresholdFilter;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
@@ -15,6 +16,7 @@ import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -85,5 +87,22 @@ public class StockServiceImpl implements IStockService {
     public StockValuationResponse computeValuation(UUID magasinId) {
         magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
         return stockDomainService.computeValuation(magasinId, currentUserService.getCurrent().entrepriseId());
+    }
+
+    @Override
+    @Transactional
+    public Stock createOrUpdateEntry(StockEntryContext context) {
+        return stockDomainService.createOrUpdateEntry(context);
+    }
+
+    @Override
+    public Optional<Stock> findByMagasinAndProductFournisseur(UUID magasinId, UUID productFournisseurId) {
+        return stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId);
+    }
+
+    @Override
+    @Transactional
+    public Stock decrement(Stock stock, int quantite) {
+        return stockDomainService.decrement(stock, quantite);
     }
 }

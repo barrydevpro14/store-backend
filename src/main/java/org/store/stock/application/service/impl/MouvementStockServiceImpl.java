@@ -5,9 +5,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.MouvementStockFilter;
 import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.service.IMouvementStockService;
+import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.MouvementStockDomainService;
 
 /**
@@ -34,5 +36,11 @@ public class MouvementStockServiceImpl implements IMouvementStockService {
     public Page<MouvementStockResponse> findAllByCurrentEntreprise(MouvementStockFilter filter) {
         validatorService.validate(filter);
         return mouvementStockDomainService.findResponsesByFilter(filter, currentUserService.getCurrent().entrepriseId());
+    }
+
+    @Override
+    @Transactional
+    public void journalize(Stock stock, MouvementJournalize mouvementJournalize) {
+        mouvementStockDomainService.journalize(stock, mouvementJournalize);
     }
 }

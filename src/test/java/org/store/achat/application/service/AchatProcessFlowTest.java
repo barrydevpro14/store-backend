@@ -40,9 +40,9 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.property.PurchaseProperties;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
-import org.store.stock.domain.service.EntreeStockDomainService;
-import org.store.stock.domain.service.MouvementStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IMouvementStockService;
+import org.store.stock.application.service.IStockService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -78,9 +78,9 @@ class AchatProcessFlowTest {
     @Mock private LigneCommandeAchatDomainService ligneCommandeAchatDomainService;
     @Mock private FactureAchatDomainService factureAchatDomainService;
     @Mock private org.store.achat.domain.service.PaiementAchatDomainService paiementAchatDomainService;
-    @Mock private EntreeStockDomainService entreeStockDomainService;
-    @Mock private StockDomainService stockDomainService;
-    @Mock private MouvementStockDomainService mouvementStockDomainService;
+    @Mock private IEntreeStockService entreeStockService;
+    @Mock private IStockService stockService;
+    @Mock private IMouvementStockService mouvementStockService;
     @Mock private IMagasinService magasinService;
     @Mock private IFournisseurService fournisseurService;
     @Mock private IProductFournisseurService productFournisseurService;
@@ -233,9 +233,9 @@ class AchatProcessFlowTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(draftCommande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(draftCommande)).thenReturn(draftCommande);
         when(factureAchatDomainService.create(any())).thenReturn(facture);
-        when(entreeStockDomainService.create(any())).thenReturn(new EntreeStock());
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(any(), any())).thenReturn(Optional.empty());
-        when(stockDomainService.createOrUpdateEntry(any())).thenReturn(stock);
+        when(entreeStockService.createEntreeStock(any())).thenReturn(new EntreeStock());
+        when(stockService.findByMagasinAndProductFournisseur(any(), any())).thenReturn(Optional.empty());
+        when(stockService.createOrUpdateEntry(any())).thenReturn(stock);
         when(commandeAchatDomainService.markReceptionnee(draftCommande)).thenReturn(receptionneeCommande);
 
         AchatResponse receiveResult = service.receive(commandeId, receiveRequest);
@@ -245,9 +245,9 @@ class AchatProcessFlowTest {
         assertThat(receiveResult.facture().statut()).isEqualTo(StatutFacture.NON_PAYEE);
         assertThat(receiveResult.facture().montantRestant()).isEqualByComparingTo("500000.00");
 
-        verify(entreeStockDomainService).create(any());
-        verify(stockDomainService).createOrUpdateEntry(any());
-        verify(mouvementStockDomainService).journalize(any(), any());
+        verify(entreeStockService).createEntreeStock(any());
+        verify(stockService).createOrUpdateEntry(any());
+        verify(mouvementStockService).journalize(any(), any());
     }
 
     // ── Scenario 2: Edit line then receive ───────────────────────────────────
@@ -334,9 +334,9 @@ class AchatProcessFlowTest {
         when(factureAchatDomainService.create(any())).thenReturn(factureAvecPaiement);
         when(paiementAchatDomainService.create(any())).thenReturn(new org.store.achat.domain.model.PaiementAchat());
         when(factureAchatDomainService.applyPaiement(any(), any())).thenReturn(factureAvecPaiement);
-        when(entreeStockDomainService.create(any())).thenReturn(new EntreeStock());
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(any(), any())).thenReturn(Optional.empty());
-        when(stockDomainService.createOrUpdateEntry(any())).thenReturn(stock);
+        when(entreeStockService.createEntreeStock(any())).thenReturn(new EntreeStock());
+        when(stockService.findByMagasinAndProductFournisseur(any(), any())).thenReturn(Optional.empty());
+        when(stockService.createOrUpdateEntry(any())).thenReturn(stock);
         when(commandeAchatDomainService.markReceptionnee(draftCommande)).thenReturn(receptionneeCommande);
 
         AchatResponse result = service.receive(commandeId, receiveRequest);
@@ -391,9 +391,9 @@ class AchatProcessFlowTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(draftCommande)).thenReturn(draftCommande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
         when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
-        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(any(), any())).thenReturn(Optional.of(stock));
-        when(stockDomainService.decrement(eq(stock), eq(10))).thenAnswer(inv -> {
+        when(entreeStockService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
+        when(stockService.findByMagasinAndProductFournisseur(any(), any())).thenReturn(Optional.of(stock));
+        when(stockService.decrement(eq(stock), eq(10))).thenAnswer(inv -> {
             stock.setQuantiteDisponible(0);
             return stock;
         });
@@ -406,8 +406,8 @@ class AchatProcessFlowTest {
         assertThat(result.statut()).isEqualTo(CommandeAchatStatut.ANNULEE);
         assertThat(result.motif()).isEqualTo(MotifAnnulationAchat.ERREUR_SAISIE);
 
-        verify(stockDomainService).decrement(eq(stock), eq(10));
-        verify(mouvementStockDomainService).journalize(any(), any());
+        verify(stockService).decrement(eq(stock), eq(10));
+        verify(mouvementStockService).journalize(any(), any());
     }
 
     // ── Scenario 5: DRAFT → DELETE ───────────────────────────────────────────
@@ -420,9 +420,9 @@ class AchatProcessFlowTest {
         service.deleteDraft(commandeId);
 
         verify(commandeAchatDomainService).delete(draftCommande);
-        verify(entreeStockDomainService, never()).create(any());
-        verify(stockDomainService, never()).createOrUpdateEntry(any());
-        verify(mouvementStockDomainService, never()).journalize(any(), any());
+        verify(entreeStockService, never()).createEntreeStock(any());
+        verify(stockService, never()).createOrUpdateEntry(any());
+        verify(mouvementStockService, never()).journalize(any(), any());
     }
 
     // ── Scenario 6: Guard — cannot cancel with consumed lots ─────────────────
@@ -440,13 +440,13 @@ class AchatProcessFlowTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(draftCommande)).thenReturn(draftCommande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
         when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.empty());
-        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(partiallyConsumedLot));
+        when(entreeStockService.findByCommandeAchatId(commandeId)).thenReturn(List.of(partiallyConsumedLot));
 
         assertThatThrownBy(() -> service.cancel(commandeId,
                 new AnnulationAchatRequest("ERREUR_SAISIE", "Test")))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(stockDomainService, never()).decrement(any(Stock.class), anyInt());
+        verify(stockService, never()).decrement(any(Stock.class), anyInt());
     }
 
     // ── Scenario 7: Guard — cannot receive a non-DRAFT commande ──────────────
@@ -466,6 +466,6 @@ class AchatProcessFlowTest {
                 .isInstanceOf(BadArgumentException.class);
 
         verify(factureAchatDomainService, never()).create(any());
-        verify(entreeStockDomainService, never()).create(any());
+        verify(entreeStockService, never()).createEntreeStock(any());
     }
 }

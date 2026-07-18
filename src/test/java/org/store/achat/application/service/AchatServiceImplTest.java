@@ -48,12 +48,12 @@ import org.store.achat.application.dto.LigneCommandeAchatUpdate;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.StockEntryContext;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IMouvementStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
-import org.store.stock.domain.service.EntreeStockDomainService;
-import org.store.stock.domain.service.MouvementStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -79,9 +79,9 @@ class AchatServiceImplTest {
     @Mock private LigneCommandeAchatDomainService ligneCommandeAchatDomainService;
     @Mock private FactureAchatDomainService factureAchatDomainService;
     @Mock private org.store.achat.domain.service.PaiementAchatDomainService paiementAchatDomainService;
-    @Mock private EntreeStockDomainService entreeStockDomainService;
-    @Mock private StockDomainService stockDomainService;
-    @Mock private MouvementStockDomainService mouvementStockDomainService;
+    @Mock private IEntreeStockService entreeStockService;
+    @Mock private IStockService stockService;
+    @Mock private IMouvementStockService mouvementStockService;
     @Mock private IMagasinService magasinService;
     @Mock private IFournisseurService fournisseurService;
     @Mock private IProductFournisseurService productFournisseurService;
@@ -227,8 +227,8 @@ class AchatServiceImplTest {
         assertThat(captor.getValue().statut()).isEqualTo(CommandeAchatStatut.DRAFT);
 
         verify(factureAchatDomainService, never()).create(any());
-        verify(entreeStockDomainService, never()).create(any());
-        verify(mouvementStockDomainService, never()).journalize(any(), any());
+        verify(entreeStockService, never()).createEntreeStock(any());
+        verify(mouvementStockService, never()).journalize(any(), any());
         verify(productFournisseurService, never()).applyPrixVenteFromPurchase(any(), any());
     }
 
@@ -255,9 +255,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseur.getId())).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseur.getId())).thenReturn(Optional.empty());
+        when(entreeStockService.createEntreeStock(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenAnswer(inv -> {
             commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
             return commande;
@@ -273,13 +273,13 @@ class AchatServiceImplTest {
         assertThat(factureCaptor.getValue().montantTotal()).isEqualByComparingTo(new BigDecimal("1000.00"));
 
         ArgumentCaptor<EntreeStockCreate> entreeCaptor = ArgumentCaptor.forClass(EntreeStockCreate.class);
-        verify(entreeStockDomainService).create(entreeCaptor.capture());
+        verify(entreeStockService).createEntreeStock(entreeCaptor.capture());
         assertThat(entreeCaptor.getValue().quantite()).isEqualTo(100);
         assertThat(entreeCaptor.getValue().numeroLot()).isEqualTo("LOT-1");
         assertThat(entreeCaptor.getValue().commandeAchat()).isEqualTo(commande);
 
         ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
-        verify(mouvementStockDomainService).journalize(eq(stockAfter), mouvementCaptor.capture());
+        verify(mouvementStockService).journalize(eq(stockAfter), mouvementCaptor.capture());
         assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.ENTREE_ACHAT);
         assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(100);
         assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("CMD-AUTO");
@@ -300,9 +300,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseur.getId())).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseur.getId())).thenReturn(Optional.empty());
+        when(entreeStockService.createEntreeStock(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
 
         service.receive(commandeId, sampleReceiveRequest());
@@ -311,7 +311,7 @@ class AchatServiceImplTest {
         verify(factureAchatDomainService).create(captor.capture());
         // 100 × 10.00 + 50 × 15.00 = 1000 + 750 = 1750
         assertThat(captor.getValue().montantTotal()).isEqualByComparingTo(new BigDecimal("1750.00"));
-        verify(entreeStockDomainService, org.mockito.Mockito.times(2)).create(any(EntreeStockCreate.class));
+        verify(entreeStockService, org.mockito.Mockito.times(2)).createEntreeStock(any(EntreeStockCreate.class));
     }
 
     @Test
@@ -325,9 +325,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(factureAchatDomainService.create(any(FactureAchatCreate.class))).thenReturn(facture);
         when(factureAchatDomainService.applyPaiement(eq(facture), eq(new BigDecimal("400.00")))).thenReturn(facture);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(any(), any())).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
+        when(stockService.findByMagasinAndProductFournisseur(any(), any())).thenReturn(Optional.empty());
+        when(entreeStockService.createEntreeStock(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(stockAfter);
         when(commandeAchatDomainService.markReceptionnee(commande)).thenReturn(commande);
 
         AchatReceiveRequest body = new AchatReceiveRequest(
@@ -359,7 +359,7 @@ class AchatServiceImplTest {
                 .hasMessageContaining("exceedsRemaining");
 
         verify(paiementAchatDomainService, never()).create(any());
-        verify(entreeStockDomainService, never()).create(any());
+        verify(entreeStockService, never()).createEntreeStock(any());
         verify(commandeAchatDomainService, never()).markReceptionnee(any());
     }
 
@@ -377,7 +377,7 @@ class AchatServiceImplTest {
                 .hasMessageContaining("notDraft");
 
         verify(factureAchatDomainService, never()).create(any());
-        verify(entreeStockDomainService, never()).create(any());
+        verify(entreeStockService, never()).createEntreeStock(any());
         verify(commandeAchatDomainService, never()).markReceptionnee(any());
     }
 
@@ -602,9 +602,9 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
-        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseur.getId())).thenReturn(Optional.of(stock));
-        when(stockDomainService.decrement(stock, 100)).thenAnswer(inv -> {
+        when(entreeStockService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseur.getId())).thenReturn(Optional.of(stock));
+        when(stockService.decrement(stock, 100)).thenAnswer(inv -> {
             stock.setQuantiteDisponible(0);
             return stock;
         });
@@ -623,11 +623,11 @@ class AchatServiceImplTest {
         assertThat(response.totalQuantiteRetiree()).isEqualTo(100);
         assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
 
-        verify(entreeStockDomainService).markAsAnnulee(lot);
+        verify(entreeStockService).markAsAnnulee(lot);
         verify(factureAchatDomainService).cancel(facture);
 
         ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
-        verify(mouvementStockDomainService).journalize(eq(stock), mouvementCaptor.capture());
+        verify(mouvementStockService).journalize(eq(stock), mouvementCaptor.capture());
         assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.RETOUR_FOURNISSEUR);
         assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(100);
         assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("CMD-AUTO");
@@ -647,7 +647,7 @@ class AchatServiceImplTest {
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("alreadyCancelled");
 
-        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+        verify(entreeStockService, never()).findByCommandeAchatId(any());
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }
 
@@ -683,7 +683,7 @@ class AchatServiceImplTest {
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("windowExpired");
 
-        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+        verify(entreeStockService, never()).findByCommandeAchatId(any());
     }
 
     @Test
@@ -697,7 +697,7 @@ class AchatServiceImplTest {
         assertThatThrownBy(() -> service.cancel(commandeId, cancelReq))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+        verify(entreeStockService, never()).findByCommandeAchatId(any());
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }
 
@@ -710,7 +710,7 @@ class AchatServiceImplTest {
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
-        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lotIntact, lotConsomme));
+        when(entreeStockService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lotIntact, lotConsomme));
 
         AnnulationAchatRequest cancelReq = new AnnulationAchatRequest("ERREUR_SAISIE", null);
 
@@ -718,8 +718,8 @@ class AchatServiceImplTest {
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("lotAlreadyConsumed");
 
-        verify(stockDomainService, never()).decrement(any(), any(int.class));
-        verify(entreeStockDomainService, never()).markAsAnnulee(any());
+        verify(stockService, never()).decrement(any(), any(int.class));
+        verify(entreeStockService, never()).markAsAnnulee(any());
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }
 
@@ -739,7 +739,7 @@ class AchatServiceImplTest {
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("hasPaiements");
 
-        verify(entreeStockDomainService, never()).findByCommandeAchatId(any());
+        verify(entreeStockService, never()).findByCommandeAchatId(any());
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }
 }

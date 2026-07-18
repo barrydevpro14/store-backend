@@ -2,11 +2,14 @@ package org.store.stock.application.service;
 
 import org.springframework.data.domain.Page;
 import org.store.stock.application.dto.BelowThresholdFilter;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockThresholdRequest;
 import org.store.stock.application.dto.StockValuationResponse;
+import org.store.stock.domain.model.Stock;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IStockService {
@@ -43,4 +46,22 @@ public interface IStockService {
      * après vérification d'accès magasin.
      */
     StockValuationResponse computeValuation(UUID magasinId);
+
+    /**
+     * Crée ou met à jour le stock agrégé (upsert PMP) lors d'une entrée.
+     * Réservé à la coordination interne au domaine stock.
+     */
+    Stock createOrUpdateEntry(StockEntryContext context);
+
+    /**
+     * Retourne le stock agrégé pour une paire (magasin, productFournisseur), sans vérification d'accès.
+     * Réservé à la coordination interne au domaine stock.
+     */
+    Optional<Stock> findByMagasinAndProductFournisseur(UUID magasinId, UUID productFournisseurId);
+
+    /**
+     * Décrémente la quantité disponible du stock agrégé après une sortie.
+     * Réservé à la coordination interne au domaine stock.
+     */
+    Stock decrement(Stock stock, int quantite);
 }

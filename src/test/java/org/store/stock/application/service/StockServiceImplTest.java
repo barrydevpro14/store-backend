@@ -27,8 +27,11 @@ import org.store.stock.application.service.impl.StockServiceImpl;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
 
+import org.store.stock.application.dto.StockEntryContext;
+
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -183,6 +186,43 @@ class StockServiceImplTest {
 
         assertThatThrownBy(() -> service.updateThreshold(stockId, req))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void createOrUpdateEntry_should_delegate_to_domain_service() {
+        StockEntryContext context = new StockEntryContext(magasin, productFournisseur, 50, new BigDecimal("10.00"));
+        when(stockDomainService.createOrUpdateEntry(context)).thenReturn(stock);
+
+        Stock result = service.createOrUpdateEntry(context);
+
+        assertThat(result).isEqualTo(stock);
+        verify(stockDomainService).createOrUpdateEntry(context);
+    }
+
+    @Test
+    void findByMagasinAndProductFournisseur_should_delegate_to_domain_service() {
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId))
+                .thenReturn(Optional.of(stock));
+
+        Optional<Stock> result = service.findByMagasinAndProductFournisseur(magasinId, productFournisseurId);
+
+        assertThat(result).contains(stock);
+        verify(stockDomainService).findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId);
+    }
+
+    @Test
+    void decrement_should_delegate_to_domain_service() {
+        Stock decremented = new Stock();
+        decremented.setId(stockId);
+        decremented.setMagasin(magasin);
+        decremented.setProductFournisseur(productFournisseur);
+        decremented.setQuantiteDisponible(100);
+        when(stockDomainService.decrement(stock, 50)).thenReturn(decremented);
+
+        Stock result = service.decrement(stock, 50);
+
+        assertThat(result.getQuantiteDisponible()).isEqualTo(100);
+        verify(stockDomainService).decrement(stock, 50);
     }
 
     @Test

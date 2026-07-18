@@ -68,7 +68,7 @@ class StockDomainServiceTest {
         Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, 50, new BigDecimal("20.00")));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(150);
-        assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("13.33"));
+        assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("13.333333"));
     }
 
     @Test
@@ -85,7 +85,7 @@ class StockDomainServiceTest {
         Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, 100, new BigDecimal("25.00")));
 
         assertThat(stock.getQuantiteDisponible()).isEqualTo(300);
-        assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("16.67"));
+        assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("16.666667"));
     }
 
     @Test

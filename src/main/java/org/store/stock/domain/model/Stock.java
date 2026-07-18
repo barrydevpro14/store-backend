@@ -27,6 +27,6 @@ public class Stock extends AuditableEntity {
 
     private int seuilApprovisionnement;
 
-    @Column(precision = 19, scale = 2)
+    @Column(precision = 19, scale = 6)
     private BigDecimal prixAchatMoyen;
 }

@@ -1,8 +1,10 @@
 package org.store.stock.application.service;
 
 import org.springframework.data.domain.Page;
+import org.store.stock.application.dto.MouvementJournalize;
 import org.store.stock.application.dto.MouvementStockFilter;
 import org.store.stock.application.dto.MouvementStockResponse;
+import org.store.stock.domain.model.Stock;
 
 public interface IMouvementStockService {
 
@@ -12,4 +14,10 @@ public interface IMouvementStockService {
      * Si le caller est un employé sans filtre magasin/stock explicite, le scope est forcé sur son magasin.
      */
     Page<MouvementStockResponse> findAllByCurrentEntreprise(MouvementStockFilter filter);
+
+    /**
+     * Journalise un mouvement de stock.
+     * Réservé à la coordination interne au domaine stock.
+     */
+    void journalize(Stock stock, MouvementJournalize mouvementJournalize);
 }
