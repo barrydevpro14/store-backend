@@ -7,9 +7,10 @@ import java.util.UUID;
 public record ActiviteEconomiqueResponse(
         UUID id,
         String libelle,
-        String description
+        String description,
+        boolean actif
 ) {
     public ActiviteEconomiqueResponse(ActiviteEconomique activite) {
-        this(activite.getId(), activite.getLibelle(), activite.getDescription());
+        this(activite.getId(), activite.getLibelle(), activite.getDescription(), activite.isActif());
     }
 }

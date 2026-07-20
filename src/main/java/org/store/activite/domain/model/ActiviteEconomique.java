@@ -15,9 +15,12 @@ public class ActiviteEconomique extends AuditableEntity {
 
     public static final String TABLE_NAME = "activite_economique";
 
-    @Column(nullable = false, length = 150, unique = true)
+    @Column(nullable = false, length = 150)
     private String libelle;
 
     @Column(length = 500)
     private String description;
+
+    @Column(nullable = false)
+    private boolean actif = true;
 }

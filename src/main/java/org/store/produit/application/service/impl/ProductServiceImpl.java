@@ -152,7 +152,7 @@ public class ProductServiceImpl implements IProductService {
     @Transactional
     public ProductResponse uploadImagePrincipal(UUID id, MultipartFile file) {
         Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(id));
-        PieceJointe pieceJointe = uploadFileService.buildImage(file);
+        PieceJointe pieceJointe = uploadFileService.buildImage(file, 512_000L);
         return new ProductResponse(productDomainService.setImagePrincipal(product, pieceJointe));
     }
 
@@ -169,7 +169,7 @@ public class ProductServiceImpl implements IProductService {
     @Transactional
     public List<UUID> uploadImages(UUID id, List<MultipartFile> files) {
         Product product = ensureBelongsToCurrentEntreprise(productDomainService.findById(id));
-        List<PieceJointe> built = uploadFileService.buildImages(files);
+        List<PieceJointe> built = uploadFileService.buildImages(files, 512_000L);
         productDomainService.addImages(product, built);
         return built.stream().map(PieceJointe::getId).toList();
     }

@@ -15,7 +15,13 @@ public interface IActiviteEconomiqueService {
 
     ActiviteEconomiqueResponse update(UUID id, ActiviteEconomiqueRequest request);
 
+    ActiviteEconomiqueResponse activate(UUID id);
+
+    ActiviteEconomiqueResponse deactivate(UUID id);
+
     void delete(UUID id);
 
-    List<ActiviteEconomiqueSummaryResponse> findAll();
+    List<ActiviteEconomiqueResponse> findAll();
+
+    List<ActiviteEconomiqueSummaryResponse> findAllActive();
 }

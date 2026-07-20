@@ -3,6 +3,7 @@ package org.store.produit.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.store.common.exceptions.EntityException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
@@ -69,6 +70,9 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
     }
 
     public Product addImages(Product product, List<PieceJointe> images) {
+        if (product.getImages().size() + images.size() > 2) {
+            throw new EntityException("product.image.maxReached");
+        }
         product.getImages().addAll(images);
         return save(product);
     }

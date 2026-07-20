@@ -13,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.store.common.i18n.IMessageSourceService;
 
 import java.util.Map;
@@ -196,6 +197,13 @@ public class GlobalException {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> badCredentialsException(BadCredentialsException ex) {
         return buildError(ex.getMessage(), HttpStatus.UNAUTHORIZED.value());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> maxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
+        String message = messageSourceService.getMessage("upload.file.tooLarge");
+        logger.warn(HTTP_LOG_FORMAT, HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message, null), HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
     @ExceptionHandler(Exception.class)
