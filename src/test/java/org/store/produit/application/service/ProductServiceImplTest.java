@@ -319,7 +319,7 @@ class ProductServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
-        when(uploadFileService.buildImage(file)).thenReturn(built);
+        when(uploadFileService.buildImage(file, 512_000L)).thenReturn(built);
         when(productDomainService.setImagePrincipal(product, built)).thenReturn(saved);
 
         ProductResponse response = service.uploadImagePrincipal(productId, file);
@@ -391,7 +391,7 @@ class ProductServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
-        when(uploadFileService.buildImages(files)).thenReturn(built);
+        when(uploadFileService.buildImages(files, 512_000L)).thenReturn(built);
         when(productDomainService.addImages(product, built)).thenReturn(product);
 
         List<UUID> result = service.uploadImages(productId, files);
