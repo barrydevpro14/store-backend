@@ -13,7 +13,17 @@ public interface IUploadFileService {
     PieceJointe buildImage(MultipartFile file);
 
     /**
+     * Valide l'image et contrôle que sa taille ne dépasse pas {@code maxSizeBytes}.
+     */
+    PieceJointe buildImage(MultipartFile file, long maxSizeBytes);
+
+    /**
      * Valide une liste non vide de fichiers image et construit autant de `PieceJointe` non persistées (s'arrête au premier fichier invalide).
      */
     List<PieceJointe> buildImages(List<MultipartFile> files);
+
+    /**
+     * Valide la liste et contrôle que chaque fichier ne dépasse pas {@code maxSizeBytes}.
+     */
+    List<PieceJointe> buildImages(List<MultipartFile> files, long maxSizeBytes);
 }

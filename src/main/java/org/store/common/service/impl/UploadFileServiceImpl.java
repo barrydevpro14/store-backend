@@ -44,6 +44,14 @@ public class UploadFileServiceImpl implements IUploadFileService {
         }
     }
 
+    @Override
+    public PieceJointe buildImage(MultipartFile file, long maxSizeBytes) {
+        if (file != null && file.getSize() > maxSizeBytes) {
+            throw new BadArgumentException("upload.file.sizeExceeded", formatSize(maxSizeBytes));
+        }
+        return buildImage(file);
+    }
+
     /** Construit une `PieceJointe` pour chaque fichier image après validation de la liste et de chaque élément. */
     @Override
     public List<PieceJointe> buildImages(List<MultipartFile> files) {
@@ -51,5 +59,19 @@ public class UploadFileServiceImpl implements IUploadFileService {
             throw new BadArgumentException("upload.files.empty");
         }
         return files.stream().map(this::buildImage).toList();
+    }
+
+    @Override
+    public List<PieceJointe> buildImages(List<MultipartFile> files, long maxSizeBytes) {
+        if (files == null || files.isEmpty()) {
+            throw new BadArgumentException("upload.files.empty");
+        }
+        return files.stream().map(f -> buildImage(f, maxSizeBytes)).toList();
+    }
+
+    private String formatSize(long bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)) + " MB";
+        if (bytes >= 1024) return (bytes / 1024) + " KB";
+        return bytes + " B";
     }
 }
