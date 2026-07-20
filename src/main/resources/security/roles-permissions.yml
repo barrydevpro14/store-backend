@@ -27,6 +27,7 @@ permissions:
   # Module-level access tickets — gate the sidebar entry and the module shell.
   # Per-screen CRUD permissions still filter sub-nav tabs and row actions.
   - ENTREPRISE_ACCESS
+  - ENTREPRISE_SETTING_ACCESS
   - SETTINGS_ACCESS
   - SALES_ACCESS
   - PURCHASES_ACCESS
@@ -458,6 +459,7 @@ roles:
       - DOCUMENT_SEQUENCE_DELETE
       - ACTIVITE_ECONOMIQUE_READ
       - CATALOGUE_PRODUIT_READ
+      - ENTREPRISE_SETTING_ACCESS
 
   - libelle: MANAGER
     description: Manager d'un magasin

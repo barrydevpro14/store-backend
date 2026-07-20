@@ -25,13 +25,13 @@ public class EntrepriseSettingController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ENTREPRISE_ACCESS')")
+    @PreAuthorize("hasAuthority('ENTREPRISE_SETTING_ACCESS')")
     public ResponseEntity<EntrepriseSettingResponse> getMySettings() {
         return ResponseEntity.ok(settingService.getMySettings());
     }
 
     @PutMapping
-    @PreAuthorize("hasAuthority('ENTREPRISE_ACCESS')")
+    @PreAuthorize("hasAuthority('ENTREPRISE_SETTING_ACCESS')")
     public ResponseEntity<EntrepriseSettingResponse> updateMySettings(@Valid @RequestBody EntrepriseSettingRequest request) {
         return ResponseEntity.ok(settingService.updateMySettings(request));
     }
