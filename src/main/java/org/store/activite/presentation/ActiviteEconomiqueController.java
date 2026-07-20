@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -39,8 +40,13 @@ public class ActiviteEconomiqueController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ActiviteEconomiqueSummaryResponse>> list() {
+    public ResponseEntity<List<ActiviteEconomiqueResponse>> list() {
         return ResponseEntity.ok(activiteEconomiqueService.findAll());
+    }
+
+    @GetMapping("/actives")
+    public ResponseEntity<List<ActiviteEconomiqueSummaryResponse>> listActives() {
+        return ResponseEntity.ok(activiteEconomiqueService.findAllActive());
     }
 
     @GetMapping("/{id}")
@@ -54,6 +60,18 @@ public class ActiviteEconomiqueController {
     public ResponseEntity<ActiviteEconomiqueResponse> update(@PathVariable UUID id,
                                                              @Valid @RequestBody ActiviteEconomiqueRequest request) {
         return ResponseEntity.ok(activiteEconomiqueService.update(id, request));
+    }
+
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('ACTIVITE_ECONOMIQUE_UPDATE')")
+    public ResponseEntity<ActiviteEconomiqueResponse> activate(@PathVariable UUID id) {
+        return ResponseEntity.ok(activiteEconomiqueService.activate(id));
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasAuthority('ACTIVITE_ECONOMIQUE_UPDATE')")
+    public ResponseEntity<ActiviteEconomiqueResponse> deactivate(@PathVariable UUID id) {
+        return ResponseEntity.ok(activiteEconomiqueService.deactivate(id));
     }
 
     @DeleteMapping("/{id}")

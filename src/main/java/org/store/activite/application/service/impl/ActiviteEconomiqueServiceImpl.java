@@ -15,6 +15,8 @@ import java.util.UUID;
 
 /**
  * Gère le CRUD des activités économiques (référentiel global, admin-scoped).
+ * La suppression est un soft-delete (actif = false) ; activate/deactivate permettent
+ * de gérer le cycle de vie sans perte de données.
  */
 @Service
 public class ActiviteEconomiqueServiceImpl implements IActiviteEconomiqueService {
@@ -25,11 +27,11 @@ public class ActiviteEconomiqueServiceImpl implements IActiviteEconomiqueService
         this.activiteEconomiqueDomainService = activiteEconomiqueDomainService;
     }
 
-    /** Crée une activité économique après contrôle d'unicité du libellé. */
+    /** Crée une activité économique après contrôle d'unicité du libellé (parmi les actives). */
     @Override
     @Transactional
     public ActiviteEconomiqueResponse create(ActiviteEconomiqueRequest request) {
-        ensureLibelleAvailable(request.libelle());
+        ensureLibelleAvailableForCreate(request.libelle());
 
         ActiviteEconomique activite = new ActiviteEconomique();
         activite.setLibelle(request.libelle().toLowerCase());
@@ -44,39 +46,66 @@ public class ActiviteEconomiqueServiceImpl implements IActiviteEconomiqueService
         return new ActiviteEconomiqueResponse(activiteEconomiqueDomainService.findById(id));
     }
 
-    /** Met à jour libellé et description après contrôle d'unicité. */
+    /** Met à jour libellé et description après contrôle d'unicité parmi les actives. */
     @Override
     @Transactional
     public ActiviteEconomiqueResponse update(UUID id, ActiviteEconomiqueRequest request) {
         ActiviteEconomique activite = activiteEconomiqueDomainService.findById(id);
 
-        String normalised = request.libelle().toLowerCase();
-        if (!activite.getLibelle().equals(normalised)) {
-            ensureLibelleAvailable(request.libelle());
-        }
+        ensureLibelleAvailableForUpdate(id, request.libelle());
 
-        activite.setLibelle(normalised);
+        activite.setLibelle(request.libelle().toLowerCase());
         activite.setDescription(request.description());
 
         return new ActiviteEconomiqueResponse(activiteEconomiqueDomainService.save(activite));
     }
 
-    /** Supprime l'activité ou lève EntityException. */
+    /** Active l'activité économique (actif = true). */
+    @Override
+    @Transactional
+    public ActiviteEconomiqueResponse activate(UUID id) {
+        ActiviteEconomique activite = activiteEconomiqueDomainService.findById(id);
+        activiteEconomiqueDomainService.activate(activite);
+        return new ActiviteEconomiqueResponse(activite);
+    }
+
+    /** Désactive l'activité économique (soft-delete : actif = false). */
+    @Override
+    @Transactional
+    public ActiviteEconomiqueResponse deactivate(UUID id) {
+        ActiviteEconomique activite = activiteEconomiqueDomainService.findById(id);
+        activiteEconomiqueDomainService.deactivate(activite);
+        return new ActiviteEconomiqueResponse(activite);
+    }
+
+    /** Soft-delete : passe actif à false sans supprimer la ligne. */
     @Override
     @Transactional
     public void delete(UUID id) {
-        activiteEconomiqueDomainService.deleteById(id);
+        ActiviteEconomique activite = activiteEconomiqueDomainService.findById(id);
+        activiteEconomiqueDomainService.deactivate(activite);
     }
 
-    /** Liste toutes les activités triées par libellé croissant. */
+    /** Liste toutes les activités (actives et inactives) triées par libellé croissant. */
     @Override
-    public List<ActiviteEconomiqueSummaryResponse> findAll() {
+    public List<ActiviteEconomiqueResponse> findAll() {
         return activiteEconomiqueDomainService.findAllOrderByLibelleAsc();
     }
 
-    /** Lève UniqueResourceException si le libellé est déjà utilisé. */
-    private void ensureLibelleAvailable(String libelle) {
-        if (activiteEconomiqueDomainService.existsByLibelle(libelle.toLowerCase())) {
+    /** Liste uniquement les activités actives — endpoint public pour les sélecteurs. */
+    @Override
+    public List<ActiviteEconomiqueSummaryResponse> findAllActive() {
+        return activiteEconomiqueDomainService.findAllActiveOrderByLibelleAsc();
+    }
+
+    private void ensureLibelleAvailableForCreate(String libelle) {
+        if (activiteEconomiqueDomainService.existsByLibelleIgnoreCaseAndActifTrue(libelle)) {
+            throw new UniqueResourceException("activiteEconomique.libelle.alreadyExists", libelle);
+        }
+    }
+
+    private void ensureLibelleAvailableForUpdate(UUID id, String libelle) {
+        if (activiteEconomiqueDomainService.existsByLibelleIgnoreCaseAndActifTrueAndIdNot(libelle, id)) {
             throw new UniqueResourceException("activiteEconomique.libelle.alreadyExists", libelle);
         }
     }
