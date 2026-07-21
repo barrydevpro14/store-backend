@@ -10,6 +10,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.store.common.service.ValidatorService;
+import org.store.magasin.domain.model.Magasin;
+import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.ProductFournisseur;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.MouvementJournalize;
@@ -17,11 +20,10 @@ import org.store.stock.application.dto.MouvementStockFilter;
 import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.service.impl.MouvementStockServiceImpl;
 import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.domain.model.MouvementStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.MouvementStockDomainService;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -71,13 +73,40 @@ class MouvementStockServiceImplTest {
     }
 
     @Test
-    void journalize_should_delegate_to_domain_service() {
+    void journalize_should_delegate_to_domain_service_and_return_response() {
+        Magasin magasin = new Magasin();
+        magasin.setId(UUID.randomUUID());
+        magasin.setNom("Magasin Test");
+
+        Product product = new Product();
+        product.setId(UUID.randomUUID());
+        product.setNom("Produit Test");
+
+        ProductFournisseur pf = new ProductFournisseur();
+        pf.setProduct(product);
+
         Stock stock = new Stock();
         stock.setId(UUID.randomUUID());
+        stock.setMagasin(magasin);
+        stock.setProductFournisseur(pf);
+
         MouvementJournalize cmd = new MouvementJournalize(MouvementStockType.ENTREE_ACHAT, 50, 100, 150, "CMD-001", null);
 
-        service.journalize(stock, cmd);
+        MouvementStock mouvement = new MouvementStock();
+        mouvement.setId(UUID.randomUUID());
+        mouvement.setStock(stock);
+        mouvement.setType(MouvementStockType.ENTREE_ACHAT);
+        mouvement.setQuantite(50);
+        mouvement.setStockAvant(100);
+        mouvement.setStockApres(150);
+        mouvement.setReferenceDocument("CMD-001");
 
+        when(mouvementStockDomainService.journalize(stock, cmd)).thenReturn(mouvement);
+
+        MouvementStockResponse result = service.journalize(stock, cmd);
+
+        assertThat(result.detail().type()).isEqualTo(MouvementStockType.ENTREE_ACHAT);
+        assertThat(result.detail().quantite()).isEqualTo(50);
         verify(mouvementStockDomainService).journalize(stock, cmd);
     }
 

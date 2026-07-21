@@ -16,8 +16,8 @@ public interface IMouvementStockService {
     Page<MouvementStockResponse> findAllByCurrentEntreprise(MouvementStockFilter filter);
 
     /**
-     * Journalise un mouvement de stock.
+     * Journalise un mouvement de stock et retourne la réponse DTO.
      * Réservé à la coordination interne au domaine stock.
      */
-    void journalize(Stock stock, MouvementJournalize mouvementJournalize);
+    MouvementStockResponse journalize(Stock stock, MouvementJournalize mouvementJournalize);
 }

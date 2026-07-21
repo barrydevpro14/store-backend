@@ -19,20 +19,16 @@ import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.stock.application.dto.AjustementStockRequest;
 import org.store.stock.application.dto.EntreeStockCreate;
-import org.store.stock.application.dto.EntreeStockRequest;
+import org.store.stock.application.dto.MouvementDetailResponse;
 import org.store.stock.application.dto.MouvementJournalize;
-import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.MouvementStockResponse;
+import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.service.impl.AjustementStockServiceImpl;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.enums.TypeAjustement;
 import org.store.stock.domain.model.EntreeStock;
-import org.store.stock.domain.model.MouvementStock;
 import org.store.stock.domain.model.Stock;
-import org.store.stock.domain.service.EntreeStockDomainService;
-import org.store.stock.domain.service.MouvementStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -52,9 +48,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AjustementStockServiceImplTest {
 
-    @Mock private EntreeStockDomainService entreeStockDomainService;
-    @Mock private StockDomainService stockDomainService;
-    @Mock private MouvementStockDomainService mouvementStockDomainService;
+    @Mock private IEntreeStockService entreeStockService;
+    @Mock private IStockService stockService;
+    @Mock private IMouvementStockService mouvementStockService;
     @Mock private IMagasinService magasinService;
     @Mock private IProductService productService;
     @Mock private IProductFournisseurService productFournisseurService;
@@ -118,12 +114,11 @@ class AjustementStockServiceImplTest {
                 productFournisseurId, null, motif, "perte rayon");
     }
 
-    private MouvementStock buildMouvement() {
-        MouvementStock m = new MouvementStock();
-        m.setId(UUID.randomUUID());
-        m.setStock(stock);
-        m.setType(MouvementStockType.AJUSTEMENT);
-        return m;
+    private MouvementStockResponse buildMouvementResponse() {
+        return new MouvementStockResponse(
+                UUID.randomUUID(), UUID.randomUUID(), null, null,
+                new MouvementDetailResponse(MouvementStockType.AJUSTEMENT, 20, 100, 120, "RETROUVAILLE", null),
+                null, null);
     }
 
     @Test
@@ -138,16 +133,14 @@ class AjustementStockServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class)))
-                .thenReturn(new EntreeStock());
-        when(stockDomainService.createOrUpdateEntry(any(StockEntryContext.class)))
-                .thenReturn(updated);
-        when(mouvementStockDomainService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvement());
+        when(entreeStockService.createEntreeStock(any(EntreeStockCreate.class))).thenReturn(new EntreeStock());
+        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(updated);
+        when(mouvementStockService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvementResponse());
 
         MouvementStockResponse response = service.create(req);
 
         assertThat(response.detail().type()).isEqualTo(MouvementStockType.AJUSTEMENT);
-        verify(entreeStockDomainService).create(any(EntreeStockCreate.class));
+        verify(entreeStockService).createEntreeStock(any(EntreeStockCreate.class));
     }
 
     @Test
@@ -199,16 +192,15 @@ class AjustementStockServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1));
-        when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stockDomainService.decrement(stock, 30)).thenReturn(updated);
-        when(mouvementStockDomainService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvement());
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId)).thenReturn(List.of(l1));
+        when(stockService.decrement(stock, 30)).thenReturn(updated);
+        when(mouvementStockService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(null);
 
         service.create(req);
 
         assertThat(l1.getQuantiteRestante()).isEqualTo(20);
-        verify(stockDomainService).decrement(stock, 30);
+        verify(stockService).decrement(stock, 30);
     }
 
     @Test
@@ -221,7 +213,7 @@ class AjustementStockServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.empty());
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(EntityException.class);
@@ -229,7 +221,6 @@ class AjustementStockServiceImplTest {
 
     @Test
     void create_negatif_should_throw_when_insufficient_quantity() {
-        stock.setQuantiteDisponible(10);
         AjustementStockRequest req = negatifRequest(30, MotifAjustement.PERTE);
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -238,12 +229,13 @@ class AjustementStockServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId)).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(stockDomainService, never()).decrement(any(), anyInt());
+        verify(stockService, never()).decrement(any(), anyInt());
     }
 
     @Test
@@ -281,16 +273,15 @@ class AjustementStockServiceImplTest {
         when(productService.ensureBelongsToCurrentEntreprise(produit)).thenReturn(produit);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
-        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(l1));
-        when(entreeStockDomainService.save(any(EntreeStock.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(stockDomainService.decrement(stock, 30)).thenReturn(updated);
-        when(mouvementStockDomainService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(buildMouvement());
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId)).thenReturn(List.of(l1));
+        when(stockService.decrement(stock, 30)).thenReturn(updated);
+        when(mouvementStockService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(null);
 
         service.create(req);
 
         ArgumentCaptor<MouvementJournalize> captor = ArgumentCaptor.forClass(MouvementJournalize.class);
-        verify(mouvementStockDomainService).journalize(eq(updated), captor.capture());
+        verify(mouvementStockService).journalize(eq(updated), captor.capture());
         MouvementJournalize captured = captor.getValue();
         assertThat(captured.type()).isEqualTo(MouvementStockType.AJUSTEMENT);
         assertThat(captured.quantite()).isEqualTo(30);
