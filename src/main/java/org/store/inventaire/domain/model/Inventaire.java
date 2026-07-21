@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.inventaire.domain.enums.InventaireStatut;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.magasin.domain.model.Magasin;
 
 import java.time.LocalDate;
@@ -21,6 +22,10 @@ public class Inventaire extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "magasin_id", nullable = false)
     private Magasin magasin;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TypeInventaire type;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

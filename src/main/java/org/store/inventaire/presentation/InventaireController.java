@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
 import org.store.inventaire.application.dto.CloturerRequest;
+import org.store.inventaire.application.dto.InventaireCreateRequest;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
@@ -41,8 +42,8 @@ public class InventaireController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('INVENTORY_CREATE')")
-    public ResponseEntity<InventaireResponse> create(@RequestParam UUID magasinId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(inventaireService.create(magasinId));
+    public ResponseEntity<InventaireResponse> create(@Valid @RequestBody InventaireCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(inventaireService.create(request.magasinId(), request.type()));
     }
 
     @PostMapping("/{id}/lignes")
@@ -103,12 +104,13 @@ public class InventaireController {
     @PreAuthorize("hasAuthority('INVENTORY_READ')")
     public ResponseEntity<Page<InventaireResponse>> list(@RequestParam UUID magasinId,
                                                          @RequestParam(required = false) String statut,
+                                                         @RequestParam(required = false) String type,
                                                          @RequestParam(required = false) String startDate,
                                                          @RequestParam(required = false) String endDate,
                                                          @RequestParam(defaultValue = "0") int page,
                                                          @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(inventaireService.findAllByCurrentEntreprise(
-                new InventaireFilter(magasinId, statut, startDate, endDate, page, size)
+                new InventaireFilter(magasinId, statut, type, startDate, endDate, page, size)
         ));
     }
 

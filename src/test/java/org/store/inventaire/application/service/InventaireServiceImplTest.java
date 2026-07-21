@@ -16,7 +16,7 @@ import org.store.common.i18n.IMessageSourceService;
 import org.store.common.service.ValidatorService;
 import org.store.depense.application.dto.DepenseFilter;
 import org.store.depense.application.dto.DepenseTotalResponse;
-import org.store.depense.domain.service.DepenseDomainService;
+import org.store.depense.application.service.IDepenseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
@@ -25,13 +25,14 @@ import org.store.inventaire.application.dto.BilanInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireCommand;
+import org.store.inventaire.application.service.ILigneInventaireService;
+import org.store.inventaire.application.service.IRapportInventaireService;
 import org.store.inventaire.application.service.impl.InventaireServiceImpl;
 import org.store.inventaire.domain.enums.InventaireStatut;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.inventaire.domain.model.Inventaire;
 import org.store.inventaire.domain.model.LigneInventaire;
 import org.store.inventaire.domain.service.InventaireDomainService;
-import org.store.inventaire.domain.service.LigneInventaireDomainService;
-import org.store.inventaire.domain.service.RapportInventaireDomainService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.achat.domain.model.Fournisseur;
@@ -41,11 +42,13 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.AjustementStockRequest;
+import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IAjustementStockService;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.TypeAjustement;
 import org.store.stock.domain.model.EntreeStock;
-import org.store.stock.domain.service.EntreeStockDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -66,14 +69,14 @@ import static org.mockito.Mockito.when;
 class InventaireServiceImplTest {
 
     @Mock private InventaireDomainService inventaireDomainService;
-    @Mock private LigneInventaireDomainService ligneInventaireDomainService;
-    @Mock private RapportInventaireDomainService rapportInventaireDomainService;
-    @Mock private EntreeStockDomainService entreeStockDomainService;
-    @Mock private DepenseDomainService depenseDomainService;
+    @Mock private ILigneInventaireService ligneInventaireService;
+    @Mock private IRapportInventaireService rapportInventaireService;
+    @Mock private IEntreeStockService entreeStockService;
+    @Mock private IStockService stockService;
+    @Mock private IDepenseService depenseService;
     @Mock private IMagasinService magasinService;
     @Mock private IProductFournisseurService productFournisseurService;
     @Mock private IAjustementStockService ajustementStockService;
-    @Mock private org.store.stock.domain.service.StockDomainService stockDomainService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private IMessageSourceService messageSourceService;
@@ -124,6 +127,7 @@ class InventaireServiceImplTest {
         inventaireEnCours = new Inventaire();
         inventaireEnCours.setId(inventaireId);
         inventaireEnCours.setMagasin(magasin);
+        inventaireEnCours.setType(TypeInventaire.PHYSIQUE);
         inventaireEnCours.setStatut(InventaireStatut.EN_COURS);
         inventaireEnCours.setDate(LocalDate.now());
     }
@@ -165,13 +169,13 @@ class InventaireServiceImplTest {
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(false);
-        when(inventaireDomainService.create(eq(magasin), any(LocalDate.class))).thenReturn(inventaireEnCours);
+        when(inventaireDomainService.create(eq(magasin), any(LocalDate.class), any(TypeInventaire.class))).thenReturn(inventaireEnCours);
 
-        InventaireResponse response = service.create(magasinId);
+        InventaireResponse response = service.create(magasinId, TypeInventaire.PHYSIQUE);
 
         assertThat(response.id()).isEqualTo(inventaireId);
         assertThat(response.statut()).isEqualTo(InventaireStatut.EN_COURS);
-        verify(inventaireDomainService).create(eq(magasin), any(LocalDate.class));
+        verify(inventaireDomainService).create(eq(magasin), any(LocalDate.class), eq(TypeInventaire.PHYSIQUE));
     }
 
     @Test
@@ -180,10 +184,10 @@ class InventaireServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(magasinId))
+        assertThatThrownBy(() -> service.create(magasinId, TypeInventaire.PHYSIQUE))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(inventaireDomainService, never()).create(any(), any());
+        verify(inventaireDomainService, never()).create(any(), any(), any());
     }
 
     @Test
@@ -194,10 +198,10 @@ class InventaireServiceImplTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(magasinId))
+        assertThatThrownBy(() -> service.create(magasinId, TypeInventaire.PHYSIQUE))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(inventaireDomainService, never()).create(any(), any());
+        verify(inventaireDomainService, never()).create(any(), any(), any());
     }
 
     @Test
@@ -209,11 +213,11 @@ class InventaireServiceImplTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(ligneInventaireDomainService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
+        when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
                 .thenReturn(Optional.empty());
-        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId))
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId))
                 .thenReturn(List.of(lot(5), lot(5)));
-        when(ligneInventaireDomainService.create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix)))
+        when(ligneInventaireService.create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix)))
                 .thenReturn(ligne(10, 8));
 
         LigneInventaireResponse response = service.addLigne(inventaireId, request);
@@ -221,7 +225,7 @@ class InventaireServiceImplTest {
         assertThat(response.quantiteTheorique()).isEqualTo(10);
         assertThat(response.quantiteReelle()).isEqualTo(8);
         assertThat(response.ecart()).isEqualTo(-2);
-        verify(ligneInventaireDomainService).create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix));
+        verify(ligneInventaireService).create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix));
     }
 
     @Test
@@ -260,14 +264,14 @@ class InventaireServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
-        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(existing);
-        when(ligneInventaireDomainService.updateQuantiteReelle(existing, 7)).thenReturn(updated);
+        when(ligneInventaireService.findLigne(ligneId)).thenReturn(existing);
+        when(ligneInventaireService.updateQuantiteReelle(existing, 7)).thenReturn(updated);
 
         LigneInventaireResponse response = service.updateLigne(inventaireId, ligneId, new LigneInventaireUpdateRequest(7));
 
         assertThat(response.quantiteReelle()).isEqualTo(7);
         assertThat(response.ecart()).isEqualTo(-3);
-        verify(ligneInventaireDomainService).updateQuantiteReelle(existing, 7);
+        verify(ligneInventaireService).updateQuantiteReelle(existing, 7);
     }
 
     @Test
@@ -283,7 +287,7 @@ class InventaireServiceImplTest {
         assertThatThrownBy(() -> service.updateLigne(inventaireId, randomLigneId, updateReq))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireDomainService, never()).updateQuantiteReelle(any(), eq(5));
+        verify(ligneInventaireService, never()).updateQuantiteReelle(any(), eq(5));
     }
 
     @Test
@@ -298,14 +302,14 @@ class InventaireServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
-        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(ligneAutre);
+        when(ligneInventaireService.findLigne(ligneId)).thenReturn(ligneAutre);
 
         LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(5);
 
         assertThatThrownBy(() -> service.updateLigne(inventaireId, ligneId, updateReq))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireDomainService, never()).updateQuantiteReelle(any(), eq(5));
+        verify(ligneInventaireService, never()).updateQuantiteReelle(any(), eq(5));
     }
 
     @Test
@@ -316,11 +320,11 @@ class InventaireServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
-        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(existing);
+        when(ligneInventaireService.findLigne(ligneId)).thenReturn(existing);
 
         service.deleteLigne(inventaireId, ligneId);
 
-        verify(ligneInventaireDomainService).delete(existing);
+        verify(ligneInventaireService).delete(existing);
     }
 
     @Test
@@ -335,7 +339,7 @@ class InventaireServiceImplTest {
         assertThatThrownBy(() -> service.deleteLigne(inventaireId, randomLigneId))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireDomainService, never()).delete(any());
+        verify(ligneInventaireService, never()).delete(any());
     }
 
     @Test
@@ -350,16 +354,16 @@ class InventaireServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
-        when(ligneInventaireDomainService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
+        when(ligneInventaireService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
         when(inventaireDomainService.transitionStatut(inventaireEnCours, InventaireStatut.BILAN)).thenReturn(bilan);
-        when(depenseDomainService.computeTotal(any(DepenseFilter.class), eq(entrepriseId)))
+        when(depenseService.computeTotal(any(DepenseFilter.class)))
                 .thenReturn(new DepenseTotalResponse(magasinId, new BigDecimal("50.00"), 1L));
 
         InventaireResponse response = service.passerEnBilan(inventaireId, bilanRequest("500.00", "400.00", dateDebut));
 
         assertThat(response.statut()).isEqualTo(InventaireStatut.BILAN);
         ArgumentCaptor<RapportInventaireCommand> captor = ArgumentCaptor.forClass(RapportInventaireCommand.class);
-        verify(rapportInventaireDomainService).create(eq(bilan), captor.capture());
+        verify(rapportInventaireService).create(eq(bilan), captor.capture());
         RapportInventaireCommand command = captor.getValue();
         // 10 × 15.00 = 150.00 (théorique × prixUnitaire saisi)
         assertThat(command.montantAutomatique()).isEqualByComparingTo("150.00");
@@ -385,7 +389,7 @@ class InventaireServiceImplTest {
         assertThatThrownBy(() -> service.passerEnBilan(inventaireId, bilan))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(rapportInventaireDomainService, never()).create(any(), any());
+        verify(rapportInventaireService, never()).create(any(), any());
     }
 
     @Test
@@ -406,8 +410,8 @@ class InventaireServiceImplTest {
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
-        when(ligneInventaireDomainService.findAllByInventaireId(inventaireId)).thenReturn(List.of(surplus, neutre, manque));
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(eq(magasinId), any()))
+        when(ligneInventaireService.findAllByInventaireId(inventaireId)).thenReturn(List.of(surplus, neutre, manque));
+        when(stockService.findByMagasinAndProductFournisseur(eq(magasinId), any()))
                 .thenReturn(Optional.of(stock));
         when(messageSourceService.getMessage(eq("inventaire.cloture.commentaire"), any(Object[].class))).thenReturn("Cloture " + inventaireId);
         when(inventaireDomainService.transitionStatut(inventaireEnCours, InventaireStatut.CLOTURE)).thenReturn(cloture);
@@ -424,7 +428,7 @@ class InventaireServiceImplTest {
         assertThat(calls).allMatch(req -> req.motif() == MotifAjustement.INVENTAIRE_PHYSIQUE);
         assertThat(calls.getFirst().prixAchat()).isEqualTo(new BigDecimal("10.00"));
         assertThat(calls.get(1).prixAchat()).isNull();
-        verify(rapportInventaireDomainService, never()).create(any(), any());
+        verify(rapportInventaireService, never()).create(any(), any());
     }
 
     @Test
@@ -492,15 +496,103 @@ class InventaireServiceImplTest {
     @Test
     void findRapportByInventaireId_should_throw_when_absent() {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
-        when(rapportInventaireDomainService.findResponseByInventaireId(inventaireId, entrepriseId)).thenReturn(Optional.empty());
+        when(rapportInventaireService.findResponseByInventaireId(inventaireId, entrepriseId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findRapportByInventaireId(inventaireId))
                 .isInstanceOf(EntityException.class);
     }
 
     @Test
+    void create_should_create_inventaire_with_type_automatique() {
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(false);
+
+        Inventaire automatique = new Inventaire();
+        automatique.setId(UUID.randomUUID());
+        automatique.setMagasin(magasin);
+        automatique.setType(TypeInventaire.AUTOMATIQUE);
+        automatique.setStatut(InventaireStatut.EN_COURS);
+        automatique.setDate(LocalDate.now());
+
+        when(inventaireDomainService.create(eq(magasin), any(LocalDate.class), eq(TypeInventaire.AUTOMATIQUE)))
+                .thenReturn(automatique);
+
+        InventaireResponse response = service.create(magasinId, TypeInventaire.AUTOMATIQUE);
+
+        assertThat(response.type()).isEqualTo(TypeInventaire.AUTOMATIQUE);
+        assertThat(response.statut()).isEqualTo(InventaireStatut.EN_COURS);
+    }
+
+    @Test
+    void addLigne_should_throw_when_type_automatique() {
+        inventaireEnCours.setType(TypeInventaire.AUTOMATIQUE);
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3, new BigDecimal("10.00"));
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+
+        assertThatThrownBy(() -> service.addLigne(inventaireId, request))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(ligneInventaireService, never()).create(any(), any(), any(int.class), any(int.class), any());
+    }
+
+    @Test
+    void passerEnBilan_automatique_should_use_computeValuation_and_set_ecart_zero() {
+        inventaireEnCours.setType(TypeInventaire.AUTOMATIQUE);
+        LocalDate dateDebut = LocalDate.now().minusDays(7);
+
+        Inventaire bilan = new Inventaire();
+        bilan.setId(inventaireId);
+        bilan.setMagasin(magasin);
+        bilan.setType(TypeInventaire.AUTOMATIQUE);
+        bilan.setStatut(InventaireStatut.BILAN);
+        bilan.setDate(LocalDate.now());
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+        when(inventaireDomainService.transitionStatut(inventaireEnCours, InventaireStatut.BILAN)).thenReturn(bilan);
+        when(stockService.computeValuation(magasin)).thenReturn(new StockValuationResponse(magasinId, new BigDecimal("5000.00"), 3L));
+        when(depenseService.computeTotal(any())).thenReturn(null);
+
+        InventaireResponse response = service.passerEnBilan(inventaireId, bilanRequest("500.00", "400.00", dateDebut));
+
+        assertThat(response.statut()).isEqualTo(InventaireStatut.BILAN);
+        ArgumentCaptor<RapportInventaireCommand> captor = ArgumentCaptor.forClass(RapportInventaireCommand.class);
+        verify(rapportInventaireService).create(eq(bilan), captor.capture());
+        RapportInventaireCommand command = captor.getValue();
+        assertThat(command.montantAutomatique()).isEqualByComparingTo("5000.00");
+        assertThat(command.montantPhysique()).isEqualByComparingTo("5000.00");
+        verify(ligneInventaireService, never()).findAllByInventaireId(any());
+    }
+
+    @Test
+    void cloturer_automatique_should_transition_without_stock_adjustments() {
+        inventaireEnCours.setType(TypeInventaire.AUTOMATIQUE);
+        inventaireEnCours.setStatut(InventaireStatut.BILAN);
+
+        Inventaire cloture = new Inventaire();
+        cloture.setId(inventaireId);
+        cloture.setMagasin(magasin);
+        cloture.setType(TypeInventaire.AUTOMATIQUE);
+        cloture.setStatut(InventaireStatut.CLOTURE);
+        cloture.setDate(LocalDate.now());
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
+        when(inventaireDomainService.transitionStatut(inventaireEnCours, InventaireStatut.CLOTURE)).thenReturn(cloture);
+
+        InventaireResponse response = service.cloturer(inventaireId, null);
+
+        assertThat(response.statut()).isEqualTo(InventaireStatut.CLOTURE);
+        verify(ajustementStockService, never()).create(any());
+        verify(ligneInventaireService, never()).findAllByInventaireId(any());
+    }
+
+    @Test
     void findAllByCurrentEntreprise_should_delegate_filter_to_domain_service() {
-        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, 0, 10);
+        InventaireFilter filter = new InventaireFilter(magasinId, null, null, null, null, 0, 10);
         InventaireResponse response = new InventaireResponse(inventaireEnCours);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());

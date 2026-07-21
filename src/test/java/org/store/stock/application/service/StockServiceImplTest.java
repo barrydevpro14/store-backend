@@ -37,6 +37,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -231,12 +233,25 @@ class StockServiceImplTest {
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(stockDomainService.computeValuation(magasinId, entrepriseId)).thenReturn(expected);
 
         StockValuationResponse response = service.computeValuation(magasinId);
 
         assertThat(response.valeurTotale()).isEqualByComparingTo(new BigDecimal("5000.00"));
         assertThat(response.nombreLignes()).isEqualTo(3L);
+    }
+
+    @Test
+    void computeValuation_with_magasin_should_skip_findById() {
+        StockValuationResponse expected = new StockValuationResponse(magasinId, new BigDecimal("5000.00"), 3L);
+
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(stockDomainService.computeValuation(magasinId, entrepriseId)).thenReturn(expected);
+
+        StockValuationResponse response = service.computeValuation(magasin);
+
+        assertThat(response.valeurTotale()).isEqualByComparingTo(new BigDecimal("5000.00"));
+        assertThat(response.nombreLignes()).isEqualTo(3L);
+        verify(magasinService, never()).findById(any());
     }
 }
