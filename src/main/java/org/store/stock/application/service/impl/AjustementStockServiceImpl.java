@@ -88,7 +88,7 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
 
         MouvementStockResponse mouvement = mouvementStockService.journalize(stock, new MouvementJournalize(
                 MouvementStockType.AJUSTEMENT,
-                request.quantite(),
+                request.type() == TypeAjustement.POSITIF ? request.quantite() : -request.quantite(),
                 request.type() == TypeAjustement.POSITIF
                         ? stock.getQuantiteDisponible() - request.quantite()
                         : stock.getQuantiteDisponible() + request.quantite(),

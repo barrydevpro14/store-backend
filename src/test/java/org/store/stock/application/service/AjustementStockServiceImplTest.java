@@ -284,7 +284,7 @@ class AjustementStockServiceImplTest {
         verify(mouvementStockService).journalize(eq(updated), captor.capture());
         MouvementJournalize captured = captor.getValue();
         assertThat(captured.type()).isEqualTo(MouvementStockType.AJUSTEMENT);
-        assertThat(captured.quantite()).isEqualTo(30);
+        assertThat(captured.quantite()).isEqualTo(-30);
         assertThat(captured.stockAvant()).isEqualTo(100);
         assertThat(captured.stockApres()).isEqualTo(70);
         assertThat(captured.referenceDocument()).isEqualTo("CASSE");

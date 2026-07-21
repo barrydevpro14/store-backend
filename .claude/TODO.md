@@ -284,6 +284,7 @@ Current state: 7 entities (`Abonnement`, `PlanAbonnement`, `TypeAbonnement`, `Pa
 - [x] `src/app/layout.tsx` metadata + lang — driven by next-intl; `<html lang={locale}>`. Fonts: Geist + Geist_Mono + Fraunces (display, bound to `--font-heading`).
 - [x] `src/app/page.tsx` default template — replaced by the public landing at `src/app/(public)/page.tsx` long ago.
 - [ ] Frontend `README.md`: still the generic `create-next-app` README.
+- [ ] **`AddLigneDialog` — perf : appel `/api/v1/product-suppliers?page=0&size=500`** — charge tout le catalogue en mémoire pour alimenter le `Combobox`. À remplacer par une recherche serveur (autocomplete) : endpoint `?search=` côté backend, `Combobox` avec champ texte déclenchant un `useQuery` debouncé, pas de chargement initial.
 
 ---
 
