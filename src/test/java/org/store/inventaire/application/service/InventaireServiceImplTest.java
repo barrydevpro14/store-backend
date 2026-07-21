@@ -460,14 +460,11 @@ class InventaireServiceImplTest {
         ligneOk.setQuantiteReelle(5);
         ligneOk.setEcart(0);
 
-        org.store.stock.domain.model.Stock stock1 = new org.store.stock.domain.model.Stock();
-        stock1.setQuantiteDisponible(8);
+        EntreeStock lot1 = lot(8);
+        EntreeStock lot2 = lot(5);
 
-        org.store.stock.domain.model.Stock stock2 = new org.store.stock.domain.model.Stock();
-        stock2.setQuantiteDisponible(5);
-
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId1)).thenReturn(Optional.of(stock1));
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId2)).thenReturn(Optional.of(stock2));
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, pfId1)).thenReturn(List.of(lot1));
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, pfId2)).thenReturn(List.of(lot2));
 
         service.reconcilierQuantitesTheoriques(inventaireEnCours, List.of(ligneStale, ligneOk));
 
