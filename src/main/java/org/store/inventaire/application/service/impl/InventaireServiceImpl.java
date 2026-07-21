@@ -43,6 +43,7 @@ import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.TypeAjustement;
 import org.store.stock.domain.model.EntreeStock;
+import org.store.stock.domain.model.Stock;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -224,6 +225,7 @@ public class InventaireServiceImpl implements IInventaireService {
 
         if (inventaire.getType() == TypeInventaire.PHYSIQUE) {
             List<LigneInventaire> lignes = ligneInventaireService.findAllByInventaireId(inventaireId);
+            reconcilierQuantitesTheoriques(inventaire, lignes);
             lignes.stream()
                     .filter(ligne -> ligne.getEcart() != 0)
                     .forEach(ligne -> appliquerAjustement(inventaire, ligne));
@@ -328,6 +330,27 @@ public class InventaireServiceImpl implements IInventaireService {
         if (ligneInventaireService.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)) {
             throw new BadArgumentException("inventaire.ligne.duplicate");
         }
+    }
+
+    /**
+     * Met a jour la quantiteTheorique de chaque ligne a partir du stock courant du magasin,
+     * puis recalcule l'ecart. Appele au debut de la cloture pour corriger les derives dues
+     * aux ventes survenues entre la creation de l'inventaire et sa cloture.
+     * Si aucun stock n'existe pour le PF, quantiteTheorique est fixee a 0.
+     */
+    public void reconcilierQuantitesTheoriques(Inventaire inventaire, List<LigneInventaire> lignes) {
+        UUID magasinId = inventaire.getMagasin().getId();
+
+        lignes.forEach(ligne -> {
+            int stockActuel = stockService
+                    .findByMagasinAndProductFournisseur(magasinId, ligne.getProductFournisseur().getId())
+                    .map(Stock::getQuantiteDisponible)
+                    .orElse(0);
+
+            if (stockActuel != ligne.getQuantiteTheorique()) {
+                ligneInventaireService.updateQuantiteTheorique(ligne, stockActuel);
+            }
+        });
     }
 
     /** Stock theorique d'un PF dans un magasin = somme des quantites restantes des lots actifs (coherent F-V3). */
