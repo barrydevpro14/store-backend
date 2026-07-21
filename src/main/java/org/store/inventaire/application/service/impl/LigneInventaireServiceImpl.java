@@ -64,6 +64,12 @@ public class LigneInventaireServiceImpl implements ILigneInventaireService {
 
     @Override
     @Transactional
+    public LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, int quantiteTheorique) {
+        return ligneInventaireDomainService.updateQuantiteTheorique(ligne, quantiteTheorique);
+    }
+
+    @Override
+    @Transactional
     public void delete(LigneInventaire ligne) {
         ligneInventaireDomainService.delete(ligne);
     }

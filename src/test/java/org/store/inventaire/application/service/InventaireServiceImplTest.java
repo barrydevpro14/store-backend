@@ -59,6 +59,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -429,6 +430,49 @@ class InventaireServiceImplTest {
         assertThat(calls.getFirst().prixAchat()).isEqualTo(new BigDecimal("10.00"));
         assertThat(calls.get(1).prixAchat()).isNull();
         verify(rapportInventaireService, never()).create(any(), any());
+    }
+
+    @Test
+    void reconcilierQuantitesTheoriques_should_update_stale_lines_and_skip_matching_ones() {
+        UUID pfId1 = UUID.randomUUID();
+        ProductFournisseur pf1 = new ProductFournisseur();
+        pf1.setId(pfId1);
+        pf1.setProduct(product);
+
+        UUID pfId2 = UUID.randomUUID();
+        ProductFournisseur pf2 = new ProductFournisseur();
+        pf2.setId(pfId2);
+        pf2.setProduct(product);
+
+        LigneInventaire ligneStale = new LigneInventaire();
+        ligneStale.setId(UUID.randomUUID());
+        ligneStale.setInventaire(inventaireEnCours);
+        ligneStale.setProductFournisseur(pf1);
+        ligneStale.setQuantiteTheorique(9);
+        ligneStale.setQuantiteReelle(0);
+        ligneStale.setEcart(-9);
+
+        LigneInventaire ligneOk = new LigneInventaire();
+        ligneOk.setId(UUID.randomUUID());
+        ligneOk.setInventaire(inventaireEnCours);
+        ligneOk.setProductFournisseur(pf2);
+        ligneOk.setQuantiteTheorique(5);
+        ligneOk.setQuantiteReelle(5);
+        ligneOk.setEcart(0);
+
+        org.store.stock.domain.model.Stock stock1 = new org.store.stock.domain.model.Stock();
+        stock1.setQuantiteDisponible(8);
+
+        org.store.stock.domain.model.Stock stock2 = new org.store.stock.domain.model.Stock();
+        stock2.setQuantiteDisponible(5);
+
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId1)).thenReturn(Optional.of(stock1));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId2)).thenReturn(Optional.of(stock2));
+
+        service.reconcilierQuantitesTheoriques(inventaireEnCours, List.of(ligneStale, ligneOk));
+
+        verify(ligneInventaireService).updateQuantiteTheorique(ligneStale, 8);
+        verify(ligneInventaireService, never()).updateQuantiteTheorique(eq(ligneOk), anyInt());
     }
 
     @Test

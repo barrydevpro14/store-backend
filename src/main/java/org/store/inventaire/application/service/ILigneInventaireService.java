@@ -27,6 +27,8 @@ public interface ILigneInventaireService {
 
     LigneInventaire updateQuantiteReelle(LigneInventaire ligne, int quantiteReelle);
 
+    LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, int quantiteTheorique);
+
     void delete(LigneInventaire ligne);
 
     boolean existsByInventaireIdAndProductFournisseurId(UUID inventaireId, UUID productFournisseurId);

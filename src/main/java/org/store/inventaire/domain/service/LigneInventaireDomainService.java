@@ -63,4 +63,11 @@ public class LigneInventaireDomainService extends GlobalService<LigneInventaire,
         ligne.setEcart(quantiteReelle - ligne.getQuantiteTheorique());
         return save(ligne);
     }
+
+    /** Reconcilie la quantite theorique avec le stock courant et recalcule l'ecart. */
+    public LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, int quantiteTheorique) {
+        ligne.setQuantiteTheorique(quantiteTheorique);
+        ligne.setEcart(ligne.getQuantiteReelle() - quantiteTheorique);
+        return save(ligne);
+    }
 }
