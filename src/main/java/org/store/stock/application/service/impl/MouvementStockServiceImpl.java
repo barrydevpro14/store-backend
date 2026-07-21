@@ -40,7 +40,7 @@ public class MouvementStockServiceImpl implements IMouvementStockService {
 
     @Override
     @Transactional
-    public void journalize(Stock stock, MouvementJournalize mouvementJournalize) {
-        mouvementStockDomainService.journalize(stock, mouvementJournalize);
+    public MouvementStockResponse journalize(Stock stock, MouvementJournalize mouvementJournalize) {
+        return new MouvementStockResponse(mouvementStockDomainService.journalize(stock, mouvementJournalize));
     }
 }
