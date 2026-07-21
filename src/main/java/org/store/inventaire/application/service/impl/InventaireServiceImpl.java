@@ -342,13 +342,10 @@ public class InventaireServiceImpl implements IInventaireService {
         UUID magasinId = inventaire.getMagasin().getId();
 
         lignes.forEach(ligne -> {
-            int stockActuel = stockService
-                    .findByMagasinAndProductFournisseur(magasinId, ligne.getProductFournisseur().getId())
-                    .map(Stock::getQuantiteDisponible)
-                    .orElse(0);
+            int lotsActuels = computeQuantiteTheorique(magasinId, ligne.getProductFournisseur().getId());
 
-            if (stockActuel != ligne.getQuantiteTheorique()) {
-                ligneInventaireService.updateQuantiteTheorique(ligne, stockActuel);
+            if (lotsActuels != ligne.getQuantiteTheorique()) {
+                ligneInventaireService.updateQuantiteTheorique(ligne, lotsActuels);
             }
         });
     }
