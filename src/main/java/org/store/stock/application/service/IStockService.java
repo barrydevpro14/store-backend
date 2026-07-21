@@ -1,6 +1,7 @@
 package org.store.stock.application.service;
 
 import org.springframework.data.domain.Page;
+import org.store.magasin.domain.model.Magasin;
 import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
@@ -46,6 +47,12 @@ public interface IStockService {
      * après vérification d'accès magasin.
      */
     StockValuationResponse computeValuation(UUID magasinId);
+
+    /**
+     * Surcharge pour un magasin déjà résolu — évite un aller-retour BDD supplémentaire.
+     * Vérifie tout de même l'accès via {@code ensureAccessibleByCurrentUser}.
+     */
+    StockValuationResponse computeValuation(Magasin magasin);
 
     /**
      * Crée ou met à jour le stock agrégé (upsert PMP) lors d'une entrée.

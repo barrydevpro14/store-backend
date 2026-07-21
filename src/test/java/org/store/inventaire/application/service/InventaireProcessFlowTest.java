@@ -10,20 +10,21 @@ import org.store.achat.domain.model.Fournisseur;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.common.service.ValidatorService;
-import org.store.depense.domain.service.DepenseDomainService;
+import org.store.depense.application.service.IDepenseService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
+import org.store.inventaire.application.service.ILigneInventaireService;
+import org.store.inventaire.application.service.IRapportInventaireService;
 import org.store.inventaire.application.service.impl.InventaireServiceImpl;
 import org.store.inventaire.domain.enums.InventaireStatut;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.inventaire.domain.model.Inventaire;
 import org.store.inventaire.domain.model.LigneInventaire;
 import org.store.inventaire.domain.service.InventaireDomainService;
-import org.store.inventaire.domain.service.LigneInventaireDomainService;
-import org.store.inventaire.domain.service.RapportInventaireDomainService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
@@ -33,8 +34,9 @@ import org.store.produit.domain.model.Quality;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.service.IAjustementStockService;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.model.EntreeStock;
-import org.store.stock.domain.service.EntreeStockDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -67,14 +69,14 @@ import static org.mockito.Mockito.when;
 class InventaireProcessFlowTest {
 
     @Mock private InventaireDomainService inventaireDomainService;
-    @Mock private LigneInventaireDomainService ligneInventaireDomainService;
-    @Mock private RapportInventaireDomainService rapportInventaireDomainService;
-    @Mock private EntreeStockDomainService entreeStockDomainService;
-    @Mock private DepenseDomainService depenseDomainService;
+    @Mock private ILigneInventaireService ligneInventaireService;
+    @Mock private IRapportInventaireService rapportInventaireService;
+    @Mock private IEntreeStockService entreeStockService;
+    @Mock private IStockService stockService;
+    @Mock private IDepenseService depenseService;
     @Mock private IMagasinService magasinService;
     @Mock private IProductFournisseurService productFournisseurService;
     @Mock private IAjustementStockService ajustementStockService;
-    @Mock private org.store.stock.domain.service.StockDomainService stockDomainService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private IMessageSourceService messageSourceService;
@@ -135,6 +137,7 @@ class InventaireProcessFlowTest {
         inventaire = new Inventaire();
         inventaire.setId(inventaireId);
         inventaire.setMagasin(magasin);
+        inventaire.setType(TypeInventaire.PHYSIQUE);
         inventaire.setStatut(InventaireStatut.EN_COURS);
         inventaire.setDate(LocalDate.of(2026, 6, 4));
         inventaire.setLignes(new ArrayList<>());
@@ -164,9 +167,9 @@ class InventaireProcessFlowTest {
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(false);
-        when(inventaireDomainService.create(eq(magasin), any())).thenReturn(inventaire);
+        when(inventaireDomainService.create(eq(magasin), any(), eq(TypeInventaire.PHYSIQUE))).thenReturn(inventaire);
 
-        InventaireResponse createResult = service.create(magasinId);
+        InventaireResponse createResult = service.create(magasinId, TypeInventaire.PHYSIQUE);
 
         assertThat(createResult.statut()).isEqualTo(InventaireStatut.EN_COURS);
         assertThat(createResult.magasin().id()).isEqualTo(magasinId);
@@ -180,9 +183,9 @@ class InventaireProcessFlowTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(ligneInventaireDomainService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)).thenReturn(Optional.empty());
-        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId)).thenReturn(List.of(lot));
-        when(ligneInventaireDomainService.create(eq(inventaire), eq(productFournisseur), eq(5), eq(4), any(java.math.BigDecimal.class))).thenReturn(ligne);
+        when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)).thenReturn(Optional.empty());
+        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId)).thenReturn(List.of(lot));
+        when(ligneInventaireService.create(eq(inventaire), eq(productFournisseur), eq(5), eq(4), any(java.math.BigDecimal.class))).thenReturn(ligne);
 
         LigneInventaireResponse ligneResult = service.addLigne(inventaireId,
                 new LigneInventaireRequest(productFournisseurId, 4, new java.math.BigDecimal("8000.00")));
@@ -195,19 +198,20 @@ class InventaireProcessFlowTest {
         Inventaire bilanInventaire = new Inventaire();
         bilanInventaire.setId(inventaireId);
         bilanInventaire.setMagasin(magasin);
+        bilanInventaire.setType(TypeInventaire.PHYSIQUE);
         bilanInventaire.setStatut(InventaireStatut.BILAN);
         bilanInventaire.setDate(LocalDate.of(2026, 6, 4));
 
-        when(ligneInventaireDomainService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
+        when(ligneInventaireService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
         when(inventaireDomainService.transitionStatut(inventaire, InventaireStatut.BILAN)).thenReturn(bilanInventaire);
-        when(depenseDomainService.computeTotal(any(), eq(entrepriseId))).thenReturn(null);
+        when(depenseService.computeTotal(any())).thenReturn(null);
 
         InventaireResponse bilanResult = service.passerEnBilan(inventaireId, new BilanInventaireRequest(
                 new BigDecimal("500000.00"), new BigDecimal("200000.00"),
                 LocalDate.of(2026, 6, 1)));
 
         assertThat(bilanResult.statut()).isEqualTo(InventaireStatut.BILAN);
-        verify(rapportInventaireDomainService).create(eq(bilanInventaire), any());
+        verify(rapportInventaireService).create(eq(bilanInventaire), any());
 
         // ── STEP 4: Cloturer → ajustement applique pour ecart != 0 ──────────
         Inventaire clotureInventaire = new Inventaire();
@@ -222,8 +226,8 @@ class InventaireProcessFlowTest {
         stock.setQuantiteDisponible(5);
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(bilanInventaire);
-        when(ligneInventaireDomainService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId))
+        when(ligneInventaireService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId))
                 .thenReturn(Optional.of(stock));
         when(messageSourceService.getMessage(any(String.class), any(Object[].class))).thenReturn("Clôture inventaire");
         when(inventaireDomainService.transitionStatut(bilanInventaire, InventaireStatut.CLOTURE)).thenReturn(clotureInventaire);
@@ -244,11 +248,11 @@ class InventaireProcessFlowTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
-        when(ligneInventaireDomainService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
+        when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
                 .thenReturn(Optional.of(existing));
 
         LigneInventaire aggregated = buildLigne(5, 7); // 4 + 3 = 7
-        when(ligneInventaireDomainService.updateQuantiteReelle(existing, 7)).thenReturn(aggregated);
+        when(ligneInventaireService.updateQuantiteReelle(existing, 7)).thenReturn(aggregated);
 
         LigneInventaireResponse result = service.addLigne(inventaireId,
                 new LigneInventaireRequest(productFournisseurId, 3, new java.math.BigDecimal("8000.00")));
@@ -265,8 +269,8 @@ class InventaireProcessFlowTest {
         LigneInventaire corrected = buildLigne(5, 6); // correction: found more
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
-        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(existing);
-        when(ligneInventaireDomainService.updateQuantiteReelle(existing, 6)).thenReturn(corrected);
+        when(ligneInventaireService.findLigne(ligneId)).thenReturn(existing);
+        when(ligneInventaireService.updateQuantiteReelle(existing, 6)).thenReturn(corrected);
 
         LigneInventaireResponse result = service.updateLigne(inventaireId, ligneId,
                 new LigneInventaireUpdateRequest(6));
@@ -274,7 +278,7 @@ class InventaireProcessFlowTest {
         assertThat(result.quantiteReelle()).isEqualTo(6);
         assertThat(result.ecart()).isEqualTo(1); // 6 - 5 = +1 surplus
 
-        verify(ligneInventaireDomainService).updateQuantiteReelle(existing, 6);
+        verify(ligneInventaireService).updateQuantiteReelle(existing, 6);
     }
 
     // ── Scenario 3: Delete ligne removes it from the inventory ───────────────
@@ -284,11 +288,11 @@ class InventaireProcessFlowTest {
         LigneInventaire ligne = buildLigne(5, 4);
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
-        when(ligneInventaireDomainService.findLigne(ligneId)).thenReturn(ligne);
+        when(ligneInventaireService.findLigne(ligneId)).thenReturn(ligne);
 
         service.deleteLigne(inventaireId, ligneId);
 
-        verify(ligneInventaireDomainService).delete(ligne);
+        verify(ligneInventaireService).delete(ligne);
         // No stock side-effect when just removing a ligne
         verify(ajustementStockService, never()).create(any());
     }
@@ -311,7 +315,7 @@ class InventaireProcessFlowTest {
         assertThat(result.statut()).isEqualTo(InventaireStatut.ANNULE);
         // No stock adjustments applied
         verify(ajustementStockService, never()).create(any());
-        verify(rapportInventaireDomainService, never()).create(any(), any());
+        verify(rapportInventaireService, never()).create(any(), any());
     }
 
     // ── Scenario 5: BILAN → ANNULER (discrepancies discarded) ────────────────
@@ -343,10 +347,10 @@ class InventaireProcessFlowTest {
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(inventaireDomainService.hasActiveInventaire(magasinId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(magasinId))
+        assertThatThrownBy(() -> service.create(magasinId, TypeInventaire.PHYSIQUE))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(inventaireDomainService, never()).create(any(), any());
+        verify(inventaireDomainService, never()).create(any(), any(), any());
     }
 
     // ── Scenario 7: Guard — cannot add a ligne once statut moved to BILAN ────
@@ -361,6 +365,6 @@ class InventaireProcessFlowTest {
                 new LigneInventaireRequest(productFournisseurId, 3, new java.math.BigDecimal("8000.00"))))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireDomainService, never()).create(any(), any(), any(int.class), any(int.class), any());
+        verify(ligneInventaireService, never()).create(any(), any(), any(int.class), any(int.class), any());
     }
 }

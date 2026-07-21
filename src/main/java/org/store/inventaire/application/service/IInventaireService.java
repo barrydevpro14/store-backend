@@ -10,12 +10,13 @@ import org.store.inventaire.application.dto.LigneInventaireRequest;
 import org.store.inventaire.application.dto.LigneInventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireResponse;
+import org.store.inventaire.domain.enums.TypeInventaire;
 
 import java.util.UUID;
 
 public interface IInventaireService {
 
-    InventaireResponse create(UUID magasinId);
+    InventaireResponse create(UUID magasinId, TypeInventaire type);
 
     LigneInventaireResponse addLigne(UUID inventaireId, LigneInventaireRequest request);
 

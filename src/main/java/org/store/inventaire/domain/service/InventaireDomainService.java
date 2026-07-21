@@ -6,6 +6,7 @@ import org.store.common.service.GlobalService;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.domain.enums.InventaireStatut;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.inventaire.domain.model.Inventaire;
 import org.store.inventaire.domain.repository.InventaireRepository;
 import org.store.magasin.domain.model.Magasin;
@@ -38,11 +39,12 @@ public class InventaireDomainService extends GlobalService<Inventaire, Inventair
                 .stream().findFirst();
     }
 
-    /** Crée un inventaire au statut EN_COURS pour un magasin et une date donnée. */
-    public Inventaire create(Magasin magasin, LocalDate date) {
+    /** Crée un inventaire au statut EN_COURS pour un magasin, une date et un type donnés. */
+    public Inventaire create(Magasin magasin, LocalDate date, TypeInventaire type) {
         Inventaire inventaire = new Inventaire();
         inventaire.setMagasin(magasin);
         inventaire.setDate(date);
+        inventaire.setType(type);
         inventaire.setStatut(InventaireStatut.EN_COURS);
         return save(inventaire);
     }
@@ -62,6 +64,7 @@ public class InventaireDomainService extends GlobalService<Inventaire, Inventair
                 entrepriseId,
                 filter.magasinId(),
                 filter.statutAsEnum(),
+                filter.typeAsEnum(),
                 filter.startDate(),
                 filter.endDate(),
                 filter.toPageable());

@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.domain.enums.InventaireStatut;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.inventaire.domain.model.Inventaire;
 
 import java.util.Collection;
@@ -35,6 +36,7 @@ public interface InventaireRepository extends BaseRepository<Inventaire> {
             WHERE inventaire.magasin.entreprise.id = :entrepriseId
               AND inventaire.magasin.id = :magasinId
               AND (:statut IS NULL OR inventaire.statut = :statut)
+              AND (:type   IS NULL OR inventaire.type   = :type)
               AND (:startDate IS NULL OR :startDate = '' OR inventaire.date >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR inventaire.date <= CAST(:endDate AS date))
             ORDER BY inventaire.date DESC, inventaire.createdAt DESC
@@ -43,6 +45,7 @@ public interface InventaireRepository extends BaseRepository<Inventaire> {
             @Param("entrepriseId") UUID entrepriseId,
             @Param("magasinId") UUID magasinId,
             @Param("statut") InventaireStatut statut,
+            @Param("type") TypeInventaire type,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);

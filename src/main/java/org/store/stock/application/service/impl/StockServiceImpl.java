@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
+import org.store.magasin.domain.model.Magasin;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockEntryContext;
@@ -85,8 +86,15 @@ public class StockServiceImpl implements IStockService {
     /** Calcule la valorisation après vérification d'accès magasin. */
     @Override
     public StockValuationResponse computeValuation(UUID magasinId) {
-        magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
-        return stockDomainService.computeValuation(magasinId, currentUserService.getCurrent().entrepriseId());
+        Magasin magasin = magasinService.findById(magasinId);
+        return computeValuation(magasin);
+    }
+
+    /** Surcharge : magasin déjà résolu par le caller — évite un aller-retour BDD supplémentaire. */
+    @Override
+    public StockValuationResponse computeValuation(Magasin magasin) {
+        magasinService.ensureAccessibleByCurrentUser(magasin);
+        return stockDomainService.computeValuation(magasin.getId(), magasin.getEntreprise().getId());
     }
 
     @Override

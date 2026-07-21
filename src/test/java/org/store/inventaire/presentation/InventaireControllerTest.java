@@ -16,6 +16,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
+import org.store.inventaire.application.dto.InventaireCreateRequest;
 import org.store.inventaire.application.dto.InventaireFilter;
 import org.store.inventaire.application.dto.InventaireResponse;
 import org.store.inventaire.application.dto.LigneInventaireRequest;
@@ -25,6 +26,7 @@ import org.store.inventaire.application.dto.RapportInventaireResponse;
 import org.store.inventaire.application.service.IInventaireService;
 import org.store.inventaire.domain.enums.InventaireStatut;
 import org.store.inventaire.domain.enums.StatutRapport;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.produit.application.dto.ProductSummaryResponse;
 
@@ -80,6 +82,7 @@ class InventaireControllerTest {
         return new InventaireResponse(
                 inventaireId,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
+                TypeInventaire.PHYSIQUE,
                 statut, LocalDate.now(), null, null, "2026-05-16 10:00:00"
         );
     }
@@ -97,12 +100,23 @@ class InventaireControllerTest {
 
     @Test
     void should_return_201_when_inventaire_created() throws Exception {
-        when(inventaireService.create(magasinId)).thenReturn(sample(InventaireStatut.EN_COURS));
+        when(inventaireService.create(eq(magasinId), eq(TypeInventaire.PHYSIQUE))).thenReturn(sample(InventaireStatut.EN_COURS));
+        InventaireCreateRequest body = new InventaireCreateRequest(magasinId, TypeInventaire.PHYSIQUE);
 
-        mockMvc.perform(post(InventaireController.BASE_PATH).param("magasinId", magasinId.toString()))
+        mockMvc.perform(post(InventaireController.BASE_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(inventaireId.toString()))
                 .andExpect(jsonPath("$.statut").value("EN_COURS"));
+    }
+
+    @Test
+    void should_return_400_when_create_request_missing_fields() throws Exception {
+        mockMvc.perform(post(InventaireController.BASE_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

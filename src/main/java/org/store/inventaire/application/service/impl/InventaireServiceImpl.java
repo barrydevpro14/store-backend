@@ -12,7 +12,7 @@ import org.store.common.service.ValidatorService;
 import org.store.common.tools.DateHelper;
 import org.store.depense.application.dto.DepenseFilter;
 import org.store.depense.application.dto.DepenseTotalResponse;
-import org.store.depense.domain.service.DepenseDomainService;
+import org.store.depense.application.service.IDepenseService;
 import org.store.inventaire.application.dto.BilanInventaireRequest;
 import org.store.inventaire.application.dto.CloturerRequest;
 import org.store.inventaire.application.dto.InventaireFilter;
@@ -23,12 +23,13 @@ import org.store.inventaire.application.dto.LigneInventaireUpdateRequest;
 import org.store.inventaire.application.dto.RapportInventaireCommand;
 import org.store.inventaire.application.dto.RapportInventaireResponse;
 import org.store.inventaire.application.service.IInventaireService;
+import org.store.inventaire.application.service.ILigneInventaireService;
+import org.store.inventaire.application.service.IRapportInventaireService;
 import org.store.inventaire.domain.enums.InventaireStatut;
+import org.store.inventaire.domain.enums.TypeInventaire;
 import org.store.inventaire.domain.model.Inventaire;
 import org.store.inventaire.domain.model.LigneInventaire;
 import org.store.inventaire.domain.service.InventaireDomainService;
-import org.store.inventaire.domain.service.LigneInventaireDomainService;
-import org.store.inventaire.domain.service.RapportInventaireDomainService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.service.IProductFournisseurService;
@@ -37,11 +38,11 @@ import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.AjustementStockRequest;
 import org.store.stock.application.service.IAjustementStockService;
+import org.store.stock.application.service.IEntreeStockService;
+import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.TypeAjustement;
 import org.store.stock.domain.model.EntreeStock;
-import org.store.stock.domain.service.EntreeStockDomainService;
-import org.store.stock.domain.service.StockDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -50,11 +51,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Orchestre l'inventaire physique : creation, saisie ligne par PF, transitions de statut.
- * EN_COURS -> BILAN : fige les lignes et produit le RapportInventaire comptable (valorisation
- * stock theorique/physique, caisse, depenses periode, fond de roulement, benefice).
- * BILAN -> CLOTURE : applique un ajustement stock par ligne avec ecart != 0 (motif
- * INVENTAIRE_PHYSIQUE) et pose le statut CLOTURE + date de validation.
+ * Orchestre l'inventaire (PHYSIQUE ou AUTOMATIQUE) : creation, transitions de statut.
+ * PHYSIQUE : saisie ligne par PF, BILAN valorise le stock physique compte, CLOTURE applique
+ * les ajustements pour chaque ecart != 0 (motif INVENTAIRE_PHYSIQUE).
+ * AUTOMATIQUE : pas de lignes, BILAN valorise le stock via computeValuation (ecart = 0),
+ * CLOTURE est une transition directe sans ajustement stock.
  * EN_COURS|BILAN -> ANNULE : abandon sans effet stock ni rapport.
  */
 @Service
@@ -62,57 +63,57 @@ import java.util.UUID;
 public class InventaireServiceImpl implements IInventaireService {
 
     private final InventaireDomainService inventaireDomainService;
-    private final LigneInventaireDomainService ligneInventaireDomainService;
-    private final RapportInventaireDomainService rapportInventaireDomainService;
-    private final EntreeStockDomainService entreeStockDomainService;
-    private final DepenseDomainService depenseDomainService;
+    private final ILigneInventaireService ligneInventaireService;
+    private final IRapportInventaireService rapportInventaireService;
+    private final IEntreeStockService entreeStockService;
+    private final IStockService stockService;
+    private final IDepenseService depenseService;
     private final IMagasinService magasinService;
     private final IProductFournisseurService productFournisseurService;
     private final IAjustementStockService ajustementStockService;
-    private final StockDomainService stockDomainService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final IMessageSourceService messageSourceService;
 
     public InventaireServiceImpl(InventaireDomainService inventaireDomainService,
-                                 LigneInventaireDomainService ligneInventaireDomainService,
-                                 RapportInventaireDomainService rapportInventaireDomainService,
-                                 EntreeStockDomainService entreeStockDomainService,
-                                 DepenseDomainService depenseDomainService,
+                                 ILigneInventaireService ligneInventaireService,
+                                 IRapportInventaireService rapportInventaireService,
+                                 IEntreeStockService entreeStockService,
+                                 IStockService stockService,
+                                 IDepenseService depenseService,
                                  IMagasinService magasinService,
                                  IProductFournisseurService productFournisseurService,
                                  IAjustementStockService ajustementStockService,
-                                 StockDomainService stockDomainService,
                                  ICurrentUserService currentUserService,
                                  ValidatorService validatorService,
                                  IMessageSourceService messageSourceService) {
         this.inventaireDomainService = inventaireDomainService;
-        this.ligneInventaireDomainService = ligneInventaireDomainService;
-        this.rapportInventaireDomainService = rapportInventaireDomainService;
-        this.entreeStockDomainService = entreeStockDomainService;
-        this.depenseDomainService = depenseDomainService;
+        this.ligneInventaireService = ligneInventaireService;
+        this.rapportInventaireService = rapportInventaireService;
+        this.entreeStockService = entreeStockService;
+        this.stockService = stockService;
+        this.depenseService = depenseService;
         this.magasinService = magasinService;
         this.productFournisseurService = productFournisseurService;
         this.ajustementStockService = ajustementStockService;
-        this.stockDomainService = stockDomainService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.messageSourceService = messageSourceService;
     }
 
-    /** Cree un inventaire au statut EN_COURS pour le magasin demande (verifie acces du caller). Rejette si un inventaire EN_COURS ou BILAN existe deja. */
+    /** Cree un inventaire (PHYSIQUE ou AUTOMATIQUE) au statut EN_COURS. Rejette si un inventaire actif existe deja. */
     @Override
     @Transactional
-    public InventaireResponse create(UUID magasinId) {
+    public InventaireResponse create(UUID magasinId, TypeInventaire type) {
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(magasinId));
         if (inventaireDomainService.hasActiveInventaire(magasin.getId())) {
             throw new BadArgumentException("inventaire.already.open");
         }
-        Inventaire inventaire = inventaireDomainService.create(magasin, LocalDate.now());
+        Inventaire inventaire = inventaireDomainService.create(magasin, LocalDate.now(), type);
         return new InventaireResponse(inventaire);
     }
 
-    /** Saisit une ligne d'inventaire : snapshot quantite theorique (SUM lots actifs du PF) + calcul ecart. */
+    /** Saisit une ligne d'inventaire PHYSIQUE : snapshot quantite theorique (SUM lots actifs du PF) + calcul ecart. */
     @Override
     @Transactional
     public LigneInventaireResponse addLigne(UUID inventaireId, LigneInventaireRequest request) {
@@ -121,28 +122,29 @@ public class InventaireServiceImpl implements IInventaireService {
         Inventaire inventaire = inventaireDomainService.findById(inventaireId);
         ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
         ensureStatutEnCours(inventaire);
+        ensureTypePhysique(inventaire);
 
         ProductFournisseur productFournisseur = productFournisseurService.ensureBelongsToCurrentEntreprise(
                 productFournisseurService.findById(request.productFournisseurId()));
 
-        Optional<LigneInventaire> existing = ligneInventaireDomainService
+        Optional<LigneInventaire> existing = ligneInventaireService
                 .findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseur.getId());
 
         if (existing.isPresent()) {
             LigneInventaire ligne = existing.get();
             int nouvQte = ligne.getQuantiteReelle() + request.quantiteReelle();
             ligne.setPrixUnitaire(request.prixUnitaire());
-            return new LigneInventaireResponse(ligneInventaireDomainService.updateQuantiteReelle(ligne, nouvQte));
+            return new LigneInventaireResponse(ligneInventaireService.updateQuantiteReelle(ligne, nouvQte));
         }
 
         int quantiteTheorique = computeQuantiteTheorique(inventaire.getMagasin().getId(), productFournisseur.getId());
-        LigneInventaire ligne = ligneInventaireDomainService.create(
+        LigneInventaire ligne = ligneInventaireService.create(
                 inventaire, productFournisseur, quantiteTheorique, request.quantiteReelle(), request.prixUnitaire()
         );
         return new LigneInventaireResponse(ligne);
     }
 
-    /** Modifie la quantite reelle d'une ligne existante (correction de saisie). Statut EN_COURS uniquement. */
+    /** Modifie la quantite reelle d'une ligne existante (correction de saisie). Statut EN_COURS et type PHYSIQUE uniquement. */
     @Override
     @Transactional
     public LigneInventaireResponse updateLigne(UUID inventaireId, UUID ligneId, LigneInventaireUpdateRequest request) {
@@ -151,15 +153,16 @@ public class InventaireServiceImpl implements IInventaireService {
         Inventaire inventaire = inventaireDomainService.findById(inventaireId);
         ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
         ensureStatutEnCours(inventaire);
+        ensureTypePhysique(inventaire);
 
-        LigneInventaire ligne = ligneInventaireDomainService.findLigne(ligneId);
+        LigneInventaire ligne = ligneInventaireService.findLigne(ligneId);
         ensureLigneBelongsToInventaire(ligne, inventaireId);
 
-        LigneInventaire updated = ligneInventaireDomainService.updateQuantiteReelle(ligne, request.quantiteReelle());
+        LigneInventaire updated = ligneInventaireService.updateQuantiteReelle(ligne, request.quantiteReelle());
         return new LigneInventaireResponse(updated);
     }
 
-    /** Supprime une ligne (correction de saisie). Statut EN_COURS uniquement. */
+    /** Supprime une ligne (correction de saisie). Statut EN_COURS et type PHYSIQUE uniquement. */
     @Override
     @Transactional
     public void deleteLigne(UUID inventaireId, UUID ligneId) {
@@ -167,11 +170,12 @@ public class InventaireServiceImpl implements IInventaireService {
         Inventaire inventaire = inventaireDomainService.findById(inventaireId);
         ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
         ensureStatutEnCours(inventaire);
+        ensureTypePhysique(inventaire);
 
-        LigneInventaire ligne = ligneInventaireDomainService.findLigne(ligneId);
+        LigneInventaire ligne = ligneInventaireService.findLigne(ligneId);
         ensureLigneBelongsToInventaire(ligne, inventaireId);
 
-        ligneInventaireDomainService.delete(ligne);
+        ligneInventaireService.delete(ligne);
     }
 
     /** Liste paginee des lignes d'un inventaire, scopee entreprise. */
@@ -180,10 +184,10 @@ public class InventaireServiceImpl implements IInventaireService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         Inventaire inventaire = inventaireDomainService.findById(inventaireId);
         ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
-        return ligneInventaireDomainService.findResponsesByInventaireId(inventaireId, pageable);
+        return ligneInventaireService.findResponsesByInventaireId(inventaireId, pageable);
     }
 
-    /** Transition EN_COURS -> BILAN : fige les saisies et produit le rapport comptable de la periode (caisse, depenses, fond de roulement saisis). Pas d'effet stock. */
+    /** Transition EN_COURS -> BILAN. PHYSIQUE : valorise lignes physiques/theoriques. AUTOMATIQUE : valorise via computeValuation (montantPhysique = montantAutomatique, ecart = 0). */
     @Override
     @Transactional
     public InventaireResponse passerEnBilan(UUID inventaireId, BilanInventaireRequest request) {
@@ -193,14 +197,19 @@ public class InventaireServiceImpl implements IInventaireService {
         ensureBelongsToCurrentEntreprise(inventaire, currentUser.entrepriseId());
         ensureStatutEnCours(inventaire);
 
-        List<LigneInventaire> lignes = ligneInventaireDomainService.findAllByInventaireId(inventaireId);
         Inventaire updated = inventaireDomainService.transitionStatut(inventaire, InventaireStatut.BILAN);
-        produireRapport(updated, lignes, request);
+
+        if (inventaire.getType() == TypeInventaire.AUTOMATIQUE) {
+            produireRapportAutomatique(updated, request);
+        } else {
+            List<LigneInventaire> lignes = ligneInventaireService.findAllByInventaireId(inventaireId);
+            produireRapport(updated, lignes, request);
+        }
 
         return new InventaireResponse(updated);
     }
 
-    /** Transition BILAN -> CLOTURE : genere un ajustement stock pour chaque ligne avec ecart != 0, puis pose statut CLOTURE + date de validation. */
+    /** Transition BILAN -> CLOTURE. PHYSIQUE : ajustements stock par ligne ecart != 0. AUTOMATIQUE : transition directe sans ajustement. */
     @Override
     @Transactional
     public InventaireResponse cloturer(UUID inventaireId, CloturerRequest request) {
@@ -213,10 +222,12 @@ public class InventaireServiceImpl implements IInventaireService {
             inventaire.setCommentaire(request.commentaire().trim());
         }
 
-        List<LigneInventaire> lignes = ligneInventaireDomainService.findAllByInventaireId(inventaireId);
-        lignes.stream()
-                .filter(ligne -> ligne.getEcart() != 0)
-                .forEach(ligne -> appliquerAjustement(inventaire, ligne));
+        if (inventaire.getType() == TypeInventaire.PHYSIQUE) {
+            List<LigneInventaire> lignes = ligneInventaireService.findAllByInventaireId(inventaireId);
+            lignes.stream()
+                    .filter(ligne -> ligne.getEcart() != 0)
+                    .forEach(ligne -> appliquerAjustement(inventaire, ligne));
+        }
 
         Inventaire updated = inventaireDomainService.transitionStatut(inventaire, InventaireStatut.CLOTURE);
         return new InventaireResponse(updated);
@@ -262,7 +273,7 @@ public class InventaireServiceImpl implements IInventaireService {
     @Override
     public RapportInventaireResponse findRapportByInventaireId(UUID inventaireId) {
         UserPrincipal currentUser = currentUserService.getCurrent();
-        return rapportInventaireDomainService.findResponseByInventaireId(inventaireId, currentUser.entrepriseId())
+        return rapportInventaireService.findResponseByInventaireId(inventaireId, currentUser.entrepriseId())
                 .orElseThrow(() -> new EntityException("rapport.notFound", inventaireId));
     }
 
@@ -290,6 +301,13 @@ public class InventaireServiceImpl implements IInventaireService {
         }
     }
 
+    /** Rejette toute mutation de lignes sur un inventaire AUTOMATIQUE (pas de comptage physique). */
+    public void ensureTypePhysique(Inventaire inventaire) {
+        if (inventaire.getType() == TypeInventaire.AUTOMATIQUE) {
+            throw new BadArgumentException("inventaire.type.notPhysique");
+        }
+    }
+
     /** Verifie que l'inventaire est annulable (EN_COURS ou BILAN, pas CLOTURE/ANNULE). */
     public void ensureStatutEnCoursOuBilan(Inventaire inventaire) {
         InventaireStatut statut = inventaire.getStatut();
@@ -307,14 +325,14 @@ public class InventaireServiceImpl implements IInventaireService {
 
     /** Empeche la saisie d'un meme PF deux fois dans le meme inventaire. */
     public void ensureNotDuplicate(UUID inventaireId, UUID productFournisseurId) {
-        if (ligneInventaireDomainService.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)) {
+        if (ligneInventaireService.existsByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)) {
             throw new BadArgumentException("inventaire.ligne.duplicate");
         }
     }
 
     /** Stock theorique d'un PF dans un magasin = somme des quantites restantes des lots actifs (coherent F-V3). */
     public int computeQuantiteTheorique(UUID magasinId, UUID productFournisseurId) {
-        return entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, productFournisseurId).stream()
+        return entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId).stream()
                 .mapToInt(EntreeStock::getQuantiteRestante)
                 .sum();
     }
@@ -331,8 +349,8 @@ public class InventaireServiceImpl implements IInventaireService {
         TypeAjustement type = ecart > 0 ? TypeAjustement.POSITIF : TypeAjustement.NEGATIF;
 
         if (type == TypeAjustement.NEGATIF) {
-            boolean stockExists = stockDomainService
-                    .findByMagasinIdAndProductFournisseurId(inventaire.getMagasin().getId(), productFournisseur.getId())
+            boolean stockExists = stockService
+                    .findByMagasinAndProductFournisseur(inventaire.getMagasin().getId(), productFournisseur.getId())
                     .isPresent();
             if (!stockExists) return;
         }
@@ -349,6 +367,21 @@ public class InventaireServiceImpl implements IInventaireService {
         ajustementStockService.create(request);
     }
 
+    /** Produit le rapport d'un inventaire AUTOMATIQUE : montantAutomatique = valeur totale stock via computeValuation, montantPhysique = montantAutomatique (ecart = 0). */
+    public void produireRapportAutomatique(Inventaire inventaire, BilanInventaireRequest request) {
+        Magasin magasin = inventaire.getMagasin();
+        LocalDate dateFinPeriode = LocalDate.now();
+        BigDecimal montantAutomatique = stockService.computeValuation(magasin).valeurTotale();
+        BigDecimal depense = computeDepense(magasin, request.dateDebutPeriode(), dateFinPeriode);
+
+        RapportInventaireCommand command = new RapportInventaireCommand(
+                montantAutomatique, montantAutomatique,
+                request.montantCaisse(), depense,
+                request.montantRoulement(), request.dateDebutPeriode(), dateFinPeriode
+        );
+        rapportInventaireService.create(inventaire, command);
+    }
+
     /** Construit la commande de rapport (valorisation lignes + depenses periode + saisies caisse/roulement) et delegue la creation au domain service. */
     public void produireRapport(Inventaire inventaire,
                                 List<LigneInventaire> lignes,
@@ -363,7 +396,7 @@ public class InventaireServiceImpl implements IInventaireService {
                 montantAutomatique, montantPhysique, request.montantCaisse(), depense,
                 request.montantRoulement(), request.dateDebutPeriode(), dateFinPeriode
         );
-        rapportInventaireDomainService.create(inventaire, command);
+        rapportInventaireService.create(inventaire, command);
     }
 
     /** Valorise les lignes au prix saisi par l'utilisateur (fallback : prixAchat PF). */
@@ -379,12 +412,12 @@ public class InventaireServiceImpl implements IInventaireService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /** Agregre les depenses du magasin sur la periode [dateDebut, dateFin] via DepenseDomainService.computeTotal. */
+    /** Agregre les depenses du magasin sur la periode [dateDebut, dateFin]. */
     public BigDecimal computeDepense(Magasin magasin, LocalDate dateDebut, LocalDate dateFin) {
         DepenseFilter filter = new DepenseFilter(
                 magasin.getId(), null, null, null, DateHelper.format(dateDebut), DateHelper.format(dateFin), 0, 1
         );
-        DepenseTotalResponse total = depenseDomainService.computeTotal(filter, magasin.getEntreprise().getId());
+        DepenseTotalResponse total = depenseService.computeTotal(filter);
         return total != null && total.montantTotal() != null ? total.montantTotal() : BigDecimal.ZERO;
     }
 }
