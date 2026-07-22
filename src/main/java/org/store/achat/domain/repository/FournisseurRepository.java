@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.achat.application.dto.FournisseurResponse;
+import org.store.achat.application.dto.FournisseurSearchSummaryResponse;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.common.repository.BaseRepository;
 
@@ -49,6 +50,31 @@ public interface FournisseurRepository extends BaseRepository<Fournisseur> {
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);
+
+    @Query(value = """
+            SELECT new org.store.achat.application.dto.FournisseurSearchSummaryResponse(fournisseur)
+            FROM Fournisseur fournisseur
+            WHERE (fournisseur.entreprise.id = :entrepriseId OR fournisseur.entreprise IS NULL)
+              AND (:searchPattern IS NULL
+                   OR LOWER(fournisseur.nom)       LIKE :searchPattern
+                   OR LOWER(fournisseur.prenom)    LIKE :searchPattern
+                   OR LOWER(fournisseur.telephone) LIKE :searchPattern
+                   OR LOWER(fournisseur.reference) LIKE :searchPattern)
+            ORDER BY fournisseur.systeme DESC, fournisseur.nom ASC
+            """,
+           countQuery = """
+            SELECT COUNT(fournisseur)
+            FROM Fournisseur fournisseur
+            WHERE (fournisseur.entreprise.id = :entrepriseId OR fournisseur.entreprise IS NULL)
+              AND (:searchPattern IS NULL
+                   OR LOWER(fournisseur.nom)       LIKE :searchPattern
+                   OR LOWER(fournisseur.prenom)    LIKE :searchPattern
+                   OR LOWER(fournisseur.telephone) LIKE :searchPattern
+                   OR LOWER(fournisseur.reference) LIKE :searchPattern)
+            """)
+    Page<FournisseurSearchSummaryResponse> searchSummaries(@Param("entrepriseId") UUID entrepriseId,
+                                                           @Param("searchPattern") String searchPattern,
+                                                           Pageable pageable);
 
     /** Finds a fournisseur by reference scoped to a company. */
     Optional<Fournisseur> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId);

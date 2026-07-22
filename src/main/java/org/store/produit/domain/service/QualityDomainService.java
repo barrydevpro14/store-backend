@@ -1,6 +1,7 @@
 package org.store.produit.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
@@ -8,6 +9,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.repository.QualityRepository;
 
@@ -30,6 +32,10 @@ public class QualityDomainService extends GlobalService<Quality, QualityReposito
 
     public Page<QualityResponse> findResponsesByFilter(QualityFilter filter, UUID entrepriseId) {
         return repository.findResponsesByFilter(entrepriseId, filter.libelle(), LikePatternHelper.toLikePattern(filter.libelle()), filter.startDate(), filter.endDate(), filter.toPageable());
+    }
+
+    public Page<QualitySummaryResponse> searchSummaries(UUID entrepriseId, String q, Pageable pageable) {
+        return repository.searchSummaries(entrepriseId, LikePatternHelper.toLikePattern(q), pageable);
     }
 
     public Optional<Quality> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId) {

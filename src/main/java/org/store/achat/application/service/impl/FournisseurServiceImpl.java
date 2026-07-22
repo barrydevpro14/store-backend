@@ -1,11 +1,13 @@
 package org.store.achat.application.service.impl;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
+import org.store.achat.application.dto.FournisseurSearchSummaryResponse;
 import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.achat.domain.service.FournisseurDomainService;
@@ -112,6 +114,13 @@ public class FournisseurServiceImpl implements IFournisseurService {
                 currentUserService.getCurrent().entrepriseId(),
                 "fournisseur.notOwned"
         );
+    }
+
+    /** Recherche paginée de fournisseurs pour les sélecteurs (entreprise du caller + fournisseurs système). */
+    @Override
+    public Page<FournisseurSearchSummaryResponse> search(String q, Pageable pageable) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return fournisseurDomainService.searchSummaries(entrepriseId, q, pageable);
     }
 
     /** Lève `UniqueResourceException` si la référence est déjà utilisée dans l'entreprise (skippé si null/blank). */

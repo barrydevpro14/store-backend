@@ -2,6 +2,7 @@ package org.store.produit.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.IQualityService;
 
 import java.util.UUID;
@@ -31,6 +33,15 @@ public class QualityController {
 
     public QualityController(IQualityService qualityService) {
         this.qualityService = qualityService;
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('QUALITY_READ')")
+    public ResponseEntity<Page<QualitySummaryResponse>> search(
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(qualityService.search(q, PageRequest.of(page, size)));
     }
 
     @PostMapping

@@ -12,7 +12,8 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
-import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
+import org.store.produit.application.dto.ProductVariantSearchResponse;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.repository.ProductRepository;
@@ -49,15 +50,15 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         return repository.existsByReferenceAndNomAndEntrepriseId(reference, nom, entrepriseId);
     }
 
-    public Page<Product> searchByEntrepriseWithActiveLots(String searchTerm, UUID magasinId, UUID entrepriseId, Pageable pageable) {
-        return repository.searchByEntrepriseWithActiveLots(
+    public Page<ProductVariantSearchResponse> searchVariants(String searchTerm, UUID magasinId, UUID entrepriseId, Pageable pageable) {
+        return repository.searchVariantsByEntrepriseWithStock(
                 LikePatternHelper.toLikePattern(searchTerm),
                 magasinId,
                 entrepriseId,
                 pageable);
     }
 
-    public Page<ProductSearchResponse> searchResponsesByEntreprise(String searchTerm, UUID entrepriseId, Pageable pageable) {
+    public Page<ProductSelectorResponse> searchResponsesByEntreprise(String searchTerm, UUID entrepriseId, Pageable pageable) {
         return repository.searchResponsesByEntreprise(
                 LikePatternHelper.toLikePattern(searchTerm),
                 entrepriseId,

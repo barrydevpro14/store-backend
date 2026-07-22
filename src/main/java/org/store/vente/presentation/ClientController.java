@@ -2,6 +2,7 @@ package org.store.vente.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.vente.application.dto.ClientFilter;
 import org.store.vente.application.dto.ClientRequest;
 import org.store.vente.application.dto.ClientResponse;
+import org.store.vente.application.dto.ClientSummaryResponse;
 import org.store.vente.application.service.IClientService;
 
 import java.time.LocalDate;
@@ -33,6 +35,16 @@ public class ClientController {
 
     public ClientController(IClientService clientService) {
         this.clientService = clientService;
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('CLIENT_READ')")
+    public ResponseEntity<Page<ClientSummaryResponse>> search(
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(required = false) UUID magasinId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(clientService.search(q, magasinId, PageRequest.of(page, size)));
     }
 
     @PostMapping

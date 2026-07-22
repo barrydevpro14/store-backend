@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.vente.application.dto.ClientResponse;
+import org.store.vente.application.dto.ClientSummaryResponse;
 import org.store.vente.domain.model.Client;
 
 import java.time.LocalDateTime;
@@ -74,4 +75,36 @@ public interface ClientRepository extends BaseRepository<Client> {
 
     @Query("SELECT COUNT(c) FROM Client c WHERE c.magasin.entreprise.id = :entrepriseId")
     long countByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
+
+    /**
+     * Recherche paginée pour les sélecteurs. Un seul des deux scopes est actif à la fois :
+     * {@code magasinId} pour un employé ou un propriétaire avec filtre magasin,
+     * {@code entrepriseId} pour un propriétaire sans filtre magasin. L'autre param est {@code null}.
+     * Le {@code searchPattern} (préfixe {@code %…%}) est {@code null} quand la recherche est vide.
+     */
+    @Query(value = """
+            SELECT new org.store.vente.application.dto.ClientSummaryResponse(client)
+            FROM Client client
+            WHERE (:magasinId    IS NULL OR client.magasin.id            = :magasinId)
+              AND (:entrepriseId IS NULL OR client.magasin.entreprise.id = :entrepriseId)
+              AND (:searchPattern IS NULL
+                   OR LOWER(client.nom)       LIKE :searchPattern
+                   OR LOWER(client.prenom)    LIKE :searchPattern
+                   OR LOWER(client.telephone) LIKE :searchPattern)
+            ORDER BY client.nom ASC
+            """,
+           countQuery = """
+            SELECT COUNT(client)
+            FROM Client client
+            WHERE (:magasinId    IS NULL OR client.magasin.id            = :magasinId)
+              AND (:entrepriseId IS NULL OR client.magasin.entreprise.id = :entrepriseId)
+              AND (:searchPattern IS NULL
+                   OR LOWER(client.nom)       LIKE :searchPattern
+                   OR LOWER(client.prenom)    LIKE :searchPattern
+                   OR LOWER(client.telephone) LIKE :searchPattern)
+            """)
+    Page<ClientSummaryResponse> searchSummaries(@Param("magasinId")     UUID magasinId,
+                                                @Param("entrepriseId")  UUID entrepriseId,
+                                                @Param("searchPattern") String searchPattern,
+                                                Pageable pageable);
 }

@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.produit.application.dto.ProductResponse;
-import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
+import org.store.produit.application.dto.ProductVariantSearchResponse;
 import org.store.produit.domain.model.Product;
 
 import java.util.Optional;
@@ -54,34 +55,71 @@ public interface ProductRepository extends BaseRepository<Product> {
     boolean existsByReferenceAndNomAndEntrepriseId(@Param("reference") String reference, @Param("nom") String nom, @Param("entrepriseId") UUID entrepriseId);
 
     /**
-     * Recherche produits par nom OU référence avec lots actifs dans
-     * le magasin scopé. Le pattern LIKE est PRÉ-CONSTRUIT côté domain
-     * service via {@link org.store.common.tools.LikePatternHelper} —
-     * raison : Hibernate 7 sur PostgreSQL inférait parfois le type
-     * d'un `:searchTerm` bare en bytea (utilisé deux fois avec
-     * contextes ambigus), déclenchant `lower(bytea) does not exist`.
-     * Bind un String pré-formé verrouille le type sur varchar.
+     * Recherche variantes (ProductFournisseur) ayant du stock actif dans le magasin scopé.
+     * Retourne un DTO plat avec label pré-construit (sans le suffixe "(N dispo)" laissé au frontend).
+     * Pattern LIKE PRÉ-CONSTRUIT via {@link org.store.common.tools.LikePatternHelper} — workaround
+     * Hibernate 7/PostgreSQL bytea type-inference sur paramètres liés deux fois.
      */
-    @Query("""
-            SELECT DISTINCT produit FROM Product produit
+    @Query(value = """
+            SELECT new org.store.produit.application.dto.ProductVariantSearchResponse(
+                pf.id,
+                produit.id,
+                quality.id,
+                fournisseur.id,
+                CONCAT(
+                    CASE WHEN produit.reference IS NOT NULL
+                         THEN CONCAT(produit.nom, ' (', produit.reference, ')')
+                         ELSE produit.nom END,
+                    ' — ',
+                    produit.categoryProduct.libelle,
+                    ' — ',
+                    fournisseur.nom,
+                    ' — ',
+                    quality.libelle
+                ),
+                pf.prixAchat,
+                pf.prixVente,
+                SUM(entree.quantiteRestante)
+            )
+            FROM ProductFournisseur pf
+            JOIN pf.product produit
+            JOIN pf.quality quality
+            JOIN pf.fournisseur fournisseur
+            JOIN EntreeStock entree ON entree.productFournisseur = pf
             WHERE produit.entreprise.id = :entrepriseId
+              AND entree.magasin.id = :magasinId
+              AND entree.quantiteRestante > 0
+              AND entree.annulee = false
               AND (:searchPattern IS NULL
                    OR LOWER(produit.nom) LIKE :searchPattern
                    OR LOWER(produit.reference) LIKE :searchPattern
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
-              AND EXISTS (
-                  SELECT 1 FROM EntreeStock entree
-                  WHERE entree.produit = produit
-                    AND entree.magasin.id = :magasinId
-                    AND entree.quantiteRestante > 0
-                    AND entree.annulee = false
-              )
-            ORDER BY produit.nom ASC
+            GROUP BY pf.id, produit.id, produit.nom, produit.reference,
+                     produit.categoryProduct.libelle, quality.id, quality.libelle,
+                     fournisseur.id, fournisseur.nom, pf.prixAchat, pf.prixVente
+            ORDER BY produit.nom ASC, quality.libelle ASC
+            """,
+           countQuery = """
+            SELECT COUNT(DISTINCT pf.id)
+            FROM ProductFournisseur pf
+            JOIN pf.product produit
+            JOIN pf.quality quality
+            JOIN pf.fournisseur fournisseur
+            JOIN EntreeStock entree ON entree.productFournisseur = pf
+            WHERE produit.entreprise.id = :entrepriseId
+              AND entree.magasin.id = :magasinId
+              AND entree.quantiteRestante > 0
+              AND entree.annulee = false
+              AND (:searchPattern IS NULL
+                   OR LOWER(produit.nom) LIKE :searchPattern
+                   OR LOWER(produit.reference) LIKE :searchPattern
+                   OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
             """)
-    Page<Product> searchByEntrepriseWithActiveLots(@Param("searchPattern") String searchPattern,
-                                                   @Param("magasinId") UUID magasinId,
-                                                   @Param("entrepriseId") UUID entrepriseId,
-                                                   Pageable pageable);
+    Page<ProductVariantSearchResponse> searchVariantsByEntrepriseWithStock(
+            @Param("searchPattern") String searchPattern,
+            @Param("magasinId") UUID magasinId,
+            @Param("entrepriseId") UUID entrepriseId,
+            Pageable pageable);
 
     /**
      * Recherche produits par nom OU référence dans une entreprise, SANS
@@ -90,7 +128,7 @@ public interface ProductRepository extends BaseRepository<Product> {
      * la raison d'ajouter le produit.
      */
     @Query(value = """
-            SELECT new org.store.produit.application.dto.ProductSearchResponse(produit)
+            SELECT new org.store.produit.application.dto.ProductSelectorResponse(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
               AND (:searchPattern IS NULL
@@ -108,7 +146,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                    OR LOWER(produit.reference) LIKE :searchPattern
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
             """)
-    Page<ProductSearchResponse> searchResponsesByEntreprise(@Param("searchPattern") String searchPattern,
-                                                            @Param("entrepriseId") UUID entrepriseId,
-                                                            Pageable pageable);
+    Page<ProductSelectorResponse> searchResponsesByEntreprise(@Param("searchPattern") String searchPattern,
+                                                              @Param("entrepriseId") UUID entrepriseId,
+                                                              Pageable pageable);
 }

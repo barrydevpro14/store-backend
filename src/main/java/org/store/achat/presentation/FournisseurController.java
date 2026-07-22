@@ -2,6 +2,7 @@ package org.store.achat.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
+import org.store.achat.application.dto.FournisseurSearchSummaryResponse;
 import org.store.achat.application.service.IFournisseurService;
 
 import java.util.UUID;
@@ -31,6 +33,15 @@ public class FournisseurController {
 
     public FournisseurController(IFournisseurService fournisseurService) {
         this.fournisseurService = fournisseurService;
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('SUPPLIER_READ')")
+    public ResponseEntity<Page<FournisseurSearchSummaryResponse>> search(
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(fournisseurService.search(q, PageRequest.of(page, size)));
     }
 
     @PostMapping
