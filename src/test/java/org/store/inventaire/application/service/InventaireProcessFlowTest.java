@@ -34,9 +34,8 @@ import org.store.produit.domain.model.Quality;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.service.IAjustementStockService;
-import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.application.service.IStockService;
-import org.store.stock.domain.model.EntreeStock;
+import org.store.stock.domain.model.Stock;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -71,7 +70,6 @@ class InventaireProcessFlowTest {
     @Mock private InventaireDomainService inventaireDomainService;
     @Mock private ILigneInventaireService ligneInventaireService;
     @Mock private IRapportInventaireService rapportInventaireService;
-    @Mock private IEntreeStockService entreeStockService;
     @Mock private IStockService stockService;
     @Mock private IDepenseService depenseService;
     @Mock private IMagasinService magasinService;
@@ -175,8 +173,8 @@ class InventaireProcessFlowTest {
         assertThat(createResult.magasin().id()).isEqualTo(magasinId);
 
         // ── STEP 2: Add ligne (5 lots theoriques, 4 counted physically) ─────
-        EntreeStock lot = new EntreeStock();
-        lot.setQuantiteRestante(5);
+        Stock stockTheorique = new Stock();
+        stockTheorique.setQuantiteDisponible(5);
 
         LigneInventaire ligne = buildLigne(5, 4); // ecart = -1
 
@@ -184,7 +182,7 @@ class InventaireProcessFlowTest {
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)).thenReturn(Optional.empty());
-        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId)).thenReturn(List.of(lot));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.of(stockTheorique));
         when(ligneInventaireService.create(eq(inventaire), eq(productFournisseur), eq(5), eq(4), any(java.math.BigDecimal.class))).thenReturn(ligne);
 
         LigneInventaireResponse ligneResult = service.addLigne(inventaireId,

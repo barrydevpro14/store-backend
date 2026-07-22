@@ -38,11 +38,9 @@ import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.AjustementStockRequest;
 import org.store.stock.application.service.IAjustementStockService;
-import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.TypeAjustement;
-import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 
 import java.math.BigDecimal;
@@ -66,7 +64,6 @@ public class InventaireServiceImpl implements IInventaireService {
     private final InventaireDomainService inventaireDomainService;
     private final ILigneInventaireService ligneInventaireService;
     private final IRapportInventaireService rapportInventaireService;
-    private final IEntreeStockService entreeStockService;
     private final IStockService stockService;
     private final IDepenseService depenseService;
     private final IMagasinService magasinService;
@@ -79,7 +76,6 @@ public class InventaireServiceImpl implements IInventaireService {
     public InventaireServiceImpl(InventaireDomainService inventaireDomainService,
                                  ILigneInventaireService ligneInventaireService,
                                  IRapportInventaireService rapportInventaireService,
-                                 IEntreeStockService entreeStockService,
                                  IStockService stockService,
                                  IDepenseService depenseService,
                                  IMagasinService magasinService,
@@ -91,7 +87,6 @@ public class InventaireServiceImpl implements IInventaireService {
         this.inventaireDomainService = inventaireDomainService;
         this.ligneInventaireService = ligneInventaireService;
         this.rapportInventaireService = rapportInventaireService;
-        this.entreeStockService = entreeStockService;
         this.stockService = stockService;
         this.depenseService = depenseService;
         this.magasinService = magasinService;
@@ -350,11 +345,11 @@ public class InventaireServiceImpl implements IInventaireService {
         });
     }
 
-    /** Stock theorique d'un PF dans un magasin = somme des quantites restantes des lots actifs (coherent F-V3). */
+    /** Stock theorique d'un PF dans un magasin = quantiteDisponible du Stock agrege (toujours synchronise). */
     public int computeQuantiteTheorique(UUID magasinId, UUID productFournisseurId) {
-        return entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId).stream()
-                .mapToInt(EntreeStock::getQuantiteRestante)
-                .sum();
+        return stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)
+                .map(Stock::getQuantiteDisponible)
+                .orElse(0);
     }
 
     /**

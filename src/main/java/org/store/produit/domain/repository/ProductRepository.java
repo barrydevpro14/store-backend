@@ -79,37 +79,30 @@ public interface ProductRepository extends BaseRepository<Product> {
                 ),
                 pf.prixAchat,
                 pf.prixVente,
-                SUM(entree.quantiteRestante)
+                stock.quantiteDisponible
             )
             FROM ProductFournisseur pf
             JOIN pf.product produit
             JOIN pf.quality quality
             JOIN pf.fournisseur fournisseur
-            JOIN EntreeStock entree ON entree.productFournisseur = pf
+            JOIN Stock stock ON stock.productFournisseur = pf AND stock.magasin.id = :magasinId
             WHERE produit.entreprise.id = :entrepriseId
-              AND entree.magasin.id = :magasinId
-              AND entree.quantiteRestante > 0
-              AND entree.annulee = false
+              AND stock.quantiteDisponible > 0
               AND (:searchPattern IS NULL
                    OR LOWER(produit.nom) LIKE :searchPattern
                    OR LOWER(produit.reference) LIKE :searchPattern
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
-            GROUP BY pf.id, produit.id, produit.nom, produit.reference,
-                     produit.categoryProduct.libelle, quality.id, quality.libelle,
-                     fournisseur.id, fournisseur.nom, pf.prixAchat, pf.prixVente
             ORDER BY produit.nom ASC, quality.libelle ASC
             """,
            countQuery = """
-            SELECT COUNT(DISTINCT pf.id)
+            SELECT COUNT(pf.id)
             FROM ProductFournisseur pf
             JOIN pf.product produit
             JOIN pf.quality quality
             JOIN pf.fournisseur fournisseur
-            JOIN EntreeStock entree ON entree.productFournisseur = pf
+            JOIN Stock stock ON stock.productFournisseur = pf AND stock.magasin.id = :magasinId
             WHERE produit.entreprise.id = :entrepriseId
-              AND entree.magasin.id = :magasinId
-              AND entree.quantiteRestante > 0
-              AND entree.annulee = false
+              AND stock.quantiteDisponible > 0
               AND (:searchPattern IS NULL
                    OR LOWER(produit.nom) LIKE :searchPattern
                    OR LOWER(produit.reference) LIKE :searchPattern

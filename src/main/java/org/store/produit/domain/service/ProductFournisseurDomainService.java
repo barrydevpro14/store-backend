@@ -47,6 +47,10 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
         return repository.findResponsesByProductId(productId, pageable);
     }
 
+    public Page<ProductFournisseurResponse> searchByTerm(String searchPattern, UUID entrepriseId, Pageable pageable) {
+        return repository.searchResponsesByEntrepriseAndTerm(entrepriseId, searchPattern, pageable);
+    }
+
     public boolean existsByProductIdAndFournisseurIdAndQualityId(UUID productId, UUID fournisseurId, UUID qualityId) {
         return repository.existsByProductIdAndFournisseurIdAndQualityId(productId, fournisseurId, qualityId);
     }

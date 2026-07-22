@@ -13,10 +13,10 @@ public record ProductVariantSearchResponse(
         BigDecimal prixAchat,
         BigDecimal prixVente
 ) {
-    /** Constructeur appelé par JPQL — reçoit le label de base et la quantité agrégée, construit le label complet. */
+    /** Constructeur appelé par JPQL depuis Stock.quantiteDisponible (int). */
     public ProductVariantSearchResponse(UUID value, UUID productId, UUID qualityId, UUID fournisseurId,
                                         String labelBase, BigDecimal prixAchat, BigDecimal prixVente,
-                                        Long quantiteEnStock) {
+                                        Integer quantiteEnStock) {
         this(value, productId, qualityId, fournisseurId,
                 labelBase + " (" + quantiteEnStock + ")",
                 prixAchat, prixVente);

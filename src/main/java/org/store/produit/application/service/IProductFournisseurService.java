@@ -37,6 +37,12 @@ public interface IProductFournisseurService {
     Page<ProductFournisseurResponse> findAllByProductId(UUID productId, Pageable pageable);
 
     /**
+     * Recherche paginée de variantes (produit + fournisseur + qualité) de l'entreprise du caller,
+     * sans filtre de stock. Utilisé par l'inventaire pour compter toutes les variantes du catalogue.
+     */
+    Page<ProductFournisseurResponse> search(String q, Pageable pageable);
+
+    /**
      * Modification du prix d'achat, prix de vente, référence fournisseur et origine d'un lien existant. Les FK product/fournisseur/quality sont immuables.
      */
     ProductFournisseurResponse update(UUID id, ProductFournisseurRequest productFournisseurRequest);

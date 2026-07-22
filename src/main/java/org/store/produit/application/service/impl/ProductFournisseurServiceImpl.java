@@ -9,6 +9,7 @@ import org.store.achat.application.service.IFournisseurService;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.common.tools.LikePatternHelper;
 import org.store.common.tools.OwnershipHelper;
 import org.store.produit.application.dto.ProductFournisseurCreate;
 import org.store.produit.application.dto.ProductFournisseurRequest;
@@ -121,6 +122,14 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
     public Page<ProductFournisseurResponse> findAllByCurrentEntreprise(Pageable pageable) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         return productFournisseurDomainService.findResponsesByEntrepriseId(entrepriseId, pageable);
+    }
+
+    /** Recherche paginée de variantes par nom produit, référence, fournisseur ou qualité — sans filtre de stock (inventaire). */
+    @Override
+    public Page<ProductFournisseurResponse> search(String q, Pageable pageable) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        String searchPattern = (q == null || q.isBlank()) ? null : LikePatternHelper.toLikePattern(q.trim());
+        return productFournisseurDomainService.searchByTerm(searchPattern, entrepriseId, pageable);
     }
 
     /** Liste paginée des fournisseurs d'un produit (filtre métier pratique pour le frontend). */
