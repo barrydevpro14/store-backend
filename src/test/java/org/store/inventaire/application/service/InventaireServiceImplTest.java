@@ -44,11 +44,10 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.AjustementStockRequest;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IAjustementStockService;
-import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.TypeAjustement;
-import org.store.stock.domain.model.EntreeStock;
+import org.store.stock.domain.model.Stock;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -72,7 +71,6 @@ class InventaireServiceImplTest {
     @Mock private InventaireDomainService inventaireDomainService;
     @Mock private ILigneInventaireService ligneInventaireService;
     @Mock private IRapportInventaireService rapportInventaireService;
-    @Mock private IEntreeStockService entreeStockService;
     @Mock private IStockService stockService;
     @Mock private IDepenseService depenseService;
     @Mock private IMagasinService magasinService;
@@ -138,11 +136,10 @@ class InventaireServiceImplTest {
                 "owner", null, null, "OWNER", List.of("STOCK_INVENTORY"));
     }
 
-    private EntreeStock lot(int quantiteRestante) {
-        EntreeStock lot = new EntreeStock();
-        lot.setId(UUID.randomUUID());
-        lot.setQuantiteRestante(quantiteRestante);
-        return lot;
+    private Stock stockWith(int quantiteDisponible) {
+        Stock stock = new Stock();
+        stock.setQuantiteDisponible(quantiteDisponible);
+        return stock;
     }
 
     private LigneInventaire ligne(int qteTheorique, int qteReelle) {
@@ -216,8 +213,8 @@ class InventaireServiceImplTest {
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
                 .thenReturn(Optional.empty());
-        when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseurId))
-                .thenReturn(List.of(lot(5), lot(5)));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId))
+                .thenReturn(Optional.of(stockWith(10)));
         when(ligneInventaireService.create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix)))
                 .thenReturn(ligne(10, 8));
 
@@ -460,11 +457,8 @@ class InventaireServiceImplTest {
         ligneOk.setQuantiteReelle(5);
         ligneOk.setEcart(0);
 
-        EntreeStock lot1 = lot(8);
-        EntreeStock lot2 = lot(5);
-
-        when(entreeStockService.findAvailableLotsForFifo(magasinId, pfId1)).thenReturn(List.of(lot1));
-        when(entreeStockService.findAvailableLotsForFifo(magasinId, pfId2)).thenReturn(List.of(lot2));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId1)).thenReturn(Optional.of(stockWith(8)));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId2)).thenReturn(Optional.of(stockWith(5)));
 
         service.reconcilierQuantitesTheoriques(inventaireEnCours, List.of(ligneStale, ligneOk));
 
