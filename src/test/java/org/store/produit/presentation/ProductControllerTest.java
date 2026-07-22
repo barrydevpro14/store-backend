@@ -139,8 +139,7 @@ class ProductControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].value").value(pfId.toString()))
                 .andExpect(jsonPath("$.content[0].productId").value(productId.toString()))
-                .andExpect(jsonPath("$.content[0].label").value("Clou 10mm (CL-10) — Visserie — DistribA — Neuf"))
-                .andExpect(jsonPath("$.content[0].quantiteEnStock").value(5));
+                .andExpect(jsonPath("$.content[0].label").value("Clou 10mm (CL-10) — Visserie — DistribA — Neuf (5)"));
     }
 
     @Test
