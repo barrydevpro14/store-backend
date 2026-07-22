@@ -1,6 +1,7 @@
 package org.store.vente.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.DateHelper;
@@ -9,6 +10,7 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.vente.application.dto.ClientFilter;
 import org.store.vente.application.dto.ClientRequest;
 import org.store.vente.application.dto.ClientResponse;
+import org.store.vente.application.dto.ClientSummaryResponse;
 import org.store.vente.domain.model.Client;
 import org.store.vente.domain.repository.ClientRepository;
 
@@ -45,6 +47,16 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
 
     public long countByEntrepriseId(UUID entrepriseId) {
         return repository.countByEntrepriseId(entrepriseId);
+    }
+
+    /** Recherche paginée pour sélecteur, scopée magasin. */
+    public Page<ClientSummaryResponse> searchSummariesByMagasinId(UUID magasinId, String q, Pageable pageable) {
+        return repository.searchSummaries(magasinId, null, LikePatternHelper.toLikePattern(q), pageable);
+    }
+
+    /** Recherche paginée pour sélecteur, scopée entreprise. */
+    public Page<ClientSummaryResponse> searchSummariesByEntrepriseId(UUID entrepriseId, String q, Pageable pageable) {
+        return repository.searchSummaries(null, entrepriseId, LikePatternHelper.toLikePattern(q), pageable);
     }
 
     public Page<ClientResponse> findResponsesByEntrepriseId(UUID entrepriseId, ClientFilter filter) {

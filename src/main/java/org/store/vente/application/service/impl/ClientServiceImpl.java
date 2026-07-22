@@ -1,6 +1,7 @@
 package org.store.vente.application.service.impl;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.ForbiddenException;
@@ -12,6 +13,7 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.ClientFilter;
 import org.store.vente.application.dto.ClientRequest;
 import org.store.vente.application.dto.ClientResponse;
+import org.store.vente.application.dto.ClientSummaryResponse;
 import org.store.vente.application.service.IClientService;
 import org.store.vente.domain.model.Client;
 import org.store.users.domain.service.UtilisateurDomainService;
@@ -116,6 +118,22 @@ public class ClientServiceImpl implements IClientService {
     public void delete(UUID id) {
         Client client = ensureAccessibleByCurrentUser(clientDomainService.findById(id));
         clientDomainService.delete(client);
+    }
+
+    /** Recherche paginée pour les sélecteurs : même scoping que {@link #findAllForCurrentUser}. */
+    @Override
+    public Page<ClientSummaryResponse> search(String q, UUID magasinId, Pageable pageable) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+
+        if (currentUser.magasinId() != null) {
+            return clientDomainService.searchSummariesByMagasinId(currentUser.magasinId(), q, pageable);
+        }
+
+        if (magasinId != null) {
+            return clientDomainService.searchSummariesByMagasinId(magasinId, q, pageable);
+        }
+
+        return clientDomainService.searchSummariesByEntrepriseId(currentUser.entrepriseId(), q, pageable);
     }
 
     /**
