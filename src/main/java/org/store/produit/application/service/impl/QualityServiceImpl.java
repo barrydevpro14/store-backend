@@ -1,6 +1,7 @@
 package org.store.produit.application.service.impl;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.UniqueResourceException;
@@ -10,6 +11,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.application.service.IQualityService;
 import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.QualityDomainService;
@@ -111,5 +113,12 @@ public class QualityServiceImpl implements IQualityService {
     public Optional<Quality> findByLibelle(String libelle) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         return qualityDomainService.findByLibelleAndEntrepriseId(libelle, entrepriseId);
+    }
+
+    /** Recherche paginée de qualités pour les sélecteurs de l'entreprise du caller. */
+    @Override
+    public Page<QualitySummaryResponse> search(String q, Pageable pageable) {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        return qualityDomainService.searchSummaries(entrepriseId, q, pageable);
     }
 }

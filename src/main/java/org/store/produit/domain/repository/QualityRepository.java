@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.domain.model.Quality;
 
 import java.util.Optional;
@@ -37,6 +38,23 @@ public interface QualityRepository extends BaseRepository<Quality> {
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);
+
+    @Query(value = """
+            SELECT new org.store.produit.application.dto.QualitySummaryResponse(quality)
+            FROM Quality quality
+            WHERE quality.entreprise.id = :entrepriseId
+              AND (:searchPattern IS NULL OR LOWER(quality.libelle) LIKE :searchPattern)
+            ORDER BY quality.libelle ASC
+            """,
+           countQuery = """
+            SELECT COUNT(quality)
+            FROM Quality quality
+            WHERE quality.entreprise.id = :entrepriseId
+              AND (:searchPattern IS NULL OR LOWER(quality.libelle) LIKE :searchPattern)
+            """)
+    Page<QualitySummaryResponse> searchSummaries(@Param("entrepriseId") UUID entrepriseId,
+                                                 @Param("searchPattern") String searchPattern,
+                                                 Pageable pageable);
 
     Optional<Quality> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
 

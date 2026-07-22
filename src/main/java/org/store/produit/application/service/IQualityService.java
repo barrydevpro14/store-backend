@@ -1,9 +1,11 @@
 package org.store.produit.application.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.store.produit.application.dto.QualityFilter;
 import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.dto.QualityResponse;
+import org.store.produit.application.dto.QualitySummaryResponse;
 import org.store.produit.domain.model.Quality;
 
 import java.util.Optional;
@@ -55,4 +57,9 @@ public interface IQualityService {
      * Recherche une qualité par son libellé pour l'entreprise du caller.
      */
     Optional<Quality> findByLibelle(String libelle);
+
+    /**
+     * Recherche paginée de qualités pour les sélecteurs.
+     */
+    Page<QualitySummaryResponse> search(String q, Pageable pageable);
 }
