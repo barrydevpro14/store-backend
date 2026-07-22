@@ -23,8 +23,8 @@ import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
-import org.store.produit.application.dto.ProductSearchResponse;
 import org.store.produit.application.dto.ProductSelectorResponse;
+import org.store.produit.application.dto.ProductVariantSearchResponse;
 import org.store.produit.application.service.IProductSearchService;
 import org.store.produit.application.service.IProductService;
 
@@ -65,10 +65,10 @@ public class ProductController {
 
     @GetMapping("/search")
     @PreAuthorize("hasAuthority('PRODUCT_READ')")
-    public ResponseEntity<Page<ProductSearchResponse>> search(@RequestParam(value = "q", required = false) String searchTerm,
-                                                              @RequestParam(required = false) UUID magasinId,
-                                                              @RequestParam(defaultValue = "0") int page,
-                                                              @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<ProductVariantSearchResponse>> search(@RequestParam(value = "q", required = false) String searchTerm,
+                                                                     @RequestParam(required = false) UUID magasinId,
+                                                                     @RequestParam(defaultValue = "0") int page,
+                                                                     @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(productSearchService.search(searchTerm, magasinId, PageRequest.of(page, size)));
     }
 

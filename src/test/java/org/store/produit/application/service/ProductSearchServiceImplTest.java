@@ -10,23 +10,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.store.achat.domain.model.Fournisseur;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
-import org.store.produit.application.dto.ProductSearchResponse;
 import org.store.produit.application.dto.ProductSelectorResponse;
+import org.store.produit.application.dto.ProductVariantSearchResponse;
 import org.store.produit.application.service.impl.ProductSearchServiceImpl;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
-import org.store.produit.domain.model.ProductFournisseur;
-import org.store.produit.domain.model.Quality;
 import org.store.produit.domain.service.ProductDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
-import org.store.stock.application.service.IEntreeStockService;
-import org.store.stock.domain.model.EntreeStock;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -44,7 +39,6 @@ class ProductSearchServiceImplTest {
 
     @Mock private ProductDomainService productDomainService;
     @Mock private IMagasinService magasinService;
-    @Mock private IEntreeStockService entreeStockService;
     @Mock private ICurrentUserService currentUserService;
 
     @InjectMocks
@@ -96,62 +90,41 @@ class ProductSearchServiceImplTest {
         return product;
     }
 
+    private ProductVariantSearchResponse sampleVariant() {
+        return new ProductVariantSearchResponse(
+                UUID.randomUUID(), productId, UUID.randomUUID(), UUID.randomUUID(),
+                "Clou 10mm (CL-10) — Visserie — DistribA — Neuf (5)",
+                new BigDecimal("8.00"), new BigDecimal("12.00"));
+    }
+
+    // ── search ──────────────────────────────────────────────────────────────
+
     @Test
     void search_should_throw_when_proprietaire_and_magasinId_absent() {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
-        PageRequest pageable = PageRequest.of(0, 10);
-
-        assertThatThrownBy(() -> service.search("clou", null, pageable))
+        assertThatThrownBy(() -> service.search("clou", null, PageRequest.of(0, 10)))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(productDomainService, never()).searchByEntrepriseWithActiveLots(any(), any(), any(), any());
+        verify(productDomainService, never()).searchVariants(any(), any(), any(), any());
     }
 
     @Test
     void search_should_use_employee_magasin_when_param_absent() {
         Pageable pageable = PageRequest.of(0, 10);
-        Product product = sampleProduct();
+        ProductVariantSearchResponse variant = sampleVariant();
 
         when(currentUserService.getCurrent()).thenReturn(vendeur(magasinId));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productDomainService.searchByEntrepriseWithActiveLots("clou", magasinId, entrepriseId, pageable))
-                .thenReturn(new PageImpl<>(List.of(product), pageable, 1));
-        when(entreeStockService.findActiveLotsByMagasinAndProductIds(magasinId, List.of(productId)))
-                .thenReturn(List.of(buildLot(product, BigDecimal.valueOf(15), 8)));
+        when(productDomainService.searchVariants("clou", magasinId, entrepriseId, pageable))
+                .thenReturn(new PageImpl<>(List.of(variant), pageable, 1));
 
-        Page<ProductSearchResponse> result = service.search("clou", null, pageable);
+        Page<ProductVariantSearchResponse> result = service.search("clou", null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        ProductSearchResponse productResponse = result.getContent().get(0);
-        assertThat(productResponse.quantiteEnStock()).isEqualTo(8);
-        assertThat(productResponse.productFournisseurs()).hasSize(1);
-        assertThat(productResponse.productFournisseurs().get(0).prixVente()).isEqualByComparingTo("15");
-    }
-
-    @Test
-    void search_should_aggregate_lots_by_product_fournisseur() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Product product = sampleProduct();
-
-        EntreeStock lotChineFirst = buildLot(product, BigDecimal.valueOf(10), 5);
-        EntreeStock lotChineSecond = buildLotForPf(product, lotChineFirst.getProductFournisseur(), 7);
-        EntreeStock lotMaroc = buildLot(product, BigDecimal.valueOf(15), 3);
-
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productDomainService.searchByEntrepriseWithActiveLots("clou", magasinId, entrepriseId, pageable))
-                .thenReturn(new PageImpl<>(List.of(product), pageable, 1));
-        when(entreeStockService.findActiveLotsByMagasinAndProductIds(magasinId, List.of(productId)))
-                .thenReturn(List.of(lotChineFirst, lotChineSecond, lotMaroc));
-
-        Page<ProductSearchResponse> result = service.search("clou", magasinId, pageable);
-
-        ProductSearchResponse productResponse = result.getContent().get(0);
-        assertThat(productResponse.quantiteEnStock()).isEqualTo(15);
-        assertThat(productResponse.productFournisseurs()).hasSize(2);
+        assertThat(result.getContent().get(0).productId()).isEqualTo(productId);
+        assertThat(result.getContent().get(0).label()).endsWith("(5)");
     }
 
     @Test
@@ -161,22 +134,21 @@ class ProductSearchServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(productDomainService.searchByEntrepriseWithActiveLots("absent", magasinId, entrepriseId, pageable))
+        when(productDomainService.searchVariants("absent", magasinId, entrepriseId, pageable))
                 .thenReturn(Page.empty(pageable));
 
-        Page<ProductSearchResponse> result = service.search("absent", magasinId, pageable);
+        Page<ProductVariantSearchResponse> result = service.search("absent", magasinId, pageable);
 
         assertThat(result.getContent()).isEmpty();
-        verify(entreeStockService, never()).findActiveLotsByMagasinAndProductIds(any(), any());
     }
+
+    // ── searchAll ────────────────────────────────────────────────────────────
 
     @Test
     void searchAll_should_throw_when_proprietaire_and_magasinId_absent() {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
-        PageRequest pageable = PageRequest.of(0, 10);
-
-        assertThatThrownBy(() -> service.searchAll("clou", null, pageable))
+        assertThatThrownBy(() -> service.searchAll("clou", null, PageRequest.of(0, 10)))
                 .isInstanceOf(BadArgumentException.class);
 
         verify(productDomainService, never()).searchResponsesByEntreprise(any(), any(), any());
@@ -197,12 +169,11 @@ class ProductSearchServiceImplTest {
         Page<ProductSelectorResponse> result = service.searchAll("clou", null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        ProductSelectorResponse productResponse = result.getContent().get(0);
-        assertThat(productResponse.id()).isEqualTo(productId);
-        assertThat(productResponse.nom()).isEqualTo(product.getNom());
-        assertThat(productResponse.reference()).isEqualTo(product.getReference());
+        assertThat(result.getContent().get(0).id()).isEqualTo(productId);
+        assertThat(result.getContent().get(0).nom()).isEqualTo(product.getNom());
+        assertThat(result.getContent().get(0).reference()).isEqualTo(product.getReference());
 
-        verify(entreeStockService, never()).findActiveLotsByMagasinAndProductIds(any(), any());
+        verify(productDomainService, never()).searchVariants(any(), any(), any(), any());
     }
 
     @Test
@@ -218,34 +189,5 @@ class ProductSearchServiceImplTest {
         Page<ProductSelectorResponse> result = service.searchAll("absent", magasinId, pageable);
 
         assertThat(result.getContent()).isEmpty();
-    }
-
-    private EntreeStock buildLot(Product product, BigDecimal prixVente, int quantiteRestante) {
-        Fournisseur fournisseur = new Fournisseur();
-        fournisseur.setId(UUID.randomUUID());
-        fournisseur.setNom("Fournisseur " + UUID.randomUUID());
-
-        Quality quality = new Quality();
-        quality.setId(UUID.randomUUID());
-        quality.setLibelle("Original");
-
-        ProductFournisseur productFournisseur = new ProductFournisseur();
-        productFournisseur.setId(UUID.randomUUID());
-        productFournisseur.setProduct(product);
-        productFournisseur.setFournisseur(fournisseur);
-        productFournisseur.setQuality(quality);
-        productFournisseur.setPrixAchat(prixVente.subtract(BigDecimal.ONE));
-        productFournisseur.setPrixVente(prixVente);
-
-        return buildLotForPf(product, productFournisseur, quantiteRestante);
-    }
-
-    private EntreeStock buildLotForPf(Product product, ProductFournisseur productFournisseur, int quantiteRestante) {
-        EntreeStock lot = new EntreeStock();
-        lot.setId(UUID.randomUUID());
-        lot.setProduit(product);
-        lot.setProductFournisseur(productFournisseur);
-        lot.setQuantiteRestante(quantiteRestante);
-        return lot;
     }
 }

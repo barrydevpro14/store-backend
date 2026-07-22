@@ -2,8 +2,8 @@ package org.store.produit.application.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.store.produit.application.dto.ProductSearchResponse;
 import org.store.produit.application.dto.ProductSelectorResponse;
+import org.store.produit.application.dto.ProductVariantSearchResponse;
 
 import org.store.security.application.dto.UserPrincipal;
 
@@ -12,11 +12,10 @@ import java.util.UUID;
 public interface IProductSearchService {
 
     /**
-     * Recherche produits disponibles (avec au moins un lot actif) dans un magasin, par nom ou référence (partial, insensible à la casse).
-     * Le magasinId est obligatoire pour un OWNER et implicite (UserPrincipal.magasinId) pour un EMPLOYE.
-     * Retourne 1 ligne par produit avec sous-liste des PF actifs (quantité + prix de vente courant).
+     * Recherche variantes (ProductFournisseur) avec stock actif dans le magasin, par nom/référence/catégorie.
+     * Retourne 1 ligne par variante avec label pré-construit et quantiteEnStock agrégée.
      */
-    Page<ProductSearchResponse> search(String searchTerm, UUID magasinId, Pageable pageable);
+    Page<ProductVariantSearchResponse> search(String searchTerm, UUID magasinId, Pageable pageable);
 
     /**
      * Recherche produits de l'entreprise SANS filtre de stock, pour les contextes d'ajout de stock (achat, entrée initiale).
