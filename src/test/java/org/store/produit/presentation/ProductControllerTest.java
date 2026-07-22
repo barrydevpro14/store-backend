@@ -1,7 +1,6 @@
 package org.store.produit.presentation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -23,6 +22,7 @@ import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
 import org.store.produit.application.service.IProductSearchService;
 import org.store.produit.application.service.IProductService;
 
@@ -139,9 +139,9 @@ class ProductControllerTest {
     @Test
     void should_return_200_when_search_all() throws Exception {
         UUID magasinId = UUID.randomUUID();
-        ProductSearchResponse searchResponse = new ProductSearchResponse(productId, "Clou 10mm", "CL-10", null,
-                new CategoryProductSummaryResponse(categoryId, "Visserie"), null, null, List.of());
-        Page<ProductSearchResponse> page = new PageImpl<>(List.of(searchResponse), PageRequest.of(0, 10), 1);
+        ProductSelectorResponse searchResponse = new ProductSelectorResponse(productId, "Clou 10mm", "CL-10",
+                new CategoryProductSummaryResponse(categoryId, "Visserie"));
+        Page<ProductSelectorResponse> page = new PageImpl<>(List.of(searchResponse), PageRequest.of(0, 10), 1);
         when(productSearchService.searchAll(eq("clou"), eq(magasinId), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get(ProductController.BASE_PATH + "/search/all")
@@ -149,8 +149,9 @@ class ProductControllerTest {
                         .param("magasinId", magasinId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(productId.toString()))
-                .andExpect(jsonPath("$.content[0].quantiteEnStock").value(Matchers.nullValue()))
-                .andExpect(jsonPath("$.content[0].productFournisseurs").isArray());
+                .andExpect(jsonPath("$.content[0].nom").value("Clou 10mm"))
+                .andExpect(jsonPath("$.content[0].reference").value("CL-10"))
+                .andExpect(jsonPath("$.content[0].category.libelle").value("Visserie"));
     }
 
     @Test

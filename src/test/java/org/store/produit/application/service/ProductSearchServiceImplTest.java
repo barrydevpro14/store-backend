@@ -16,6 +16,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
 import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
 import org.store.produit.application.service.impl.ProductSearchServiceImpl;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
@@ -185,7 +186,7 @@ class ProductSearchServiceImplTest {
     void searchAll_should_return_products_without_stock_check() {
         Pageable pageable = PageRequest.of(0, 10);
         Product product = sampleProduct();
-        ProductSearchResponse expected = new ProductSearchResponse(product);
+        ProductSelectorResponse expected = new ProductSelectorResponse(product);
 
         when(currentUserService.getCurrent()).thenReturn(vendeur(magasinId));
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -193,13 +194,13 @@ class ProductSearchServiceImplTest {
         when(productDomainService.searchResponsesByEntreprise("clou", entrepriseId, pageable))
                 .thenReturn(new PageImpl<>(List.of(expected), pageable, 1));
 
-        Page<ProductSearchResponse> result = service.searchAll("clou", null, pageable);
+        Page<ProductSelectorResponse> result = service.searchAll("clou", null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        ProductSearchResponse productResponse = result.getContent().get(0);
+        ProductSelectorResponse productResponse = result.getContent().get(0);
         assertThat(productResponse.id()).isEqualTo(productId);
-        assertThat(productResponse.quantiteEnStock()).isNull();
-        assertThat(productResponse.productFournisseurs()).isEmpty();
+        assertThat(productResponse.nom()).isEqualTo(product.getNom());
+        assertThat(productResponse.reference()).isEqualTo(product.getReference());
 
         verify(entreeStockService, never()).findActiveLotsByMagasinAndProductIds(any(), any());
     }
@@ -214,7 +215,7 @@ class ProductSearchServiceImplTest {
         when(productDomainService.searchResponsesByEntreprise("absent", entrepriseId, pageable))
                 .thenReturn(Page.empty(pageable));
 
-        Page<ProductSearchResponse> result = service.searchAll("absent", magasinId, pageable);
+        Page<ProductSelectorResponse> result = service.searchAll("absent", magasinId, pageable);
 
         assertThat(result.getContent()).isEmpty();
     }
