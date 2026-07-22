@@ -46,6 +46,13 @@ public class ProductFournisseurController {
         return ResponseEntity.ok(productFournisseurService.findOrCreate(request));
     }
 
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('SUPPLIER_READ')")
+    public ResponseEntity<Page<ProductFournisseurResponse>> search(@RequestParam(required = false) String q,
+                                                                   Pageable pageable) {
+        return ResponseEntity.ok(productFournisseurService.search(q, pageable));
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('SUPPLIER_READ')")
     public ResponseEntity<Page<ProductFournisseurResponse>> list(@RequestParam(required = false) UUID productId,
