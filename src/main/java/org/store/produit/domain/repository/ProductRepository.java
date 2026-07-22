@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
 import org.store.produit.domain.model.Product;
 
 import java.util.Optional;
@@ -90,7 +91,7 @@ public interface ProductRepository extends BaseRepository<Product> {
      * la raison d'ajouter le produit.
      */
     @Query(value = """
-            SELECT new org.store.produit.application.dto.ProductSearchResponse(produit)
+            SELECT new org.store.produit.application.dto.ProductSelectorResponse(produit)
             FROM Product produit
             WHERE produit.entreprise.id = :entrepriseId
               AND (:searchPattern IS NULL
@@ -108,7 +109,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                    OR LOWER(produit.reference) LIKE :searchPattern
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
             """)
-    Page<ProductSearchResponse> searchResponsesByEntreprise(@Param("searchPattern") String searchPattern,
-                                                            @Param("entrepriseId") UUID entrepriseId,
-                                                            Pageable pageable);
+    Page<ProductSelectorResponse> searchResponsesByEntreprise(@Param("searchPattern") String searchPattern,
+                                                              @Param("entrepriseId") UUID entrepriseId,
+                                                              Pageable pageable);
 }

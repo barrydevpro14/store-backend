@@ -1,10 +1,12 @@
 package org.store.achat.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.achat.application.dto.FournisseurFilter;
 import org.store.achat.application.dto.FournisseurRequest;
 import org.store.achat.application.dto.FournisseurResponse;
+import org.store.achat.application.dto.FournisseurSearchSummaryResponse;
 import org.store.achat.domain.model.Fournisseur;
 import org.store.achat.domain.repository.FournisseurRepository;
 import org.store.common.service.GlobalService;
@@ -54,6 +56,10 @@ public class FournisseurDomainService extends GlobalService<Fournisseur, Fournis
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());
         return responsesByFilter;
+    }
+
+    public Page<FournisseurSearchSummaryResponse> searchSummaries(UUID entrepriseId, String q, Pageable pageable) {
+        return repository.searchSummaries(entrepriseId, LikePatternHelper.toLikePattern(q), pageable);
     }
 
     public Optional<Fournisseur> findByReferenceAndEntrepriseId(String reference, UUID entrepriseId) {

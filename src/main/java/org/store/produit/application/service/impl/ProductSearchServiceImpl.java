@@ -8,6 +8,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.produit.application.dto.ProductFournisseurStockResponse;
 import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
 import org.store.produit.application.service.IProductSearchService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
@@ -68,9 +69,9 @@ public class ProductSearchServiceImpl implements IProductSearchService {
         return productsPage.map(product -> buildSearchResponse(product, lotsByProductId.getOrDefault(product.getId(), List.of())));
     }
 
-    /** Recherche produits de l'entreprise sans filtre de stock, pour les contextes d'ajout de stock : vérifie l'accès au magasin puis retourne les produits sans info de stock ni PF. */
+    /** Recherche produits de l'entreprise sans filtre de stock : vérifie l'accès au magasin puis retourne les produits (id, nom, référence, catégorie). */
     @Override
-    public Page<ProductSearchResponse> searchAll(String searchTerm, UUID magasinId, Pageable pageable) {
+    public Page<ProductSelectorResponse> searchAll(String searchTerm, UUID magasinId, Pageable pageable) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         UUID effectiveMagasinId = resolveSearchMagasinId(currentUser, magasinId);
         magasinService.ensureAccessibleByCurrentUser(magasinService.findById(effectiveMagasinId));

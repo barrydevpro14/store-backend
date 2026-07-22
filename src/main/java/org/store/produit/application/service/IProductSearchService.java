@@ -3,6 +3,7 @@ package org.store.produit.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.store.produit.application.dto.ProductSearchResponse;
+import org.store.produit.application.dto.ProductSelectorResponse;
 
 import org.store.security.application.dto.UserPrincipal;
 
@@ -20,9 +21,9 @@ public interface IProductSearchService {
     /**
      * Recherche produits de l'entreprise SANS filtre de stock, pour les contextes d'ajout de stock (achat, entrée initiale).
      * Le magasinId sert uniquement au contrôle d'accès (obligatoire pour un OWNER, implicite pour un EMPLOYE) : la liste de produits reste entreprise-wide.
-     * Retourne 1 ligne par produit avec sous-liste des PF existants (sans quantité en stock).
+     * Retourne 1 ligne par produit : id, nom, référence, catégorie — sans info de stock ni fournisseur.
      */
-    Page<ProductSearchResponse> searchAll(String searchTerm, UUID magasinId, Pageable pageable);
+    Page<ProductSelectorResponse> searchAll(String searchTerm, UUID magasinId, Pageable pageable);
 
     /** Résout le magasinId effectif : paramètre fourni, ou magasin de l'employé connecté. */
     UUID resolveSearchMagasinId(UserPrincipal currentUser, UUID requestedMagasinId);
