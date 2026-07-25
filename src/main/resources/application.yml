@@ -67,6 +67,8 @@ upload:
 
 subscription:
   trial-days: ${SUBSCRIPTION_TRIAL_DAYS:30}
+  jours-avant-echeance: ${SUBSCRIPTION_JOURS_AVANT_ECHEANCE:10}
+  jours-suspension: ${SUBSCRIPTION_JOURS_SUSPENSION:0}
 
 sale:
   cancel-window-hours: ${SALE_CANCEL_WINDOW_HOURS:72}

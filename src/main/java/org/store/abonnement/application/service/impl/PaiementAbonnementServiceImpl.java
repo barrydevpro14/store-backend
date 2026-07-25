@@ -292,6 +292,16 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return paiementAbonnementDomainService.findFacturesAbonnementDues(dates);
     }
 
+    @Override
+    public java.util.List<PaiementAbonnement> findOverdueInvoices(java.time.LocalDate cutoffDate) {
+        return paiementAbonnementDomainService.findOverdueInvoices(cutoffDate);
+    }
+
+    @Override
+    public PaiementAbonnement markAsEnRetard(PaiementAbonnement paiement) {
+        return paiementAbonnementDomainService.markAsEnRetard(paiement);
+    }
+
     public void ensurePaiementAccessibleByCaller(PaiementAbonnement paiement) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         if (currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {

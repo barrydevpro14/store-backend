@@ -70,6 +70,12 @@ public interface IPaiementAbonnementService {
     /** Finds FACTURE_GENEREE invoices due on any of the given alert dates (daily scheduler use). */
     List<PaiementAbonnement> findFacturesAbonnementDues(List<LocalDate> dates);
 
+    /** Finds invoices overdue as of cutoffDate (FACTURE_GENEREE or EN_ATTENTE_VALIDATION with dateEcheance < cutoffDate). */
+    List<PaiementAbonnement> findOverdueInvoices(LocalDate cutoffDate);
+
+    /** Marks the invoice EN_RETARD (suspension scheduler use). */
+    PaiementAbonnement markAsEnRetard(PaiementAbonnement paiement);
+
     /** Throws ForbiddenException when the caller is not ADMIN and does not own the paiement's entreprise. */
     void ensurePaiementAccessibleByCaller(PaiementAbonnement paiement);
 

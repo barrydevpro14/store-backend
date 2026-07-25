@@ -81,4 +81,10 @@ public interface IAbonnementService {
     AbonnementResponse cancelByAdmin(UUID abonnementId);
 
     List<Abonnement> findExpiringOnDates(List<LocalDate> dates);
+
+    /** Finds active/trial subscriptions whose dateFin equals targetDate (billing scheduler use). */
+    List<Abonnement> findAbonnementsToFacture(LocalDate targetDate);
+
+    /** Marks the abonnement SUSPENDU (non-payment suspension scheduler use). */
+    Abonnement suspend(Abonnement abonnement);
 }
