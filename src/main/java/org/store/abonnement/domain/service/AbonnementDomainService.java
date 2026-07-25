@@ -1,6 +1,7 @@
 package org.store.abonnement.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
@@ -66,12 +67,22 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
 
     /**
      * Returns the caller's "current" subscription: ACTIF if a paid one exists, otherwise a TRIAL
-     * still in its window. Expired trials and EN_ATTENTE rows are ignored. Single-row return is
-     * guaranteed by the partial unique index {@code abonnement_one_actif_per_entreprise} (V14) +
-     * {@link #activate} which deactivates any sibling actif=true row first.
+     * still in its window. Expired trials and EN_ATTENTE rows are ignored.
+     * Pageable.ofSize(1) ensures the ORDER BY (ACTIF before TRIAL) is applied at DB level so
+     * ACTIF is always returned first, and a data anomaly never causes NonUniqueResultException.
      */
     public Optional<Abonnement> findCurrent(UUID entrepriseId) {
-        return repository.findCurrentByEntreprise(entrepriseId, LocalDate.now());
+        return repository.findCurrentByEntreprise(entrepriseId, LocalDate.now(), Pageable.ofSize(1))
+                         .stream().findFirst();
+    }
+
+    /** Expires the TRIAL subscription for the entreprise if one exists (called on first payment activation). */
+    public void expireTrialIfAny(UUID entrepriseId) {
+        repository.findFirstByEntrepriseAndStatut(entrepriseId, AbonnementStatut.TRIAL)
+                  .ifPresent(trial -> {
+                      trial.setStatut(AbonnementStatut.EXPIRE);
+                      save(trial);
+                  });
     }
 
     public Optional<LocalDate> findLatestActifDateFin(UUID entrepriseId, UUID excludeAbonnementId) {
