@@ -24,4 +24,7 @@ public class UtilisationCoupon extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Abonnement abonnement;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private PaiementAbonnement paiementAbonnement;
 }

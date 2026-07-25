@@ -17,7 +17,6 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.UniqueResourceException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +47,6 @@ class CouponServiceImplTest {
         return new CouponRequest(
                 "PROMO10", "Réduction 10%", "POURCENTAGE",
                 new BigDecimal("10"), 100,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
                 true, null);
     }
 
@@ -60,8 +58,6 @@ class CouponServiceImplTest {
         coupon.setReductionType(ReductionType.POURCENTAGE);
         coupon.setValeurReduction(new BigDecimal("10"));
         coupon.setNombreUtilisationsMax(100);
-        coupon.setDateDebut(LocalDate.of(2026, 1, 1));
-        coupon.setDateFin(LocalDate.of(2026, 12, 31));
         coupon.setActif(true);
         return coupon;
     }
@@ -89,7 +85,6 @@ class CouponServiceImplTest {
         CouponRequest request = new CouponRequest(
                 "PROMO_STARTER", null, "POURCENTAGE",
                 new BigDecimal("10"), 10,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30),
                 true, planId);
 
         Coupon created = sampleCoupon();
@@ -118,22 +113,9 @@ class CouponServiceImplTest {
     }
 
     @Test
-    void create_should_throw_when_period_invalid() {
-        CouponRequest request = new CouponRequest(
-                "PROMO_X", null, "POURCENTAGE", new BigDecimal("10"), 10,
-                LocalDate.of(2026, 12, 31), LocalDate.of(2026, 1, 1),
-                true, null);
-        when(couponDomainService.existsByCode("PROMO_X")).thenReturn(false);
-
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(BadArgumentException.class);
-    }
-
-    @Test
     void create_should_throw_when_reduction_inconsistent() {
         CouponRequest request = new CouponRequest(
                 "PROMO_X", null, "POURCENTAGE", new BigDecimal("150"), 10,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30),
                 true, null);
         when(couponDomainService.existsByCode("PROMO_X")).thenReturn(false);
 
@@ -156,7 +138,6 @@ class CouponServiceImplTest {
         CouponRequest request = new CouponRequest(
                 "PROMO20", "Réduction étendue", "POURCENTAGE",
                 new BigDecimal("20"), 200,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2027, 12, 31),
                 true, null);
 
         when(couponDomainService.findById(couponId)).thenReturn(coupon);

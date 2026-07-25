@@ -3,6 +3,7 @@ package org.store.abonnement.domain.service;
 import org.springframework.stereotype.Service;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
+import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.UtilisationCoupon;
 import org.store.abonnement.domain.repository.UtilisationCouponRepository;
 import org.store.common.service.GlobalService;
@@ -22,6 +23,16 @@ public class UtilisationCouponDomainService extends GlobalService<UtilisationCou
         utilisation.setCoupon(coupon);
         utilisation.setEntreprise(entreprise);
         utilisation.setAbonnement(abonnement);
+        return save(utilisation);
+    }
+
+    /** Created by the billing scheduler: links the coupon application to the generated invoice. */
+    public UtilisationCoupon createWithPaiement(Coupon coupon, Abonnement abonnement, PaiementAbonnement paiement) {
+        UtilisationCoupon utilisation = new UtilisationCoupon();
+        utilisation.setCoupon(coupon);
+        utilisation.setEntreprise(abonnement.getEntreprise());
+        utilisation.setAbonnement(abonnement);
+        utilisation.setPaiementAbonnement(paiement);
         return save(utilisation);
     }
 

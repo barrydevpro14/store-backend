@@ -10,28 +10,22 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
-import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
-import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
-import org.store.abonnement.application.service.impl.PaiementAbonnementCreationContext;
 import org.store.abonnement.application.service.impl.PaiementAbonnementServiceImpl;
 import org.store.abonnement.application.service.impl.SubscriptionAmountCalculator;
-import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.model.TypePlanAbonnement;
+import org.store.abonnement.application.service.ICouponService;
+import org.store.abonnement.application.service.IUtilisationCouponService;
 import org.store.abonnement.domain.service.AbonnementDomainService;
-import org.store.abonnement.domain.service.CouponDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
-import org.store.abonnement.domain.service.PromotionDomainService;
-import org.store.abonnement.domain.service.UtilisationCouponDomainService;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
@@ -62,10 +56,8 @@ class PaiementAbonnementServiceImplTest {
 
     @Mock private PaiementAbonnementDomainService paiementAbonnementDomainService;
     @Mock private AbonnementDomainService abonnementDomainService;
-    @Mock private IAbonnementService abonnementService;
-    @Mock private PromotionDomainService promotionDomainService;
-    @Mock private CouponDomainService couponDomainService;
-    @Mock private UtilisationCouponDomainService utilisationCouponDomainService;
+    @Mock private ICouponService couponService;
+    @Mock private IUtilisationCouponService utilisationCouponService;
     @Mock private IUploadFileService uploadFileService;
     @Mock private SubscriptionAmountCalculator amountCalculator;
     @Mock private ICurrentUserService currentUserService;
@@ -82,15 +74,15 @@ class PaiementAbonnementServiceImplTest {
     private UUID paiementId;
     private Entreprise entreprise;
     private PlanAbonnement plan;
-    private TypePlanAbonnement type;
     private Abonnement abonnement;
 
     @BeforeEach
     void setUp() {
-        lenient().when(currentUserService.getCurrent()).thenReturn(proprietaire());
         entrepriseId = UUID.randomUUID();
         abonnementId = UUID.randomUUID();
         paiementId = UUID.randomUUID();
+
+        lenient().when(currentUserService.getCurrent()).thenReturn(proprietaire());
 
         entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
@@ -99,17 +91,11 @@ class PaiementAbonnementServiceImplTest {
         plan.setId(UUID.randomUUID());
         plan.setPrix(new BigDecimal("19900"));
 
-        type = new TypePlanAbonnement();
-        type.setId(UUID.randomUUID());
-        type.setPlan(plan);
-        type.setDureeMois(12);
-
         abonnement = new Abonnement();
         abonnement.setId(abonnementId);
         abonnement.setEntreprise(entreprise);
-        abonnement.setTypePlanAbonnement(type);
+        abonnement.setPlanAbonnement(plan);
         abonnement.setStatut(AbonnementStatut.EN_ATTENTE);
-        abonnement.setActif(false);
     }
 
     private UserPrincipal proprietaire() {
@@ -122,14 +108,19 @@ class PaiementAbonnementServiceImplTest {
                 "admin", null, null, "ADMIN", List.of("ADMIN_ACCESS", "SUBSCRIPTION_VALIDATE", "SUBSCRIPTION_READ"));
     }
 
-    private SubscriptionAmountBreakdown sampleBreakdown() {
-        return new SubscriptionAmountBreakdown(
-                new BigDecimal("238800"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                new BigDecimal("238800"));
-    }
-
     private MultipartFile validFile() {
         return new MockMultipartFile("file", "preuve.png", "image/png", new byte[]{1, 2, 3});
+    }
+
+    private PaiementAbonnement factureGeneree() {
+        PaiementAbonnement p = new PaiementAbonnement();
+        p.setId(paiementId);
+        p.setAbonnement(abonnement);
+        p.setStatut(StatutPaiementAbonnement.FACTURE_GENEREE);
+        p.setMontantAvantReduction(new BigDecimal("19900"));
+        p.setReduction(BigDecimal.ZERO);
+        p.setMontantFinal(new BigDecimal("19900"));
+        return p;
     }
 
     private PaiementAbonnement pendingPaiement() {
@@ -137,85 +128,64 @@ class PaiementAbonnementServiceImplTest {
         p.setId(paiementId);
         p.setAbonnement(abonnement);
         p.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
+        p.setMontantAvantReduction(new BigDecimal("19900"));
+        p.setReduction(BigDecimal.ZERO);
+        p.setMontantFinal(new BigDecimal("19900"));
         return p;
     }
 
     private PaiementAbonnementRequest sampleRequest() {
-        return new PaiementAbonnementRequest(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), "TXN-123", LocalDate.now());
+        return new PaiementAbonnementRequest(
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                "TXN-123",
+                LocalDate.now());
     }
 
     @Test
-    void create_should_persist_pending_payment() {
-        when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
-        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
-        when(paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId)).thenReturn(false);
-        when(promotionDomainService.findFirstActivePromotionForPlan(eq(plan.getId()), any(LocalDate.class)))
-                .thenReturn(Optional.empty());
-        when(utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId)).thenReturn(Optional.empty());
-        when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(sampleBreakdown());
-        when(uploadFileService.buildImage(any(MultipartFile.class))).thenReturn(new PieceJointe());
-        when(paiementAbonnementDomainService.createPending(any(PaiementAbonnementCreationContext.class)))
-                .thenReturn(pendingPaiement());
+    void payer_should_transition_facture_generee_to_en_attente_validation() {
+        PaiementAbonnement facture = factureGeneree();
 
-        PaiementAbonnementResponse response = service.create(abonnementId, sampleRequest(), validFile());
+        when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(facture);
+        when(uploadFileService.buildImage(any(MultipartFile.class))).thenReturn(new PieceJointe());
+        when(paiementAbonnementDomainService.save(any(PaiementAbonnement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PaiementAbonnementResponse response = service.payer(paiementId, sampleRequest(), validFile());
 
         assertThat(response.id()).isEqualTo(paiementId);
         assertThat(response.statut()).isEqualTo(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
     }
 
     @Test
-    void create_should_throw_when_abonnement_other_entreprise() {
-        when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
-        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement))
-                .thenThrow(new ForbiddenException("abonnement.notOwned"));
+    void payer_should_throw_when_paiement_other_entreprise() {
+        PaiementAbonnement facture = factureGeneree();
+        Entreprise other = new Entreprise();
+        other.setId(UUID.randomUUID());
+        facture.getAbonnement().setEntreprise(other);
 
-        PaiementAbonnementRequest req = sampleRequest();
-        MultipartFile file = validFile();
+        when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(facture);
 
-        assertThatThrownBy(() -> service.create(abonnementId, req, file))
+        assertThatThrownBy(() -> service.payer(paiementId, sampleRequest(), validFile()))
                 .isInstanceOf(ForbiddenException.class);
     }
 
     @Test
-    void create_should_throw_when_abonnement_not_pending() {
-        abonnement.setStatut(AbonnementStatut.ACTIF);
+    void payer_should_throw_when_paiement_not_facture_generee() {
+        PaiementAbonnement paiement = pendingPaiement();
 
-        when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
-        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
+        when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
 
-        PaiementAbonnementRequest req = sampleRequest();
-        MultipartFile file = validFile();
-
-        assertThatThrownBy(() -> service.create(abonnementId, req, file))
+        assertThatThrownBy(() -> service.payer(paiementId, sampleRequest(), validFile()))
                 .isInstanceOf(BadArgumentException.class);
     }
 
     @Test
-    void create_should_throw_when_already_pending_payment() {
-        when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
-        when(abonnementService.ensureBelongsToCurrentEntreprise(abonnement)).thenReturn(abonnement);
-        when(paiementAbonnementDomainService.existsPendingForAbonnement(abonnementId))
-                .thenReturn(true);
-
-        PaiementAbonnementRequest req = sampleRequest();
-        MultipartFile file = validFile();
-
-        assertThatThrownBy(() -> service.create(abonnementId, req, file))
-                .isInstanceOf(BadArgumentException.class);
-
-        verify(paiementAbonnementDomainService, never()).createPending(any(PaiementAbonnementCreationContext.class));
-    }
-
-    @Test
-    void validate_should_activate_abonnement_and_set_dates() {
+    void validate_should_activate_abonnement_en_attente_with_today_plus_one_month() {
         PaiementAbonnement paiement = pendingPaiement();
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
-        when(abonnementDomainService.findLatestActifDateFin(entrepriseId, abonnement.getId())).thenReturn(Optional.empty());
         when(abonnementDomainService.activate(eq(abonnement), any(LocalDate.class), any(LocalDate.class)))
                 .thenAnswer(inv -> {
                     abonnement.setDateDebut(inv.getArgument(1));
                     abonnement.setDateFin(inv.getArgument(2));
-                    abonnement.setActif(true);
                     abonnement.setStatut(AbonnementStatut.ACTIF);
                     return abonnement;
                 });
@@ -223,41 +193,38 @@ class PaiementAbonnementServiceImplTest {
             paiement.setStatut(StatutPaiementAbonnement.VALIDE);
             return paiement;
         });
+        when(currentUserService.getCurrent()).thenReturn(admin());
 
         PaiementAbonnementResponse response = service.validate(paiementId);
 
         assertThat(abonnement.getStatut()).isEqualTo(AbonnementStatut.ACTIF);
-        assertThat(abonnement.isActif()).isTrue();
         assertThat(abonnement.getDateDebut()).isEqualTo(LocalDate.now());
-        assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.now().plusMonths(12));
+        assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.now().plusMonths(1));
         assertThat(response.statut()).isEqualTo(StatutPaiementAbonnement.VALIDE);
     }
 
     @Test
-    void validate_should_start_after_current_active_dateFin() {
+    void validate_should_extend_dateFin_when_abonnement_actif() {
+        abonnement.setStatut(AbonnementStatut.ACTIF);
+        abonnement.setDateFin(LocalDate.of(2026, 12, 31));
         PaiementAbonnement paiement = pendingPaiement();
 
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
-        when(abonnementDomainService.findLatestActifDateFin(entrepriseId, abonnement.getId()))
-                .thenReturn(Optional.of(LocalDate.of(2026, 12, 31)));
-        when(abonnementDomainService.activate(eq(abonnement), any(LocalDate.class), any(LocalDate.class)))
-                .thenAnswer(inv -> {
-                    abonnement.setDateDebut(inv.getArgument(1));
-                    abonnement.setDateFin(inv.getArgument(2));
-                    return abonnement;
-                });
-        when(paiementAbonnementDomainService.markAsValide(paiement)).thenReturn(paiement);
+        when(abonnementDomainService.save(abonnement)).thenReturn(abonnement);
+        when(paiementAbonnementDomainService.markAsValide(paiement)).thenAnswer(inv -> {
+            paiement.setStatut(StatutPaiementAbonnement.VALIDE);
+            return paiement;
+        });
+        when(currentUserService.getCurrent()).thenReturn(admin());
 
         service.validate(paiementId);
 
-        assertThat(abonnement.getDateDebut()).isEqualTo(LocalDate.of(2027, 1, 1));
-        assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.of(2028, 1, 1));
+        assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.of(2027, 1, 31));
     }
 
     @Test
-    void validate_should_throw_when_payment_already_validated() {
-        PaiementAbonnement paiement = pendingPaiement();
-        paiement.setStatut(StatutPaiementAbonnement.VALIDE);
+    void validate_should_throw_when_payment_not_en_attente_validation() {
+        PaiementAbonnement paiement = factureGeneree();
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
 
         assertThatThrownBy(() -> service.validate(paiementId))
@@ -275,8 +242,8 @@ class PaiementAbonnementServiceImplTest {
         coupon.setNombreUtilisations(1);
 
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
-        when(utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId)).thenReturn(Optional.of(couponId));
-        when(couponDomainService.findById(couponId)).thenReturn(coupon);
+        when(utilisationCouponService.findCouponIdByAbonnementId(abonnementId)).thenReturn(Optional.of(couponId));
+        when(couponService.findById(couponId)).thenReturn(coupon);
         when(paiementAbonnementDomainService.markAsRejete(paiement, "Preuve illisible")).thenAnswer(inv -> {
             paiement.setStatut(StatutPaiementAbonnement.REJETE);
             paiement.setMotifRejet("Preuve illisible");
@@ -287,15 +254,15 @@ class PaiementAbonnementServiceImplTest {
 
         assertThat(paiement.getStatut()).isEqualTo(StatutPaiementAbonnement.REJETE);
         assertThat(paiement.getMotifRejet()).isEqualTo("Preuve illisible");
-        verify(couponDomainService).decrementUsage(coupon);
-        verify(utilisationCouponDomainService).deleteByAbonnementId(abonnementId);
+        verify(couponService).decrementUsage(coupon);
+        verify(utilisationCouponService).deleteByAbonnementId(abonnementId);
     }
 
     @Test
     void reject_should_work_without_coupon() {
         PaiementAbonnement paiement = pendingPaiement();
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
-        when(utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId)).thenReturn(Optional.empty());
+        when(utilisationCouponService.findCouponIdByAbonnementId(abonnementId)).thenReturn(Optional.empty());
         when(paiementAbonnementDomainService.markAsRejete(paiement, "Montant incorrect")).thenAnswer(inv -> {
             paiement.setStatut(StatutPaiementAbonnement.REJETE);
             paiement.setMotifRejet("Montant incorrect");
@@ -305,18 +272,16 @@ class PaiementAbonnementServiceImplTest {
         service.reject(paiementId, new RejectPaiementRequest("Montant incorrect"));
 
         assertThat(paiement.getStatut()).isEqualTo(StatutPaiementAbonnement.REJETE);
-        verify(couponDomainService, never()).decrementUsage(any());
+        verify(couponService, never()).decrementUsage(any());
     }
 
     @Test
-    void reject_should_throw_when_payment_already_rejected() {
+    void reject_should_throw_when_payment_not_en_attente_validation() {
         PaiementAbonnement paiement = pendingPaiement();
         paiement.setStatut(StatutPaiementAbonnement.REJETE);
         when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(paiement);
 
-        RejectPaiementRequest rejectReq = new RejectPaiementRequest("x");
-
-        assertThatThrownBy(() -> service.reject(paiementId, rejectReq))
+        assertThatThrownBy(() -> service.reject(paiementId, new RejectPaiementRequest("x")))
                 .isInstanceOf(BadArgumentException.class);
     }
 
@@ -367,5 +332,61 @@ class PaiementAbonnementServiceImplTest {
 
         assertThatThrownBy(() -> service.getPreuve(paiementId))
                 .isInstanceOf(EntityException.class);
+    }
+
+    @Test
+    void findMyPending_should_return_response_when_pending_exists() {
+        PaiementAbonnementResponse response = pendingPaiement().getAbonnement() != null
+                ? new PaiementAbonnementResponse(pendingPaiement()) : null;
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(paiementAbonnementDomainService.findPendingResponseByEntreprise(entrepriseId))
+                .thenReturn(Optional.of(new PaiementAbonnementResponse(pendingPaiement())));
+
+        Optional<PaiementAbonnementResponse> result = service.findMyPending();
+
+        assertThat(result).isPresent();
+        assertThat(result.get().id()).isEqualTo(paiementId);
+    }
+
+    @Test
+    void findMyPending_should_return_empty_when_no_entreprise_id() {
+        UserPrincipal noEntreprise = new UserPrincipal(
+                UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "admin", null, null, "ADMIN", List.of("ADMIN_ACCESS"));
+        when(currentUserService.getCurrent()).thenReturn(noEntreprise);
+
+        Optional<PaiementAbonnementResponse> result = service.findMyPending();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void countByStatutAndCreatedBetween_should_parse_statut_and_delegate() {
+        when(paiementAbonnementDomainService.countByStatutAndCreatedBetween(
+                StatutPaiementAbonnement.VALIDE, "2026-01-01", "2026-12-31")).thenReturn(7L);
+
+        long result = service.countByStatutAndCreatedBetween("VALIDE", "2026-01-01", "2026-12-31");
+
+        assertThat(result).isEqualTo(7L);
+    }
+
+    @Test
+    void countByStatutAndCreatedBetween_should_pass_null_statut_when_blank() {
+        when(paiementAbonnementDomainService.countByStatutAndCreatedBetween(null, null, null)).thenReturn(3L);
+
+        long result = service.countByStatutAndCreatedBetween(null, null, null);
+
+        assertThat(result).isEqualTo(3L);
+    }
+
+    @Test
+    void findFacturesAbonnementDues_should_delegate_to_domain() {
+        List<java.time.LocalDate> dates = List.of(LocalDate.now(), LocalDate.now().plusDays(1));
+        PaiementAbonnement facture = factureGeneree();
+        when(paiementAbonnementDomainService.findFacturesAbonnementDues(dates)).thenReturn(List.of(facture));
+
+        List<PaiementAbonnement> result = service.findFacturesAbonnementDues(dates);
+
+        assertThat(result).hasSize(1).containsExactly(facture);
     }
 }

@@ -9,10 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.PlanAbonnementRequest;
-import org.store.abonnement.application.dto.SubscriptionTypeRequest;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
-import org.store.abonnement.domain.service.TypePlanAbonnementDomainService;
 import org.store.achat.domain.service.FournisseurDomainService;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.service.MoyenPaiementDomainService;
@@ -34,7 +32,6 @@ public class DataInitializer implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private static final String PLAN_TRIAL_NOM = "Essai";
-    private static final String TYPE_TRIAL_NOM = "Essai";
 
     private static final String ADMIN_USERNAME = "admin";
     private static final String ADMIN_ROLE = "ADMIN";
@@ -42,7 +39,6 @@ public class DataInitializer implements ApplicationRunner {
     private final RbacProperties rbacProperties;
     private final IRolesPermissionsSyncService rolesPermissionsSyncService;
     private final PlanAbonnementDomainService planAbonnementDomainService;
-    private final TypePlanAbonnementDomainService typePlanAbonnementDomainService;
     private final AccountDomainService accountDomainService;
     private final RoleDomainService roleDomainService;
     private final PasswordEncoder passwordEncoder;
@@ -53,7 +49,6 @@ public class DataInitializer implements ApplicationRunner {
     public DataInitializer(RbacProperties rbacProperties,
                            IRolesPermissionsSyncService rolesPermissionsSyncService,
                            PlanAbonnementDomainService planAbonnementDomainService,
-                           TypePlanAbonnementDomainService typePlanAbonnementDomainService,
                            AccountDomainService accountDomainService,
                            RoleDomainService roleDomainService,
                            PasswordEncoder passwordEncoder,
@@ -63,7 +58,6 @@ public class DataInitializer implements ApplicationRunner {
         this.rbacProperties = rbacProperties;
         this.rolesPermissionsSyncService = rolesPermissionsSyncService;
         this.planAbonnementDomainService = planAbonnementDomainService;
-        this.typePlanAbonnementDomainService = typePlanAbonnementDomainService;
         this.accountDomainService = accountDomainService;
         this.roleDomainService = roleDomainService;
         this.passwordEncoder = passwordEncoder;
@@ -148,7 +142,7 @@ public class DataInitializer implements ApplicationRunner {
                     "Plan d'essai gratuit",
                     BigDecimal.ZERO,
                     1,
-                    3,
+                    2,
                     true,
                     true,
                     true,
@@ -160,28 +154,5 @@ public class DataInitializer implements ApplicationRunner {
             ));
             log.info("DataInitializer: création plan d'essai '{}'", PLAN_TRIAL_NOM);
         }
-
-        ensureTrialPlanHasDefaultType(trialPlan);
-    }
-
-    /**
-     * Seeds the default {@code TypePlanAbonnement} that the signup flow binds the TRIAL Abonnement to.
-     */
-    private void ensureTrialPlanHasDefaultType(PlanAbonnement trialPlan) {
-        if (typePlanAbonnementDomainService.existsByPlanIdAndNom(trialPlan.getId(), TYPE_TRIAL_NOM)) {
-            return;
-        }
-        var trialType = typePlanAbonnementDomainService.create(trialPlan, new SubscriptionTypeRequest(
-                TYPE_TRIAL_NOM,
-                1,
-                null,
-                null,
-                false,
-                true,
-                0
-        ));
-        trialType.setTrial(true);
-        typePlanAbonnementDomainService.save(trialType);
-        log.info("DataInitializer: création type d'essai '{}' sur le plan '{}'", TYPE_TRIAL_NOM, trialPlan.getNom());
     }
 }

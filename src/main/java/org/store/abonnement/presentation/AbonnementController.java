@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
-import org.store.abonnement.application.dto.RenouvellementAutoRequest;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.service.IAbonnementService;
@@ -60,11 +59,10 @@ public class AbonnementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(abonnementService.subscribe(subscribeRequest));
     }
 
-    @PatchMapping("/{id}/renouvellement-auto")
+    @PatchMapping("/current/plan")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_UPDATE')")
-    public ResponseEntity<AbonnementResponse> updateRenouvellementAuto(@PathVariable UUID id,
-                                                                       @Valid @RequestBody RenouvellementAutoRequest renouvellementAutoRequest) {
-        return ResponseEntity.ok(abonnementService.updateRenouvellementAuto(id, renouvellementAutoRequest));
+    public ResponseEntity<AbonnementResponse> changerPlan(@RequestParam UUID planId) {
+        return ResponseEntity.ok(abonnementService.changerPlan(planId));
     }
 
     @GetMapping

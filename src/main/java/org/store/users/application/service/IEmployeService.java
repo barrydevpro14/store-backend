@@ -2,6 +2,7 @@ package org.store.users.application.service;
 
 import org.springframework.data.domain.Page;
 import org.store.security.application.dto.ResetPasswordRequest;
+import org.store.security.domain.model.Account;
 import org.store.users.application.dto.EmployeFilter;
 import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
@@ -9,6 +10,7 @@ import org.store.users.application.dto.AssignRoleRequest;
 import org.store.users.application.dto.EmployeUpdateRequest;
 import org.store.users.domain.model.Employe;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IEmployeService {
@@ -36,4 +38,7 @@ public interface IEmployeService {
 
     /** Suppression definitive (OWNER/ADMIN uniquement). Refuse si l'employe a des commandes vente ou achat a son nom. */
     void permanentDelete(UUID id);
+
+    /** Returns all active Accounts in the given magasin with the given role. */
+    List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(UUID magasinId, String roleLibelle);
 }

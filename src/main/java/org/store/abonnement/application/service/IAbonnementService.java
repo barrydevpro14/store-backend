@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
-import org.store.abonnement.application.dto.RenouvellementAutoRequest;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.domain.model.Abonnement;
@@ -21,17 +20,16 @@ public interface IAbonnementService {
     SubscribeResponse subscribe(SubscribeRequest subscribeRequest);
 
     /**
-     * Creates the TRIAL Abonnement attached to the entreprise at OWNER signup. Looks up the first
-     * {@code TypePlanAbonnement} of the active trial plan and builds the row with
-     * {@code statut=TRIAL}, {@code actif=true}, dateDebut today, dateFin today + trial-days.
+     * Creates the TRIAL Abonnement attached to the entreprise at OWNER signup. Looks up the active
+     * trial plan and builds the row with {@code statut=TRIAL}, dateDebut today, dateFin today + trial-days.
      */
     Abonnement createTrialForSignup(Entreprise entreprise);
 
     /** Internal lookup by id. */
     Abonnement findById(UUID id);
 
-    /** Toggles {@code renouvellementAuto} on an Abonnement owned by the caller's entreprise. */
-    AbonnementResponse updateRenouvellementAuto(UUID abonnementId, RenouvellementAutoRequest renouvellementAutoRequest);
+    /** OWNER requests plan change for next cycle. */
+    AbonnementResponse changerPlan(UUID planId);
 
     /** ADMIN listing — all Abonnements filtered by entreprise / statut / plan. No scoping. */
     Page<AbonnementResponse> findAll(AbonnementFilter filter);
@@ -69,6 +67,9 @@ public interface IAbonnementService {
      * Used as the login subscription gate.
      */
     boolean hasActiveSubscription(UUID entrepriseId);
+
+    /** Returns {@code true} when the entreprise's subscription is SUSPENDU (non-payment suspension). */
+    boolean isSuspendedByEntreprise(UUID entrepriseId);
 
     /** ADMIN count — number of Abonnements created within the given date range (both bounds optional). */
     long countByCreatedDateRange(String startDate, String endDate);

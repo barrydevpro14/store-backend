@@ -2,6 +2,7 @@ package org.store.notification.domain.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
@@ -44,8 +45,33 @@ public interface AlerteRepository extends BaseRepository<Alerte> {
 
     @Query("""
     SELECT COUNT(a) FROM Alerte a WHERE a.entrepriseId = :entrepriseId
-    AND a.magasinId = :magasinId AND a.type IN :alerteTypes
+    AND (a.magasinId = :magasinId OR (a.magasinId IS NULL AND :magasinId IS NULL))
+    AND a.type IN :alerteTypes
     AND a.statut = :statut
 """)
     Long countNouvelles(UUID entrepriseId, UUID magasinId, List<AlerteType> alerteTypes , AlerteStatut statut);
+
+    /** Marks all NOUVELLE alerts as LUE for the whole enterprise (OWNER — no magasin scope). */
+    @Modifying(clearAutomatically = true)
+    @Query("""
+    UPDATE Alerte a SET a.statut = :newStatut
+    WHERE a.entrepriseId = :entrepriseId
+    AND a.statut = :currentStatut
+""")
+    void markAllAsLueByEntreprise(@Param("entrepriseId")  UUID entrepriseId,
+                                  @Param("newStatut")      AlerteStatut newStatut,
+                                  @Param("currentStatut")  AlerteStatut currentStatut);
+
+    /** Marks all NOUVELLE alerts as LUE scoped to a specific magasin (MANAGER). */
+    @Modifying(clearAutomatically = true)
+    @Query("""
+    UPDATE Alerte a SET a.statut = :newStatut
+    WHERE a.entrepriseId = :entrepriseId
+    AND a.magasinId = :magasinId
+    AND a.statut = :currentStatut
+""")
+    void markAllAsLueByMagasin(@Param("entrepriseId")  UUID entrepriseId,
+                               @Param("magasinId")      UUID magasinId,
+                               @Param("newStatut")      AlerteStatut newStatut,
+                               @Param("currentStatut")  AlerteStatut currentStatut);
 }

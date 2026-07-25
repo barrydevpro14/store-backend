@@ -8,6 +8,7 @@ import org.store.abonnement.application.dto.CouponResponse;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.common.repository.BaseRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +16,24 @@ public interface CouponRepository extends BaseRepository<Coupon> {
 
     boolean existsByCode(String code);
     Optional<Coupon> findByCode(String code);
+
+    /**
+     * Finds the first coupon applicable to a given billing cycle:
+     * active, targeting this enterprise or global (entreprise IS NULL),
+     * matching this plan or global (plan IS NULL), quota not exhausted
+     * (nombreUtilisationsMax = 0 means unlimited).
+     */
+    @Query("""
+            SELECT c FROM Coupon c
+            WHERE c.actif = true
+              AND (c.entreprise IS NULL OR c.entreprise.id = :entrepriseId)
+              AND (c.plan IS NULL OR c.plan.id = :planId)
+              AND (c.nombreUtilisationsMax = 0
+                   OR c.nombreUtilisations < c.nombreUtilisationsMax)
+            ORDER BY c.createdAt ASC
+            """)
+    List<Coupon> findApplicableCoupons(@Param("entrepriseId") UUID entrepriseId,
+                                       @Param("planId") UUID planId);
 
     @Query(value = """
             SELECT new org.store.abonnement.application.dto.CouponResponse(coupon)

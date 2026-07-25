@@ -8,6 +8,7 @@ import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.impl.PaiementAbonnementCreationContext;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
+import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.repository.PaiementAbonnementRepository;
 import org.store.common.service.GlobalService;
@@ -33,9 +34,7 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         PaiementAbonnement paiement = new PaiementAbonnement();
         paiement.setAbonnement(context.abonnement());
         paiement.setMontantAvantReduction(breakdown.prixDeBase());
-        paiement.setReduction(breakdown.reductionType()
-                .add(breakdown.reductionPromotion())
-                .add(breakdown.reductionCoupon()));
+        paiement.setReduction(breakdown.reductionCoupon());
         paiement.setMontantFinal(breakdown.montantAPayer());
         paiement.setDatePaiement(paiementAbonnementRequest.datePaiement());
         paiement.setMoyen(context.moyen());
@@ -88,5 +87,37 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         LocalDate startOfYear = LocalDate.of(year, 1, 1);
         LocalDate startOfNextYear = LocalDate.of(year + 1, 1, 1);
         return repository.sumValidatedRevenueForYear(startOfYear, startOfNextYear);
+    }
+
+    /** Creates a FACTURE_GENEREE payment for scheduled billing — no moyen, preuve or datePaiement yet. */
+    public PaiementAbonnement createFactureGeneree(Abonnement abonnement,
+                                                   BigDecimal montantAvantReduction,
+                                                   BigDecimal reduction,
+                                                   BigDecimal montantFinal,
+                                                   LocalDate dateEcheance) {
+        PaiementAbonnement paiement = new PaiementAbonnement();
+        paiement.setAbonnement(abonnement);
+        paiement.setMontantAvantReduction(montantAvantReduction);
+        paiement.setReduction(reduction);
+        paiement.setMontantFinal(montantFinal);
+        paiement.setDateEcheance(dateEcheance);
+        paiement.setStatut(StatutPaiementAbonnement.FACTURE_GENEREE);
+        return save(paiement);
+    }
+
+    /** Marks a payment as EN_RETARD (overdue). */
+    public PaiementAbonnement markAsEnRetard(PaiementAbonnement paiement) {
+        paiement.setStatut(StatutPaiementAbonnement.EN_RETARD);
+        return save(paiement);
+    }
+
+    /** Returns all overdue invoices (FACTURE_GENEREE or EN_ATTENTE_VALIDATION with dateEcheance < today). */
+    public List<PaiementAbonnement> findOverdueInvoices(LocalDate today) {
+        return repository.findOverdueInvoices(today);
+    }
+
+    /** Returns FACTURE_GENEREE invoices due on any of the given alert dates (for daily reminder scheduler). */
+    public List<PaiementAbonnement> findFacturesAbonnementDues(List<LocalDate> dates) {
+        return repository.findFacturesAbonnementDues(dates);
     }
 }

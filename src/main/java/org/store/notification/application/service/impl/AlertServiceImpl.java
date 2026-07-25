@@ -2,6 +2,7 @@ package org.store.notification.application.service.impl;
 
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.store.common.UserRoleEnum;
 import org.store.notification.application.dto.AlerteResponse;
 import org.store.notification.application.service.IAlertService;
@@ -65,11 +66,18 @@ public class AlertServiceImpl implements IAlertService {
     }
 
     @Override
+    @Transactional
+    public void markAllAsLue() {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        alerteDomainService.markAllAsLue(currentUser.entrepriseId(), currentUser.magasinId());
+    }
+
+    @Override
     public Long countNouvelle() {
         UserPrincipal currentUser = currentUserService.getCurrent();
         List<AlerteType> alerteTypes = new ArrayList<>();
         if(currentUser.role().equals(UserRoleEnum.OWNER.name())){
-            alerteTypes.add(AlerteType.ABONNEMENT_EXPIRING);
+            alerteTypes.addAll(List.of(AlerteType.ABONNEMENT_EXPIRING, AlerteType.FACTURE_ABONNEMENT_DUE));
         }
         else if(currentUser.role().equals(UserRoleEnum.MANAGER.name())){
             alerteTypes.addAll(List.of(AlerteType.FACTURE_ACHAT_OVERDUE , AlerteType.FACTURE_VENTE_OVERDUE));

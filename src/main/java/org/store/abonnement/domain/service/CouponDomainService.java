@@ -11,6 +11,10 @@ import org.store.abonnement.domain.repository.CouponRepository;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
 public class CouponDomainService extends GlobalService<Coupon, CouponRepository> {
     public CouponDomainService(CouponRepository repository) {
@@ -30,8 +34,6 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
         coupon.setReductionType(couponRequest.reductionTypeAsEnum());
         coupon.setValeurReduction(couponRequest.valeurReduction());
         coupon.setNombreUtilisationsMax(couponRequest.nombreUtilisationsMax());
-        coupon.setDateDebut(couponRequest.dateDebut());
-        coupon.setDateFin(couponRequest.dateFin());
         coupon.setActif(couponRequest.actif());
         coupon.setPlan(plan);
         return coupon;
@@ -65,5 +67,20 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
             return save(coupon);
         }
         return coupon;
+    }
+
+    /** Returns the first applicable coupon for this billing cycle, or empty if none. */
+    public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId) {
+        List<Coupon> candidates = repository.findApplicableCoupons(entrepriseId, planId);
+        return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.get(0));
+    }
+
+    /** Auto-deactivates a coupon when its quota is exhausted. */
+    public void deactivateIfExhausted(Coupon coupon) {
+        if (coupon.getNombreUtilisationsMax() > 0
+                && coupon.getNombreUtilisations() >= coupon.getNombreUtilisationsMax()) {
+            coupon.setActif(false);
+            save(coupon);
+        }
     }
 }

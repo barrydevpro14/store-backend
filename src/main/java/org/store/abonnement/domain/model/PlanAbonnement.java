@@ -40,6 +40,7 @@ public class PlanAbonnement extends AuditableEntity {
 
     private boolean visible = true;
 
+    private boolean trial = false;
 
     private int ordre;
 }

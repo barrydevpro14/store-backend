@@ -76,8 +76,9 @@ public class LoginServiceImpl implements ILoginService {
 
     /**
      * Generates a full token for ADMIN and active-subscription callers.
-     * For an OWNER with expired subscription: emits a restricted token (subscription endpoints only).
-     * For an EMPLOYEE with expired subscription: blocks login entirely.
+     * For an OWNER with suspended subscription: emits a "restricted_suspendu" token (pay invoice).
+     * For an OWNER with expired subscription: emits a restricted token (choose new plan).
+     * For an EMPLOYEE with inactive subscription: blocks login entirely.
      */
     private String generateTokenForSubscriptionState(UserPrincipal principal) {
         if (principal.entrepriseId() == null) {
@@ -93,6 +94,11 @@ public class LoginServiceImpl implements ILoginService {
         if (isEmployee) {
             throw new ForbiddenException("auth.subscription.employee.expired");
         }
-        return jwtService.generateRestrictedToken(principal);
+
+        boolean isSuspendu = abonnementService.isSuspendedByEntreprise(principal.entrepriseId());
+
+        return isSuspendu
+                ? jwtService.generateSuspendedToken(principal)
+                : jwtService.generateRestrictedToken(principal);
     }
 }

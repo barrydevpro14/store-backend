@@ -22,4 +22,9 @@ public class RefreshTokenDomainService extends GlobalService<RefreshToken, Refre
     public void deleteByUserId(UUID userId) {
         repository.deleteByUser_Id(userId);
     }
+
+    /** Révoque tous les refresh tokens du OWNER et de ses employés suite à la suspension de l'abonnement. */
+    public void revokeAllByEntrepriseId(UUID entrepriseId) {
+        repository.revokeAllByEntrepriseId(entrepriseId);
+    }
 }

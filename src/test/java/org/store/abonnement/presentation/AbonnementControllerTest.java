@@ -16,11 +16,9 @@ import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
 import org.store.abonnement.application.dto.PlanFeaturesResponse;
-import org.store.abonnement.application.dto.RenouvellementAutoRequest;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
-import org.store.abonnement.application.dto.SubscriptionTypeSummaryResponse;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.common.exceptions.GlobalException;
@@ -47,7 +45,6 @@ class AbonnementControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID planId;
-    private UUID typeId;
     private UUID abonnementId;
     private UUID entrepriseId;
 
@@ -59,10 +56,13 @@ class AbonnementControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        org.store.security.application.service.ICurrentUserService currentUserService = mock(org.store.security.application.service.ICurrentUserService.class);
-        org.store.security.application.dto.UserPrincipal adminPrincipal = new org.store.security.application.dto.UserPrincipal(
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), null,
-                "admin", "XOF", "Sénégal", "ADMIN", java.util.List.of());
+        org.store.security.application.service.ICurrentUserService currentUserService =
+                mock(org.store.security.application.service.ICurrentUserService.class);
+        org.store.security.application.dto.UserPrincipal adminPrincipal =
+                new org.store.security.application.dto.UserPrincipal(
+                        java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
+                        java.util.UUID.randomUUID(), null,
+                        "admin", "XOF", "Sénégal", "ADMIN", java.util.List.of());
         when(currentUserService.getCurrent()).thenReturn(adminPrincipal);
         mockMvc = MockMvcBuilders.standaloneSetup(new AbonnementController(abonnementService, currentUserService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
@@ -70,7 +70,6 @@ class AbonnementControllerTest {
                 .build();
 
         planId = UUID.randomUUID();
-        typeId = UUID.randomUUID();
         abonnementId = UUID.randomUUID();
         entrepriseId = UUID.randomUUID();
     }
@@ -79,17 +78,15 @@ class AbonnementControllerTest {
         AbonnementResponse abonnement = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
-                new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
-                null, null, false, false, AbonnementStatut.EN_ATTENTE);
+                null, null, AbonnementStatut.EN_ATTENTE);
         SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
-                new BigDecimal("238800.00"), new BigDecimal("0"),
-                new BigDecimal("0"), new BigDecimal("0"), new BigDecimal("238800.00"));
-        return new SubscribeResponse(abonnement, breakdown, null, null);
+                new BigDecimal("19900.00"), new BigDecimal("0"), new BigDecimal("19900.00"));
+        return new SubscribeResponse(abonnement, breakdown);
     }
 
     @Test
     void should_return_201_when_subscribe_ok() throws Exception {
-        SubscribeRequest body = new SubscribeRequest(planId, typeId, null, true);
+        SubscribeRequest body = new SubscribeRequest(planId);
         when(abonnementService.subscribe(any(SubscribeRequest.class))).thenReturn(sampleResponse());
 
         mockMvc.perform(post(AbonnementController.BASE_PATH + "/subscribe")
@@ -98,26 +95,14 @@ class AbonnementControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.abonnement.id").value(abonnementId.toString()))
                 .andExpect(jsonPath("$.abonnement.statut").value("EN_ATTENTE"))
-                .andExpect(jsonPath("$.breakdown.montantAPayer").value(238800.00));
+                .andExpect(jsonPath("$.breakdown.montantAPayer").value(19900.00));
     }
 
     @Test
     void should_return_400_when_planId_null() throws Exception {
         String json = """
-                { "planId":null, "typeId":"%s", "renouvellementAuto":true }
-                """.formatted(typeId);
-
-        mockMvc.perform(post(AbonnementController.BASE_PATH + "/subscribe")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_400_when_typeId_null() throws Exception {
-        String json = """
-                { "planId":"%s", "typeId":null, "renouvellementAuto":true }
-                """.formatted(planId);
+                { "planId": null }
+                """;
 
         mockMvc.perform(post(AbonnementController.BASE_PATH + "/subscribe")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -130,8 +115,7 @@ class AbonnementControllerTest {
         AbonnementResponse a = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
-                new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
-                null, null, false, false, AbonnementStatut.EN_ATTENTE);
+                null, null, AbonnementStatut.EN_ATTENTE);
         Page<AbonnementResponse> page = new PageImpl<>(List.of(a), PageRequest.of(0, 10), 1);
         when(abonnementService.findAll(any(AbonnementFilter.class))).thenReturn(page);
 
@@ -156,8 +140,7 @@ class AbonnementControllerTest {
         AbonnementResponse abonnement = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
                 new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
-                new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
-                null, null, true, false, AbonnementStatut.ACTIF);
+                null, null, AbonnementStatut.ACTIF);
         CurrentAbonnementResponse current = new CurrentAbonnementResponse(
                 abonnement, 25L,
                 new PlanFeaturesResponse(true, true, true, false, 1, 3));
@@ -172,21 +155,16 @@ class AbonnementControllerTest {
     }
 
     @Test
-    void should_return_200_when_toggling_renouvellement_auto() throws Exception {
+    void should_return_200_when_changer_plan() throws Exception {
         AbonnementResponse abonnement = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
-                new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
-                new SubscriptionTypeSummaryResponse(typeId, "Annuel", 12),
-                null, null, true, true, AbonnementStatut.ACTIF);
-        when(abonnementService.updateRenouvellementAuto(eq(abonnementId), any(RenouvellementAutoRequest.class)))
-                .thenReturn(abonnement);
+                new PlanAbonnementSummaryResponse(planId, "Enterprise", new BigDecimal("49900")),
+                null, null, AbonnementStatut.ACTIF);
+        when(abonnementService.changerPlan(eq(planId))).thenReturn(abonnement);
 
-        mockMvc.perform(patch(AbonnementController.BASE_PATH + "/" + abonnementId + "/renouvellement-auto")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "renouvellementAuto": true }
-                                """))
+        mockMvc.perform(patch(AbonnementController.BASE_PATH + "/current/plan")
+                        .param("planId", planId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.renouvellementAuto").value(true));
+                .andExpect(jsonPath("$.plan.nom").value("Enterprise"));
     }
 }

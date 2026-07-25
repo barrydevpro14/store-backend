@@ -44,7 +44,7 @@ public class AlerteController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size) {
 
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         if (entrepriseId == null) {
@@ -61,6 +61,13 @@ public class AlerteController {
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<Long> countNouvelles() {
         return ResponseEntity.ok(alertService.countNouvelle());
+    }
+
+    @PatchMapping("/lue-all")
+    @PreAuthorize("hasAuthority('STORE_READ_ONE')")
+    public ResponseEntity<Void> markAllAsLue() {
+        alertService.markAllAsLue();
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/lue")

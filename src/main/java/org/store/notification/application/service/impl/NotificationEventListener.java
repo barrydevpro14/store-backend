@@ -3,33 +3,28 @@ package org.store.notification.application.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.notification.application.dto.NotificationPayload;
 import org.store.notification.application.event.AbonnementExpiringEvent;
-import org.store.notification.domain.enums.AlerteStatut;
-import org.store.notification.domain.enums.AlerteType;
-import org.store.notification.domain.service.AlerteDomainService;
+import org.store.notification.application.event.AbonnementSuspenduEvent;
 import org.store.notification.application.event.ContactMessageReceivedEvent;
 import org.store.notification.application.event.FactureAchatOverdueEvent;
+import org.store.notification.application.event.FactureAbonnementGenereeEvent;
 import org.store.notification.application.event.FactureClientOverdueEvent;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
 import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
 import org.store.notification.application.event.StockBelowThresholdEvent;
 import org.store.notification.application.event.VenteValidatedEvent;
-import org.store.notification.domain.enums.CanalNotification;
-import org.store.notification.domain.enums.NotificationStatut;
-import org.store.notification.domain.model.Notification;
-import org.store.notification.domain.service.NotificationDomainService;
-import org.store.contact.domain.model.ContactMessage;
-import org.store.security.domain.model.Account;
-import org.store.security.domain.service.AccountDomainService;
-import org.store.users.domain.service.EmployeDomainService;
-import org.store.users.domain.service.ProprietaireDomainService;
-
-import java.time.LocalDateTime;
+import org.store.notification.application.service.IAlertService;
+import org.store.notification.application.service.INotificationService;
+import org.store.notification.domain.enums.AlerteStatut;
+import org.store.notification.domain.enums.AlerteType;
+import org.store.security.application.service.IAccountService;
+import org.store.security.application.service.IRefreshTokenService;
+import org.store.users.application.service.IEmployeService;
 
 /**
  * Listens to business domain events and persists IN_APP Notification rows asynchronously.
@@ -40,25 +35,25 @@ public class NotificationEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
 
-    private final NotificationDomainService notificationDomainService;
-    private final AlerteDomainService alerteDomainService;
-    private final EmployeDomainService employeDomainService;
-    private final ProprietaireDomainService proprietaireDomainService;
-    private final AccountDomainService accountDomainService;
+    private final INotificationService notificationService;
+    private final IAlertService alertService;
+    private final IEmployeService employeService;
+    private final IAccountService accountService;
     private final IMessageSourceService messageSourceService;
+    private final IRefreshTokenService refreshTokenService;
 
-    public NotificationEventListener(NotificationDomainService notificationDomainService,
-                                     AlerteDomainService alerteDomainService,
-                                     EmployeDomainService employeDomainService,
-                                     ProprietaireDomainService proprietaireDomainService,
-                                     AccountDomainService accountDomainService,
-                                     IMessageSourceService messageSourceService) {
-        this.notificationDomainService = notificationDomainService;
-        this.alerteDomainService = alerteDomainService;
-        this.employeDomainService = employeDomainService;
-        this.proprietaireDomainService = proprietaireDomainService;
-        this.accountDomainService = accountDomainService;
+    public NotificationEventListener(INotificationService notificationService,
+                                     IAlertService alertService,
+                                     IEmployeService employeService,
+                                     IAccountService accountService,
+                                     IMessageSourceService messageSourceService,
+                                     IRefreshTokenService refreshTokenService) {
+        this.notificationService = notificationService;
+        this.alertService = alertService;
+        this.employeService = employeService;
+        this.accountService = accountService;
         this.messageSourceService = messageSourceService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Async
@@ -67,10 +62,10 @@ public class NotificationEventListener {
         var commande = event.commande();
         String titre   = messageSourceService.getMessage("notification.vente.validated.titre", new Object[]{commande.getReference()});
         String message = messageSourceService.getMessage("notification.vente.validated.message", new Object[]{commande.getReference()});
+        NotificationPayload payload = new NotificationPayload(titre, message, null);
 
-        employeDomainService
-                .findActiveAccountsByMagasinIdAndRoleLibelle(commande.getMagasin().getId(), "MANAGER")
-                .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
+        employeService.findActiveAccountsByMagasinIdAndRoleLibelle(commande.getMagasin().getId(), "MANAGER")
+                .forEach(account -> notificationService.createInApp(account, payload));
 
         log.info("VenteValidated notification sent for commande {}", commande.getReference());
     }
@@ -83,15 +78,15 @@ public class NotificationEventListener {
         String titre   = messageSourceService.getMessage("notification.stock.belowThreshold.titre", new Object[]{nom});
         String message = messageSourceService.getMessage("notification.stock.belowThreshold.message",
                 new Object[]{nom, stock.getQuantiteDisponible()});
+        NotificationPayload payload = new NotificationPayload(titre, message, null);
 
-        alerteDomainService.create(AlerteType.STOCK_BELOW_THRESHOLD, AlerteStatut.NOUVELLE,
+        alertService.create(AlerteType.STOCK_BELOW_THRESHOLD, AlerteStatut.NOUVELLE,
                 titre, message,
                 stock.getMagasin().getEntreprise().getId(), stock.getMagasin().getId(),
                 stock.getProductFournisseur().getId(), null);
 
-        employeDomainService
-                .findActiveAccountsByMagasinIdAndRoleLibelle(stock.getMagasin().getId(), "MANAGER")
-                .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
+        employeService.findActiveAccountsByMagasinIdAndRoleLibelle(stock.getMagasin().getId(), "MANAGER")
+                .forEach(account -> notificationService.createInApp(account, payload));
 
         log.info("StockBelowThreshold notification sent for product {}", nom);
     }
@@ -103,10 +98,10 @@ public class NotificationEventListener {
         String titre   = messageSourceService.getMessage("notification.paiement.submitted.titre", new Object[]{sigle});
         String message = messageSourceService.getMessage("notification.paiement.submitted.message",
                 new Object[]{sigle, event.montantFinal()});
+        NotificationPayload payload = new NotificationPayload(titre, message, null);
 
-        accountDomainService
-                .findAllByRoleLibelle("ADMIN")
-                .forEach(account -> createInApp(account, new NotificationPayload(titre, message, null)));
+        accountService.findAllByRoleLibelle("ADMIN")
+                .forEach(account -> notificationService.createInApp(account, payload));
 
         log.info("PaiementSubmitted notification sent to ADMINs for paiement {}", event.paiementId());
     }
@@ -118,9 +113,7 @@ public class NotificationEventListener {
         String message = messageSourceService.getMessage("notification.paiement.validated.message",
                 new Object[]{event.montantFinal()});
 
-        proprietaireDomainService
-                .findAccountByEntrepriseId(event.entrepriseId())
-                .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
+        notificationService.sendInAppToEntreprise(event.entrepriseId(), new NotificationPayload(titre, message, null));
 
         log.info("PaiementValidated notification sent for paiement {}", event.paiementId());
     }
@@ -132,9 +125,7 @@ public class NotificationEventListener {
         String message = messageSourceService.getMessage("notification.paiement.rejected.message",
                 new Object[]{event.motifRejet()});
 
-        proprietaireDomainService
-                .findAccountByEntrepriseId(event.entrepriseId())
-                .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
+        notificationService.sendInAppToEntreprise(event.entrepriseId(), new NotificationPayload(titre, message, null));
 
         log.info("PaiementRejected notification sent for paiement {}", event.paiementId());
     }
@@ -146,10 +137,10 @@ public class NotificationEventListener {
         String titre = messageSourceService.getMessage("notification.contact.received.titre", new Object[]{contact.getSujet()});
         String body  = messageSourceService.getMessage("notification.contact.received.message",
                 new Object[]{contact.getNom(), contact.getEmail(), contact.getMessage()});
+        NotificationPayload payload = new NotificationPayload(titre, body, contact);
 
-        accountDomainService
-                .findAllByRoleLibelle("ADMIN")
-                .forEach(account -> createInApp(account, new NotificationPayload(titre, body, contact)));
+        accountService.findAllByRoleLibelle("ADMIN")
+                .forEach(account -> notificationService.createInApp(account, payload));
 
         log.info("ContactMessageReceived notification sent for contact from {}", contact.getEmail());
     }
@@ -163,11 +154,38 @@ public class NotificationEventListener {
         String message = messageSourceService.getMessage("notification.abonnement.expiring.message",
                 new Object[]{event.joursRestants(), abonnement.getDateFin()});
 
-        proprietaireDomainService
-                .findAccountByEntrepriseId(abonnement.getEntreprise().getId())
-                .ifPresent(account -> createInApp(account, new NotificationPayload(titre, message, null)));
+        notificationService.sendInAppToEntreprise(abonnement.getEntreprise().getId(),
+                new NotificationPayload(titre, message, null));
 
         log.info("AbonnementExpiring notification sent: {} days left for abonnement {}", event.joursRestants(), abonnement.getId());
+    }
+
+    @Async
+    @EventListener
+    public void onFactureAbonnementGeneree(FactureAbonnementGenereeEvent event) {
+        String periode = event.dateEcheance()
+                .format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.FRENCH));
+        String titre   = messageSourceService.getMessage("notification.abonnement.facture.titre");
+        String message = messageSourceService.getMessage("notification.abonnement.facture.message",
+                new Object[]{periode, event.montantFinal(), event.dateEcheance()});
+
+        notificationService.sendInAppToEntreprise(event.entrepriseId(), new NotificationPayload(titre, message, null));
+
+        log.info("FactureAbonnementGeneree notification sent for entreprise {}", event.entrepriseId());
+    }
+
+    @Async
+    @EventListener
+    public void onAbonnementSuspendu(AbonnementSuspenduEvent event) {
+        String titre   = messageSourceService.getMessage("notification.abonnement.suspendu.titre");
+        String message = messageSourceService.getMessage("notification.abonnement.suspendu.message",
+                new Object[]{event.dateEcheanceDepassee()});
+
+        notificationService.sendInAppToEntreprise(event.entrepriseId(), new NotificationPayload(titre, message, null));
+
+        refreshTokenService.revokeAllByEntrepriseId(event.entrepriseId());
+
+        log.info("AbonnementSuspendu: tokens revoked and notification sent for abonnement {}", event.abonnementId());
     }
 
     @Async
@@ -178,10 +196,10 @@ public class NotificationEventListener {
                 new Object[]{facture.getNumero(), event.joursRetard()});
         String msg   = messageSourceService.getMessage("notification.facture.vente.overdue.message",
                 new Object[]{facture.getNumero(), event.joursRetard(), facture.getMontantTotal().subtract(facture.getMontantPaye())});
+        NotificationPayload payload = new NotificationPayload(titre, msg, null);
 
-        employeDomainService
-                .findActiveAccountsByMagasinIdAndRoleLibelle(facture.getCommande().getMagasin().getId(), "MANAGER")
-                .forEach(account -> createInApp(account, new NotificationPayload(titre, msg, null)));
+        employeService.findActiveAccountsByMagasinIdAndRoleLibelle(facture.getCommande().getMagasin().getId(), "MANAGER")
+                .forEach(account -> notificationService.createInApp(account, payload));
 
         log.info("FactureClientOverdue notification sent: facture {} overdue by {} days", facture.getNumero(), event.joursRetard());
     }
@@ -194,25 +212,11 @@ public class NotificationEventListener {
                 new Object[]{facture.getNumero(), event.joursRetard()});
         String msg   = messageSourceService.getMessage("notification.facture.achat.overdue.message",
                 new Object[]{facture.getNumero(), event.joursRetard(), facture.getMontantTotal().subtract(facture.getMontantPaye())});
+        NotificationPayload payload = new NotificationPayload(titre, msg, null);
 
-        employeDomainService
-                .findActiveAccountsByMagasinIdAndRoleLibelle(facture.getCommande().getMagasin().getId(), "MANAGER")
-                .forEach(account -> createInApp(account, new NotificationPayload(titre, msg, null)));
+        employeService.findActiveAccountsByMagasinIdAndRoleLibelle(facture.getCommande().getMagasin().getId(), "MANAGER")
+                .forEach(account -> notificationService.createInApp(account, payload));
 
         log.info("FactureAchatOverdue notification sent: facture {} overdue by {} days", facture.getNumero(), event.joursRetard());
     }
-
-    private void createInApp(Account destinataire, NotificationPayload payload) {
-        Notification notification = new Notification();
-        notification.setDestinataire(destinataire);
-        notification.setTitre(payload.titre());
-        notification.setMessage(payload.message());
-        notification.setContact(payload.contact());
-        notification.setCanal(CanalNotification.IN_APP);
-        notification.setStatut(NotificationStatut.ENVOYEE);
-        notification.setDateEnvoi(LocalDateTime.now());
-        notificationDomainService.save(notification);
-    }
-
-    private record NotificationPayload(String titre, String message, ContactMessage contact) {}
 }

@@ -6,21 +6,26 @@ import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
+import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.domain.model.Abonnement;
+import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.common.dto.ImageDownloadResponse;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface IPaiementAbonnementService {
 
     /**
-     * OWNER enregistre son paiement (paiement manuel, hors-app) avec preuve image obligatoire.
-     * Crée un PaiementAbonnement en EN_ATTENTE_VALIDATION. L'abonnement reste EN_ATTENTE jusqu'à la validation admin.
+     * OWNER soumet sa preuve de paiement contre une facture FACTURE_GENEREE existante.
+     * Passe le PaiementAbonnement en EN_ATTENTE_VALIDATION. L'abonnement reste EN_ATTENTE jusqu'à la validation admin.
      */
-    PaiementAbonnementResponse create(UUID abonnementId, PaiementAbonnementRequest paiementAbonnementRequest, MultipartFile preuve);
+    PaiementAbonnementResponse payer(UUID paiementId, PaiementAbonnementRequest paiementAbonnementRequest, MultipartFile preuve);
 
     /**
      * ADMIN valide le paiement : statut → VALIDE, et l'abonnement passe en ACTIF avec `dateDebut`/`dateFin` calculés
-     * (today si pas d'abonnement actif courant, sinon `currentActif.dateFin + 1`). dateFin = dateDebut + typeAbonnement.dureeMois.
+     * (today si pas d'abonnement actif courant, sinon `currentActif.dateFin + 1`). dateFin = dateDebut + 1 mois.
      */
     PaiementAbonnementResponse validate(UUID paiementId);
 
@@ -55,4 +60,34 @@ public interface IPaiementAbonnementService {
      * banner.
      */
     java.util.Optional<PaiementAbonnementResponse> findMyPending();
+
+    /**
+     * Creates a FACTURE_GENEREE invoice for an EN_ATTENTE Abonnement at subscription time.
+     * Delegates amount fields from the pre-computed breakdown.
+     */
+    PaiementAbonnement createFactureGeneree(Abonnement abonnement, SubscriptionAmountBreakdown breakdown, LocalDate dateEcheance);
+
+    /** Finds FACTURE_GENEREE invoices due on any of the given alert dates (daily scheduler use). */
+    List<PaiementAbonnement> findFacturesAbonnementDues(List<LocalDate> dates);
+
+    /** Throws ForbiddenException when the caller is not ADMIN and does not own the paiement's entreprise. */
+    void ensurePaiementAccessibleByCaller(PaiementAbonnement paiement);
+
+    /** Throws BadArgumentException when the paiement is not FACTURE_GENEREE (cannot accept proof). */
+    void ensurePaiementIsFactureGeneree(PaiementAbonnement paiement);
+
+    /** Throws BadArgumentException when the paiement is not EN_ATTENTE_VALIDATION. */
+    void ensurePaiementIsPendingValidation(PaiementAbonnement paiement);
+
+    /**
+     * First payment (EN_ATTENTE): activate with dateDebut=today, dateFin=today+1month.
+     * Renewal (ACTIF): extend dateFin +1 month, applying prochainPlan if set.
+     */
+    void activateOrExtend(Abonnement abonnement);
+
+    /** Releases the reserved coupon for the given abonnement: decrements usage and deletes UtilisationCoupon. */
+    void releaseReservedCouponIfAny(UUID abonnementId);
+
+    /** Returns filter unchanged for ADMIN; forces entrepriseId to the caller's entreprise for non-ADMIN. */
+    PaiementAbonnementFilter scopeFilterForNonAdmin(PaiementAbonnementFilter filter);
 }

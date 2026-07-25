@@ -4,7 +4,6 @@ import org.store.abonnement.domain.enums.ReductionType;
 import org.store.common.exceptions.BadArgumentException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * Règles de validation transverses au module abonnement, réutilisées par les services
@@ -33,12 +32,4 @@ public final class SubscriptionRules {
         }
     }
 
-    /**
-     * Vérifie que `dateFin` est postérieure ou égale à `dateDebut`. Lève `BadArgumentException(invalidPeriodKey)` sinon.
-     */
-    public static void ensurePeriodValid(LocalDate dateDebut, LocalDate dateFin, String invalidPeriodKey) {
-        if (dateFin.isBefore(dateDebut)) {
-            throw new BadArgumentException(invalidPeriodKey);
-        }
-    }
 }

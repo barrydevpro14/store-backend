@@ -15,6 +15,7 @@ import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
 import org.store.security.domain.service.AccountDomainService;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,5 +80,10 @@ public class AccountServiceImpl implements IAccountService {
     @Override
     public Account resetPassword(Account account, String newPassword) {
         return accountDomainService.changePassword(account, passwordEncoder.encode(newPassword));
+    }
+
+    @Override
+    public List<Account> findAllByRoleLibelle(String roleLibelle) {
+        return accountDomainService.findAllByRoleLibelle(roleLibelle);
     }
 }

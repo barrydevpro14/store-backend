@@ -14,13 +14,13 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.abonnement.application.dto.CouponFilter;
 import org.store.abonnement.application.dto.CouponRequest;
 import org.store.abonnement.application.dto.CouponResponse;
+import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,6 +44,9 @@ class CouponControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID couponId;
+    private PlanAbonnementSummaryResponse planAbonnementSummaryResponse = new PlanAbonnementSummaryResponse(
+            UUID.randomUUID(), "ESSAI",new BigDecimal("0.0")
+    );
 
     @BeforeEach
     void setUp() {
@@ -65,16 +68,14 @@ class CouponControllerTest {
         return new CouponRequest(
                 "PROMO10", null, "POURCENTAGE",
                 new BigDecimal("10"), 100,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
-                true, null);
+                true,planAbonnementSummaryResponse.id() );
     }
 
     private CouponResponse sample() {
         return new CouponResponse(couponId, "PROMO10", null,
                 ReductionType.POURCENTAGE, new BigDecimal("10"),
                 100, 0,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
-                true, null);
+                true, planAbonnementSummaryResponse);
     }
 
     @Test
@@ -92,26 +93,11 @@ class CouponControllerTest {
     void should_return_400_when_code_blank() throws Exception {
         CouponRequest body = new CouponRequest(
                 "", null, "POURCENTAGE", new BigDecimal("10"), 10,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30),
                 true, null);
 
         mockMvc.perform(post(CouponController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_400_when_dateFin_null() throws Exception {
-        String json = """
-                { "code":"X", "reductionType":"POURCENTAGE", "valeurReduction":10,
-                  "nombreUtilisationsMax":10, "dateDebut":"2026-01-01", "dateFin":null,
-                  "actif":true, "planId":null }
-                """;
-
-        mockMvc.perform(post(CouponController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
                 .andExpect(status().isBadRequest());
     }
 

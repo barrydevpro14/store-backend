@@ -89,6 +89,12 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
 
     @Override
     @Transactional
+    public void revokeAllByEntrepriseId(UUID entrepriseId) {
+        refreshTokenDomainService.revokeAllByEntrepriseId(entrepriseId);
+    }
+
+    @Override
+    @Transactional
     public void revoke(String refreshTokenValue) {
         refreshTokenDomainService.findByToken(refreshTokenValue).ifPresent(token -> {
             if (!token.isRevoked()) {
@@ -113,7 +119,12 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         if (isEmployee) {
             throw new ForbiddenException("auth.subscription.employee.expired");
         }
-        return jwtService.generateRestrictedToken(principal);
+
+        boolean isSuspendu = abonnementService.isSuspendedByEntreprise(principal.entrepriseId());
+
+        return isSuspendu
+                ? jwtService.generateSuspendedToken(principal)
+                : jwtService.generateRestrictedToken(principal);
     }
 
     private void publishLogoutAudit(RefreshToken token) {

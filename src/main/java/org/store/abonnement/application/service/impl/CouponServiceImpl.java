@@ -15,6 +15,7 @@ import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.SubscriptionRules;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -41,8 +42,6 @@ public class CouponServiceImpl implements ICouponService {
     @Transactional
     public CouponResponse create(CouponRequest couponRequest) {
         ensureCodeAvailable(couponRequest.code());
-        SubscriptionRules.ensurePeriodValid(
-                couponRequest.dateDebut(), couponRequest.dateFin(), "coupon.invalidPeriod");
         SubscriptionRules.ensureReductionConsistent(
                 couponRequest.reductionTypeAsEnum(),
                 couponRequest.valeurReduction(),
@@ -80,8 +79,6 @@ public class CouponServiceImpl implements ICouponService {
         if (!coupon.getCode().equals(couponRequest.code())) {
             ensureCodeAvailable(couponRequest.code());
         }
-        SubscriptionRules.ensurePeriodValid(
-                couponRequest.dateDebut(), couponRequest.dateFin(), "coupon.invalidPeriod");
         SubscriptionRules.ensureReductionConsistent(
                 couponRequest.reductionTypeAsEnum(),
                 couponRequest.valeurReduction(),
@@ -122,5 +119,32 @@ public class CouponServiceImpl implements ICouponService {
         if (couponDomainService.existsByCode(code)) {
             throw new UniqueResourceException("coupon.code.alreadyExists", code);
         }
+    }
+
+    /** Returns the first coupon applicable to the given enterprise and plan, or empty. */
+    @Override
+    public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId) {
+        return couponDomainService.findApplicable(entrepriseId, planId);
+    }
+
+    /** Increments the coupon's usage counter and persists. */
+    @Override
+    @Transactional
+    public Coupon incrementUsage(Coupon coupon) {
+        return couponDomainService.incrementUsage(coupon);
+    }
+
+    /** Decrements the coupon's usage counter and persists. */
+    @Override
+    @Transactional
+    public Coupon decrementUsage(Coupon coupon) {
+        return couponDomainService.decrementUsage(coupon);
+    }
+
+    /** Deactivates the coupon when its usage quota is exhausted. */
+    @Override
+    @Transactional
+    public void deactivateIfExhausted(Coupon coupon) {
+        couponDomainService.deactivateIfExhausted(coupon);
     }
 }

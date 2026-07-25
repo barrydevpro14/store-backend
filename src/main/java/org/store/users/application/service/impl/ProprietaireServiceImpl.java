@@ -9,6 +9,9 @@ import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.service.ProprietaireDomainService;
 import org.store.users.domain.service.UtilisateurDomainService;
 
+import java.util.Optional;
+import java.util.UUID;
+
 /** Creates a Proprietaire user by enforcing contact uniqueness (email + phone) then delegating to the domain layer. */
 @Service
 public class ProprietaireServiceImpl implements IProprietaireService {
@@ -26,5 +29,10 @@ public class ProprietaireServiceImpl implements IProprietaireService {
     public Proprietaire create(UtilisateurRequest utilisateurRequest, Account account) {
         utilisateurDomainService.ensureContactsAvailable(utilisateurRequest.email(), utilisateurRequest.telephone());
         return proprietaireDomainService.create(utilisateurRequest, account);
+    }
+
+    @Override
+    public Optional<Account> findAccountByEntrepriseId(UUID entrepriseId) {
+        return proprietaireDomainService.findAccountByEntrepriseId(entrepriseId);
     }
 }
