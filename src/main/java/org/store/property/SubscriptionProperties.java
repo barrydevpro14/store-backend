@@ -7,6 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "subscription")
 public record SubscriptionProperties(
-        int trialDays
+        int trialDays,
+        int joursAvantEcheance,
+        int joursSuspension
 ) {
 }

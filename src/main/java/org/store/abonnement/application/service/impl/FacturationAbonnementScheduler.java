@@ -7,57 +7,60 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.ICouponService;
+import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IUtilisationCouponService;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.service.AbonnementDomainService;
-import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.notification.application.event.FactureAbonnementGenereeEvent;
+import org.store.property.SubscriptionProperties;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Daily scheduler: generates a FACTURE_GENEREE invoice 10 days before each active subscription's
- * dateFin. Auto-applies the first eligible coupon (enterprise-scoped or global). An
- * existsByAbonnementIdAndDateEcheance guard prevents duplicate invoices.
+ * Daily scheduler: generates a FACTURE_GENEREE invoice N days before each active subscription's
+ * dateFin (N = subscription.jours-avant-echeance). Auto-applies the first eligible coupon
+ * (enterprise-scoped or global). An existsByAbonnementIdAndDateEcheance guard prevents duplicates.
  */
 @Component
 public class FacturationAbonnementScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(FacturationAbonnementScheduler.class);
-    private static final int JOURS_AVANT_ECHEANCE = 10;
 
-    private final AbonnementDomainService abonnementDomainService;
-    private final PaiementAbonnementDomainService paiementAbonnementDomainService;
+    private final IAbonnementService abonnementService;
+    private final IPaiementAbonnementService paiementAbonnementService;
     private final ICouponService couponService;
     private final IUtilisationCouponService utilisationCouponService;
     private final SubscriptionAmountCalculator amountCalculator;
     private final ApplicationEventPublisher eventPublisher;
+    private final SubscriptionProperties subscriptionProperties;
 
-    public FacturationAbonnementScheduler(AbonnementDomainService abonnementDomainService,
-                                          PaiementAbonnementDomainService paiementAbonnementDomainService,
+    public FacturationAbonnementScheduler(IAbonnementService abonnementService,
+                                          IPaiementAbonnementService paiementAbonnementService,
                                           ICouponService couponService,
                                           IUtilisationCouponService utilisationCouponService,
                                           SubscriptionAmountCalculator amountCalculator,
-                                          ApplicationEventPublisher eventPublisher) {
-        this.abonnementDomainService = abonnementDomainService;
-        this.paiementAbonnementDomainService = paiementAbonnementDomainService;
+                                          ApplicationEventPublisher eventPublisher,
+                                          SubscriptionProperties subscriptionProperties) {
+        this.abonnementService = abonnementService;
+        this.paiementAbonnementService = paiementAbonnementService;
         this.couponService = couponService;
         this.utilisationCouponService = utilisationCouponService;
         this.amountCalculator = amountCalculator;
         this.eventPublisher = eventPublisher;
+        this.subscriptionProperties = subscriptionProperties;
     }
 
     @Scheduled(cron = "${cron.facturation.abonnement}")
     @Transactional
     public void genererFacturesMensuelles() {
-        LocalDate targetDate = LocalDate.now().plusDays(JOURS_AVANT_ECHEANCE);
-        List<Abonnement> aFacturer = abonnementDomainService.findAbonnementsToFacture(targetDate);
+        LocalDate targetDate = LocalDate.now().plusDays(subscriptionProperties.joursAvantEcheance());
+        List<Abonnement> aFacturer = abonnementService.findAbonnementsToFacture(targetDate);
 
         log.info("FacturationAbonnementScheduler: {} abonnement(s) to bill for deadline {}", aFacturer.size(), targetDate);
 
@@ -76,11 +79,9 @@ public class FacturationAbonnementScheduler {
         SubscriptionAmountBreakdown breakdown = amountCalculator.calculate(
                 new SubscriptionAmountInputs(planEffectif, coupon));
 
-        PaiementAbonnement facture = paiementAbonnementDomainService.createFactureGeneree(
+        PaiementAbonnement facture = paiementAbonnementService.createFactureGeneree(
                 abonnement,
-                breakdown.prixDeBase(),
-                breakdown.reductionCoupon(),
-                breakdown.montantAPayer(),
+                breakdown,
                 dateEcheance);
 
         if (coupon != null) {

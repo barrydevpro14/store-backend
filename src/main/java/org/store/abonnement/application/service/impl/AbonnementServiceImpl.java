@@ -216,6 +216,16 @@ public class AbonnementServiceImpl implements IAbonnementService {
     }
 
     @Override
+    public List<Abonnement> findAbonnementsToFacture(LocalDate targetDate) {
+        return abonnementDomainService.findAbonnementsToFacture(targetDate);
+    }
+
+    @Override
+    public Abonnement suspend(Abonnement abonnement) {
+        return abonnementDomainService.suspend(abonnement);
+    }
+
+    @Override
     public void ensurePlanSubscribable(PlanAbonnement plan) {
         if (!plan.isActif() || !plan.isVisible() || plan.isTrial()) {
             throw new BadArgumentException("plan.notSubscribable");

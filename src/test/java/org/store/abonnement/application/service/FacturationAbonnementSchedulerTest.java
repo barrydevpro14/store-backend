@@ -8,8 +8,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
-import org.store.abonnement.application.service.ICouponService;
-import org.store.abonnement.application.service.IUtilisationCouponService;
 import org.store.abonnement.application.service.impl.FacturationAbonnementScheduler;
 import org.store.abonnement.application.service.impl.SubscriptionAmountCalculator;
 import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
@@ -18,10 +16,9 @@ import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.service.AbonnementDomainService;
-import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.notification.application.event.FactureAbonnementGenereeEvent;
+import org.store.property.SubscriptionProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,7 +28,6 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,12 +35,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class FacturationAbonnementSchedulerTest {
 
-    @Mock private AbonnementDomainService abonnementDomainService;
-    @Mock private PaiementAbonnementDomainService paiementAbonnementDomainService;
+    @Mock private IAbonnementService abonnementService;
+    @Mock private IPaiementAbonnementService paiementAbonnementService;
     @Mock private ICouponService couponService;
     @Mock private IUtilisationCouponService utilisationCouponService;
     @Mock private SubscriptionAmountCalculator amountCalculator;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private SubscriptionProperties subscriptionProperties;
 
     @InjectMocks
     private FacturationAbonnementScheduler scheduler;
@@ -60,6 +57,8 @@ class FacturationAbonnementSchedulerTest {
         entrepriseId = UUID.randomUUID();
         today = LocalDate.now();
         targetDate = today.plusDays(10);
+
+        when(subscriptionProperties.joursAvantEcheance()).thenReturn(10);
 
         Entreprise entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
@@ -85,28 +84,25 @@ class FacturationAbonnementSchedulerTest {
         SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
                 new BigDecimal("19900"), BigDecimal.ZERO, new BigDecimal("19900"));
 
-        when(abonnementDomainService.findAbonnementsToFacture(targetDate)).thenReturn(List.of(abonnement));
+        when(abonnementService.findAbonnementsToFacture(targetDate)).thenReturn(List.of(abonnement));
         when(couponService.findApplicable(entrepriseId, plan.getId())).thenReturn(Optional.empty());
         when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(breakdown);
-        when(paiementAbonnementDomainService.createFactureGeneree(
-                eq(abonnement), eq(new BigDecimal("19900")), eq(BigDecimal.ZERO),
-                eq(new BigDecimal("19900")), eq(targetDate))).thenReturn(facture);
+        when(paiementAbonnementService.createFactureGeneree(eq(abonnement), eq(breakdown), eq(targetDate)))
+                .thenReturn(facture);
 
         scheduler.genererFacturesMensuelles();
 
-        verify(paiementAbonnementDomainService).createFactureGeneree(
-                eq(abonnement), eq(new BigDecimal("19900")), eq(BigDecimal.ZERO),
-                eq(new BigDecimal("19900")), eq(targetDate));
+        verify(paiementAbonnementService).createFactureGeneree(eq(abonnement), eq(breakdown), eq(targetDate));
         verify(eventPublisher).publishEvent(any(FactureAbonnementGenereeEvent.class));
     }
 
     @Test
     void genererFacturesMensuelles_should_skip_when_no_eligible_abonnement() {
-        when(abonnementDomainService.findAbonnementsToFacture(targetDate)).thenReturn(List.of());
+        when(abonnementService.findAbonnementsToFacture(targetDate)).thenReturn(List.of());
 
         scheduler.genererFacturesMensuelles();
 
-        verify(paiementAbonnementDomainService, never()).createFactureGeneree(any(), any(), any(), any(), any());
+        verify(paiementAbonnementService, never()).createFactureGeneree(any(), any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -122,10 +118,10 @@ class FacturationAbonnementSchedulerTest {
         SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
                 new BigDecimal("19900"), new BigDecimal("5000"), new BigDecimal("14900"));
 
-        when(abonnementDomainService.findAbonnementsToFacture(targetDate)).thenReturn(List.of(abonnement));
+        when(abonnementService.findAbonnementsToFacture(targetDate)).thenReturn(List.of(abonnement));
         when(couponService.findApplicable(entrepriseId, plan.getId())).thenReturn(Optional.of(coupon));
         when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(breakdown);
-        when(paiementAbonnementDomainService.createFactureGeneree(any(), any(), any(), any(), any())).thenReturn(facture);
+        when(paiementAbonnementService.createFactureGeneree(any(), any(), any())).thenReturn(facture);
 
         scheduler.genererFacturesMensuelles();
 
@@ -148,18 +144,15 @@ class FacturationAbonnementSchedulerTest {
         SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
                 new BigDecimal("29900"), BigDecimal.ZERO, new BigDecimal("29900"));
 
-        when(abonnementDomainService.findAbonnementsToFacture(targetDate)).thenReturn(List.of(abonnement));
+        when(abonnementService.findAbonnementsToFacture(targetDate)).thenReturn(List.of(abonnement));
         when(couponService.findApplicable(entrepriseId, prochainPlan.getId())).thenReturn(Optional.empty());
         when(amountCalculator.calculate(any(SubscriptionAmountInputs.class))).thenReturn(breakdown);
-        when(paiementAbonnementDomainService.createFactureGeneree(
-                eq(abonnement), eq(new BigDecimal("29900")), eq(BigDecimal.ZERO),
-                eq(new BigDecimal("29900")), eq(targetDate))).thenReturn(facture);
+        when(paiementAbonnementService.createFactureGeneree(eq(abonnement), eq(breakdown), eq(targetDate)))
+                .thenReturn(facture);
 
         scheduler.genererFacturesMensuelles();
 
         verify(couponService).findApplicable(entrepriseId, prochainPlan.getId());
-        verify(paiementAbonnementDomainService).createFactureGeneree(
-                eq(abonnement), eq(new BigDecimal("29900")), eq(BigDecimal.ZERO),
-                eq(new BigDecimal("29900")), eq(targetDate));
+        verify(paiementAbonnementService).createFactureGeneree(eq(abonnement), eq(breakdown), eq(targetDate));
     }
 }

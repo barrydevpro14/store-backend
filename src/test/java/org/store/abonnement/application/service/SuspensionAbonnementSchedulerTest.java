@@ -12,10 +12,9 @@ import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
-import org.store.abonnement.domain.service.AbonnementDomainService;
-import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.notification.application.event.AbonnementSuspenduEvent;
+import org.store.property.SubscriptionProperties;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,9 +28,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SuspensionAbonnementSchedulerTest {
 
-    @Mock private PaiementAbonnementDomainService paiementAbonnementDomainService;
-    @Mock private AbonnementDomainService abonnementDomainService;
+    @Mock private IPaiementAbonnementService paiementAbonnementService;
+    @Mock private IAbonnementService abonnementService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private SubscriptionProperties subscriptionProperties;
 
     @InjectMocks
     private SuspensionAbonnementScheduler scheduler;
@@ -45,6 +45,8 @@ class SuspensionAbonnementSchedulerTest {
     void setUp() {
         entrepriseId = UUID.randomUUID();
         today = LocalDate.now();
+
+        when(subscriptionProperties.joursSuspension()).thenReturn(0);
 
         Entreprise entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
@@ -63,35 +65,35 @@ class SuspensionAbonnementSchedulerTest {
 
     @Test
     void suspendrePourNonPaiement_should_suspend_overdue_abonnement() {
-        when(paiementAbonnementDomainService.findOverdueInvoices(today)).thenReturn(List.of(factureGeneree));
+        when(paiementAbonnementService.findOverdueInvoices(today)).thenReturn(List.of(factureGeneree));
 
         scheduler.suspendrePourNonPaiement();
 
-        verify(paiementAbonnementDomainService).markAsEnRetard(factureGeneree);
-        verify(abonnementDomainService).suspend(abonnement);
+        verify(paiementAbonnementService).markAsEnRetard(factureGeneree);
+        verify(abonnementService).suspend(abonnement);
         verify(eventPublisher).publishEvent(any(AbonnementSuspenduEvent.class));
     }
 
     @Test
     void suspendrePourNonPaiement_should_skip_when_no_overdue_invoice() {
-        when(paiementAbonnementDomainService.findOverdueInvoices(today)).thenReturn(List.of());
+        when(paiementAbonnementService.findOverdueInvoices(today)).thenReturn(List.of());
 
         scheduler.suspendrePourNonPaiement();
 
-        verify(paiementAbonnementDomainService, never()).markAsEnRetard(any());
-        verify(abonnementDomainService, never()).suspend(any());
+        verify(paiementAbonnementService, never()).markAsEnRetard(any());
+        verify(abonnementService, never()).suspend(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void suspendrePourNonPaiement_should_suspend_en_attente_validation_overdue() {
         factureGeneree.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        when(paiementAbonnementDomainService.findOverdueInvoices(today)).thenReturn(List.of(factureGeneree));
+        when(paiementAbonnementService.findOverdueInvoices(today)).thenReturn(List.of(factureGeneree));
 
         scheduler.suspendrePourNonPaiement();
 
-        verify(paiementAbonnementDomainService).markAsEnRetard(factureGeneree);
-        verify(abonnementDomainService).suspend(abonnement);
+        verify(paiementAbonnementService).markAsEnRetard(factureGeneree);
+        verify(abonnementService).suspend(abonnement);
         verify(eventPublisher).publishEvent(any(AbonnementSuspenduEvent.class));
     }
 
@@ -111,14 +113,14 @@ class SuspensionAbonnementSchedulerTest {
         autreFacture.setStatut(StatutPaiementAbonnement.FACTURE_GENEREE);
         autreFacture.setDateEcheance(today.minusDays(2));
 
-        when(paiementAbonnementDomainService.findOverdueInvoices(today))
+        when(paiementAbonnementService.findOverdueInvoices(today))
                 .thenReturn(List.of(factureGeneree, autreFacture));
 
         scheduler.suspendrePourNonPaiement();
 
-        verify(paiementAbonnementDomainService).markAsEnRetard(factureGeneree);
-        verify(paiementAbonnementDomainService).markAsEnRetard(autreFacture);
-        verify(abonnementDomainService).suspend(abonnement);
-        verify(abonnementDomainService).suspend(autreAbonnement);
+        verify(paiementAbonnementService).markAsEnRetard(factureGeneree);
+        verify(paiementAbonnementService).markAsEnRetard(autreFacture);
+        verify(abonnementService).suspend(abonnement);
+        verify(abonnementService).suspend(autreAbonnement);
     }
 }
