@@ -20,16 +20,16 @@ public class Abonnement extends AuditableEntity {
     private Entreprise entreprise;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "type_plan_abonnement_id", nullable = false)
-    private TypePlanAbonnement typePlanAbonnement;
+    @JoinColumn(name = "plan_abonnement_id", nullable = false)
+    private PlanAbonnement planAbonnement;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prochain_plan_abonnement_id")
+    private PlanAbonnement prochainPlan;
 
     private LocalDate dateDebut;
 
     private LocalDate dateFin;
-
-    private boolean actif = true;
-
-    private boolean renouvellementAuto = false;
 
     @Enumerated(EnumType.STRING)
     private AbonnementStatut statut;

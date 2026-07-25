@@ -2,7 +2,6 @@ package org.store.abonnement.application.dto;
 
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
-import org.store.abonnement.domain.model.TypePlanAbonnement;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
 
 import java.math.BigDecimal;
@@ -15,10 +14,10 @@ public record PaiementAbonnementResponse(
         UUID abonnementId,
         String entrepriseSigle,
         PlanAbonnementSummaryResponse plan,
-        SubscriptionTypeSummaryResponse type,
         BigDecimal montantAvantReduction,
         BigDecimal reduction,
         BigDecimal montantFinal,
+        LocalDate dateEcheance,
         LocalDate datePaiement,
         MoyenPaiementResponse moyen,
         String referenceTransaction,
@@ -33,11 +32,11 @@ public record PaiementAbonnementResponse(
                 paiement.getAbonnement().getId(),
                 paiement.getAbonnement().getEntreprise() == null
                         ? null : paiement.getAbonnement().getEntreprise().getSigle(),
-                planSummaryOf(paiement.getAbonnement().getTypePlanAbonnement()),
-                typeSummaryOf(paiement.getAbonnement().getTypePlanAbonnement()),
+                planSummaryOf(paiement),
                 paiement.getMontantAvantReduction(),
                 paiement.getReduction(),
                 paiement.getMontantFinal(),
+                paiement.getDateEcheance(),
                 paiement.getDatePaiement(),
                 paiement.getMoyen() != null ? new MoyenPaiementResponse(paiement.getMoyen()) : null,
                 paiement.getReferenceTransaction(),
@@ -48,14 +47,8 @@ public record PaiementAbonnementResponse(
         );
     }
 
-    private static PlanAbonnementSummaryResponse planSummaryOf(TypePlanAbonnement type) {
-        if (type == null || type.getPlan() == null) {
-            return null;
-        }
-        return new PlanAbonnementSummaryResponse(type.getPlan());
-    }
-
-    private static SubscriptionTypeSummaryResponse typeSummaryOf(TypePlanAbonnement type) {
-        return type == null ? null : new SubscriptionTypeSummaryResponse(type);
+    private static PlanAbonnementSummaryResponse planSummaryOf(PaiementAbonnement paiement) {
+        var plan = paiement.getAbonnement().getPlanAbonnement();
+        return plan == null ? null : new PlanAbonnementSummaryResponse(plan);
     }
 }

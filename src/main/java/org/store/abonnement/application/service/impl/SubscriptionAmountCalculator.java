@@ -8,9 +8,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Calcule le montant à payer pour une souscription en appliquant séquentiellement :
- * prix de base (plan.prix × dureeMois) → réduction du type → réduction d'une promotion active → réduction du coupon.
- * Aucun montant n'est jamais négatif (clamp à zéro).
+ * Calcule le montant à payer pour une souscription : prix de base (plan.prix) puis réduction
+ * du coupon. Aucun montant n'est jamais négatif (clamp à zéro).
  */
 @Component
 public class SubscriptionAmountCalculator {
@@ -19,29 +18,19 @@ public class SubscriptionAmountCalculator {
     private static final int SCALE = 2;
 
     /**
-     * Applique les réductions dans l'ordre type → promotion → coupon et retourne le détail.
+     * Applique la réduction du coupon (si présent) sur le prix du plan et retourne le détail.
      */
     public SubscriptionAmountBreakdown calculate(SubscriptionAmountInputs inputs) {
         BigDecimal prixDeBase = inputs.plan().getPrix()
-                .multiply(BigDecimal.valueOf(inputs.type().getDureeMois()))
                 .setScale(SCALE, RoundingMode.HALF_UP);
 
-        BigDecimal reductionType = reductionOf(prixDeBase,
-                inputs.type().getReductionType(), inputs.type().getValeurReduction());
-        BigDecimal apresType = clamp(prixDeBase.subtract(reductionType));
-
-        BigDecimal reductionPromotion = inputs.promotion() == null ? BigDecimal.ZERO
-                : reductionOf(apresType, inputs.promotion().getReductionType(), inputs.promotion().getValeurReduction());
-        BigDecimal apresPromotion = clamp(apresType.subtract(reductionPromotion));
-
         BigDecimal reductionCoupon = inputs.coupon() == null ? BigDecimal.ZERO
-                : reductionOf(apresPromotion, inputs.coupon().getReductionType(), inputs.coupon().getValeurReduction());
-        BigDecimal montantAPayer = clamp(apresPromotion.subtract(reductionCoupon));
+                : reductionOf(prixDeBase, inputs.coupon().getReductionType(), inputs.coupon().getValeurReduction());
+
+        BigDecimal montantAPayer = clamp(prixDeBase.subtract(reductionCoupon));
 
         return new SubscriptionAmountBreakdown(
                 prixDeBase,
-                reductionType.setScale(SCALE, RoundingMode.HALF_UP),
-                reductionPromotion.setScale(SCALE, RoundingMode.HALF_UP),
                 reductionCoupon.setScale(SCALE, RoundingMode.HALF_UP),
                 montantAPayer
         );

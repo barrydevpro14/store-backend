@@ -11,6 +11,7 @@ import org.store.common.repository.BaseRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,25 +29,24 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             FROM PaiementAbonnement paiement
             LEFT JOIN FETCH paiement.abonnement abonnement
             LEFT JOIN FETCH abonnement.entreprise
-            LEFT JOIN FETCH abonnement.typePlanAbonnement type
-            LEFT JOIN FETCH type.plan
+            LEFT JOIN FETCH abonnement.planAbonnement
             WHERE abonnement.entreprise.id = :entrepriseId
               AND abonnement.statut        = org.store.abonnement.domain.enums.AbonnementStatut.EN_ATTENTE
               AND paiement.statut          = org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
             ORDER BY paiement.createdAt DESC
             """)
-    java.util.List<PaiementAbonnementResponse> findPendingResponsesByEntreprise(@Param("entrepriseId") UUID entrepriseId,
-                                                                                org.springframework.data.domain.Pageable pageable);
+    List<PaiementAbonnementResponse> findPendingResponsesByEntreprise(@Param("entrepriseId") UUID entrepriseId,
+                                                                      Pageable pageable);
 
-    @Query("SELECT COUNT(p) FROM PaiementAbonnement p WHERE p.statut = :statut")
+    @Query("SELECT COUNT(paiement) FROM PaiementAbonnement paiement WHERE paiement.statut = :statut")
     long countByStatut(@Param("statut") StatutPaiementAbonnement statut);
 
     @Query("""
-            SELECT COALESCE(SUM(p.montantFinal), 0)
-            FROM PaiementAbonnement p
-            WHERE p.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.VALIDE
-              AND p.datePaiement >= :startOfYear
-              AND p.datePaiement <  :startOfNextYear
+            SELECT COALESCE(SUM(paiement.montantFinal), 0)
+            FROM PaiementAbonnement paiement
+            WHERE paiement.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.VALIDE
+              AND paiement.datePaiement >= :startOfYear
+              AND paiement.datePaiement <  :startOfNextYear
             """)
     BigDecimal sumValidatedRevenueForYear(@Param("startOfYear") LocalDate startOfYear,
                                           @Param("startOfNextYear") LocalDate startOfNextYear);
@@ -56,8 +56,7 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             FROM PaiementAbonnement paiement
             LEFT JOIN FETCH paiement.abonnement abonnement
             LEFT JOIN FETCH abonnement.entreprise
-            LEFT JOIN FETCH abonnement.typePlanAbonnement type
-            LEFT JOIN FETCH type.plan
+            LEFT JOIN FETCH abonnement.planAbonnement
             WHERE (:statut IS NULL OR paiement.statut = :statut)
               AND (:abonnementId IS NULL OR abonnement.id = :abonnementId)
               AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
@@ -76,22 +75,47 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
             """)
     Page<PaiementAbonnementResponse> findResponsesByFilter(
-            @Param("statut") org.store.abonnement.domain.enums.StatutPaiementAbonnement statut,
-            @Param("abonnementId") java.util.UUID abonnementId,
-            @Param("entrepriseId") java.util.UUID entrepriseId,
+            @Param("statut") StatutPaiementAbonnement statut,
+            @Param("abonnementId") UUID abonnementId,
+            @Param("entrepriseId") UUID entrepriseId,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable);
 
     /** Counts payments matching an optional statut and optional createdAt date range. */
     @Query("""
-            SELECT COUNT(p)
-            FROM PaiementAbonnement p
-            WHERE (:statut IS NULL OR p.statut = :statut)
-              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', p.createdAt) >= CAST(:startDate AS date))
-              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', p.createdAt) <= CAST(:endDate AS date))
+            SELECT COUNT(paiement)
+            FROM PaiementAbonnement paiement
+            WHERE (:statut IS NULL OR paiement.statut = :statut)
+              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', paiement.createdAt) >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
             """)
     long countByStatutAndCreatedBetween(@Param("statut") StatutPaiementAbonnement statut,
                                         @Param("startDate") String startDate,
                                         @Param("endDate") String endDate);
+
+    /** Finds invoices that are overdue: FACTURE_GENEREE or EN_ATTENTE_VALIDATION with dateEcheance < today. */
+    @Query("""
+            SELECT paiement FROM PaiementAbonnement paiement
+            LEFT JOIN FETCH paiement.abonnement abonnement
+            LEFT JOIN FETCH abonnement.entreprise
+            WHERE paiement.statut IN (
+                org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
+                org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
+            )
+            AND paiement.dateEcheance < :today
+            """)
+    List<PaiementAbonnement> findOverdueInvoices(@Param("today") LocalDate today);
+
+    boolean existsByAbonnementIdAndDateEcheance(UUID abonnementId, LocalDate dateEcheance);
+
+    /** Finds FACTURE_GENEREE invoices with dateEcheance on any of the given alert dates. */
+    @Query("""
+            SELECT paiement FROM PaiementAbonnement paiement
+            LEFT JOIN FETCH paiement.abonnement abonnement
+            LEFT JOIN FETCH abonnement.entreprise
+            WHERE paiement.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE
+              AND paiement.dateEcheance IN :dates
+            """)
+    List<PaiementAbonnement> findFacturesAbonnementDues(@Param("dates") List<LocalDate> dates);
 }

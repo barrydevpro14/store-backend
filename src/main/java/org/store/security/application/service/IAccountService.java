@@ -5,6 +5,7 @@ import org.store.security.application.dto.AccountRequest;
 import org.store.security.domain.model.Account;
 import org.store.security.domain.model.Role;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,4 +29,7 @@ public interface IAccountService {
 
     /** Reset administratif : hash et persiste le nouveau mot de passe sans vérification de l'ancien. Reservé aux callers ayant l'autorité (admin/proprietaire/manager). */
     Account resetPassword(Account account, String newPassword);
+
+    /** Returns all Accounts that have the given role. */
+    List<Account> findAllByRoleLibelle(String roleLibelle);
 }

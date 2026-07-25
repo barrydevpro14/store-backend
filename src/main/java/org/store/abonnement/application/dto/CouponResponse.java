@@ -4,7 +4,6 @@ import org.store.abonnement.domain.enums.ReductionType;
 import org.store.abonnement.domain.model.Coupon;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.UUID;
 
 public record CouponResponse(
@@ -15,8 +14,6 @@ public record CouponResponse(
         BigDecimal valeurReduction,
         int nombreUtilisationsMax,
         int nombreUtilisations,
-        LocalDate dateDebut,
-        LocalDate dateFin,
         boolean actif,
         PlanAbonnementSummaryResponse plan
 ) {
@@ -29,8 +26,6 @@ public record CouponResponse(
                 coupon.getValeurReduction(),
                 coupon.getNombreUtilisationsMax(),
                 coupon.getNombreUtilisations(),
-                coupon.getDateDebut(),
-                coupon.getDateFin(),
                 coupon.isActif(),
                 coupon.getPlan() == null ? null : new PlanAbonnementSummaryResponse(coupon.getPlan())
         );

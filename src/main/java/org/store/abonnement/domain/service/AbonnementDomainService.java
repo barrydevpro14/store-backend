@@ -6,7 +6,7 @@ import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
-import org.store.abonnement.domain.model.TypePlanAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.AbonnementRepository;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
@@ -29,53 +29,33 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     }
 
     /**
-     * Free-trial Abonnement created at OWNER signup. {@code dateDebut} is today, {@code dateFin}
-     * is today + {@code trialDays}, {@code actif=true}, {@code statut=TRIAL}. The {@code type} is
-     * the first {@link TypePlanAbonnement} attached to the trial plan.
+     * Free-trial Abonnement created at OWNER signup: dateDebut=today, dateFin=today+trialDays, statut=TRIAL.
      */
-    public Abonnement createTrial(Entreprise entreprise, TypePlanAbonnement trialType, int trialDays) {
+    public Abonnement createTrial(Entreprise entreprise, PlanAbonnement planAbonnement, int trialDays) {
         Abonnement abonnement = new Abonnement();
         abonnement.setEntreprise(entreprise);
-        abonnement.setTypePlanAbonnement(trialType);
+        abonnement.setPlanAbonnement(planAbonnement);
         abonnement.setDateDebut(LocalDate.now());
         abonnement.setDateFin(LocalDate.now().plusDays(trialDays));
-        abonnement.setActif(true);
-        abonnement.setRenouvellementAuto(false);
         abonnement.setStatut(AbonnementStatut.TRIAL);
         return save(abonnement);
     }
 
     /**
-     * Paid subscription: the type is mandatory; the plan is implicit via {@code type.plan}. The Abonnement
-     * starts EN_ATTENTE and is activated by {@link #activate} after payment validation.
+     * Paid subscription starts EN_ATTENTE and is activated by {@link #activate} after payment validation.
      */
-    public Abonnement createPending(Entreprise entreprise, TypePlanAbonnement type) {
+    public Abonnement createPending(Entreprise entreprise, PlanAbonnement planAbonnement) {
         Abonnement abonnement = new Abonnement();
         abonnement.setEntreprise(entreprise);
-        abonnement.setTypePlanAbonnement(type);
-        abonnement.setActif(false);
-        abonnement.setRenouvellementAuto(false);
+        abonnement.setPlanAbonnement(planAbonnement);
         abonnement.setStatut(AbonnementStatut.EN_ATTENTE);
         return save(abonnement);
     }
 
-    public Abonnement setRenouvellementAuto(Abonnement abonnement, boolean enabled) {
-        abonnement.setRenouvellementAuto(enabled);
-        return save(abonnement);
-    }
-
-    /**
-     * Flips the Abonnement to {@code statut=ACTIF, actif=true} and applies the validated paiement's
-     * window. Before flipping, EXPIREs every sibling actif=true row on the entreprise (TRIAL or
-     * older paid ACTIF) so the {@code abonnement_one_actif_per_entreprise} partial unique index
-     * (V14) is preserved.
-     */
+    /** Flips the Abonnement to statut=ACTIF and applies the validated paiement's date window. */
     public Abonnement activate(Abonnement abonnement, LocalDate dateDebut, LocalDate dateFin) {
-        repository.expireOtherActifByEntreprise(abonnement.getEntreprise().getId(), abonnement.getId());
-
         abonnement.setDateDebut(dateDebut);
         abonnement.setDateFin(dateFin);
-        abonnement.setActif(true);
         abonnement.setStatut(AbonnementStatut.ACTIF);
         return save(abonnement);
     }
@@ -126,8 +106,19 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return repository.existsByEntrepriseIdAndStatut(entrepriseId, AbonnementStatut.EN_ATTENTE);
     }
 
+    /** Returns true if the entreprise's subscription is currently SUSPENDU (non-payment). */
+    public boolean isSuspendu(UUID entrepriseId) {
+        return repository.existsByEntrepriseIdAndStatut(entrepriseId, AbonnementStatut.SUSPENDU);
+    }
+
     public long countByCreatedBetween(String startDate, String endDate) {
         return repository.countByCreatedBetween(startDate, endDate);
+    }
+
+    /** Suspends an active subscription due to non-payment (scheduler use). */
+    public Abonnement suspend(Abonnement abonnement) {
+        abonnement.setStatut(AbonnementStatut.SUSPENDU);
+        return save(abonnement);
     }
 
     /**
@@ -139,12 +130,16 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
                 ? AbonnementStatut.EXPIRE
                 : AbonnementStatut.SUSPENDU;
         abonnement.setStatut(next);
-        abonnement.setActif(false);
         return save(abonnement);
     }
 
-    /** Finds active/trial subscriptions expiring on any of the given alert dates (today+1, today+3, today+5). */
+    /** Finds TRIAL subscriptions expiring on any of the given alert dates (today, today+1, today+3, today+5). */
     public List<Abonnement> findExpiringOnDates(List<LocalDate> dates) {
-        return repository.findByDateFinInAndStatutActifOrTrial(dates , List.of(AbonnementStatut.ACTIF , AbonnementStatut.TRIAL));
+        return repository.findByDateFinInAndStatutActifOrTrial(dates, List.of(AbonnementStatut.TRIAL));
+    }
+
+    /** Finds ACTIF subscriptions whose dateFin equals targetDate, for pre-billing 10 days in advance. */
+    public List<Abonnement> findAbonnementsToFacture(LocalDate targetDate) {
+        return repository.findAbonnementsToFacture(targetDate);
     }
 }

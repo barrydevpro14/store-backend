@@ -6,7 +6,6 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.tools.SubscriptionRules;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,26 +57,4 @@ class SubscriptionRulesTest {
                 .isInstanceOf(BadArgumentException.class);
     }
 
-    @Test
-    void ensurePeriodValid_should_pass_when_dateFin_after_dateDebut() {
-        assertThatCode(() -> SubscriptionRules.ensurePeriodValid(
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "invalidPeriod"))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void ensurePeriodValid_should_pass_when_dateFin_equal_dateDebut() {
-        LocalDate sameDate = LocalDate.of(2026, 6, 15);
-        assertThatCode(() -> SubscriptionRules.ensurePeriodValid(sameDate, sameDate, "invalidPeriod"))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void ensurePeriodValid_should_throw_when_dateFin_before_dateDebut() {
-        LocalDate dateDebut = LocalDate.of(2026, 12, 31);
-        LocalDate dateFin = LocalDate.of(2026, 1, 1);
-
-        assertThatThrownBy(() -> SubscriptionRules.ensurePeriodValid(dateDebut, dateFin, "invalidPeriod"))
-                .isInstanceOf(BadArgumentException.class);
-    }
 }

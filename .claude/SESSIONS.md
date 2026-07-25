@@ -9,6 +9,42 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-07-23 — Subscription system redesign (design only — no code written)
+
+### Subject
+
+Full design review of the subscription/billing system. Documented in `.claude/ABONNEMENT_REFONTE.md`.
+
+### Key decisions
+
+- **`Abonnement` = permanent contract** (one per enterprise). No new `Abonnement` per billing cycle.
+- **`PaiementAbonnement` = monthly invoice** generated automatically by a daily scheduler.
+- **Anniversary billing (Option B)**: each subscriber's cycle is anchored to their subscription date. Invoice generated 10 days before `dateFin`. No fixed calendar date for all clients.
+- **`TypePlanAbonnement` suppressed**: monthly-only billing makes duration types useless. `trial` flag migrated to `PlanAbonnement.trial: boolean`.
+- **`Promotion` suppressed**: redundant with `Coupon`. A global coupon (`entreprise=null`) covers the same use case.
+- **Coupon redesign**: auto-applied by `FacturationAbonnementScheduler` — no code entered by OWNER. Coupon targets one enterprise (nullable FK) or all (null). Controlled by `nombreUtilisationsMax` + `nombreUtilisations` + `actif`. Auto-deactivated when quota exhausted. `dateDebut/dateFin` removed — `actif` alone controls validity.
+- **`PaiementAbonnement`**: only `dateEcheance` added. `montantAvantReduction`, `reduction`, `montantFinal` reused as-is. `periodeFacturation` dropped — `dateEcheance` serves as the anti-duplicate guard (`existsByAbonnementIdAndDateEcheance`).
+- **Plan change (Option B)**: `PATCH /abonnements/current/plan` stores `Abonnement.prochainPlan`. Scheduler uses `prochainPlan.prix` for the next invoice. `validate()` switches `planAbonnement ← prochainPlan`. `AbonnementQuotaService` always reads `planAbonnement` — exploit impossible.
+- **`Abonnement` cleanup**: `actif` and `renouvellementAuto` removed — `AbonnementStatut` alone drives state.
+- **New statuts**: `FACTURE_GENEREE`, `EN_RETARD` on `StatutPaiementAbonnement`.
+- **Two schedulers**: `FacturationAbonnementScheduler` + `SuspensionAbonnementScheduler`, both cron externalized as `${CRON_FACTURATION_ABONNEMENT}` / `${CRON_SUSPENSION_ABONNEMENT}`.
+- **3 Flyway migrations**: V65 (TypePlan + Abonnement fields), V66 (PaiementAbonnement `date_echeance` + statuts), V67 (Coupon `entreprise_id`, drop `date_debut/fin`, UtilisationCoupon `paiement_abonnement_id`, drop `promotion`).
+
+### État final
+
+- No code modified. Only `.claude/ABONNEMENT_REFONTE.md` created and iteratively refined.
+- Branch: `dev-barry`. Working tree: only `.claude/ABONNEMENT_REFONTE.md` untracked.
+
+### Open follow-ups
+
+- **Implement the full subscription redesign** — start with V65 migration, then entities, then service layer.
+- **`./mvnw test`** not run — verify no regression on `AchatControllerTest` / `AchatServiceImplTest` with pieceJointe fields (carry-over from 2026-07-13).
+- **LivraisonStatut + quantiteLivree** — frontend not yet consuming these fields on vente line details (carry-over from 2026-07-13).
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-07-13 — PieceJointe on CommandeAchat (backend + frontend) + PDF support + "Preuve" label
 
 ### Backend

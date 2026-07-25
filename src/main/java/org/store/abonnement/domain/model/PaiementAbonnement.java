@@ -32,6 +32,8 @@ public class PaiementAbonnement extends AuditableEntity {
 
     private LocalDate datePaiement;
 
+    private LocalDate dateEcheance;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "moyen_id")
     private MoyenPaiement moyen;

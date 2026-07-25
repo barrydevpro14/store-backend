@@ -64,4 +64,12 @@ public class AlerteDomainService extends GlobalService<Alerte, AlerteRepository>
     public Long countNouvelles(UUID entrepriseId, UUID magasinId, List<AlerteType> alerteTypes) {
         return repository.countNouvelles(entrepriseId, magasinId, alerteTypes , AlerteStatut.NOUVELLE);
     }
+
+    public void markAllAsLue(UUID entrepriseId, UUID magasinId) {
+        if (magasinId == null) {
+            repository.markAllAsLueByEntreprise(entrepriseId, AlerteStatut.LUE, AlerteStatut.NOUVELLE);
+        } else {
+            repository.markAllAsLueByMagasin(entrepriseId, magasinId, AlerteStatut.LUE, AlerteStatut.NOUVELLE);
+        }
+    }
 }

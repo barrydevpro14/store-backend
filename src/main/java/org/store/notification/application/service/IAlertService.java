@@ -24,4 +24,6 @@ public interface IAlertService {
     Alerte findById(UUID id);
 
     Long countNouvelle();
+
+    void markAllAsLue();
 }

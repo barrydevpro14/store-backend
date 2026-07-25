@@ -13,6 +13,13 @@ public interface IJwtService {
      */
     String generateRestrictedToken(UserPrincipal principal);
 
+    /**
+     * Émet un token restreint avec scope "restricted_suspendu".
+     * Utilisé quand l'abonnement est suspendu pour défaut de paiement : l'OWNER doit
+     * payer la facture en retard, pas souscrire à un nouveau plan.
+     */
+    String generateSuspendedToken(UserPrincipal principal);
+
     boolean isTokenValid(String token);
 
     UserPrincipal extractUserPrincipal(String token);

@@ -50,6 +50,11 @@ public class JwtServiceImpl implements IJwtService {
         return buildToken(principal, RESTRICTED_PERMISSIONS, "restricted");
     }
 
+    @Override
+    public String generateSuspendedToken(UserPrincipal principal) {
+        return buildToken(principal, RESTRICTED_PERMISSIONS, "restricted_suspendu");
+    }
+
     private String buildToken(UserPrincipal principal, List<String> permissions, String scope) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + properties.expiration().accessToken().toMillis());

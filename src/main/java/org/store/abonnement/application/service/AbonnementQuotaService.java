@@ -64,6 +64,6 @@ public class AbonnementQuotaService {
     }
 
     private PlanAbonnement planOf(Abonnement abonnement) {
-        return abonnement.getTypePlanAbonnement().getPlan();
+        return abonnement.getPlanAbonnement();
     }
 }

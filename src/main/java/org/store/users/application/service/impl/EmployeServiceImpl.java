@@ -346,4 +346,9 @@ public class EmployeServiceImpl implements IEmployeService {
         employeDomainService.delete(employe);
         accountDomainService.delete(employe.getAccount());
     }
+
+    @Override
+    public List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(UUID magasinId, String roleLibelle) {
+        return employeDomainService.findActiveAccountsByMagasinIdAndRoleLibelle(magasinId, roleLibelle);
+    }
 }

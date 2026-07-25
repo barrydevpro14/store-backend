@@ -5,9 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.common.base.AuditableEntity;
+import org.store.entreprise.domain.model.Entreprise;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -31,12 +31,13 @@ public class Coupon extends AuditableEntity {
 
     private int nombreUtilisations = 0;
 
-    private LocalDate dateDebut;
-
-    private LocalDate dateFin;
-
     private boolean actif = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private PlanAbonnement plan;
+
+    /** Null = coupon global (s'applique à toutes les entreprises). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "entreprise_id")
+    private Entreprise entreprise;
 }

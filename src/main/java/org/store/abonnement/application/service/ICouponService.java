@@ -6,6 +6,7 @@ import org.store.abonnement.application.dto.CouponRequest;
 import org.store.abonnement.application.dto.CouponResponse;
 import org.store.abonnement.domain.model.Coupon;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ICouponService {
@@ -54,4 +55,16 @@ public interface ICouponService {
      * Throw `UniqueResourceException("coupon.code.alreadyExists")` si un coupon porte déjà ce code.
      */
     void ensureCodeAvailable(String code);
+
+    /** Returns the first coupon applicable to the given enterprise and plan, or empty. */
+    Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId);
+
+    /** Increments the coupon's usage counter and persists. */
+    Coupon incrementUsage(Coupon coupon);
+
+    /** Decrements the coupon's usage counter and persists. */
+    Coupon decrementUsage(Coupon coupon);
+
+    /** Deactivates the coupon when its usage quota is exhausted. */
+    void deactivateIfExhausted(Coupon coupon);
 }
