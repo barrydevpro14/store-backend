@@ -60,6 +60,8 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     /**
      * Picks the entreprise's "current" subscription: ACTIF first, otherwise a TRIAL whose
      * {@code dateFin >= today}. Expired trials and EN_ATTENTE rows are excluded.
+     * Returns a List + Pageable so callers can request at most 1 row and never hit
+     * NonUniqueResultException if a data anomaly (ACTIF + valid TRIAL) slips through.
      */
     @Query("""
             SELECT abonnement
@@ -81,8 +83,9 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
                 abonnement.dateFin DESC NULLS LAST,
                 abonnement.id DESC
             """)
-    Optional<Abonnement> findCurrentByEntreprise(@Param("entrepriseId") UUID entrepriseId,
-                                                 @Param("today") LocalDate today);
+    List<Abonnement> findCurrentByEntreprise(@Param("entrepriseId") UUID entrepriseId,
+                                             @Param("today") LocalDate today,
+                                             Pageable pageable);
 
     @Query(value = """
             SELECT new org.store.abonnement.application.dto.AbonnementResponse(abonnement)

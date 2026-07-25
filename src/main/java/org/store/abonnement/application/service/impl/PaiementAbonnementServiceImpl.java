@@ -235,11 +235,15 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     /**
-     * First payment (EN_ATTENTE): activate — dateDebut=today, dateFin=today+1month.
+     * First payment (EN_ATTENTE): expires any running TRIAL, then activates — dateDebut=today, dateFin=today+1month.
+     * Reactivation (SUSPENDU): activate without touching the TRIAL (already expired at first activation).
      * Renewal (ACTIF): extend dateFin +1 month; apply prochainPlan if set.
      */
     public void activateOrExtend(Abonnement abonnement) {
         if (abonnement.getStatut() == AbonnementStatut.EN_ATTENTE || abonnement.getStatut() == AbonnementStatut.SUSPENDU) {
+            if (abonnement.getStatut() == AbonnementStatut.EN_ATTENTE) {
+                abonnementDomainService.expireTrialIfAny(abonnement.getEntreprise().getId());
+            }
             LocalDate dateDebut = LocalDate.now();
             LocalDate dateFin = dateDebut.plusMonths(1);
             abonnementDomainService.activate(abonnement, dateDebut, dateFin);
