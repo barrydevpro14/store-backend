@@ -18,6 +18,7 @@ import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.property.SubscriptionProperties;
 import org.store.common.exceptions.BadArgumentException;
+import org.store.common.exceptions.ForbiddenException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
@@ -29,6 +30,7 @@ import org.store.security.application.service.ICurrentUserService;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -88,6 +90,10 @@ public class AbonnementServiceImpl implements IAbonnementService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         UUID currentEntrepriseId = currentUser.entrepriseId();
         Entreprise entreprise = entrepriseService.findById(currentEntrepriseId);
+
+        if (abonnementDomainService.isInactif(currentEntrepriseId)) {
+            throw new ForbiddenException("abonnement.inactif.cannotSubscribe");
+        }
 
         if (abonnementDomainService.hasPendingByEntreprise(currentEntrepriseId)) {
             throw new BadArgumentException("abonnement.alreadyPending");
@@ -151,6 +157,13 @@ public class AbonnementServiceImpl implements IAbonnementService {
     }
 
     @Override
+    @Transactional
+    public AbonnementResponse reactivateByAdmin(UUID abonnementId) {
+        Abonnement abonnement = abonnementDomainService.findById(abonnementId);
+        return new AbonnementResponse(abonnementDomainService.reactivate(abonnement));
+    }
+
+    @Override
     public long countByCreatedDateRange(String startDate, String endDate) {
         return abonnementDomainService.countByCreatedBetween(startDate, endDate);
     }
@@ -208,6 +221,16 @@ public class AbonnementServiceImpl implements IAbonnementService {
     @Override
     public boolean isSuspendedByEntreprise(UUID entrepriseId) {
         return abonnementDomainService.isSuspendu(entrepriseId);
+    }
+
+    @Override
+    public boolean isInactifByEntreprise(UUID entrepriseId) {
+        return abonnementDomainService.isInactif(entrepriseId);
+    }
+
+    @Override
+    public Optional<org.store.abonnement.domain.enums.AbonnementStatut> findCurrentNonActiveStatut(UUID entrepriseId) {
+        return abonnementDomainService.findCurrentNonActiveStatut(entrepriseId);
     }
 
     @Override

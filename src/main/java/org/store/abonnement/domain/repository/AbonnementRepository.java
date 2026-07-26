@@ -23,6 +23,23 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
     boolean existsByEntrepriseIdAndStatut(@Param("entrepriseId") UUID entrepriseId,
                                           @Param("statut") AbonnementStatut statut);
 
+    /**
+     * Returns the most recently created SUSPENDU or INACTIF subscription for the enterprise.
+     * Used to resolve the JWT restricted scope: SUSPENDU = non-payment, INACTIF = admin-deactivated.
+     * Pageable.ofSize(1) ensures only the newest row is returned.
+     */
+    @Query("""
+            SELECT a FROM Abonnement a
+            WHERE a.entreprise.id = :entrepriseId
+              AND a.statut IN (
+                  org.store.abonnement.domain.enums.AbonnementStatut.SUSPENDU,
+                  org.store.abonnement.domain.enums.AbonnementStatut.INACTIF
+              )
+            ORDER BY a.createdAt DESC, a.id DESC
+            """)
+    List<Abonnement> findLatestSuspendedOrInactif(@Param("entrepriseId") UUID entrepriseId,
+                                                  Pageable pageable);
+
     @Query("""
             SELECT abonnement
             FROM Abonnement abonnement

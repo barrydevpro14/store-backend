@@ -5,5 +5,6 @@ public enum AbonnementStatut {
     EXPIRE,
     SUSPENDU,
     EN_ATTENTE,
-    TRIAL
+    TRIAL,
+    INACTIF
 }

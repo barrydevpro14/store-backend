@@ -20,6 +20,12 @@ public interface IJwtService {
      */
     String generateSuspendedToken(UserPrincipal principal);
 
+    /**
+     * Émet un token restreint avec scope "restricted_inactif".
+     * Utilisé quand l'abonnement a été désactivé par un admin : aucune action self-service possible.
+     */
+    String generateInactifToken(UserPrincipal principal);
+
     boolean isTokenValid(String token);
 
     UserPrincipal extractUserPrincipal(String token);
