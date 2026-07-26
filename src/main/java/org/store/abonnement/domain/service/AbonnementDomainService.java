@@ -122,6 +122,21 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return repository.existsByEntrepriseIdAndStatut(entrepriseId, AbonnementStatut.SUSPENDU);
     }
 
+    /** Returns true if the entreprise's subscription is INACTIF (admin-deactivated). */
+    public boolean isInactif(UUID entrepriseId) {
+        return repository.existsByEntrepriseIdAndStatut(entrepriseId, AbonnementStatut.INACTIF);
+    }
+
+    /**
+     * Returns the statut of the most recently created SUSPENDU or INACTIF subscription.
+     * Prevents false positives when an old SUSPENDU row co-exists with a newer INACTIF row.
+     */
+    public Optional<AbonnementStatut> findCurrentNonActiveStatut(UUID entrepriseId) {
+        return repository.findLatestSuspendedOrInactif(entrepriseId, Pageable.ofSize(1))
+                         .stream().findFirst()
+                         .map(Abonnement::getStatut);
+    }
+
     public long countByCreatedBetween(String startDate, String endDate) {
         return repository.countByCreatedBetween(startDate, endDate);
     }
@@ -133,14 +148,20 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     }
 
     /**
-     * Annule un abonnement : EN_ATTENTE → EXPIRE (demande non aboutie),
-     * ACTIF / TRIAL / SUSPENDU → SUSPENDU (résiliation admin).
+     * Admin deactivation: EN_ATTENTE → EXPIRE (request never completed),
+     * ACTIF / TRIAL / SUSPENDU → INACTIF (admin-disabled, distinct from non-payment SUSPENDU).
      */
     public Abonnement cancel(Abonnement abonnement) {
         AbonnementStatut next = abonnement.getStatut() == AbonnementStatut.EN_ATTENTE
                 ? AbonnementStatut.EXPIRE
-                : AbonnementStatut.SUSPENDU;
+                : AbonnementStatut.INACTIF;
         abonnement.setStatut(next);
+        return save(abonnement);
+    }
+
+    /** Admin reactivation: INACTIF → ACTIF, dateFin preserved (option A). */
+    public Abonnement reactivate(Abonnement abonnement) {
+        abonnement.setStatut(AbonnementStatut.ACTIF);
         return save(abonnement);
     }
 

@@ -7,6 +7,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
@@ -76,8 +77,9 @@ public class LoginServiceImpl implements ILoginService {
 
     /**
      * Generates a full token for ADMIN and active-subscription callers.
-     * For an OWNER with suspended subscription: emits a "restricted_suspendu" token (pay invoice).
-     * For an OWNER with expired subscription: emits a restricted token (choose new plan).
+     * For an OWNER with suspended subscription (non-payment): "restricted_suspendu" (pay invoice).
+     * For an OWNER with admin-deactivated subscription: "restricted_inactif" (contact support).
+     * For an OWNER with expired subscription: "restricted" (choose new plan).
      * For an EMPLOYEE with inactive subscription: blocks login entirely.
      */
     private String generateTokenForSubscriptionState(UserPrincipal principal) {
@@ -95,10 +97,10 @@ public class LoginServiceImpl implements ILoginService {
             throw new ForbiddenException("auth.subscription.employee.expired");
         }
 
-        boolean isSuspendu = abonnementService.isSuspendedByEntreprise(principal.entrepriseId());
-
-        return isSuspendu
-                ? jwtService.generateSuspendedToken(principal)
-                : jwtService.generateRestrictedToken(principal);
+        return abonnementService.findCurrentNonActiveStatut(principal.entrepriseId())
+                .map(statut -> statut == AbonnementStatut.SUSPENDU
+                        ? jwtService.generateSuspendedToken(principal)
+                        : jwtService.generateInactifToken(principal))
+                .orElseGet(() -> jwtService.generateRestrictedToken(principal));
     }
 }

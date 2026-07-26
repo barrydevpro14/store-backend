@@ -1,6 +1,7 @@
 package org.store.security.application.service.impl;
 
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.security.application.service.IJwtService;
 import org.store.security.application.service.IRefreshTokenService;
@@ -120,11 +121,11 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
             throw new ForbiddenException("auth.subscription.employee.expired");
         }
 
-        boolean isSuspendu = abonnementService.isSuspendedByEntreprise(principal.entrepriseId());
-
-        return isSuspendu
-                ? jwtService.generateSuspendedToken(principal)
-                : jwtService.generateRestrictedToken(principal);
+        return abonnementService.findCurrentNonActiveStatut(principal.entrepriseId())
+                .map(statut -> statut == AbonnementStatut.SUSPENDU
+                        ? jwtService.generateSuspendedToken(principal)
+                        : jwtService.generateInactifToken(principal))
+                .orElseGet(() -> jwtService.generateRestrictedToken(principal));
     }
 
     private void publishLogoutAudit(RefreshToken token) {

@@ -71,14 +71,27 @@ public interface IAbonnementService {
     /** Returns {@code true} when the entreprise's subscription is SUSPENDU (non-payment suspension). */
     boolean isSuspendedByEntreprise(UUID entrepriseId);
 
+    /** Returns {@code true} when the entreprise's subscription is INACTIF (admin-deactivated). */
+    boolean isInactifByEntreprise(UUID entrepriseId);
+
+    /**
+     * Returns the statut of the most recently created SUSPENDU or INACTIF subscription for the
+     * enterprise. Used by the auth scope logic to avoid false positives from stale historical rows.
+     */
+    java.util.Optional<org.store.abonnement.domain.enums.AbonnementStatut> findCurrentNonActiveStatut(UUID entrepriseId);
+
     /** ADMIN count — number of Abonnements created within the given date range (both bounds optional). */
     long countByCreatedDateRange(String startDate, String endDate);
 
     /**
-     * ADMIN — annule un abonnement : EN_ATTENTE → EXPIRE, ACTIF/TRIAL → SUSPENDU.
-     * Retourne l'abonnement mis à jour.
+     * ADMIN — deactivates a subscription: EN_ATTENTE → EXPIRE, ACTIF/TRIAL/SUSPENDU → INACTIF.
      */
     AbonnementResponse cancelByAdmin(UUID abonnementId);
+
+    /**
+     * ADMIN — reactivates an INACTIF subscription: INACTIF → ACTIF, dateFin preserved.
+     */
+    AbonnementResponse reactivateByAdmin(UUID abonnementId);
 
     List<Abonnement> findExpiringOnDates(List<LocalDate> dates);
 

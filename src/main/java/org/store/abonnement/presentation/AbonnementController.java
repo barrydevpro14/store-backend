@@ -46,6 +46,12 @@ public class AbonnementController {
         return ResponseEntity.ok(abonnementService.cancelByAdmin(id));
     }
 
+    @PatchMapping("/{id}/reactivate")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_REACTIVATE')")
+    public ResponseEntity<AbonnementResponse> reactivate(@PathVariable UUID id) {
+        return ResponseEntity.ok(abonnementService.reactivateByAdmin(id));
+    }
+
     @GetMapping("/count")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<DataCountResponse> count(@RequestParam(required = false) String startDate,
