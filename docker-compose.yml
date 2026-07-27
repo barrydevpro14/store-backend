@@ -3,8 +3,6 @@ services:
     image: postgres:16-alpine
     container_name: store-postgres
     restart: unless-stopped
-    mem_limit: 450m
-    mem_reservation: 256m
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -34,8 +32,6 @@ services:
     image: store-backend:latest
     container_name: store-backend
     restart: unless-stopped
-    mem_limit: 950m
-    mem_reservation: 712m
     depends_on:
       postgres:
         condition: service_healthy
