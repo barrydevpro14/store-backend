@@ -44,7 +44,7 @@ public class AchatController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('PURCHASE_CREATE')")
+    @PreAuthorize("hasAnyAuthority('PURCHASE_CREATE' , 'PURCHASE_UPDATE')")
     public ResponseEntity<AchatDraftResponse> create(@Valid @RequestBody AchatRequest achatRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(achatService.create(achatRequest));
     }
@@ -70,7 +70,7 @@ public class AchatController {
     }
 
     @GetMapping("/orders/{commandeId}/lignes")
-    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    @PreAuthorize("hasAuthority('PURCHASE_READ')")
     public ResponseEntity<Page<LigneCommandeAchatResponse>> findLignes(
             @PathVariable UUID commandeId,
             @RequestParam(defaultValue = "0") int page,
@@ -79,14 +79,14 @@ public class AchatController {
     }
 
     @PostMapping("/orders/{commandeId}/lignes")
-    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    @PreAuthorize("hasAnyAuthority('PURCHASE_UPDATE' , 'PURCHASE_CREATE')")
     public ResponseEntity<LigneCommandeAchatResponse> addLigne(@PathVariable UUID commandeId,
                                                                @Valid @RequestBody LigneAchatRequest ligneAchatRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(achatService.addLigne(commandeId, ligneAchatRequest));
     }
 
     @PutMapping("/orders/{commandeId}/lignes/{ligneId}")
-    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    @PreAuthorize("hasAnyAuthority('PURCHASE_UPDATE' , 'PURCHASE_CREATE')")
     public ResponseEntity<LigneCommandeAchatResponse> updateLigne(@PathVariable UUID commandeId,
                                                                   @PathVariable UUID ligneId,
                                                                   @Valid @RequestBody LigneAchatUpdateRequest ligneAchatUpdateRequest) {
@@ -94,7 +94,7 @@ public class AchatController {
     }
 
     @DeleteMapping("/orders/{commandeId}/lignes/{ligneId}")
-    @PreAuthorize("hasAuthority('PURCHASE_UPDATE')")
+    @PreAuthorize("hasAnyAuthority('PURCHASE_UPDATE' , 'PURCHASE_CREATE')")
     public ResponseEntity<Void> deleteLigne(@PathVariable UUID commandeId,
                                             @PathVariable UUID ligneId) {
         achatService.deleteLigne(commandeId, ligneId);
