@@ -62,7 +62,7 @@ public class VenteController {
     }
 
     @GetMapping("/orders/{commandeId}/lignes")
-    @PreAuthorize("hasAuthority('SALE_UPDATE')")
+    @PreAuthorize("hasAuthority('SALE_READ')")
     public ResponseEntity<Page<LigneCommandeVenteResponse>> findLignes(
             @PathVariable UUID commandeId,
             @RequestParam(defaultValue = "0") int page,
