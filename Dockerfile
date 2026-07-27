@@ -31,7 +31,7 @@ EXPOSE 8080
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
   "-XX:MaxRAMPercentage=60.0", \
-   "-XX:+ExitOnOutOfMemoryError",\
+   "-XX:+ExitOnOutOfMemoryError", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "org.springframework.boot.loader.launch.JarLauncher", \
   "--spring.profiles.active=prod"]
