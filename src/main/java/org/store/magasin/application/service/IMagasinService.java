@@ -8,6 +8,7 @@ import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinStatsRow;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
 
@@ -69,4 +70,10 @@ public interface IMagasinService {
 
     /** Supprime le logo du magasin (idempotent). */
     void deleteLogo(UUID id);
+
+    /** Returns the count of stores matching the given actif flag. */
+    long countByActif(boolean actif);
+
+    /** Returns per-store employee stats (actifs/inactifs) for the given entreprise. */
+    List<MagasinStatsRow> findStatsByEntrepriseId(UUID entrepriseId);
 }

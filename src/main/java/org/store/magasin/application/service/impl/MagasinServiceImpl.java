@@ -180,4 +180,14 @@ public class MagasinServiceImpl implements IMagasinService {
         }
         return magasin;
     }
+
+    @Override
+    public long countByActif(boolean actif) {
+        return magasinDomainService.countByActif(actif);
+    }
+
+    @Override
+    public java.util.List<org.store.magasin.application.dto.MagasinStatsRow> findStatsByEntrepriseId(java.util.UUID entrepriseId) {
+        return magasinDomainService.findStatsByEntrepriseId(entrepriseId);
+    }
 }

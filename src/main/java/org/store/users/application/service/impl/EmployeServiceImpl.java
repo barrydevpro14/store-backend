@@ -351,4 +351,11 @@ public class EmployeServiceImpl implements IEmployeService {
     public List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(UUID magasinId, String roleLibelle) {
         return employeDomainService.findActiveAccountsByMagasinIdAndRoleLibelle(magasinId, roleLibelle);
     }
+
+    @Override
+    public long countAll() {
+        return employeDomainService.countByEntrepriseId().values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+    }
 }

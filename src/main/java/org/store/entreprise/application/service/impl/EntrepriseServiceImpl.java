@@ -1,8 +1,8 @@
 package org.store.entreprise.application.service.impl;
 
+import org.springframework.data.domain.*;
 import org.store.entreprise.application.service.IEntrepriseService;
 
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,8 +26,6 @@ import org.store.users.domain.model.Proprietaire;
 import org.store.users.domain.service.EmployeDomainService;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -185,5 +183,15 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
                 currentUserService.getCurrent().entrepriseId(),
                 "entreprise.notOwned"
         );
+    }
+
+    @Override
+    public long countByActif(boolean actif) {
+        return entrepriseDomainService.countByActif(actif);
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<org.store.entreprise.application.dto.EntrepriseSelectItem> findSelectItems(String q, int page, int size) {
+        return entrepriseDomainService.findSelectItems(q, PageRequest.of(page, size));
     }
 }

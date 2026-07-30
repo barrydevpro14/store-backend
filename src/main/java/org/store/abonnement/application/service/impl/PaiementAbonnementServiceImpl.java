@@ -4,11 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.store.abonnement.application.dto.PaiementAbonnementFilter;
-import org.store.abonnement.application.dto.PaiementAbonnementRequest;
-import org.store.abonnement.application.dto.PaiementAbonnementResponse;
-import org.store.abonnement.application.dto.RejectPaiementRequest;
-import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.dto.*;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IUtilisationCouponService;
@@ -17,7 +13,6 @@ import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
-import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.common.dto.ImageDownloadResponse;
@@ -176,11 +171,21 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     @Override
-    public long countByStatutAndCreatedBetween(String statut, String startDate, String endDate) {
+    public long countByStatutAndCreatedBetween(String statut, LocalDate startDate, LocalDate endDate) {
         StatutPaiementAbonnement statutEnum = (statut == null || statut.isBlank())
                 ? null
                 : StatutPaiementAbonnement.valueOf(statut);
         return paiementAbonnementDomainService.countByStatutAndCreatedBetween(statutEnum, startDate, endDate);
+    }
+
+    @Override
+    public java.math.BigDecimal getRevenueForPeriod(LocalDate startDate, LocalDate endDate) {
+        return paiementAbonnementDomainService.sumValidatedRevenueForPeriod(startDate, endDate);
+    }
+
+    @Override
+    public PaiementAbonnementStatsResponse getStatistiquesPaiement(String startDate, String endDate) {
+        return paiementAbonnementDomainService.getStatistiquesPaiement(startDate, endDate);
     }
 
     @Override
@@ -314,5 +319,15 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         if (!paiement.getAbonnement().getEntreprise().getId().equals(currentUser.entrepriseId())) {
             throw new ForbiddenException("abonnement.notOwned");
         }
+    }
+
+    @Override
+    public long countByStatut(StatutPaiementAbonnement statut) {
+        return paiementAbonnementDomainService.countByStatut(statut);
+    }
+
+    @Override
+    public java.math.BigDecimal sumValidatedRevenueForYear(int year) {
+        return paiementAbonnementDomainService.sumValidatedRevenueForYear(year);
     }
 }

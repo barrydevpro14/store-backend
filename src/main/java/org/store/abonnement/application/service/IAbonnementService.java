@@ -6,6 +6,7 @@ import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
+import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.entreprise.domain.model.Entreprise;
@@ -100,4 +101,7 @@ public interface IAbonnementService {
 
     /** Marks the abonnement SUSPENDU (non-payment suspension scheduler use). */
     Abonnement suspend(Abonnement abonnement);
+
+    /** Returns the count of subscriptions with the given statut. */
+    long countByStatut(AbonnementStatut statut);
 }

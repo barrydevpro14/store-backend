@@ -8,6 +8,7 @@ import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseSelectItem;
 import org.store.entreprise.application.dto.EntrepriseStatsResponse;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.users.domain.model.Proprietaire;
@@ -83,4 +84,10 @@ public interface IEntrepriseService {
 
     /** Statistiques par entreprise pour le reporting ADMIN : magasinCount + employeCount, paginées. */
     Page<EntrepriseStatsResponse> findStats(Pageable pageable);
+
+    /** Returns the count of companies matching the given actif flag. */
+    long countByActif(boolean actif);
+
+    /** Lightweight search on sigle / raisonSociale for combobox use cases. */
+    Page<EntrepriseSelectItem> findSelectItems(String q, int page, int size);
 }

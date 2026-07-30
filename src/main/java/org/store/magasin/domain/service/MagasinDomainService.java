@@ -10,6 +10,7 @@ import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinFilter;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinStatsRow;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.repository.MagasinRepository;
@@ -83,5 +84,10 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
     /** Retourne total / actifs / inactifs pour l'entreprise en une seule requête. */
     public MagasinCountResponse countStatsByEntrepriseId(UUID entrepriseId) {
         return repository.countStatsByEntrepriseId(entrepriseId);
+    }
+
+    /** Retourne les stats employés (actifs/inactifs) par magasin pour une entreprise donnée. */
+    public List<MagasinStatsRow> findStatsByEntrepriseId(UUID entrepriseId) {
+        return repository.findStatsByEntrepriseId(entrepriseId);
     }
 }

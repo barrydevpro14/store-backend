@@ -6,11 +6,11 @@ import org.store.activite.domain.service.ActiviteEconomiqueDomainService;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
-import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseSelectItem;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.entreprise.domain.repository.EntrepriseRepository;
 import org.store.users.domain.model.Proprietaire;
@@ -88,5 +88,10 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
 
     public long countByActif(boolean actif) {
         return repository.countByActif(actif);
+    }
+
+    /** Recherche légère sigle/raisonSociale pour les combobox ADMIN. */
+    public Page<EntrepriseSelectItem> findSelectItems(String q, org.springframework.data.domain.Pageable pageable) {
+        return repository.findSelectItems(q, LikePatternHelper.toLikePattern(q), pageable);
     }
 }
