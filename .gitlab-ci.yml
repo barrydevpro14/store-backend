@@ -31,7 +31,7 @@ test:
   timeout: 20 minutes
   <<: *maven-cache
   services:
-    - name: postgres:16.14-alpine3.21
+    - name: postgres:16-alpine
       alias: postgres
   variables:
     URL_DATABASE: postgres:5432
