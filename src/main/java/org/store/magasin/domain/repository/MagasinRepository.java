@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinStatsRow;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.domain.model.Magasin;
 
@@ -74,4 +75,18 @@ public interface MagasinRepository extends BaseRepository<Magasin> {
                 @Param("entrepriseId") UUID entrepriseId,
                 @Param("actif") boolean actif
                );
+
+    @Query("""
+            SELECT new org.store.magasin.application.dto.MagasinStatsRow(
+                m.nom,
+                m.actif,
+                COALESCE(SUM(CASE WHEN e.account.enabled = true  THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN e.account.enabled = false THEN 1 ELSE 0 END), 0)
+            )
+            FROM Magasin m LEFT JOIN m.employees e
+            WHERE m.entreprise.id = :entrepriseId
+            GROUP BY m.id, m.nom, m.actif
+            ORDER BY m.nom ASC
+            """)
+    List<MagasinStatsRow> findStatsByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
 }

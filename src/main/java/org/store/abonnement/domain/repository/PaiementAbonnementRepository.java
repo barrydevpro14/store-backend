@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
+import org.store.abonnement.application.dto.PaiementAbonnementStatsResponse;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.common.repository.BaseRepository;
@@ -12,7 +13,6 @@ import org.store.common.repository.BaseRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbonnement> {
@@ -60,9 +60,9 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             WHERE (:statut IS NULL OR paiement.statut = :statut)
               AND (:abonnementId IS NULL OR abonnement.id = :abonnementId)
               AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
-              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', paiement.createdAt) >= CAST(:startDate AS date))
-              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
-            ORDER BY paiement.createdAt DESC
+              AND (:startDate IS NULL OR :startDate = '' OR paiement.dateEcheance >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR paiement.dateEcheance <= CAST(:endDate AS date))
+            ORDER BY paiement.dateEcheance DESC
             """,
            countQuery = """
             SELECT COUNT(paiement)
@@ -71,8 +71,8 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             WHERE (:statut IS NULL OR paiement.statut = :statut)
               AND (:abonnementId IS NULL OR abonnement.id = :abonnementId)
               AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
-              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', paiement.createdAt) >= CAST(:startDate AS date))
-              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
+              AND (:startDate IS NULL OR :startDate = '' OR paiement.dateEcheance >= CAST(:startDate AS date))
+              AND (:endDate   IS NULL OR :endDate   = '' OR paiement.dateEcheance <= CAST(:endDate AS date))
             """)
     Page<PaiementAbonnementResponse> findResponsesByFilter(
             @Param("statut") StatutPaiementAbonnement statut,
@@ -82,17 +82,17 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             @Param("endDate") String endDate,
             Pageable pageable);
 
-    /** Counts payments matching an optional statut and optional createdAt date range. */
+    /** Counts payments matching an optional statut and optional dateEcheance range. */
     @Query("""
             SELECT COUNT(paiement)
             FROM PaiementAbonnement paiement
             WHERE (:statut IS NULL OR paiement.statut = :statut)
-              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', paiement.createdAt) >= CAST(:startDate AS date))
-              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', paiement.createdAt) <= CAST(:endDate AS date))
+              AND (:startDate IS NULL  OR paiement.dateEcheance >= :startDate)
+              AND (:endDate   IS NULL  OR paiement.dateEcheance <= :endDate)
             """)
     long countByStatutAndCreatedBetween(@Param("statut") StatutPaiementAbonnement statut,
-                                        @Param("startDate") String startDate,
-                                        @Param("endDate") String endDate);
+                                        @Param("startDate") LocalDate startDate,
+                                        @Param("endDate") LocalDate endDate);
 
     /** Finds invoices that are overdue: FACTURE_GENEREE or EN_ATTENTE_VALIDATION with dateEcheance < today. */
     @Query("""
@@ -107,7 +107,53 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             """)
     List<PaiementAbonnement> findOverdueInvoices(@Param("today") LocalDate today);
 
-    boolean existsByAbonnementIdAndDateEcheance(UUID abonnementId, LocalDate dateEcheance);
+    /** Sums montantFinal of VALIDE payments whose dateEcheance falls within the given period. */
+    @Query("""
+            SELECT COALESCE(SUM(paiement.montantFinal), 0)
+            FROM PaiementAbonnement paiement
+            WHERE paiement.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.VALIDE
+              AND (:startDate IS NULL  OR paiement.dateEcheance >= :startDate)
+              AND (:endDate   IS NULL OR paiement.dateEcheance <= :endDate)
+            """)
+    BigDecimal sumValidatedRevenueForPeriod(@Param("startDate") LocalDate startDate,
+                                            @Param("endDate") LocalDate endDate);
+
+    @Query("""
+    SELECT new org.store.abonnement.application.dto.PaiementAbonnementStatsResponse(
+        CAST(COUNT(CASE
+            WHEN paiement.statut =
+                org.store.abonnement.domain.enums.StatutPaiementAbonnement.VALIDE
+            THEN paiement.id
+        END) AS long),
+
+        CAST(COUNT(CASE
+            WHEN paiement.statut =
+                org.store.abonnement.domain.enums.StatutPaiementAbonnement.REJETE
+            THEN paiement.id
+        END) AS long),
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN paiement.statut =
+                        org.store.abonnement.domain.enums.StatutPaiementAbonnement.VALIDE
+                    THEN paiement.montantFinal
+                    ELSE 0
+                END
+            ),
+            0
+        )
+    )
+    FROM PaiementAbonnement paiement
+    WHERE
+        (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE' , paiement.dateEcheance) >= CAST(:startDate as DATE))
+        AND
+        (:endDate IS NULL OR :endDate = '' OR FUNCTION('DATE' , paiement.dateEcheance) <= CAST(:endDate as DATE))
+    """)
+    PaiementAbonnementStatsResponse getStatistiquesPaiement(
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate
+    );
 
     /** Finds FACTURE_GENEREE invoices with dateEcheance on any of the given alert dates. */
     @Query("""

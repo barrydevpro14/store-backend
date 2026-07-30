@@ -2,11 +2,8 @@ package org.store.abonnement.application.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
-import org.store.abonnement.application.dto.PaiementAbonnementFilter;
-import org.store.abonnement.application.dto.PaiementAbonnementRequest;
-import org.store.abonnement.application.dto.PaiementAbonnementResponse;
-import org.store.abonnement.application.dto.RejectPaiementRequest;
-import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.dto.*;
+import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.common.dto.ImageDownloadResponse;
@@ -50,8 +47,19 @@ public interface IPaiementAbonnementService {
      */
     ImageDownloadResponse getPreuve(UUID paiementId);
 
-    /** ADMIN count — payments matching an optional statut and optional createdAt date range. */
-    long countByStatutAndCreatedBetween(String statut, String startDate, String endDate);
+    /** ADMIN count — payments matching an optional statut and optional dateEcheance range. */
+    long countByStatutAndCreatedBetween(String statut, LocalDate startDate, LocalDate endDate);
+
+    /** ADMIN count — payments with the given statut (all periods). */
+    long countByStatut(StatutPaiementAbonnement statut);
+
+    /** ADMIN aggregate — sum of montantFinal for VALIDE payments in the given calendar year. */
+    java.math.BigDecimal sumValidatedRevenueForYear(int year);
+
+    /** ADMIN aggregate — sum of montantFinal for VALIDE payments in the given dateEcheance range. */
+    java.math.BigDecimal getRevenueForPeriod(LocalDate startDate, LocalDate endDate);
+
+    PaiementAbonnementStatsResponse getStatistiquesPaiement(String startDate, String endDate);
 
     /**
      * Returns the caller's currently pending Paiement (statut EN_ATTENTE_VALIDATION on the

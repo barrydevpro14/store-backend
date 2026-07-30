@@ -362,10 +362,12 @@ class PaiementAbonnementServiceImplTest {
 
     @Test
     void countByStatutAndCreatedBetween_should_parse_statut_and_delegate() {
+        LocalDate debut = LocalDate.of(2026, 1,1);
+        LocalDate fin =  LocalDate.of(2026, 12,31);
         when(paiementAbonnementDomainService.countByStatutAndCreatedBetween(
-                StatutPaiementAbonnement.VALIDE, "2026-01-01", "2026-12-31")).thenReturn(7L);
+                StatutPaiementAbonnement.VALIDE, debut,fin)).thenReturn(7L);
 
-        long result = service.countByStatutAndCreatedBetween("VALIDE", "2026-01-01", "2026-12-31");
+        long result = service.countByStatutAndCreatedBetween("VALIDE", debut, fin);
 
         assertThat(result).isEqualTo(7L);
     }

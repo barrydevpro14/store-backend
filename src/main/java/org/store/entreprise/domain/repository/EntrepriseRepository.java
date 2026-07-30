@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseSelectItem;
 import org.store.entreprise.domain.model.Entreprise;
 
 public interface EntrepriseRepository extends BaseRepository<Entreprise> {
@@ -14,10 +15,32 @@ public interface EntrepriseRepository extends BaseRepository<Entreprise> {
     long countByActif(@Param("actif") boolean actif);
 
     @Query(value = """
+            SELECT new org.store.entreprise.application.dto.EntrepriseSelectItem(
+                e.id, e.sigle, e.raisonSociale, ae.libelle
+            )
+            FROM Entreprise e LEFT JOIN e.activiteEconomique ae
+            WHERE (:q IS NULL OR :q = ''
+                OR LOWER(e.sigle) LIKE :qPattern
+                OR LOWER(e.raisonSociale) LIKE :qPattern)
+            ORDER BY e.sigle ASC
+            """,
+           countQuery = """
+            SELECT COUNT(e)
+            FROM Entreprise e
+            WHERE (:q IS NULL OR :q = ''
+                OR LOWER(e.sigle) LIKE :qPattern
+                OR LOWER(e.raisonSociale) LIKE :qPattern)
+            """)
+    Page<EntrepriseSelectItem> findSelectItems(
+            @Param("q") String q,
+            @Param("qPattern") String qPattern,
+            Pageable pageable);
+
+    @Query(value = """
             SELECT new org.store.entreprise.application.dto.EntrepriseResponse(entreprise)
             FROM Entreprise entreprise
             WHERE (:sigle IS NULL OR :sigle = '' OR LOWER(entreprise.sigle) LIKE :siglePattern)
-              AND (:raisonSociale IS NULL OR :raisonSociale = '' OR LOWER(entreprise.RaisonSociale) LIKE :raisonSocialePattern)
+              AND (:raisonSociale IS NULL OR :raisonSociale = '' OR LOWER(entreprise.raisonSociale) LIKE :raisonSocialePattern)
               AND (:ninea IS NULL OR :ninea = '' OR LOWER(entreprise.ninea) LIKE :nineaPattern)
               AND (:rccm IS NULL OR :rccm = '' OR LOWER(entreprise.rccm) LIKE :rccmPattern)
               AND (:actif IS NULL OR entreprise.actif = :actif)
@@ -30,7 +53,7 @@ public interface EntrepriseRepository extends BaseRepository<Entreprise> {
             SELECT COUNT(entreprise)
             FROM Entreprise entreprise
             WHERE (:sigle IS NULL OR :sigle = '' OR LOWER(entreprise.sigle) LIKE :siglePattern)
-              AND (:raisonSociale IS NULL OR :raisonSociale = '' OR LOWER(entreprise.RaisonSociale) LIKE :raisonSocialePattern)
+              AND (:raisonSociale IS NULL OR :raisonSociale = '' OR LOWER(entreprise.raisonSociale) LIKE :raisonSocialePattern)
               AND (:ninea IS NULL OR :ninea = '' OR LOWER(entreprise.ninea) LIKE :nineaPattern)
               AND (:rccm IS NULL OR :rccm = '' OR LOWER(entreprise.rccm) LIKE :rccmPattern)
               AND (:actif IS NULL OR entreprise.actif = :actif)

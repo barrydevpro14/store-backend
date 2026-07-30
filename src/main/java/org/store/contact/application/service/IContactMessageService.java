@@ -5,6 +5,7 @@ import org.store.contact.application.dto.ContactMessageFilter;
 import org.store.contact.application.dto.ContactMessageRequest;
 import org.store.contact.application.dto.ContactMessageResponse;
 import org.store.contact.application.dto.ContactReplyRequest;
+import org.store.contact.domain.enums.ContactStatut;
 
 import java.util.UUID;
 
@@ -21,4 +22,7 @@ public interface IContactMessageService {
 
     /** Admin saves a reply and marks the message as REPONDU. */
     ContactMessageResponse reply(UUID id, ContactReplyRequest contactReplyRequest);
+
+    /** Returns the count of messages with the given statut. */
+    long countByStatut(ContactStatut statut);
 }

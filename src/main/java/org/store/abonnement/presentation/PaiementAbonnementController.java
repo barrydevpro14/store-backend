@@ -24,6 +24,9 @@ import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.common.dto.DataCountResponse;
 import org.store.common.dto.ImageDownloadResponse;
 
+import java.math.BigDecimal;
+
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -63,11 +66,12 @@ public class PaiementAbonnementController {
     @GetMapping("/count")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")
     public ResponseEntity<DataCountResponse> count(@RequestParam(required = false) String statut,
-                                                   @RequestParam(required = false) String startDate,
-                                                   @RequestParam(required = false) String endDate) {
+                                                   @RequestParam(required = false) LocalDate startDate,
+                                                   @RequestParam(required = false) LocalDate endDate) {
         return ResponseEntity.ok(new DataCountResponse(
                 paiementAbonnementService.countByStatutAndCreatedBetween(statut, startDate, endDate)));
     }
+
 
     @GetMapping("/me/pending")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_READ')")

@@ -1,11 +1,9 @@
 package org.store.abonnement.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
-import org.store.abonnement.application.dto.PaiementAbonnementFilter;
-import org.store.abonnement.application.dto.PaiementAbonnementRequest;
-import org.store.abonnement.application.dto.PaiementAbonnementResponse;
-import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.dto.*;
 import org.store.abonnement.application.service.impl.PaiementAbonnementCreationContext;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
@@ -27,22 +25,6 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         super(repository);
     }
 
-    public PaiementAbonnement createPending(PaiementAbonnementCreationContext context) {
-        PaiementAbonnementRequest paiementAbonnementRequest = context.paiementAbonnementRequest();
-        SubscriptionAmountBreakdown breakdown = context.breakdown();
-
-        PaiementAbonnement paiement = new PaiementAbonnement();
-        paiement.setAbonnement(context.abonnement());
-        paiement.setMontantAvantReduction(breakdown.prixDeBase());
-        paiement.setReduction(breakdown.reductionCoupon());
-        paiement.setMontantFinal(breakdown.montantAPayer());
-        paiement.setDatePaiement(paiementAbonnementRequest.datePaiement());
-        paiement.setMoyen(context.moyen());
-        paiement.setReferenceTransaction(paiementAbonnementRequest.referenceTransaction());
-        paiement.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        paiement.setPreuve(context.preuve());
-        return save(paiement);
-    }
 
     public boolean existsPendingForAbonnement(UUID abonnementId) {
         return repository.existsByAbonnementIdAndStatut(abonnementId, StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
@@ -78,8 +60,13 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
     }
 
     /** Counts payments matching an optional statut and optional createdAt date range. */
-    public long countByStatutAndCreatedBetween(StatutPaiementAbonnement statut, String startDate, String endDate) {
+    public long countByStatutAndCreatedBetween(StatutPaiementAbonnement statut, LocalDate startDate, LocalDate endDate) {
         return repository.countByStatutAndCreatedBetween(statut, startDate, endDate);
+    }
+
+    /** Sums montantFinal of VALIDE payments whose dateEcheance falls within the given period. */
+    public BigDecimal sumValidatedRevenueForPeriod(LocalDate startDate, LocalDate endDate) {
+        return repository.sumValidatedRevenueForPeriod(startDate, endDate);
     }
 
     /** Somme le montantFinal des paiements VALIDE dont la datePaiement tombe dans l'année donnée. */
@@ -87,6 +74,10 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         LocalDate startOfYear = LocalDate.of(year, 1, 1);
         LocalDate startOfNextYear = LocalDate.of(year + 1, 1, 1);
         return repository.sumValidatedRevenueForYear(startOfYear, startOfNextYear);
+    }
+
+    public PaiementAbonnementStatsResponse getStatistiquesPaiement(String startDate, String endDate){
+        return repository.getStatistiquesPaiement(startDate, endDate);
     }
 
     /** Creates a FACTURE_GENEREE payment for scheduled billing — no moyen, preuve or datePaiement yet. */

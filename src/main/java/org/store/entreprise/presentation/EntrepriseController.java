@@ -23,6 +23,7 @@ import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
+import org.store.entreprise.application.dto.EntrepriseSelectItem;
 import org.store.entreprise.application.service.IEntrepriseService;
 
 import org.store.security.application.dto.RegisterPropertyRequest;
@@ -65,6 +66,15 @@ public class EntrepriseController {
                                                          @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(entrepriseService.findAll(
                 new EntrepriseFilter(sigle, raisonSociale, ninea, rccm, actif, activiteEconomiqueId, startDate, endDate, page, size)));
+    }
+
+    @GetMapping("/select")
+    @PreAuthorize("hasAuthority('COMPANY_READ')")
+    public ResponseEntity<Page<EntrepriseSelectItem>> select(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(entrepriseService.findSelectItems(q, page, size));
     }
 
     @GetMapping("/{id}")

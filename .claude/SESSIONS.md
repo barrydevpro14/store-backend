@@ -210,7 +210,7 @@ Full design review of the subscription/billing system. Documented in `.claude/AB
 
 ### Backend
 
-- **fix(pdf) — identified, not yet implemented**: `InvoicePdfServiceImpl.addHeader()` prints `entreprise.getRaisonSociale()` and `entreprise.getAdresse()` in the invoice header. Should use `magasin.getNom()` + `magasin.getAdresse()` instead. NINEA/RCCM kept (company fiscal IDs). `addFooter()` also needs `magasin.getNom()` instead of `entreprise.getSigle()`. Task logged in TODO.md (`🟡 Normal priority / Backend`).
+- **fix(pdf) — identified, not yet implemented**: `InvoicePdfServiceImpl.addHeader()` prints `entreprise.getraisonSociale()` and `entreprise.getAdresse()` in the invoice header. Should use `magasin.getNom()` + `magasin.getAdresse()` instead. NINEA/RCCM kept (company fiscal IDs). `addFooter()` also needs `magasin.getNom()` instead of `entreprise.getSigle()`. Task logged in TODO.md (`🟡 Normal priority / Backend`).
 
 ### État final
 - No code changed. Task added to TODO.md.

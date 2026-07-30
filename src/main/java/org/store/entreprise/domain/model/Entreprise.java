@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.abonnement.domain.model.Abonnement;
-import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.activite.domain.model.ActiviteEconomique;
 import org.store.common.base.AuditableEntity;
 import org.store.common.model.PieceJointe;
@@ -13,7 +12,6 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.produit.domain.model.Product;
 import org.store.users.domain.model.Proprietaire;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Getter
@@ -24,7 +22,7 @@ public class Entreprise extends AuditableEntity {
     public static final String TABLE_NAME = "entreprise";
 
     private String sigle;
-    private String RaisonSociale;
+    private String raisonSociale;
     private String ninea;
     private String rccm;
     private String adresse;

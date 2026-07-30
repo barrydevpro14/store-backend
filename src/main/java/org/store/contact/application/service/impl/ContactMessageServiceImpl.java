@@ -105,4 +105,9 @@ public class ContactMessageServiceImpl implements IContactMessageService {
 
         return new ContactMessageResponse(saved);
     }
+
+    @Override
+    public long countByStatut(ContactStatut statut) {
+        return contactMessageDomainService.countByStatut(statut);
+    }
 }

@@ -11,6 +11,7 @@ import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.IAbonnementService;
+import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IPlanAbonnementService;
@@ -263,6 +264,11 @@ public class AbonnementServiceImpl implements IAbonnementService {
                 currentUserService.getCurrent().entrepriseId(),
                 "abonnement.notOwned"
         );
+    }
+
+    @Override
+    public long countByStatut(AbonnementStatut statut) {
+        return abonnementDomainService.countByStatut(statut);
     }
 
 }

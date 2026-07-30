@@ -2,20 +2,25 @@ package org.store.reporting.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.abonnement.application.dto.PaiementAbonnementStatsResponse;
+import org.store.abonnement.application.service.IAbonnementService;
+import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
-import org.store.abonnement.domain.service.AbonnementDomainService;
-import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
+import org.store.contact.application.service.IContactMessageService;
 import org.store.contact.domain.enums.ContactStatut;
-import org.store.contact.domain.service.ContactMessageDomainService;
-import org.store.entreprise.domain.service.EntrepriseDomainService;
-import org.store.magasin.domain.service.MagasinDomainService;
+import org.store.entreprise.application.service.IEntrepriseService;
+import org.store.magasin.application.dto.MagasinStatsRow;
+import org.store.magasin.application.service.IMagasinService;
 import org.store.reporting.application.dto.AdminOverviewStatsResponse;
+import org.store.reporting.application.dto.PeriodReportResponse;
 import org.store.reporting.application.service.IAdminReportingService;
-import org.store.users.domain.service.EmployeDomainService;
+import org.store.users.application.service.IEmployeService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Aggregates all admin overview KPI counts in a single transactional call,
@@ -25,46 +30,46 @@ import java.time.LocalDate;
 @Transactional(readOnly = true)
 public class AdminReportingServiceImpl implements IAdminReportingService {
 
-    private final EntrepriseDomainService entrepriseDomainService;
-    private final AbonnementDomainService abonnementDomainService;
-    private final PaiementAbonnementDomainService paiementAbonnementDomainService;
-    private final MagasinDomainService magasinDomainService;
-    private final EmployeDomainService employeDomainService;
-    private final ContactMessageDomainService contactMessageDomainService;
+    private final IEntrepriseService entrepriseService;
+    private final IMagasinService magasinService;
+    private final IEmployeService employeService;
+    private final IAbonnementService abonnementService;
+    private final IPaiementAbonnementService paiementAbonnementService;
+    private final IContactMessageService contactMessageService;
 
-    public AdminReportingServiceImpl(EntrepriseDomainService entrepriseDomainService,
-                                     AbonnementDomainService abonnementDomainService,
-                                     PaiementAbonnementDomainService paiementAbonnementDomainService,
-                                     MagasinDomainService magasinDomainService,
-                                     EmployeDomainService employeDomainService,
-                                     ContactMessageDomainService contactMessageDomainService) {
-        this.entrepriseDomainService = entrepriseDomainService;
-        this.abonnementDomainService = abonnementDomainService;
-        this.paiementAbonnementDomainService = paiementAbonnementDomainService;
-        this.magasinDomainService = magasinDomainService;
-        this.employeDomainService = employeDomainService;
-        this.contactMessageDomainService = contactMessageDomainService;
+    public AdminReportingServiceImpl(IEntrepriseService entrepriseService,
+                                     IMagasinService magasinService,
+                                     IEmployeService employeService,
+                                     IAbonnementService abonnementService,
+                                     IPaiementAbonnementService paiementAbonnementService,
+                                     IContactMessageService contactMessageService) {
+        this.entrepriseService = entrepriseService;
+        this.magasinService = magasinService;
+        this.employeService = employeService;
+        this.abonnementService = abonnementService;
+        this.paiementAbonnementService = paiementAbonnementService;
+        this.contactMessageService = contactMessageService;
     }
 
     @Override
     public AdminOverviewStatsResponse getOverviewStats() {
         int currentYear = LocalDate.now().getYear();
 
-        long totalEntreprisesActives   = entrepriseDomainService.countByActif(true);
-        long totalEntreprisesInactives = entrepriseDomainService.countByActif(false);
+        long totalEntreprisesActives   = entrepriseService.countByActif(true);
+        long totalEntreprisesInactives = entrepriseService.countByActif(false);
         long totalEntreprises          = totalEntreprisesActives + totalEntreprisesInactives;
-        long totalMagasinsActifs       = magasinDomainService.countByActif(true);
-        long totalMagasinsInactifs     = magasinDomainService.countByActif(false);
+        long totalMagasinsActifs       = magasinService.countByActif(true);
+        long totalMagasinsInactifs     = magasinService.countByActif(false);
         long totalMagasins             = totalMagasinsActifs + totalMagasinsInactifs;
-        long totalEmployes             = employeDomainService.countByEntrepriseId().values().stream().mapToLong(Long::longValue).sum();
-        long abonnementsActifs         = abonnementDomainService.countByStatut(AbonnementStatut.ACTIF);
-        long abonnementsTrial          = abonnementDomainService.countByStatut(AbonnementStatut.TRIAL);
-        long abonnementsExpires        = abonnementDomainService.countByStatut(AbonnementStatut.EXPIRE);
-        long abonnementsSuspend        = abonnementDomainService.countByStatut(AbonnementStatut.SUSPENDU);
-        long paiementsEnAttente        = paiementAbonnementDomainService.countByStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        long paiementsRejetes          = paiementAbonnementDomainService.countByStatut(StatutPaiementAbonnement.REJETE);
-        long contactMessagesNouveaux   = contactMessageDomainService.countByStatut(ContactStatut.NOUVEAU);
-        BigDecimal revenueYtd          = paiementAbonnementDomainService.sumValidatedRevenueForYear(currentYear);
+        long totalEmployes             = employeService.countAll();
+        long abonnementsActifs         = abonnementService.countByStatut(AbonnementStatut.ACTIF);
+        long abonnementsTrial          = abonnementService.countByStatut(AbonnementStatut.TRIAL);
+        long abonnementsExpires        = abonnementService.countByStatut(AbonnementStatut.EXPIRE);
+        long abonnementsSuspend        = abonnementService.countByStatut(AbonnementStatut.SUSPENDU);
+        long paiementsEnAttente        = paiementAbonnementService.countByStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
+        long paiementsRejetes          = paiementAbonnementService.countByStatut(StatutPaiementAbonnement.REJETE);
+        long contactMessagesNouveaux   = contactMessageService.countByStatut(ContactStatut.NOUVEAU);
+        BigDecimal revenueYtd          = paiementAbonnementService.sumValidatedRevenueForYear(currentYear);
 
         return new AdminOverviewStatsResponse(
                 totalEntreprises,
@@ -82,6 +87,24 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
                 paiementsRejetes,
                 contactMessagesNouveaux,
                 revenueYtd != null ? revenueYtd : BigDecimal.ZERO
+        );
+    }
+
+    @Override
+    public List<MagasinStatsRow> getEntrepriseStats(UUID entrepriseId) {
+        return magasinService.findStatsByEntrepriseId(entrepriseId);
+    }
+
+    @Override
+    public PeriodReportResponse getPeriodStats(String startDate, String endDate) {
+        long nouveauxAbonnements = abonnementService.countByCreatedDateRange(startDate, endDate);
+        PaiementAbonnementStatsResponse paiementAbonnementStats =paiementAbonnementService.getStatistiquesPaiement(startDate,endDate);
+
+        return new PeriodReportResponse(
+                nouveauxAbonnements,
+                paiementAbonnementStats.valides(),
+                paiementAbonnementStats.rejetes(),
+                paiementAbonnementStats.revenu()
         );
     }
 }

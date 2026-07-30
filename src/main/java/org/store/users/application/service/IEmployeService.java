@@ -41,4 +41,7 @@ public interface IEmployeService {
 
     /** Returns all active Accounts in the given magasin with the given role. */
     List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(UUID magasinId, String roleLibelle);
+
+    /** Returns the total employee count across all companies. */
+    long countAll();
 }
