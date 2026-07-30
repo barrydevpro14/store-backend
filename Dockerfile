@@ -13,9 +13,11 @@ RUN ./mvnw package -DskipTests -q && \
     java -Djarmode=layertools -jar target/*.jar extract --destination layers
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:21-jre-noble AS runtime
 
-RUN addgroup -S store && adduser -S store -G store && mkdir -p /app && chown store:store /app
+RUN groupadd --system store && \
+    useradd --system --no-create-home --gid store store && \
+    mkdir -p /app && chown store:store /app
 
 WORKDIR /app
 USER store
