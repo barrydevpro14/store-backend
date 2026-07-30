@@ -34,16 +34,21 @@ test:
     - name: postgres:16-alpine
       alias: postgres
   variables:
+    # Spring app — aligned with application-test.yml defaults
     URL_DATABASE: postgres:5432
-    DB_NAME: $POSTGRES_DB
-    DB_USERNAME: $POSTGRES_USER
-    DB_PASSWORD: $POSTGRES_PASSWORD
+    DB_NAME: db_store
+    DB_USERNAME: barrydevit
+    DB_PASSWORD: passer
     JWT_SECRET: $JWT_SECRET_CI
     RBAC_ADMIN_PASSWORD: $RBAC_ADMIN_PASSWORD_CI
     SPRING_PROFILES_ACTIVE: test
+    # Postgres service init — must match DB_* above
+    POSTGRES_DB: db_store
+    POSTGRES_USER: barrydevit
+    POSTGRES_PASSWORD: passer
     POSTGRES_HOST_AUTH_METHOD: trust
   script:
-    - ./mvnw clean verify -q
+    - ./mvnw clean verify -q -q
 
 # ── STAGE 2 — build Docker image → GitLab Container Registry ─────────────────
 build-image:
