@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${URL_DATABASE:localhost:5432}/${DB_NAME:db_store}
     username: ${DB_USERNAME:barrydevit}
-    password: ${DB_PASSWORD:passer}
+    password: ${DB_PASSWORD:passer123}
   config:
     import: optional:classpath:email.yml
 
