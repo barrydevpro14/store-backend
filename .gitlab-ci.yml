@@ -1,22 +1,21 @@
 workflow:
   rules:
-    - when: always
-    # Original rules — uncomment to re-enable CI:
-    # - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_BRANCH == "main"
-    # - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 stages:
   - test
+  - build-image
+  - scan
+  - deploy
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dmaven.color=false"
-  POSTGRES_DB: db_store
-  POSTGRES_USER: barrydevit
-  POSTGRES_PASSWORD: passer
-  POSTGRES_HOST_AUTH_METHOD: trust
+  IMAGE_SHA: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  # Variables sensibles → GitLab CI/CD → Settings → CI/CD → Variables :
+  # POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+  # JWT_SECRET_CI, RBAC_ADMIN_PASSWORD_CI
+  # SSH_PRIVATE_KEY, VPS_HOST, VPS_USER, VPS_APP_PATH
 
-# ── Cache Maven dependencies across jobs ─────────────────────────────────────
 .maven-cache: &maven-cache
   cache:
     key: "$CI_PROJECT_ID-maven"
@@ -24,30 +23,136 @@ variables:
       - .m2/repository/
     policy: pull-push
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — compile + test suite
-# Runs on every push to dev, main and on all Merge Requests.
-# A Postgres service is spun up for StoreApplicationTests (@SpringBootTest).
-# Railway builds and deploys the Docker image directly — no deploy stage needed.
-# ─────────────────────────────────────────────────────────────────────────────
+# ── STAGE 1 — compile + test suite ───────────────────────────────────────────
 test:
   stage: test
-  image: eclipse-temurin:21-jdk-alpine
+  image: eclipse-temurin:21.0.6_7-jdk-alpine
+  interruptible: true
+  timeout: 20 minutes
   <<: *maven-cache
   services:
-    - name: postgres:16-alpine
+    - name: postgres:16.14-alpine3.21
       alias: postgres
   variables:
     URL_DATABASE: postgres:5432
     DB_NAME: $POSTGRES_DB
     DB_USERNAME: $POSTGRES_USER
     DB_PASSWORD: $POSTGRES_PASSWORD
-    JWT_SECRET: "ci-test-secret-at-least-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    RBAC_ADMIN_PASSWORD: passer123
+    JWT_SECRET: $JWT_SECRET_CI
+    RBAC_ADMIN_PASSWORD: $RBAC_ADMIN_PASSWORD_CI
     SPRING_PROFILES_ACTIVE: test
+    POSTGRES_HOST_AUTH_METHOD: trust
   script:
-    - ./mvnw verify -q
-  rules:
-#    - if: $CI_COMMIT_BRANCH == "dev"
-   - if: $CI_COMMIT_BRANCH == "main"
-#    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - ./mvnw clean verify -q
+
+# ── STAGE 2 — build Docker image → GitLab Container Registry ─────────────────
+build-image:
+  stage: build-image
+  image: docker:27.4.0
+  interruptible: true
+  timeout: 15 minutes
+  needs: [test]
+  services:
+    - name: docker:27.4.0-dind
+      variables:
+        DOCKER_TLS_CERTDIR: "/certs"
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "/certs/client"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker buildx create --name ci-builder --use || docker buildx use ci-builder
+    - |
+      docker buildx build \
+        --push \
+        --provenance=false \
+        --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
+        --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        -t "$IMAGE_SHA" .
+
+# ── STAGE 3 — Trivy vulnerability scan ───────────────────────────────────────
+trivy-scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:0.72.0
+    entrypoint: [""]
+  interruptible: true
+  timeout: 10 minutes
+  allow_failure: false
+  needs: [build-image]
+  cache:
+    key: trivy-db
+    paths:
+      - .trivycache/
+    policy: pull-push
+  variables:
+    TRIVY_USERNAME: $CI_REGISTRY_USER
+    TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
+    TRIVY_NO_PROGRESS: "true"
+    TRIVY_CACHE_DIR: .trivycache
+  script:
+    - trivy image --download-db-only
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "$IMAGE_SHA"
+
+# ── STAGE 4 — deploy on OVH VPS ──────────────────────────────────────────────
+deploy-production:
+  stage: deploy
+  image: alpine:3.22.2
+  timeout: 10 minutes
+  needs: [trivy-scan]
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval "$(ssh-agent -s)"
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - |
+      ssh "$VPS_USER@$VPS_HOST" bash -s << EOF
+        set -e
+
+        PREVIOUS_SHA=\$(cat $VPS_APP_PATH/.deployed_sha 2>/dev/null || echo "")
+
+        echo "$CI_REGISTRY_PASSWORD" | docker login \
+          -u "$CI_REGISTRY_USER" \
+          --password-stdin \
+          "$CI_REGISTRY"
+
+        cd "$VPS_APP_PATH"
+        docker pull "$IMAGE_SHA"
+        export IMAGE_TAG="$IMAGE_SHA"
+        docker compose up -d --no-build --remove-orphans
+
+        echo "Health check (max 90s)..."
+        RETRIES=0
+        until CONTAINER_ID=\$(docker compose ps -q store-backend) && \
+              [ -n "\$CONTAINER_ID" ] && \
+              [ "\$(docker inspect --format='{{.State.Health.Status}}' "\$CONTAINER_ID")" = "healthy" ]; do
+
+          sleep 10
+          RETRIES=\$((RETRIES + 1))
+
+          if [ \$RETRIES -ge 9 ]; then
+            echo "Health check failed — rollback vers \$PREVIOUS_SHA"
+
+            if [ -n "\$PREVIOUS_SHA" ]; then
+              docker pull "\$PREVIOUS_SHA"
+              export IMAGE_TAG="\$PREVIOUS_SHA"
+              docker compose up -d --no-build --remove-orphans
+            fi
+
+            exit 1
+          fi
+        done
+
+        echo "Déploiement réussi"
+        echo "$IMAGE_SHA" > "$VPS_APP_PATH/.deployed_sha"
+        docker image prune -f
+      EOF
+  environment:
+    name: production
