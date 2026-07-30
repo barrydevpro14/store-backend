@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine3.21
     container_name: store-postgres
     restart: unless-stopped
     environment:
@@ -26,10 +26,7 @@ services:
       start_period: 20s
 
   store:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: store-backend:latest
+    image: ${IMAGE_TAG}
     container_name: store-backend
     restart: unless-stopped
     depends_on:
