@@ -137,7 +137,7 @@ deploy-production:
 
         echo "Health check (max 90s)..."
         RETRIES=0
-        until CONTAINER_ID=\$(docker compose ps -q store-backend) && \
+        until CONTAINER_ID=\$(docker compose ps -q store) && \
               [ -n "\$CONTAINER_ID" ] && \
               [ "\$(docker inspect --format='{{.State.Health.Status}}' "\$CONTAINER_ID")" = "healthy" ]; do
 
