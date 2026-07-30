@@ -69,7 +69,8 @@ build-image:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - docker buildx create --name ci-builder --use || docker buildx use ci-builder
+    - docker context create myctx 2>/dev/null || true
+    - docker buildx create --name ci-builder --driver docker-container --use myctx 2>/dev/null || docker buildx use ci-builder
     - |
       docker buildx build \
         --push \
