@@ -425,4 +425,15 @@ class EmployeServiceImplTest {
         verify(accountService, never()).create(any(), any());
         verify(employeDomainService, never()).create(any(), any(), any());
     }
+
+    @Test
+    void countByMagasinId_should_delegate_to_domain_service() {
+        UUID targetMagasinId = UUID.randomUUID();
+        when(employeDomainService.countByMagasinId(targetMagasinId)).thenReturn(7L);
+
+        long result = service.countByMagasinId(targetMagasinId);
+
+        assertThat(result).isEqualTo(7L);
+        verify(employeDomainService).countByMagasinId(targetMagasinId);
+    }
 }

@@ -26,16 +26,8 @@ import org.store.magasin.application.dto.MagasinResponse;
 import org.store.magasin.application.dto.MagasinStatsResponse;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.application.service.IMagasinService;
-import org.store.magasin.domain.service.MagasinDomainService;
-import org.store.stock.application.dto.StockValuationResponse;
-import org.store.stock.application.service.IStockService;
-import org.store.users.domain.service.EmployeDomainService;
-import org.store.vente.domain.service.ClientDomainService;
-import org.store.vente.domain.service.FactureClientDomainService;
+import org.store.magasin.application.service.IMagasinStatsService;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,31 +38,18 @@ public class MagasinController {
     public static final String BASE_PATH = "/api/v1/magasins";
 
     private final IMagasinService magasinService;
-    private final MagasinDomainService magasinDomainService;
-    private final EmployeDomainService employeDomainService;
-    private final ClientDomainService clientDomainService;
-    private final IStockService stockService;
-    private final FactureClientDomainService factureClientDomainService;
+    private final IMagasinStatsService magasinStatsService;
 
     public MagasinController(IMagasinService magasinService,
-                             MagasinDomainService magasinDomainService,
-                             EmployeDomainService employeDomainService,
-                             ClientDomainService clientDomainService,
-                             IStockService stockService,
-                             FactureClientDomainService factureClientDomainService) {
+                             IMagasinStatsService magasinStatsService) {
         this.magasinService = magasinService;
-        this.magasinDomainService = magasinDomainService;
-        this.employeDomainService = employeDomainService;
-        this.clientDomainService = clientDomainService;
-        this.stockService = stockService;
-        this.factureClientDomainService = factureClientDomainService;
+        this.magasinStatsService = magasinStatsService;
     }
 
     @PostMapping
     @PreAuthorize("hasAuthority('STORE_CREATE')")
     public ResponseEntity<MagasinResponse> create(@Valid @RequestBody MagasinRequest magasinRequest) {
-        MagasinResponse response = magasinService.create(magasinRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(magasinService.create(magasinRequest));
     }
 
     @GetMapping
@@ -106,31 +85,7 @@ public class MagasinController {
     @GetMapping("/{id}/stats")
     @PreAuthorize("hasAuthority('STORE_READ_ONE')")
     public ResponseEntity<MagasinStatsResponse> stats(@PathVariable UUID id) {
-        var magasin = magasinService.ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
-        UUID entrepriseId = magasin.getEntreprise().getId();
-
-        YearMonth currentMonth = YearMonth.now();
-        LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
-        LocalDateTime endOfMonth   = currentMonth.atEndOfMonth().plusDays(1).atStartOfDay();
-
-        long nombreEmployes          = employeDomainService.countByMagasinId(id);
-        long nombreClients           = clientDomainService.countByEntrepriseId(entrepriseId);
-        StockValuationResponse stock = stockService.computeValuation(id);
-        BigDecimal revenuMois        = factureClientDomainService
-                .sumMontantCommandesForCaisse(
-                        new org.store.vente.application.dto.CaisseResumeFilter(
-                                id,
-                                startOfMonth.toLocalDate().toString(),
-                                endOfMonth.minusDays(1).toLocalDate().toString()),
-                        entrepriseId);
-
-        return ResponseEntity.ok(new MagasinStatsResponse(
-                nombreEmployes,
-                nombreClients,
-                stock.nombreLignes(),
-                stock.valeurTotale(),
-                revenuMois != null ? revenuMois : BigDecimal.ZERO
-        ));
+        return ResponseEntity.ok(magasinStatsService.getStats(id));
     }
 
     @PutMapping("/{id}")
@@ -155,7 +110,7 @@ public class MagasinController {
     @PutMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('STORE_UPDATE')")
     public ResponseEntity<MagasinResponse> uploadLogo(@PathVariable UUID id,
-                                                     @RequestPart("file") MultipartFile file) {
+                                                      @RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(magasinService.uploadLogo(id, file));
     }
 

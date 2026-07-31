@@ -157,4 +157,9 @@ public class ClientServiceImpl implements IClientService {
         }
         return client;
     }
+
+    @Override
+    public long countByEntrepriseId(UUID entrepriseId) {
+        return clientDomainService.countByEntrepriseId(entrepriseId);
+    }
 }

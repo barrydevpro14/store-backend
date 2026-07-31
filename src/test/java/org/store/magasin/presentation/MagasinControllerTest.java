@@ -15,8 +15,11 @@ import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.magasin.application.dto.MagasinRequest;
 import org.store.magasin.application.dto.MagasinResponse;
+import org.store.magasin.application.dto.MagasinStatsResponse;
 import org.store.magasin.application.service.IMagasinService;
+import org.store.magasin.application.service.IMagasinStatsService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +40,7 @@ class MagasinControllerTest {
 
     private MockMvc mockMvc;
     private IMagasinService magasinService;
+    private IMagasinStatsService magasinStatsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private UUID magasinId;
@@ -45,6 +49,7 @@ class MagasinControllerTest {
     @BeforeEach
     void setUp() {
         magasinService = mock(IMagasinService.class);
+        magasinStatsService = mock(IMagasinStatsService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
@@ -52,11 +57,7 @@ class MagasinControllerTest {
 
         mockMvc = MockMvcBuilders.standaloneSetup(new MagasinController(
                 magasinService,
-                mock(org.store.magasin.domain.service.MagasinDomainService.class),
-                mock(org.store.users.domain.service.EmployeDomainService.class),
-                mock(org.store.vente.domain.service.ClientDomainService.class),
-                mock(org.store.stock.application.service.IStockService.class),
-                mock(org.store.vente.domain.service.FactureClientDomainService.class)))
+                magasinStatsService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
@@ -168,5 +169,22 @@ class MagasinControllerTest {
                 .andExpect(jsonPath("$.actif").value(false));
 
         verify(magasinService).deactivate(magasinId);
+    }
+
+    @Test
+    void should_return_200_with_stats() throws Exception {
+        MagasinStatsResponse stats = new MagasinStatsResponse(
+                5L, 12L, 20L, new BigDecimal("8000.00"), new BigDecimal("1500.00"));
+        when(magasinStatsService.getStats(eq(magasinId))).thenReturn(stats);
+
+        mockMvc.perform(get(MagasinController.BASE_PATH + "/" + magasinId + "/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombreEmployes").value(5))
+                .andExpect(jsonPath("$.nombreClients").value(12))
+                .andExpect(jsonPath("$.nombreProduitsEnStock").value(20))
+                .andExpect(jsonPath("$.valeurTotaleStock").value(8000.00))
+                .andExpect(jsonPath("$.revenuMoisCourant").value(1500.00));
+
+        verify(magasinStatsService).getStats(magasinId);
     }
 }

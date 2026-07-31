@@ -304,4 +304,14 @@ class ClientServiceImplTest {
 
         verify(clientDomainService, never()).delete(any(Client.class));
     }
+
+    @Test
+    void countByEntrepriseId_should_delegate_to_domain_service() {
+        when(clientDomainService.countByEntrepriseId(entrepriseId)).thenReturn(42L);
+
+        long result = service.countByEntrepriseId(entrepriseId);
+
+        assertThat(result).isEqualTo(42L);
+        verify(clientDomainService).countByEntrepriseId(entrepriseId);
+    }
 }

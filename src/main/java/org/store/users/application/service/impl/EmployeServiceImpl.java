@@ -358,4 +358,9 @@ public class EmployeServiceImpl implements IEmployeService {
                 .mapToLong(Long::longValue)
                 .sum();
     }
+
+    @Override
+    public long countByMagasinId(UUID magasinId) {
+        return employeDomainService.countByMagasinId(magasinId);
+    }
 }

@@ -44,4 +44,7 @@ public interface IEmployeService {
 
     /** Returns the total employee count across all companies. */
     long countAll();
+
+    /** Returns the employee count for the given magasin. */
+    long countByMagasinId(UUID magasinId);
 }

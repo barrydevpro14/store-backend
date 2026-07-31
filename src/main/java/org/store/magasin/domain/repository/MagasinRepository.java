@@ -69,7 +69,7 @@ public interface MagasinRepository extends BaseRepository<Magasin> {
                     FROM Magasin magasin
                     WHERE magasin.entreprise.id = :entrepriseId
                     AND magasin.actif = :actif
-                    ORDER BY magasin.createdAt DESC
+                    ORDER BY magasin.nom ASC
                     """)
         List<MagasinSummaryResponse> findAllByEntreprise(
                 @Param("entrepriseId") UUID entrepriseId,

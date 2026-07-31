@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -31,6 +32,13 @@ public class GlobalException {
 
     public GlobalException(IMessageSourceService messageSourceService) {
         this.messageSourceService = messageSourceService;
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> missingServletRequestParameter(MissingServletRequestParameterException ex) {
+        String message = messageSourceService.getMessage("validation.error");
+        logger.warn(HTTP_LOG_FORMAT, HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message, null), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
