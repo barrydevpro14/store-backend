@@ -39,17 +39,17 @@ public interface IAbonnementService {
     Page<AbonnementResponse> findMyHistory(AbonnementFilter filter);
 
     /**
-     * Returns the caller's "current" Abonnement view (ACTIF or still-running TRIAL). Throws
-     * {@code EntityException("abonnement.noActive")} when neither is present.
+     * Returns the caller's current Abonnement view (ACTIF or TRIAL), or {@code null} when none
+     * exists. Caller must hold {@code SUBSCRIPTION_OWNER_READ} — entrepriseId is guaranteed non-null.
      */
     CurrentAbonnementResponse findMyCurrent();
 
     /**
-     * Returns the caller's EN_ATTENTE Abonnement (created by subscribe, awaiting first paiement)
-     * or empty when none. Consumed by the frontend to decide whether to prompt for payment
-     * submission or hide the subscribe catalog.
+     * Returns the caller's EN_ATTENTE Abonnement, or {@code null} when none exists. Consumed by
+     * the frontend to decide whether to prompt for payment or hide the subscribe catalog.
+     * Caller must hold {@code SUBSCRIPTION_OWNER_READ} — entrepriseId is guaranteed non-null.
      */
-    java.util.Optional<AbonnementResponse> findMyPending();
+    AbonnementResponse findMyPending();
 
     /** Throws {@code BadArgumentException("plan.notSubscribable")} if the plan is inactive, hidden or marked trial. */
     void ensurePlanSubscribable(PlanAbonnement plan);

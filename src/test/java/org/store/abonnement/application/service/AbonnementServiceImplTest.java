@@ -180,6 +180,7 @@ class AbonnementServiceImplTest {
 
         CurrentAbonnementResponse response = service.findMyCurrent();
 
+        assertThat(response).isNotNull();
         assertThat(response.joursRestants()).isEqualTo(20);
         assertThat(response.abonnement().id()).isEqualTo(abonnement.getId());
         assertThat(response.abonnement().statut()).isEqualTo(AbonnementStatut.ACTIF);
@@ -198,18 +199,18 @@ class AbonnementServiceImplTest {
 
         CurrentAbonnementResponse response = service.findMyCurrent();
 
+        assertThat(response).isNotNull();
         assertThat(response.abonnement().statut()).isEqualTo(AbonnementStatut.TRIAL);
         assertThat(response.joursRestants()).isEqualTo(15);
         assertThat(response.fonctionnalites()).isNotNull();
     }
 
     @Test
-    void findMyCurrent_should_throw_when_no_active_and_no_trial() {
+    void findMyCurrent_should_return_null_when_no_active_and_no_trial() {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findMyCurrent())
-                .isInstanceOf(EntityException.class);
+        assertThat(service.findMyCurrent()).isNull();
     }
 
     @Test
@@ -325,14 +326,12 @@ class AbonnementServiceImplTest {
     }
 
     @Test
-    void findMyPending_should_delegate_to_domain() {
+    void findMyPending_should_return_null_when_none() {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(abonnementDomainService.findPendingResponseByEntreprise(entrepriseId))
                 .thenReturn(Optional.empty());
 
-        Optional<AbonnementResponse> result = service.findMyPending();
-
-        assertThat(result).isEmpty();
+        assertThat(service.findMyPending()).isNull();
         verify(abonnementDomainService).findPendingResponseByEntreprise(entrepriseId);
     }
 

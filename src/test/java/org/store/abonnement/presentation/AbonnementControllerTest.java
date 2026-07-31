@@ -56,15 +56,7 @@ class AbonnementControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        org.store.security.application.service.ICurrentUserService currentUserService =
-                mock(org.store.security.application.service.ICurrentUserService.class);
-        org.store.security.application.dto.UserPrincipal adminPrincipal =
-                new org.store.security.application.dto.UserPrincipal(
-                        java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
-                        java.util.UUID.randomUUID(), null,
-                        "admin", "XOF", "Sénégal", "ADMIN", java.util.List.of());
-        when(currentUserService.getCurrent()).thenReturn(adminPrincipal);
-        mockMvc = MockMvcBuilders.standaloneSetup(new AbonnementController(abonnementService, currentUserService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AbonnementController(abonnementService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();
@@ -152,6 +144,37 @@ class AbonnementControllerTest {
                 .andExpect(jsonPath("$.joursRestants").value(25))
                 .andExpect(jsonPath("$.abonnement.statut").value("ACTIF"))
                 .andExpect(jsonPath("$.fonctionnalites.nombreMagasinsMax").value(1));
+    }
+
+    @Test
+    void should_return_204_when_no_current_subscription() throws Exception {
+        when(abonnementService.findMyCurrent()).thenReturn(null);
+
+        mockMvc.perform(get(AbonnementController.BASE_PATH + "/me/current"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void should_return_200_with_pending_subscription() throws Exception {
+        AbonnementResponse pending = new AbonnementResponse(
+                abonnementId, entrepriseId, "ACME",
+                new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
+                null, null, AbonnementStatut.EN_ATTENTE);
+
+        when(abonnementService.findMyPending()).thenReturn(pending);
+
+        mockMvc.perform(get(AbonnementController.BASE_PATH + "/me/pending"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(abonnementId.toString()))
+                .andExpect(jsonPath("$.statut").value("EN_ATTENTE"));
+    }
+
+    @Test
+    void should_return_204_when_no_pending_subscription() throws Exception {
+        when(abonnementService.findMyPending()).thenReturn(null);
+
+        mockMvc.perform(get(AbonnementController.BASE_PATH + "/me/pending"))
+                .andExpect(status().isNoContent());
     }
 
     @Test

@@ -54,4 +54,7 @@ public interface IClientService {
      * Vérifie qu'un client est accessible par le caller (via son magasin). Throw `ForbiddenException("client.notOwned")` sinon.
      */
     Client ensureAccessibleByCurrentUser(Client client);
+
+    /** Returns the client count for the given entreprise. */
+    long countByEntrepriseId(UUID entrepriseId);
 }

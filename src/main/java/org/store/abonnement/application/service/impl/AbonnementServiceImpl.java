@@ -189,15 +189,16 @@ public class AbonnementServiceImpl implements IAbonnementService {
     @Override
     public CurrentAbonnementResponse findMyCurrent() {
         UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
-        Abonnement current = abonnementDomainService.findCurrent(currentEntrepriseId)
-                .orElseThrow(() -> new EntityException("abonnement.noActive"));
-        return buildCurrent(current);
+        return abonnementDomainService.findCurrent(currentEntrepriseId)
+                .map(this::buildCurrent)
+                .orElse(null);
     }
 
     @Override
-    public java.util.Optional<AbonnementResponse> findMyPending() {
+    public AbonnementResponse findMyPending() {
         UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
-        return abonnementDomainService.findPendingResponseByEntreprise(currentEntrepriseId);
+        return abonnementDomainService.findPendingResponseByEntreprise(currentEntrepriseId)
+                .orElse(null);
     }
 
     @Override
