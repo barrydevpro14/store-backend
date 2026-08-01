@@ -28,4 +28,12 @@ public interface IFactureAchatService {
 
     List<FactureAchat> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures);
 
+    /** Compte les factures achat impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) à l'échelle de l'entreprise. */
+    long countUnpaidByEntreprise(UUID entrepriseId);
+
+    /** Compte les factures achat impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) pour un magasin. */
+    long countUnpaidByMagasin(UUID magasinId);
+
+    /** Compte les factures achat impayées d'un magasin dans la plage de dates métier (KPI reporting). */
+    long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to);
 }

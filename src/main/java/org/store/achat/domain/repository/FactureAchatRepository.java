@@ -68,4 +68,34 @@ public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
     AND f.statut IN :statutFactures
 """)
     List<FactureAchat> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures);
+
+    @Query("""
+            SELECT COUNT(f)
+            FROM FactureAchat f
+            WHERE f.commande.magasin.entreprise.id = :entrepriseId
+              AND f.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE,
+                               org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
+            """)
+    long countUnpaidByEntreprise(@Param("entrepriseId") UUID entrepriseId);
+
+    @Query("""
+            SELECT COUNT(f)
+            FROM FactureAchat f
+            WHERE f.commande.magasin.id = :magasinId
+              AND f.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE,
+                               org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
+            """)
+    long countUnpaidByMagasin(@Param("magasinId") UUID magasinId);
+
+    @Query("""
+            SELECT COUNT(f)
+            FROM FactureAchat f
+            WHERE f.commande.magasin.id = :magasinId
+              AND f.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE,
+                               org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
+              AND f.date BETWEEN :from AND :to
+            """)
+    long countUnpaidByMagasinAndDateBetween(@Param("magasinId") UUID magasinId,
+                                             @Param("from") LocalDate from,
+                                             @Param("to") LocalDate to);
 }

@@ -14,6 +14,7 @@ import org.store.common.service.GlobalService;
 
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -71,6 +72,11 @@ public class CommandeAchatDomainService extends GlobalService<CommandeAchat, Com
     public CommandeAchat updateMontantTotal(CommandeAchat commande, BigDecimal montantTotal) {
         commande.setMontantTotal(montantTotal.max(BigDecimal.ZERO));
         return save(commande);
+    }
+
+    /** Compte les commandes DRAFT d'un magasin sur une plage de dates métier. */
+    public long countDraftByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return repository.countByMagasinIdAndStatutAndDateBetween(magasinId, CommandeAchatStatut.DRAFT, from, to);
     }
 
     /** Retourne true si au moins une commande achat a ete creee par ce compte (audit createdBy). */

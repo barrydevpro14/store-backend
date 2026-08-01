@@ -3,10 +3,12 @@ package org.store.achat.application.service;
 import org.springframework.data.domain.Page;
 import org.store.achat.application.dto.CommandeAchatFilter;
 import org.store.achat.application.dto.CommandeAchatResponse;
+import org.store.achat.domain.enums.CommandeAchatStatut;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.common.dto.DataCountResponse;
 import org.store.common.dto.ImageDownloadResponse;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 public interface ICommandeAchatService {
@@ -27,4 +29,10 @@ public interface ICommandeAchatService {
 
     /** Retourne le binaire et le content-type de la pièce jointe. */
     ImageDownloadResponse getPieceJointe(UUID commandeId);
+
+    /** Nombre de commandes achat d'une entreprise filtrées par statut (KPI owner). */
+    long countByEntrepriseAndStatut(UUID entrepriseId, CommandeAchatStatut statut);
+
+    /** Nombre de commandes DRAFT d'un magasin créées dans la plage de dates métier (KPI reporting). */
+    long countDraftByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to);
 }

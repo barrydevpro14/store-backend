@@ -9,6 +9,7 @@ import org.store.common.repository.BaseRepository;
 
 import org.store.achat.domain.enums.CommandeAchatStatut;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 public interface CommandeAchatRepository extends BaseRepository<CommandeAchat>, JpaSpecificationExecutor<CommandeAchat> {
@@ -18,6 +19,12 @@ public interface CommandeAchatRepository extends BaseRepository<CommandeAchat>, 
 
     @Query("SELECT COUNT(c) FROM CommandeAchat c WHERE c.magasin.entreprise.id = :entrepriseId AND c.statut = :statut")
     long countByEntrepriseAndStatut(@Param("entrepriseId") UUID entrepriseId, @Param("statut") CommandeAchatStatut statut);
+
+    @Query("SELECT COUNT(c) FROM CommandeAchat c WHERE c.magasin.id = :magasinId AND c.statut = :statut AND c.date BETWEEN :from AND :to")
+    long countByMagasinIdAndStatutAndDateBetween(@Param("magasinId") UUID magasinId,
+                                                  @Param("statut") CommandeAchatStatut statut,
+                                                  @Param("from") LocalDate from,
+                                                  @Param("to") LocalDate to);
 
     @Query("SELECT COUNT(c) > 0 FROM CommandeAchat c WHERE c.createdBy = :accountId")
     boolean existsByCreatedBy(@Param("accountId") String accountId);

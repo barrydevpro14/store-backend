@@ -2,64 +2,58 @@ package org.store.reporting.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.achat.application.service.ICommandeAchatService;
+import org.store.achat.application.service.IFactureAchatService;
 import org.store.achat.domain.enums.CommandeAchatStatut;
-import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.reporting.application.dto.OwnerOverviewStatsResponse;
 import org.store.reporting.application.service.IOwnerReportingService;
 import org.store.security.application.service.ICurrentUserService;
-import org.store.stock.domain.service.StockDomainService;
-import org.store.vente.domain.service.CommandeVenteDomainService;
-import org.store.vente.domain.service.FactureClientDomainService;
+import org.store.stock.application.service.IStockService;
+import org.store.vente.application.service.IFactureClientService;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Aggregates all company-wide OWNER KPIs in a single transactional call.
- * Scopes every query by the current user's entrepriseId extracted from the JWT.
+ * Agrège les KPIs snapshot de l'entreprise pour le dashboard OWNER.
+ * Tous les counts sont globaux (sans filtre de date) — le reporting daté passe par l'endpoint magasin.
  */
 @Service
 @Transactional(readOnly = true)
 public class OwnerReportingServiceImpl implements IOwnerReportingService {
 
     private final ICurrentUserService currentUserService;
-    private final CommandeVenteDomainService commandeVenteDomainService;
-    private final FactureClientDomainService factureClientDomainService;
-    private final StockDomainService stockDomainService;
-    private final CommandeAchatDomainService commandeAchatDomainService;
+    private final IFactureClientService factureClientService;
+    private final IStockService stockService;
+    private final ICommandeAchatService commandeAchatService;
+    private final IFactureAchatService factureAchatService;
 
     public OwnerReportingServiceImpl(ICurrentUserService currentUserService,
-                                     CommandeVenteDomainService commandeVenteDomainService,
-                                     FactureClientDomainService factureClientDomainService,
-                                     StockDomainService stockDomainService,
-                                     CommandeAchatDomainService commandeAchatDomainService) {
+                                     IFactureClientService factureClientService,
+                                     IStockService stockService,
+                                     ICommandeAchatService commandeAchatService,
+                                     IFactureAchatService factureAchatService) {
         this.currentUserService = currentUserService;
-        this.commandeVenteDomainService = commandeVenteDomainService;
-        this.factureClientDomainService = factureClientDomainService;
-        this.stockDomainService = stockDomainService;
-        this.commandeAchatDomainService = commandeAchatDomainService;
+        this.factureClientService = factureClientService;
+        this.stockService = stockService;
+        this.commandeAchatService = commandeAchatService;
+        this.factureAchatService = factureAchatService;
     }
 
+    /** Retourne les KPIs snapshot de l'entreprise du caller (stock, achats, factures — sans filtre date). */
     @Override
     public OwnerOverviewStatsResponse getOwnerOverviewStats() {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
 
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay   = LocalDate.now().plusDays(1).atStartOfDay();
-
-        long ventesTodayCount         = commandeVenteDomainService.countByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
-        var  ventesTodayTotal         = factureClientDomainService.sumMontantByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
-        long stockBelowThresholdCount = stockDomainService.countBelowThresholdByEntreprise(entrepriseId);
-        long achatsEnAttente          = commandeAchatDomainService.countByEntrepriseAndStatut(entrepriseId, CommandeAchatStatut.DRAFT);
-        long facturesImpayees         = factureClientDomainService.countUnpaidByEntreprise(entrepriseId);
+        long produitsBasSeuil      = stockService.countBelowThresholdByEntreprise(entrepriseId);
+        long achatsEnAttente       = commandeAchatService.countByEntrepriseAndStatut(entrepriseId, CommandeAchatStatut.DRAFT);
+        long facturesVenteImpayees = factureClientService.countUnpaidByEntreprise(entrepriseId);
+        long facturesAchatImpayees = factureAchatService.countUnpaidByEntreprise(entrepriseId);
 
         return new OwnerOverviewStatsResponse(
-                ventesTodayCount,
-                ventesTodayTotal,
-                stockBelowThresholdCount,
+                produitsBasSeuil,
                 achatsEnAttente,
-                facturesImpayees
+                facturesVenteImpayees,
+                facturesAchatImpayees
         );
     }
 }

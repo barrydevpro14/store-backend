@@ -24,6 +24,7 @@ import org.store.vente.domain.service.FactureClientDomainService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -128,5 +129,29 @@ class FactureClientServiceImplTest {
 
         assertThatThrownBy(() -> service.findResponseById(factureId))
                 .isInstanceOf(EntityException.class);
+    }
+
+    @Test
+    void sumMontantByEntrepriseAndDay_should_delegate_to_domain() {
+        LocalDateTime start = LocalDateTime.of(2026, 8, 1, 0, 0, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 8, 1, 23, 59, 59, 999_000_000);
+
+        when(factureClientDomainService.sumMontantByEntrepriseAndDay(entrepriseId, start, end))
+                .thenReturn(new BigDecimal("2500.00"));
+
+        BigDecimal result = service.sumMontantByEntrepriseAndDay(entrepriseId, start, end);
+
+        assertThat(result).isEqualByComparingTo(new BigDecimal("2500.00"));
+        verify(factureClientDomainService).sumMontantByEntrepriseAndDay(entrepriseId, start, end);
+    }
+
+    @Test
+    void countUnpaidByEntreprise_should_delegate_to_domain() {
+        when(factureClientDomainService.countUnpaidByEntreprise(entrepriseId)).thenReturn(6L);
+
+        long result = service.countUnpaidByEntreprise(entrepriseId);
+
+        assertThat(result).isEqualTo(6L);
+        verify(factureClientDomainService).countUnpaidByEntreprise(entrepriseId);
     }
 }

@@ -13,6 +13,7 @@ import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.service.ICommandeVenteService;
 import org.store.vente.domain.service.CommandeVenteDomainService;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -54,5 +55,11 @@ public class CommandeVenteServiceImpl implements ICommandeVenteService {
         UserPrincipal currentUser = currentUserService.getCurrent();
         return commandeVenteDomainService.findResponseById(id, currentUser.entrepriseId())
                 .orElseThrow(() -> new EntityException("commandeVente.notFound", id));
+    }
+
+    /** Délègue le comptage journalier des commandes vente au domain. */
+    @Override
+    public long countByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay) {
+        return commandeVenteDomainService.countByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
     }
 }

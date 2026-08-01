@@ -42,6 +42,9 @@ public interface IStockService {
      */
     long countBelowThresholdByCurrentEntreprise(UUID magasinId);
 
+    /** Nombre de stocks sous seuil d'approvisionnement pour toute l'entreprise (KPI owner). */
+    long countBelowThresholdByEntreprise(UUID entrepriseId);
+
     /**
      * Calcule la valorisation totale du stock d'un magasin (SUM(qty × prixAchatMoyen))
      * après vérification d'accès magasin.
