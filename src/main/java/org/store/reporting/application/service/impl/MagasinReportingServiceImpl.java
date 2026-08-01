@@ -7,6 +7,7 @@ import org.store.achat.application.service.IFactureAchatService;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
+import org.store.reporting.application.dto.MagasinVentesStatsResponse;
 import org.store.reporting.application.service.IMagasinReportingService;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IStockService;
@@ -75,6 +76,35 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 achatsEnAttente,
                 facturesVenteImpayees,
                 facturesAchatImpayees
+        );
+    }
+
+    @Override
+    public MagasinVentesStatsResponse getVentesStats(MagasinOverviewFilter filter) {
+        UUID magasinId = filter.magasinId();
+        LocalDate from = filter.startDate();
+        LocalDate to   = filter.endDate();
+
+        CaisseResumeResponse resume = caisseService.getResume(
+                new CaisseResumeFilter(magasinId, filter.startDateAsString(), filter.endDateAsString())
+        );
+
+        long nombreCommandeVentes            = resume.nombreCommandes();
+        BigDecimal montantTotalCommandeVentes = resume.totalCommandes();
+        BigDecimal totalPaiementVentes        = resume.totalPaiements();
+
+        BigDecimal ticketMoyen = nombreCommandeVentes > 0
+                ? montantTotalCommandeVentes.divide(BigDecimal.valueOf(nombreCommandeVentes), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        long facturesVenteImpayees = factureClientService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+
+        return new MagasinVentesStatsResponse(
+                nombreCommandeVentes,
+                montantTotalCommandeVentes,
+                totalPaiementVentes,
+                ticketMoyen,
+                facturesVenteImpayees
         );
     }
 

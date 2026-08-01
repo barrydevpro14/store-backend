@@ -9,6 +9,80 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-01 — Ventes reporting tab + top-N products + vente-only KPI API + tab icons
+
+### Subject
+
+Two features built on top of the 2026-08-01 reporting reorganization session:
+1. **Ventes reporting tab** — new tab in `/dashboard/ventes` with a dedicated vente-only KPI endpoint and the restored top-N products table
+2. **Tab icons** — lucide-react icons added to every tab label across all 6 module layouts
+
+### Backend
+
+**New endpoint `GET /api/v1/reporting/magasin-ventes`** (vente-only, date-filtered):
+- Returns `MagasinVentesStatsResponse`: `nombreCommandeVentes`, `montantTotalCommandeVentes`, `totalPaiementVentes`, `ticketMoyen`, `facturesVenteImpayees`
+- No achat data (`achatsEnAttente`, `facturesAchatImpayees` removed)
+- Gated `SALE_READ`; reuses `MagasinOverviewFilter` as input record
+
+**New service method** `IMagasinReportingService.getVentesStats(MagasinOverviewFilter)`:
+- `MagasinReportingServiceImpl` implementation — caisse service + factureClient service only, no achat services
+
+**New DTO**: `MagasinVentesStatsResponse` record (5 fields).
+
+**Tests**:
+- `MagasinReportingControllerTest`: +2 cases (`ventesStats_should_return_200_with_five_vente_kpis`, `ventesStats_should_return_400_when_magasin_id_missing`) → 8 total
+- `MagasinReportingServiceImplTest`: +2 cases (`getVentesStats_should_return_vente_kpis_without_achat_data`, `getVentesStats_should_return_zero_ticket_moyen_when_no_commandes`) → 7 total
+- 15/15 tests pass on both classes
+
+### Frontend
+
+**New Ventes reporting tab** (`/dashboard/ventes/reporting`):
+- `src/app/(dashboard)/dashboard/ventes/_tabs.ts` — `VENTES_TABS` with `ventes` + `reporting` tabs
+- `src/app/(dashboard)/dashboard/ventes/layout.tsx` — tab nav bar (exact match for ventes, startsWith for reporting)
+- `src/features/vente/application/useTopProduits.ts` — calls `GET /api/v1/ventes/caisse/top-produits`
+- `src/features/vente/presentation/TopProduitsTable.tsx` — table with rank badge, ref mono, qty, revenue
+- `src/app/(dashboard)/dashboard/ventes/reporting/VentesReportingPage.tsx` — full page with `PageHeader`, `VenteMagasinSelect`, `PeriodSelector`, 5 KPI cards, nombre selector, `TopProduitsTable`
+- `src/app/(dashboard)/dashboard/ventes/reporting/page.tsx` — Next.js route
+
+**New hook `useMagasinVentesStats`** (`src/features/vente/application/`):
+- Calls `GET /api/v1/reporting/magasin-ventes` with `from`/`to` params
+- Typed with `MagasinVentesStats` (5 fields, no achat)
+- `staleTime: 60_000`, `enabled` on `magasinId + from`
+
+**`VentesReportingPage.tsx` updated**:
+- Replaced `useMagasinOverviewStats` → `useMagasinVentesStats`
+- Added 5th KPI card: `facturesVenteImpayees` with `FileWarning` icon + amber `warning` variant when count > 0
+- Grid expanded to `lg:grid-cols-5`
+
+**i18n** (FR + EN): `dashboard.ventes.nav.{ariaLabel, ventes, reporting}` + `dashboard.ventes.reporting.{metaTitle, title, parentTitle, pickMagasin, periodLabel, kpi.{revenu, paiementsEncaisses, ventes, ticketMoyen, facturesImpayees}, topProduits.*}`
+
+**Tab icons on all 6 module layouts**:
+- Pattern: `TAB_ICONS: Record<XTabKey, ReactNode>` map defined above the layout component; `inline-flex items-center gap-1.5` on Link className
+- `ventes`: `ShoppingCart` / `BarChart2`
+- `stock`: `Package` / `ArrowLeftRight` / `Layers`
+- `depenses`: `List` / `BarChart2`
+- `entreprise`: `Building2` / `Store` / `CreditCard` / `History` / `Banknote` / `Settings2`
+- `settings`: `Tag` / `Award` / `Package` / `Users` / `Truck` / `FolderOpen` / `UserCheck` / `Shield` / `Hash`
+- `administration`: `Users` / `Building2` / `CreditCard` / `Banknote` / `LayoutGrid` / `Tag` / `Wallet` / `Mail` / `Shield` / `BookOpen` / `Briefcase`
+
+### État final
+
+- Backend: 15/15 reporting tests green (`mvnw test -Dtest=Magasin*`). `tsc --noEmit` clean.
+- Frontend: `tsc --noEmit` exit 0. `vitest run` not run this session.
+- Branch: `dev-barry`. No commits yet — awaiting authorization.
+
+### Open follow-ups
+
+- Commit + push backend changes (new DTO + service method + controller endpoint + tests)
+- Commit + push frontend changes (new hook + reporting page + layout icons + i18n)
+- Run `./mvnw test` full suite to check no regression
+- Run `npx vitest run` full suite
+- Manual UI check: ventes tab nav (icons + active state), reporting page (5 KPI cards, top-N table, periode selector), `facturesVenteImpayees` warning card turns amber when count > 0
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-07-23 — Subscription system redesign (design only — no code written)
 
 ### Subject

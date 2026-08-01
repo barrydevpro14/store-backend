@@ -12,6 +12,7 @@ import org.store.common.dto.DataCountResponse;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
+import org.store.reporting.application.dto.MagasinVentesStatsResponse;
 import org.store.reporting.application.service.impl.MagasinReportingServiceImpl;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.IStockService;
@@ -112,6 +113,33 @@ class MagasinReportingServiceImplTest {
         verify(commandeAchatService).countDraftByMagasinAndDateBetween(magasinId, from, to);
         verify(factureClientService).countUnpaidByMagasinAndDateBetween(magasinId, from, to);
         verify(factureAchatService).countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+    }
+
+    // ── getVentesStats ───────────────────────────────────────────────────────
+
+    @Test
+    void getVentesStats_should_return_vente_kpis_without_achat_data() {
+        when(caisseService.getResume(any())).thenReturn(resume(4L, new BigDecimal("200.00"), new BigDecimal("180.00")));
+        when(factureClientService.countUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(3L);
+
+        MagasinVentesStatsResponse result = service.getVentesStats(sampleFilter());
+
+        assertThat(result.nombreCommandeVentes()).isEqualTo(4L);
+        assertThat(result.montantTotalCommandeVentes()).isEqualByComparingTo("200.00");
+        assertThat(result.totalPaiementVentes()).isEqualByComparingTo("180.00");
+        assertThat(result.ticketMoyen()).isEqualByComparingTo("50.00");
+        assertThat(result.facturesVenteImpayees()).isEqualTo(3L);
+    }
+
+    @Test
+    void getVentesStats_should_return_zero_ticket_moyen_when_no_commandes() {
+        when(caisseService.getResume(any())).thenReturn(resume(0L, BigDecimal.ZERO, BigDecimal.ZERO));
+        when(factureClientService.countUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(0L);
+
+        MagasinVentesStatsResponse result = service.getVentesStats(sampleFilter());
+
+        assertThat(result.nombreCommandeVentes()).isZero();
+        assertThat(result.ticketMoyen()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     // ── getDashboardStats ────────────────────────────────────────────────────
