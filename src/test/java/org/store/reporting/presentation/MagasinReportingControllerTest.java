@@ -10,6 +10,7 @@ import org.store.common.i18n.IMessageSourceService;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
+import org.store.reporting.application.dto.MagasinVentesStatsResponse;
 import org.store.reporting.application.service.IMagasinReportingService;
 
 import java.math.BigDecimal;
@@ -131,6 +132,42 @@ class MagasinReportingControllerTest {
     @Test
     void dashboard_should_return_400_when_magasin_id_missing() throws Exception {
         mockMvc.perform(get(MagasinReportingController.DASHBOARD_PATH)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── /magasin-ventes ──────────────────────────────────────────────────────
+
+    @Test
+    void ventesStats_should_return_200_with_five_vente_kpis() throws Exception {
+        MagasinVentesStatsResponse response = new MagasinVentesStatsResponse(
+                4L,
+                new BigDecimal("200.00"),
+                new BigDecimal("180.00"),
+                new BigDecimal("50.00"),
+                3L
+        );
+        when(magasinReportingService.getVentesStats(any(MagasinOverviewFilter.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(get(MagasinReportingController.VENTES_PATH)
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2025-07-01")
+                        .param("to", "2025-07-31")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombreCommandeVentes").value(4))
+                .andExpect(jsonPath("$.montantTotalCommandeVentes").value(200.00))
+                .andExpect(jsonPath("$.totalPaiementVentes").value(180.00))
+                .andExpect(jsonPath("$.ticketMoyen").value(50.00))
+                .andExpect(jsonPath("$.facturesVenteImpayees").value(3));
+    }
+
+    @Test
+    void ventesStats_should_return_400_when_magasin_id_missing() throws Exception {
+        mockMvc.perform(get(MagasinReportingController.VENTES_PATH)
+                        .param("from", "2025-07-01")
+                        .param("to", "2025-07-31")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
