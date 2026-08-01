@@ -92,4 +92,19 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
     public List<FactureAchat> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures){
         return repository.findDueOnDates(dates, statutFactures);
     }
+
+    /** Compte les factures achat impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) à l'échelle de l'entreprise. */
+    public long countUnpaidByEntreprise(UUID entrepriseId) {
+        return repository.countUnpaidByEntreprise(entrepriseId);
+    }
+
+    /** Compte les factures achat impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) pour un magasin. */
+    public long countUnpaidByMagasin(UUID magasinId) {
+        return repository.countUnpaidByMagasin(magasinId);
+    }
+
+    /** Compte les factures achat impayées pour un magasin sur une plage de dates métier. */
+    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return repository.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+    }
 }

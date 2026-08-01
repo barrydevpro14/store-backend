@@ -17,6 +17,7 @@ import org.store.common.service.ValidatorService;
 import org.store.common.tools.OwnershipHelper;
 import org.store.security.application.service.ICurrentUserService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -84,4 +85,15 @@ public class CommandeAchatServiceImpl implements ICommandeAchatService {
         return new ImageDownloadResponse(pieceJointe.getDocument(), pieceJointe.getContentType());
     }
 
+    /** Délègue le comptage des commandes DRAFT d'un magasin sur une plage de dates au domain. */
+    @Override
+    public long countDraftByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return commandeAchatDomainService.countDraftByMagasinAndDateBetween(magasinId, from, to);
+    }
+
+    /** Délègue le comptage des commandes achat filtrées par statut à l'échelle de l'entreprise au domain. */
+    @Override
+    public long countByEntrepriseAndStatut(UUID entrepriseId, CommandeAchatStatut statut) {
+        return commandeAchatDomainService.countByEntrepriseAndStatut(entrepriseId, statut);
+    }
 }

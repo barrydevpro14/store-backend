@@ -73,12 +73,30 @@ public class FactureAchatServiceImpl implements IFactureAchatService {
     }
 
     /**
-     * @param dates 
+     * @param dates
      * @param statutFactures
      * @return
      */
     @Override
     public List<FactureAchat> findDueOnDates(List<LocalDate> dates, List<StatutFacture> statutFactures) {
         return factureAchatDomainService.findDueOnDates(dates, statutFactures);
+    }
+
+    /** Délègue le comptage des factures achat impayées à l'échelle de l'entreprise au domain. */
+    @Override
+    public long countUnpaidByEntreprise(UUID entrepriseId) {
+        return factureAchatDomainService.countUnpaidByEntreprise(entrepriseId);
+    }
+
+    /** Délègue le comptage des factures achat impayées pour un magasin au domain. */
+    @Override
+    public long countUnpaidByMagasin(UUID magasinId) {
+        return factureAchatDomainService.countUnpaidByMagasin(magasinId);
+    }
+
+    /** Délègue le comptage des factures achat impayées d'un magasin sur une plage de dates au domain. */
+    @Override
+    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return factureAchatDomainService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
     }
 }
