@@ -7,6 +7,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
+import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
 import org.store.reporting.application.service.IMagasinReportingService;
@@ -39,63 +40,97 @@ class MagasinReportingControllerTest {
                 .build();
     }
 
-    private MagasinOverviewStatsResponse sampleResponse() {
+    private MagasinOverviewStatsResponse sampleOverview() {
         return new MagasinOverviewStatsResponse(
                 10L,
                 new BigDecimal("500.00"),
                 new BigDecimal("480.00"),
                 new BigDecimal("50.00"),
-                new BigDecimal("12000.00"),
-                2L,
                 3L,
-                4L
+                4L,
+                2L
         );
     }
 
-    @Test
-    void should_return_200_with_all_kpis() throws Exception {
-        when(magasinReportingService.getOverview(any(MagasinOverviewFilter.class)))
-                .thenReturn(sampleResponse());
+    private MagasinDashboardStatsResponse sampleDashboard() {
+        return new MagasinDashboardStatsResponse(
+                new BigDecimal("12000.00"),
+                2L,
+                3L,
+                4L,
+                1L
+        );
+    }
 
-        mockMvc.perform(get(MagasinReportingController.BASE_PATH)
+    // ── /magasin-overview ────────────────────────────────────────────────────
+
+    @Test
+    void overview_should_return_200_with_all_kpis() throws Exception {
+        when(magasinReportingService.getOverview(any(MagasinOverviewFilter.class)))
+                .thenReturn(sampleOverview());
+
+        mockMvc.perform(get(MagasinReportingController.OVERVIEW_PATH)
                         .param("magasinId", magasinId.toString())
-                        .param("startDate", "2025-07-01")
-                        .param("endDate", "2025-07-31")
+                        .param("from", "2025-07-01")
+                        .param("to", "2025-07-31")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nombreCommandes").value(10))
-                .andExpect(jsonPath("$.totalCommandes").value(500.00))
-                .andExpect(jsonPath("$.totalPaiements").value(480.00))
+                .andExpect(jsonPath("$.nombreCommandeVentes").value(10))
+                .andExpect(jsonPath("$.montantTotalCommandeVentes").value(500.00))
+                .andExpect(jsonPath("$.totalPaiementVentes").value(480.00))
                 .andExpect(jsonPath("$.ticketMoyen").value(50.00))
+                .andExpect(jsonPath("$.achatsEnAttente").value(3))
+                .andExpect(jsonPath("$.facturesVenteImpayees").value(4))
+                .andExpect(jsonPath("$.facturesAchatImpayees").value(2));
+    }
+
+    @Test
+    void overview_should_return_400_when_magasin_id_missing() throws Exception {
+        mockMvc.perform(get(MagasinReportingController.OVERVIEW_PATH)
+                        .param("from", "2025-07-01")
+                        .param("to", "2025-07-31")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void overview_should_return_400_when_start_date_missing() throws Exception {
+        mockMvc.perform(get(MagasinReportingController.OVERVIEW_PATH)
+                        .param("magasinId", magasinId.toString())
+                        .param("to", "2025-07-31")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void overview_should_return_400_when_end_date_missing() throws Exception {
+        mockMvc.perform(get(MagasinReportingController.OVERVIEW_PATH)
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2025-07-01")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── /magasin-dashboard ───────────────────────────────────────────────────
+
+    @Test
+    void dashboard_should_return_200_with_five_kpis() throws Exception {
+        when(magasinReportingService.getDashboardStats(magasinId)).thenReturn(sampleDashboard());
+
+        mockMvc.perform(get(MagasinReportingController.DASHBOARD_PATH)
+                        .param("magasinId", magasinId.toString())
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.valeurStock").value(12000.00))
                 .andExpect(jsonPath("$.produitsBasSeuil").value(2))
                 .andExpect(jsonPath("$.achatsEnAttente").value(3))
-                .andExpect(jsonPath("$.facturesImpayees").value(4));
+                .andExpect(jsonPath("$.facturesVenteImpayees").value(4))
+                .andExpect(jsonPath("$.facturesAchatImpayees").value(1));
     }
 
     @Test
-    void should_return_400_when_magasin_id_missing() throws Exception {
-        mockMvc.perform(get(MagasinReportingController.BASE_PATH)
-                        .param("startDate", "2025-07-01")
-                        .param("endDate", "2025-07-31")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_400_when_start_date_missing() throws Exception {
-        mockMvc.perform(get(MagasinReportingController.BASE_PATH)
-                        .param("magasinId", magasinId.toString())
-                        .param("endDate", "2025-07-31")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_400_when_end_date_missing() throws Exception {
-        mockMvc.perform(get(MagasinReportingController.BASE_PATH)
-                        .param("magasinId", magasinId.toString())
-                        .param("startDate", "2025-07-01")
+    void dashboard_should_return_400_when_magasin_id_missing() throws Exception {
+        mockMvc.perform(get(MagasinReportingController.DASHBOARD_PATH)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }

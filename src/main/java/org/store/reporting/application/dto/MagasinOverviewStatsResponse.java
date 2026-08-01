@@ -2,15 +2,13 @@ package org.store.reporting.application.dto;
 
 import java.math.BigDecimal;
 
-/** All KPI counts for the magasin reporting overview — replaces 5 separate API calls. */
+/** KPIs du magasin filtrés par plage de dates métier, pour la page Reporting. */
 public record MagasinOverviewStatsResponse(
-        long nombreCommandes,
-        BigDecimal totalCommandes,
-        BigDecimal totalPaiements,
+        long nombreCommandeVentes,
+        BigDecimal montantTotalCommandeVentes,
+        BigDecimal totalPaiementVentes,
         BigDecimal ticketMoyen,
-        BigDecimal valeurStock,
-        long produitsBasSeuil,
         long achatsEnAttente,
-        long facturesImpayees
-) {
-}
+        long facturesVenteImpayees,
+        long facturesAchatImpayees
+) {}
