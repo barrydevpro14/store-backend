@@ -115,4 +115,14 @@ class FactureAchatServiceImplTest {
         verify(validatorService).validate(filter);
         verify(factureAchatDomainService).findEcheances(eq(filter), eq(entrepriseId));
     }
+
+    @Test
+    void countUnpaidByEntreprise_should_delegate_to_domain() {
+        when(factureAchatDomainService.countUnpaidByEntreprise(entrepriseId)).thenReturn(5L);
+
+        long result = service.countUnpaidByEntreprise(entrepriseId);
+
+        assertThat(result).isEqualTo(5L);
+        verify(factureAchatDomainService).countUnpaidByEntreprise(entrepriseId);
+    }
 }

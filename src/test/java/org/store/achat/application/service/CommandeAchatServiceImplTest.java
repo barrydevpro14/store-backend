@@ -114,4 +114,14 @@ class CommandeAchatServiceImplTest {
         verify(validatorService).validate(filter);
         verify(commandeAchatDomainService).findResponsesByFilter(eq(filter), eq(entrepriseId));
     }
+
+    @Test
+    void countByEntrepriseAndStatut_should_delegate_to_domain() {
+        when(commandeAchatDomainService.countByEntrepriseAndStatut(entrepriseId, CommandeAchatStatut.DRAFT)).thenReturn(3L);
+
+        long result = service.countByEntrepriseAndStatut(entrepriseId, CommandeAchatStatut.DRAFT);
+
+        assertThat(result).isEqualTo(3L);
+        verify(commandeAchatDomainService).countByEntrepriseAndStatut(entrepriseId, CommandeAchatStatut.DRAFT);
+    }
 }

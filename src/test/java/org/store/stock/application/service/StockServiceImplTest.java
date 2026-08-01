@@ -254,4 +254,14 @@ class StockServiceImplTest {
         assertThat(response.nombreLignes()).isEqualTo(3L);
         verify(magasinService, never()).findById(any());
     }
+
+    @Test
+    void countBelowThresholdByEntreprise_should_delegate_to_domain() {
+        when(stockDomainService.countBelowThresholdByEntreprise(entrepriseId)).thenReturn(4L);
+
+        long result = service.countBelowThresholdByEntreprise(entrepriseId);
+
+        assertThat(result).isEqualTo(4L);
+        verify(stockDomainService).countBelowThresholdByEntreprise(entrepriseId);
+    }
 }
