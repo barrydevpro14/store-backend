@@ -1,12 +1,9 @@
 package org.store.reporting.application.dto;
 
-import java.math.BigDecimal;
-
-/** Company-wide KPI dashboard for OWNER — aggregates across all the company's magasins. */
+/** Snapshot global des KPIs de l'entreprise pour le dashboard OWNER, sans filtre de date. */
 public record OwnerOverviewStatsResponse(
-        long ventesTodayCount,
-        BigDecimal ventesTodayTotal,
-        long stockBelowThresholdCount,
+        long produitsBasSeuil,
         long achatsEnAttente,
-        long facturesImpayees
+        long facturesVenteImpayees,
+        long facturesAchatImpayees
 ) {}
