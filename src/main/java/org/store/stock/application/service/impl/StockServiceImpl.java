@@ -113,4 +113,10 @@ public class StockServiceImpl implements IStockService {
     public Stock decrement(Stock stock, int quantite) {
         return stockDomainService.decrement(stock, quantite);
     }
+
+    /** Délègue le comptage stocks-sous-seuil à l'échelle de l'entreprise au domain. */
+    @Override
+    public long countBelowThresholdByEntreprise(UUID entrepriseId) {
+        return stockDomainService.countBelowThresholdByEntreprise(entrepriseId);
+    }
 }

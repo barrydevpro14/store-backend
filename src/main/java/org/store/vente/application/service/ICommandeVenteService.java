@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public interface ICommandeVenteService {
@@ -11,4 +12,7 @@ public interface ICommandeVenteService {
     Page<CommandeVenteResponse> findAllByCurrentEntreprise(CommandeVenteFilter filter);
 
     CommandeVenteResponse findResponseById(UUID id);
+
+    /** Nombre de commandes vente créées pour une entreprise sur une plage horaire (day KPI). */
+    long countByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay);
 }
