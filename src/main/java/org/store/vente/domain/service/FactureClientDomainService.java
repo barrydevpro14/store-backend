@@ -103,6 +103,12 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
                 List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE));
     }
 
+    /** Nombre de factures impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) pour un magasin sur une plage de dates métier. */
+    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return repository.countByMagasinIdAndStatutAndDateBetween(magasinId,
+                List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE), from, to);
+    }
+
     public List<FactureClient> findDueOnDates(@Param("dates") List<LocalDate> dates , List<StatutFacture> statutFactures){
         return repository.findDueOnDates(dates, statutFactures);
     }

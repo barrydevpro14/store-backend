@@ -22,6 +22,12 @@ public interface FactureClientRepository extends BaseRepository<FactureClient> {
     @Query("SELECT COUNT(facture) FROM FactureClient facture WHERE facture.commande.magasin.id = :magasinId AND facture.statut IN :statuts")
     long countByMagasinIdAndStatut(@Param("magasinId") UUID magasinId, @Param("statuts") List<StatutFacture> statuts);
 
+    @Query("SELECT COUNT(f) FROM FactureClient f WHERE f.commande.magasin.id = :magasinId AND f.statut IN :statuts AND f.date BETWEEN :from AND :to")
+    long countByMagasinIdAndStatutAndDateBetween(@Param("magasinId") UUID magasinId,
+                                                  @Param("statuts") List<StatutFacture> statuts,
+                                                  @Param("from") LocalDate from,
+                                                  @Param("to") LocalDate to);
+
     Optional<FactureClient> findByCommandeId(UUID commandeId);
 
     @Query("""

@@ -16,7 +16,9 @@ import org.store.vente.application.service.IFactureClientService;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.service.FactureClientDomainService;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -74,5 +76,23 @@ public class FactureClientServiceImpl implements IFactureClientService {
     @Override
     public List<FactureClient> findDueOnDates(List<LocalDate> dates, List<StatutFacture> statutFactures) {
         return factureClientDomainService.findDueOnDates(dates, statutFactures);
+    }
+
+    /** Délègue la somme journalière des montants facturés au domain. */
+    @Override
+    public BigDecimal sumMontantByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay) {
+        return factureClientDomainService.sumMontantByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
+    }
+
+    /** Délègue le comptage des factures impayées à l'échelle de l'entreprise au domain. */
+    @Override
+    public long countUnpaidByEntreprise(UUID entrepriseId) {
+        return factureClientDomainService.countUnpaidByEntreprise(entrepriseId);
+    }
+
+    /** Délègue le comptage des factures impayées d'un magasin sur une plage de dates au domain. */
+    @Override
+    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return factureClientDomainService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
     }
 }
