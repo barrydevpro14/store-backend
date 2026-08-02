@@ -1,5 +1,6 @@
 package org.store.vente.application.service.impl;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
@@ -77,9 +78,9 @@ public class CaisseServiceImpl implements ICaisseService {
         );
     }
 
-    /** Top N produits les plus vendus (par quantité) dans le magasin sur la journée du filter. */
+    /** Top N produits les plus vendus (par quantité) dans le magasin sur la plage du filter, paginés. */
     @Override
-    public List<TopProduitResponse> findTopProduits(TopProduitsFilter filter) {
+    public Page<TopProduitResponse> findTopProduits(TopProduitsFilter filter) {
         validatorService.validate(filter);
         UserPrincipal currentUser = currentUserService.getCurrent();
         magasinService.ensureAccessibleByCurrentUser(magasinService.findById(filter.magasinId()));

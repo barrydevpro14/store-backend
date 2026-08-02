@@ -13,7 +13,6 @@ import org.store.vente.domain.model.LigneCommandeVente;
 import org.store.vente.domain.repository.LigneCommandeVenteRepository;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -45,8 +44,8 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         return repository.findPagedByCommandeId(commandeId, PageRequest.of(page, size));
     }
 
-    /** Top N produits les plus vendus (par quantité) dans le magasin sur la journée du filter. */
-    public List<TopProduitResponse> findTopProduitsForCaisse(TopProduitsFilter filter, UUID entrepriseId) {
+    /** Top N produits les plus vendus (par quantité) dans le magasin sur la plage du filter, paginés. */
+    public Page<TopProduitResponse> findTopProduitsForCaisse(TopProduitsFilter filter, UUID entrepriseId) {
         return repository.findTopProduitsByMagasinAndDay(filter.magasinId(), entrepriseId,
                 filter.startOfDay(), filter.endOfDay(), filter.toPageable());
     }
