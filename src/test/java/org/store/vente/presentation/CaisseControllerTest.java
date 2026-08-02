@@ -2,6 +2,12 @@ package org.store.vente.presentation;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.store.common.exceptions.GlobalException;
@@ -35,8 +41,13 @@ class CaisseControllerTest {
         caisseService = mock(ICaisseService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
         mockMvc = MockMvcBuilders.standaloneSetup(new CaisseReportingController(caisseService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
 
         magasinId = UUID.randomUUID();
@@ -94,26 +105,26 @@ class CaisseControllerTest {
     }
 
     @Test
-    void topProduits_should_return_200_with_default_nombre_3() throws Exception {
+    void topProduits_should_return_200_with_default_nombre_10() throws Exception {
         List<TopProduitResponse> top = List.of(
                 new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", 250L, new BigDecimal("12500.00")),
                 new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", 180L, new BigDecimal("9000.00")),
                 new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", 95L, new BigDecimal("4750.00"))
         );
-        when(caisseService.findTopProduits(any())).thenReturn(top);
+        when(caisseService.findTopProduits(any())).thenReturn(new PageImpl<>(top, PageRequest.of(0, 10), top.size()));
 
         mockMvc.perform(get(CaisseReportingController.BASE_PATH + "/top-produits")
                         .param("magasinId", magasinId.toString())
                         .param("date", "2026-05-16"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[0].nom").value("Clou 10mm"))
-                .andExpect(jsonPath("$[0].quantiteVendue").value(250));
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[0].nom").value("Clou 10mm"))
+                .andExpect(jsonPath("$.content[0].quantiteVendue").value(250));
     }
 
     @Test
     void topProduits_should_accept_custom_nombre_and_omit_date() throws Exception {
-        when(caisseService.findTopProduits(any())).thenReturn(List.of());
+        when(caisseService.findTopProduits(any())).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
 
         mockMvc.perform(get(CaisseReportingController.BASE_PATH + "/top-produits")
                         .param("magasinId", magasinId.toString())

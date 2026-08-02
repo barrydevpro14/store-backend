@@ -1,5 +1,6 @@
 package org.store.reporting.presentation;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,7 +13,6 @@ import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
 import org.store.vente.application.service.ICaisseService;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,11 +37,11 @@ public class CaisseReportingController {
 
     @GetMapping("/top-produits")
     @PreAuthorize("hasAuthority('SALE_READ')")
-    public ResponseEntity<List<TopProduitResponse>> topProduits(@RequestParam UUID magasinId,
+    public ResponseEntity<Page<TopProduitResponse>> topProduits(@RequestParam UUID magasinId,
                                                                 @RequestParam(required = false) String date,
                                                                 @RequestParam(required = false) String startDate,
                                                                 @RequestParam(required = false) String endDate,
-                                                                @RequestParam(defaultValue = "5") int nombre) {
+                                                                @RequestParam(defaultValue = "10") int nombre) {
         return ResponseEntity.ok(caisseService.findTopProduits(
                 new TopProduitsFilter(magasinId, date, startDate, endDate, nombre)));
     }

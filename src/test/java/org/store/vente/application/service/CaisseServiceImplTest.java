@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.entreprise.domain.model.Entreprise;
@@ -132,8 +134,8 @@ class CaisseServiceImplTest {
     }
 
     @Test
-    void findTopProduits_should_delegate_and_return_list() {
-        TopProduitsFilter filter = new TopProduitsFilter(magasinId, "2026-05-16", 3);
+    void findTopProduits_should_delegate_and_return_page() {
+        TopProduitsFilter filter = new TopProduitsFilter(magasinId, "2026-05-16", 10);
         List<TopProduitResponse> top = List.of(
                 new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", 250L, new BigDecimal("12500.00")),
                 new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", 180L, new BigDecimal("9000.00")),
@@ -143,24 +145,24 @@ class CaisseServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(top);
+        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(new PageImpl<>(top));
 
-        List<TopProduitResponse> result = service.findTopProduits(filter);
+        Page<TopProduitResponse> result = service.findTopProduits(filter);
 
-        assertThat(result).hasSize(3);
-        assertThat(result.get(0).quantiteVendue()).isEqualTo(250L);
-        assertThat(result.get(0).nom()).isEqualTo("Clou 10mm");
+        assertThat(result.getContent()).hasSize(3);
+        assertThat(result.getContent().get(0).quantiteVendue()).isEqualTo(250L);
+        assertThat(result.getContent().get(0).nom()).isEqualTo("Clou 10mm");
         verify(validatorService).validate(filter);
     }
 
     @Test
     void findTopProduits_should_use_today_when_date_null() {
-        TopProduitsFilter filter = new TopProduitsFilter(magasinId, null, 3);
+        TopProduitsFilter filter = new TopProduitsFilter(magasinId, null, 10);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(List.of());
+        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(Page.empty());
 
         service.findTopProduits(filter);
 
