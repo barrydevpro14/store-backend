@@ -9,6 +9,103 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-03 — GitLab CI frontend fix + Vercel deploy gate
+
+### Subject
+
+Fix of the frontend CI/CD pipeline: Vercel was deploying in parallel with the test stage (bypassing tests entirely). Three issues identified and corrected.
+
+### Changes
+
+**`.gitlab-ci.yml`** (3 commits pushed to `dev-barry`):
+- `workflow.rules`: removed the bare `when: always` that triggered the pipeline on every branch and every event — replaced with `if: main` + `if: merge_request_event`
+- `deploy.when: always` → `on_success` — deploy is now blocked if the `test` job fails
+- Added `npm test` (= `vitest run`) to the `test` stage script — was missing entirely
+
+**`vercel.json`** (new file, committed + pushed):
+- `"git": { "deploymentEnabled": false }` — disables Vercel's Git integration auto-deploy on all branches; Vercel CLI in the GitLab CI job is now the sole deploy trigger
+
+**GitLab CI/CD variables** (configured by user):
+- `VERCEL_TOKEN`, `VERCEL_ORG_ID` (`team_b62nL5CwP2uNvVWT7nqm3v6f`), `VERCEL_PROJECT_ID` (`prj_4ZCu1sTdVVz992YNB4asfD9gqpB4`) — set as protected variables on `main`
+
+### Final flow
+
+```
+push to main → GitLab CI → test (lint + npm test + build)
+                               └── on_success → deploy via Vercel CLI
+```
+
+Pipeline fully green. Vercel no longer deploys outside of CI.
+
+### Open follow-ups (carried over from 2026-08-02)
+
+- Commit + push backend changes: `Page<TopProduitResponse>` return type, countQuery, controller `nombre` default 10 — awaiting authorization
+- Commit + push frontend changes: `useTopProduits`, `TopProduitsTable`, `VentesReportingPage` pagination — awaiting authorization
+- Also pending from 2026-08-01: backend vente-only KPI endpoint + reporting page + tab icons commits
+- Run `./mvnw test` full suite
+- Run `npx vitest run` full suite
+- Manual UI check: Top N selector vs table pagination independent, pagination appears only when > 10 items
+
+---
+
+## 🗂 Previous session
+
+**Date:** 2026-08-02 — Top produits: pagination backend + pagination table indépendante du Top N
+
+### Subject
+
+Pagination of the top-products endpoint and a client-side table pagination system fully decoupled from the Top N selector.
+
+### Backend
+
+**`findTopProduitsByMagasinAndDay` → `Page<TopProduitResponse>`**:
+- `LigneCommandeVenteRepository`: return type `List<>` → `Page<>`, added explicit `countQuery` using `COUNT(DISTINCT produit.id)` (required for GROUP BY with Spring Data)
+- `LigneCommandeVenteDomainService`: return type updated
+- `ICaisseService` + `CaisseServiceImpl`: return type updated
+- `TopProduitsFilter`: `toPageable()` returns `PageRequest.of(0, nombre)` — backend always fetches all N best-sellers (page 0); no `page` field (design iteration: added then removed)
+- `CaisseReportingController` `/top-produits`: param `page` removed, `nombre` default 10, response `ResponseEntity<Page<TopProduitResponse>>`
+
+**Tests**:
+- `CaisseControllerTest`: `standaloneSetup` now uses custom `MappingJackson2HttpMessageConverter(ObjectMapper + JavaTimeModule)` to handle both `Page<>` and `LocalDate` ISO serialization; mock returns `new PageImpl<>(list, PageRequest.of(0, 10), size)` (concrete PageRequest — avoids Unpaged Jackson issue); JSON assertions on `$.content.*`; test renamed `topProduits_should_return_200_with_default_nombre_10`
+- `CaisseServiceImplTest`: mock returns `new PageImpl<>(list)` or `Page.empty()`; assertions on `result.getContent()`
+- 948/948 backend tests green
+
+### Frontend
+
+**`useTopProduits`**: no `page` param — always `{ magasinId, startDate, endDate, nombre }` to backend. Returns `PageResponse<TopProduitItem>`.
+
+**`TopProduitsTableProps`**: added `onSizeChange: (size: number) => void`.
+
+**`TopProduitsTable`**:
+- Rank uses global position: `pageNumber * pageSize + i + 1`
+- `<Pagination>` shown only when `totalElements > 10` (independent of Top N, independent of `totalPages`)
+- `sizeOptions={[10, 20, 50]}` on `<Pagination>`
+
+**`VentesReportingPage`** — client-side pagination fully decoupled from Top N:
+- `nombre` state (3/5/10/20/50) → fetch limit sent to backend; resets `tablePage` on change
+- `tablePage` + `tablePageSize` (default 10) → independent client-side navigation via `Array.slice`
+- `totalElements = allTopItems.length`, `totalPages = Math.ceil(totalElements / tablePageSize)`
+- `handleTableSizeChange`: updates `tablePageSize` + resets `tablePage` to 0
+
+**`tsc --noEmit` clean. No commits yet — awaiting authorization.**
+
+### Design iteration
+
+First fix attempt for "pagination disappears with Top 20": changed condition to `totalElements > 0` — **rejected**. Final design per user: pagination shown only when `totalElements > 10`; pagination is completely independent of Top N (its own size selector, own state); Top N = fetch limit only.
+
+### Open follow-ups
+
+- Commit + push backend changes (Page return type, countQuery, controller, tests) — awaiting authorization
+- Commit + push frontend changes (useTopProduits, TopProduitsTable, VentesReportingPage) — awaiting authorization
+- Also still pending from 2026-08-01: backend vente-only KPI endpoint + reporting page + tab icons commits
+- Run `./mvnw test` full suite
+- Run `npx vitest run` full suite
+- Manual UI check: Top N selector vs table pagination are independent, pagination appears only when > 10 items, page size options [10/20/50]
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-01 — Ventes reporting tab + top-N products + vente-only KPI API + tab icons
 
 ### Subject
@@ -30,54 +127,25 @@ Two features built on top of the 2026-08-01 reporting reorganization session:
 **New DTO**: `MagasinVentesStatsResponse` record (5 fields).
 
 **Tests**:
-- `MagasinReportingControllerTest`: +2 cases (`ventesStats_should_return_200_with_five_vente_kpis`, `ventesStats_should_return_400_when_magasin_id_missing`) → 8 total
-- `MagasinReportingServiceImplTest`: +2 cases (`getVentesStats_should_return_vente_kpis_without_achat_data`, `getVentesStats_should_return_zero_ticket_moyen_when_no_commandes`) → 7 total
+- `MagasinReportingControllerTest`: +2 cases → 8 total
+- `MagasinReportingServiceImplTest`: +2 cases → 7 total
 - 15/15 tests pass on both classes
 
 ### Frontend
 
 **New Ventes reporting tab** (`/dashboard/ventes/reporting`):
-- `src/app/(dashboard)/dashboard/ventes/_tabs.ts` — `VENTES_TABS` with `ventes` + `reporting` tabs
-- `src/app/(dashboard)/dashboard/ventes/layout.tsx` — tab nav bar (exact match for ventes, startsWith for reporting)
-- `src/features/vente/application/useTopProduits.ts` — calls `GET /api/v1/ventes/caisse/top-produits`
-- `src/features/vente/presentation/TopProduitsTable.tsx` — table with rank badge, ref mono, qty, revenue
-- `src/app/(dashboard)/dashboard/ventes/reporting/VentesReportingPage.tsx` — full page with `PageHeader`, `VenteMagasinSelect`, `PeriodSelector`, 5 KPI cards, nombre selector, `TopProduitsTable`
-- `src/app/(dashboard)/dashboard/ventes/reporting/page.tsx` — Next.js route
+- `src/app/(dashboard)/dashboard/ventes/_tabs.ts`, layout.tsx, VentesReportingPage.tsx, page.tsx
+- `useTopProduits` + `TopProduitsTable` + `useMagasinVentesStats` (5 fields, no achat)
+- 5th KPI card `facturesVenteImpayees` with amber warning variant when count > 0; grid `lg:grid-cols-5`
 
-**New hook `useMagasinVentesStats`** (`src/features/vente/application/`):
-- Calls `GET /api/v1/reporting/magasin-ventes` with `from`/`to` params
-- Typed with `MagasinVentesStats` (5 fields, no achat)
-- `staleTime: 60_000`, `enabled` on `magasinId + from`
+**i18n** (FR + EN): `dashboard.ventes.nav.*` + `dashboard.ventes.reporting.*`
 
-**`VentesReportingPage.tsx` updated**:
-- Replaced `useMagasinOverviewStats` → `useMagasinVentesStats`
-- Added 5th KPI card: `facturesVenteImpayees` with `FileWarning` icon + amber `warning` variant when count > 0
-- Grid expanded to `lg:grid-cols-5`
-
-**i18n** (FR + EN): `dashboard.ventes.nav.{ariaLabel, ventes, reporting}` + `dashboard.ventes.reporting.{metaTitle, title, parentTitle, pickMagasin, periodLabel, kpi.{revenu, paiementsEncaisses, ventes, ticketMoyen, facturesImpayees}, topProduits.*}`
-
-**Tab icons on all 6 module layouts**:
-- Pattern: `TAB_ICONS: Record<XTabKey, ReactNode>` map defined above the layout component; `inline-flex items-center gap-1.5` on Link className
-- `ventes`: `ShoppingCart` / `BarChart2`
-- `stock`: `Package` / `ArrowLeftRight` / `Layers`
-- `depenses`: `List` / `BarChart2`
-- `entreprise`: `Building2` / `Store` / `CreditCard` / `History` / `Banknote` / `Settings2`
-- `settings`: `Tag` / `Award` / `Package` / `Users` / `Truck` / `FolderOpen` / `UserCheck` / `Shield` / `Hash`
-- `administration`: `Users` / `Building2` / `CreditCard` / `Banknote` / `LayoutGrid` / `Tag` / `Wallet` / `Mail` / `Shield` / `BookOpen` / `Briefcase`
+**Tab icons on all 6 module layouts** — `TAB_ICONS: Record<XTabKey, ReactNode>` pattern; 25 tabs total across ventes, stock, depenses, entreprise, settings, administration layouts.
 
 ### État final
 
-- Backend: 15/15 reporting tests green (`mvnw test -Dtest=Magasin*`). `tsc --noEmit` clean.
-- Frontend: `tsc --noEmit` exit 0. `vitest run` not run this session.
-- Branch: `dev-barry`. No commits yet — awaiting authorization.
-
-### Open follow-ups
-
-- Commit + push backend changes (new DTO + service method + controller endpoint + tests)
-- Commit + push frontend changes (new hook + reporting page + layout icons + i18n)
-- Run `./mvnw test` full suite to check no regression
-- Run `npx vitest run` full suite
-- Manual UI check: ventes tab nav (icons + active state), reporting page (5 KPI cards, top-N table, periode selector), `facturesVenteImpayees` warning card turns amber when count > 0
+- Backend: 15/15 reporting tests green. `tsc --noEmit` clean.
+- Frontend: `tsc --noEmit` exit 0. No commits — awaiting authorization.
 
 ---
 

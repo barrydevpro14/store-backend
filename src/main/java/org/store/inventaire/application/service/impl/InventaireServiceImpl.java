@@ -355,27 +355,28 @@ public class InventaireServiceImpl implements IInventaireService {
     /**
      * Delegue a IAjustementStockService.create pour une ligne d'inventaire avec ecart != 0.
      * POSITIF si surplus (plus compté que théorique), NEGATIF si manque.
-     * Pour un NEGATIF, si aucun enregistrement Stock n'existe (incohérence de données),
-     * l'ajustement est ignoré — l'écart reste visible dans la ligne d'inventaire.
+     * Pour un NEGATIF sans stock existant (incohérence de données), l'ajustement est ignoré.
+     * Pour un POSITIF sans stock existant, un stock vierge est initialisé avant l'ajustement.
      */
     public void appliquerAjustement(Inventaire inventaire, LigneInventaire ligne) {
         int ecart = ligne.getEcart();
         ProductFournisseur productFournisseur = ligne.getProductFournisseur();
+        Magasin magasin = inventaire.getMagasin();
         TypeAjustement type = ecart > 0 ? TypeAjustement.POSITIF : TypeAjustement.NEGATIF;
 
-        if (type == TypeAjustement.NEGATIF) {
-            boolean stockExists = stockService
-                    .findByMagasinAndProductFournisseur(inventaire.getMagasin().getId(), productFournisseur.getId())
-                    .isPresent();
-            if (!stockExists) return;
+        Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
+                .orElse(null);
+
+        if (stock == null && type == TypeAjustement.NEGATIF) return;
+
+        if (stock == null) {
+            stock = stockService.findOrCreate(magasin, productFournisseur);
         }
+
         AjustementStockRequest request = new AjustementStockRequest(
-                inventaire.getMagasin().getId(),
-                productFournisseur.getProduct().getId(),
+                stock.getId(),
                 type,
                 Math.abs(ecart),
-                productFournisseur.getId(),
-                ecart > 0 ? (ligne.getPrixUnitaire() != null ? ligne.getPrixUnitaire() : productFournisseur.getPrixAchat()) : null,
                 MotifAjustement.INVENTAIRE_PHYSIQUE,
                 messageSourceService.getMessage("inventaire.cloture.commentaire", new Object[]{inventaire.getId()})
         );

@@ -3,6 +3,9 @@ package org.store.stock.application.service;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
+import org.store.stock.application.dto.EntreeStockUpdateRequest;
+import org.store.stock.application.dto.MouvementStockResponse;
+import org.store.stock.application.dto.StockLotResponse;
 import org.store.stock.domain.model.EntreeStock;
 
 import java.util.List;
@@ -52,4 +55,17 @@ public interface IEntreeStockService {
      * Réservé à la coordination interne au domaine stock.
      */
     void markAsAnnulee(EntreeStock lot);
+
+    /**
+     * Corrige un lot existant : quantiteRestante, prixAchat et prixVente du ProductFournisseur.
+     * Recalcule le PMP du stock agrégé depuis tous les lots actifs restants. Journalise un mouvement
+     * AJUSTEMENT et publie un audit STOCK_ADJUSTMENT.
+     */
+    MouvementStockResponse update(UUID lotId, EntreeStockUpdateRequest request);
+
+    /**
+     * Retourne les lots actifs (quantiteRestante > 0) d'un stock donné, triés FIFO.
+     * Utilisé par l'écran de correction de lot depuis la liste de stock.
+     */
+    List<StockLotResponse> findActiveLotsByStockId(UUID stockId);
 }

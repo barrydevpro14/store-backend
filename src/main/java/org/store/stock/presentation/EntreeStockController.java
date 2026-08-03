@@ -4,6 +4,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,7 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
+import org.store.stock.application.dto.EntreeStockUpdateRequest;
+import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.dto.StockImportResult;
+import org.store.stock.application.dto.StockLotResponse;
 import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.application.service.IStockImportService;
 
@@ -33,10 +39,24 @@ public class EntreeStockController {
         this.stockImportService = stockImportService;
     }
 
+    @GetMapping
+    @PreAuthorize("hasAuthority('STOCK_READ')")
+    public ResponseEntity<List<StockLotResponse>> listByStock(@RequestParam UUID stockId) {
+        return ResponseEntity.ok(entreeStockService.findActiveLotsByStockId(stockId));
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('STOCK_ENTRY')")
     public ResponseEntity<List<EntreeStockResponse>> create(@Valid @RequestBody EntreeStockRequest entreeStockRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(entreeStockService.create(entreeStockRequest));
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('STOCK_ADJUSTMENT')")
+    public ResponseEntity<MouvementStockResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody EntreeStockUpdateRequest request) {
+        return ResponseEntity.ok(entreeStockService.update(id, request));
     }
 
     @PostMapping("/file")

@@ -10,11 +10,13 @@ import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
 import org.store.stock.application.dto.StockResponse;
 import org.store.stock.application.dto.StockValuationResponse;
+import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.repository.StockRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -85,7 +87,14 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
      */
     public Stock createOrUpdateEntry(StockEntryContext context) {
         Stock stock = findByMagasinIdAndProductFournisseurId(context.magasin().getId(), context.productFournisseur().getId())
-                .orElseGet(() -> initStock(context.magasin(), context.productFournisseur()));
+                .orElseGet(() -> {
+                    Stock s = new Stock();
+                    s.setMagasin(context.magasin());
+                    s.setProductFournisseur(context.productFournisseur());
+                    s.setQuantiteDisponible(0);
+                    s.setPrixAchatMoyen(BigDecimal.ZERO);
+                    return s;
+                });
 
         int qtyAvant = stock.getQuantiteDisponible();
         int qtyApres = qtyAvant + context.quantite();
@@ -101,13 +110,36 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
         return save(stock);
     }
 
-    private Stock initStock(Magasin magasin, ProductFournisseur productFournisseur) {
-        Stock stock = new Stock();
-        stock.setMagasin(magasin);
-        stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(0);
-        stock.setPrixAchatMoyen(BigDecimal.ZERO);
-        return stock;
+    /**
+     * Recalcule {@code quantiteDisponible} et {@code prixAchatMoyen} depuis la liste des lots actifs fournie.
+     * PMP = SUM(quantiteRestante × prixAchat) / SUM(quantiteRestante). Si aucun lot actif, PMP = 0.
+     */
+    public Stock recalculateFromLots(Stock stock, List<EntreeStock> activeLots) {
+        int totalQty = activeLots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
+
+        BigDecimal newPmp = totalQty > 0
+                ? activeLots.stream()
+                        .map(l -> l.getPrixAchat().multiply(BigDecimal.valueOf(l.getQuantiteRestante())))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .divide(BigDecimal.valueOf(totalQty), 6, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        stock.setQuantiteDisponible(totalQty);
+        stock.setPrixAchatMoyen(newPmp);
+        return save(stock);
+    }
+
+    /** Retourne le stock existant pour la paire magasin+PF, ou en crée un vierge (qty=0, pmp=0) persisté. */
+    public Stock findOrCreate(Magasin magasin, ProductFournisseur productFournisseur) {
+        return findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())
+                .orElseGet(() -> {
+                    Stock stock = new Stock();
+                    stock.setMagasin(magasin);
+                    stock.setProductFournisseur(productFournisseur);
+                    stock.setQuantiteDisponible(0);
+                    stock.setPrixAchatMoyen(BigDecimal.ZERO);
+                    return save(stock);
+                });
     }
 
     /** Compte les produits en dessous du seuil d'approvisionnement pour un magasin. */

@@ -7,12 +7,8 @@ import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
 import org.store.common.exceptions.BadArgumentException;
-import org.store.common.exceptions.EntityException;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
-import org.store.produit.application.service.IProductFournisseurService;
-import org.store.produit.application.service.IProductService;
-import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.ProductFournisseur;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -33,11 +29,13 @@ import org.store.stock.domain.model.Stock;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Orchestre l'ajustement manuel du stock (positif ou négatif) avec motif, journalise
- * en MouvementStock(AJUSTEMENT). Positif = mini entrée stock avec fournisseur, Négatif
- * = consommation FIFO sans SortieStock.
+ * en MouvementStock(AJUSTEMENT). Positif = mini entrée stock au prix du PF existant,
+ * Négatif = consommation FIFO sans SortieStock. Le fournisseur et le prix sont dérivés
+ * du stock existant — aucune saisie supplémentaire côté appelant.
  */
 @Service
 @Transactional(readOnly = true)
@@ -50,8 +48,6 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
     private final IStockService stockService;
     private final IMouvementStockService mouvementStockService;
     private final IMagasinService magasinService;
-    private final IProductService productService;
-    private final IProductFournisseurService productFournisseurService;
     private final ICurrentUserService currentUserService;
     private final IAuditEventPublisher auditEventPublisher;
 
@@ -59,16 +55,12 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
                                       IStockService stockService,
                                       IMouvementStockService mouvementStockService,
                                       IMagasinService magasinService,
-                                      IProductService productService,
-                                      IProductFournisseurService productFournisseurService,
                                       ICurrentUserService currentUserService,
                                       IAuditEventPublisher auditEventPublisher) {
         this.entreeStockService = entreeStockService;
         this.stockService = stockService;
         this.mouvementStockService = mouvementStockService;
         this.magasinService = magasinService;
-        this.productService = productService;
-        this.productFournisseurService = productFournisseurService;
         this.currentUserService = currentUserService;
         this.auditEventPublisher = auditEventPublisher;
     }
@@ -77,67 +69,47 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
     @Override
     @Transactional
     public MouvementStockResponse create(AjustementStockRequest request) {
-        validateMotifTypeCoherence(request.type(), request.motif());
+        validateMotifTypeCoherence(request.type(), request.motif(), request.commentaire());
 
-        Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(request.magasinId()));
-        Product produit = productService.ensureBelongsToCurrentEntreprise(productService.findById(request.productId()));
+        Stock stock = stockService.findById(request.stockId());
+        Magasin magasin = magasinService.ensureAccessibleByCurrentUser(stock.getMagasin());
+        ProductFournisseur pf = stock.getProductFournisseur();
 
-        Stock stock = request.type() == TypeAjustement.POSITIF
-                ? applyPositif(request, magasin, produit)
-                : applyNegatif(request, magasin, produit);
+        Stock updatedStock = request.type() == TypeAjustement.POSITIF
+                ? applyPositif(request, magasin, pf)
+                : applyNegatif(request, stock, pf);
 
-        MouvementStockResponse mouvement = mouvementStockService.journalize(stock, new MouvementJournalize(
+        MouvementStockResponse mouvement = mouvementStockService.journalize(updatedStock, new MouvementJournalize(
                 MouvementStockType.AJUSTEMENT,
                 request.type() == TypeAjustement.POSITIF ? request.quantite() : -request.quantite(),
                 request.type() == TypeAjustement.POSITIF
-                        ? stock.getQuantiteDisponible() - request.quantite()
-                        : stock.getQuantiteDisponible() + request.quantite(),
-                stock.getQuantiteDisponible(),
+                        ? updatedStock.getQuantiteDisponible() - request.quantite()
+                        : updatedStock.getQuantiteDisponible() + request.quantite(),
+                updatedStock.getQuantiteDisponible(),
                 request.motif().name(),
                 request.commentaire()
         ));
 
-        auditAdjustment(stock.getId(), produit.getNom(), magasin.getId());
+        auditAdjustment(updatedStock.getId(), pf.getProduct().getNom(), magasin.getId());
         return mouvement;
     }
 
-    /** Crée une mini entrée stock avec fournisseur, upsert le stock agrégé et retourne le stock à jour. */
-    public Stock applyPositif(AjustementStockRequest request, Magasin magasin, Product produit) {
-        if (request.productFournisseurId() == null || request.prixAchat() == null) {
-            throw new BadArgumentException("stock.adjustment.productFournisseurRequired");
-        }
-
-        ProductFournisseur pf = productFournisseurService.ensureBelongsToCurrentEntreprise(
-                productFournisseurService.findById(request.productFournisseurId()));
-
-        if (!pf.getProduct().getId().equals(produit.getId())) {
-            throw new BadArgumentException("stock.adjustment.productMismatch");
-        }
-
+    /** Crée une mini entrée stock au prix d'achat du PF, upsert le stock agrégé et retourne le stock à jour. */
+    public Stock applyPositif(AjustementStockRequest request, Magasin magasin, ProductFournisseur pf) {
         entreeStockService.createEntreeStock(new EntreeStockCreate(
-                magasin, produit, pf,
-                request.quantite(), request.prixAchat(),
+                magasin, pf.getProduct(), pf,
+                request.quantite(), pf.getPrixAchat(),
                 null, null, null));
 
-        return stockService.createOrUpdateEntry(new StockEntryContext(magasin, pf, request.quantite(), request.prixAchat()));
+        return stockService.createOrUpdateEntry(new StockEntryContext(magasin, pf, request.quantite(), pf.getPrixAchat()));
     }
 
     /**
-     * Vérifie la cohérence produit/PF, charge les lots FIFO, vérifie la disponibilité réelle,
-     * consomme les lots (sans SortieStock), décrémente le stock et retourne le stock à jour.
+     * Charge les lots FIFO du PF, vérifie la disponibilité réelle, consomme les lots
+     * (sans SortieStock), décrémente le stock et retourne le stock à jour.
      */
-    public Stock applyNegatif(AjustementStockRequest request, Magasin magasin, Product produit) {
-        ProductFournisseur pf = productFournisseurService.ensureBelongsToCurrentEntreprise(
-                productFournisseurService.findById(request.productFournisseurId()));
-
-        if (!pf.getProduct().getId().equals(produit.getId())) {
-            throw new BadArgumentException("stock.adjustment.productMismatch");
-        }
-
-        Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), pf.getId())
-                .orElseThrow(() -> new EntityException("stock.notFound"));
-
-        List<EntreeStock> lots = entreeStockService.findAvailableLotsForFifo(magasin.getId(), pf.getId());
+    public Stock applyNegatif(AjustementStockRequest request, Stock stock, ProductFournisseur pf) {
+        List<EntreeStock> lots = entreeStockService.findAvailableLotsForFifo(stock.getMagasin().getId(), pf.getId());
         int disponibleLots = lots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
 
         if (disponibleLots < request.quantite()) {
@@ -166,17 +138,20 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
         return restant - aConsommer;
     }
 
-    /** Lève BadArgumentException si le motif n'est pas compatible avec le type d'ajustement. */
-    public void validateMotifTypeCoherence(TypeAjustement type, MotifAjustement motif) {
+    /** Lève BadArgumentException si le motif n'est pas compatible avec le type d'ajustement, ou si AUTRE sans commentaire. */
+    public void validateMotifTypeCoherence(TypeAjustement type, MotifAjustement motif, String commentaire) {
         if (type == TypeAjustement.POSITIF && MOTIFS_NEGATIFS.contains(motif)) {
             throw new BadArgumentException("stock.adjustment.motifMismatch", motif.name(), type.name());
         }
         if (type == TypeAjustement.NEGATIF && MOTIFS_POSITIFS.contains(motif)) {
             throw new BadArgumentException("stock.adjustment.motifMismatch", motif.name(), type.name());
         }
+        if (motif == MotifAjustement.AUTRE && (commentaire == null || commentaire.isBlank())) {
+            throw new BadArgumentException("stock.adjustment.commentaireRequiredForAutre");
+        }
     }
 
-    private void auditAdjustment(java.util.UUID entityId, String label, java.util.UUID magasinId) {
+    private void auditAdjustment(UUID entityId, String label, UUID magasinId) {
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(AuditAction.STOCK_ADJUSTMENT, AuditEntityType.STOCK, entityId, label,
                 caller.accountId().toString(), caller.username(), caller.entrepriseId(), magasinId, null));

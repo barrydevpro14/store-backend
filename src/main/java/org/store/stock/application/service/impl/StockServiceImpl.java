@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.magasin.domain.model.Magasin;
+import org.store.produit.domain.model.ProductFournisseur;
+import org.store.stock.domain.model.EntreeStock;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockEntryContext;
@@ -17,6 +19,7 @@ import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -104,6 +107,22 @@ public class StockServiceImpl implements IStockService {
     }
 
     @Override
+    public Stock findById(UUID id) {
+        return stockDomainService.findById(id);
+    }
+
+    @Override
+    @Transactional
+    public Stock findOrCreate(Magasin magasin, ProductFournisseur productFournisseur) {
+        return stockDomainService.findOrCreate(magasin, productFournisseur);
+    }
+
+    @Override
+    @Transactional
+    public Stock recalculateFromLots(Stock stock, List<EntreeStock> activeLots) {
+        return stockDomainService.recalculateFromLots(stock, activeLots);
+    }
+
     public Optional<Stock> findByMagasinAndProductFournisseur(UUID magasinId, UUID productFournisseurId) {
         return stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId);
     }

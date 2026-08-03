@@ -2,6 +2,8 @@ package org.store.stock.application.service;
 
 import org.springframework.data.domain.Page;
 import org.store.magasin.domain.model.Magasin;
+import org.store.produit.domain.model.ProductFournisseur;
+import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.application.dto.BelowThresholdFilter;
 import org.store.stock.application.dto.StockEntryContext;
 import org.store.stock.application.dto.StockFilter;
@@ -10,6 +12,7 @@ import org.store.stock.application.dto.StockThresholdRequest;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.domain.model.Stock;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -68,6 +71,20 @@ public interface IStockService {
      * Réservé à la coordination interne au domaine stock.
      */
     Optional<Stock> findByMagasinAndProductFournisseur(UUID magasinId, UUID productFournisseurId);
+
+    Stock findById(UUID id);
+
+    /**
+     * Retourne le stock existant pour la paire (magasin, productFournisseur), ou en crée un vierge persisté
+     * (qty=0, pmp=0). Réservé à la coordination interne — ne vérifie pas les droits d'accès.
+     */
+    Stock findOrCreate(Magasin magasin, ProductFournisseur productFournisseur);
+
+    /**
+     * Recalcule {@code quantiteDisponible} et {@code prixAchatMoyen} du stock depuis les lots actifs fournis.
+     * À appeler après toute modification directe d'un lot (correction quantité ou prix).
+     */
+    Stock recalculateFromLots(Stock stock, List<EntreeStock> activeLots);
 
     /**
      * Décrémente la quantité disponible du stock agrégé après une sortie.

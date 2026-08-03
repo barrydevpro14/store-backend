@@ -403,6 +403,7 @@ class InventaireServiceImplTest {
         cloture.setDate(LocalDate.now());
 
         org.store.stock.domain.model.Stock stock = new org.store.stock.domain.model.Stock();
+        stock.setId(UUID.randomUUID());
         stock.setMagasin(magasin);
         stock.setQuantiteDisponible(20);
 
@@ -424,8 +425,7 @@ class InventaireServiceImplTest {
                 .containsExactly(TypeAjustement.POSITIF, TypeAjustement.NEGATIF);
         assertThat(calls).extracting(AjustementStockRequest::quantite).containsExactly(3, 2);
         assertThat(calls).allMatch(req -> req.motif() == MotifAjustement.INVENTAIRE_PHYSIQUE);
-        assertThat(calls.getFirst().prixAchat()).isEqualTo(new BigDecimal("10.00"));
-        assertThat(calls.get(1).prixAchat()).isNull();
+        assertThat(calls).allMatch(req -> req.stockId().equals(stock.getId()));
         verify(rapportInventaireService, never()).create(any(), any());
     }
 
