@@ -6,6 +6,7 @@ import org.store.vente.domain.enums.LivraisonStatut;
 import org.store.vente.domain.model.LigneCommandeVente;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record LigneCommandeVenteResponse(
@@ -16,7 +17,8 @@ public record LigneCommandeVenteResponse(
         int quantiteLivree,
         LivraisonStatut livraisonStatut,
         BigDecimal prixUnitaire,
-        BigDecimal montantTotal
+        BigDecimal montantTotal,
+        LocalDate dateAjout
 ) {
     public LigneCommandeVenteResponse(LigneCommandeVente ligne) {
         this(
@@ -27,7 +29,8 @@ public record LigneCommandeVenteResponse(
                 ligne.getQuantiteLivree(),
                 ligne.getLivraisonStatut(),
                 ligne.getPrixUnitaire(),
-                ligne.getMontantTotal()
+                ligne.getMontantTotal(),
+                ligne.getDateAjout()
         );
     }
 }

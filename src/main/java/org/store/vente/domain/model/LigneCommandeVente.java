@@ -9,6 +9,7 @@ import org.store.produit.domain.model.ProductFournisseur;
 import org.store.vente.domain.enums.LivraisonStatut;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -41,4 +42,6 @@ public class LigneCommandeVente extends BaseEntity {
 
     @Column(precision = 19, scale = 2)
     private BigDecimal montantTotal;
+
+    private LocalDate dateAjout;
 }

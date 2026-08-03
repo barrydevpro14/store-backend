@@ -185,7 +185,7 @@ class VenteControllerTest {
                 new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", null),
                 null,
                 20, 20, org.store.vente.domain.enums.LivraisonStatut.LIVREE,
-                new BigDecimal("18.00"), new BigDecimal("360.00")
+                new BigDecimal("18.00"), new BigDecimal("360.00"), null
         );
         when(venteService.updateLigne(eq(commandeId), eq(ligneId), any(LigneVenteUpdateRequest.class)))
                 .thenReturn(updated);

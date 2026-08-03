@@ -15,4 +15,10 @@ public interface ICommandeVenteService {
 
     /** Nombre de commandes vente créées pour une entreprise sur une plage horaire (day KPI). */
     long countByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay);
+
+    /**
+     * Bascule une commande VALIDATE en statut CLOTURE (verrouillage : plus d'ajout de ligne possible).
+     * Vérifie que la commande est accessible par le caller et qu'elle est bien en VALIDATE.
+     */
+    CommandeVenteResponse cloturerCommande(UUID commandeId);
 }
