@@ -63,6 +63,20 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
         return repository.sumMontantTotalByMagasinAndDay(range.magasinId(), entrepriseId, range.startOfPeriod(), range.endOfPeriod());
     }
 
+    /** Incrémente montantTotal d'un delta et recalcule le statut (montantPaye inchangé). */
+    public FactureClient addMontant(FactureClient facture, BigDecimal delta) {
+        facture.setMontantTotal(facture.getMontantTotal().add(delta));
+        BigDecimal montantPaye = facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO;
+        if (montantPaye.compareTo(BigDecimal.ZERO) == 0) {
+            facture.setStatut(StatutFacture.NON_PAYEE);
+        } else if (montantPaye.compareTo(facture.getMontantTotal()) < 0) {
+            facture.setStatut(StatutFacture.PARTIELLEMENT_PAYEE);
+        } else {
+            facture.setStatut(StatutFacture.PAYEE);
+        }
+        return save(facture);
+    }
+
     /** Bascule la facture en statut ANNULEE (paiements conservés tels quels pour audit). */
     public FactureClient cancel(FactureClient facture) {
         facture.setStatut(StatutFacture.ANNULEE);

@@ -3,6 +3,7 @@ package org.store.vente.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
@@ -11,6 +12,8 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.service.ICommandeVenteService;
+import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.service.CommandeVenteDomainService;
 
 import java.time.LocalDateTime;
@@ -61,5 +64,23 @@ public class CommandeVenteServiceImpl implements ICommandeVenteService {
     @Override
     public long countByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay) {
         return commandeVenteDomainService.countByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
+    }
+
+    /** Bascule une commande VALIDATE en CLOTURE après vérification d'accès et de statut. */
+    @Override
+    @Transactional
+    public CommandeVenteResponse cloturerCommande(UUID commandeId) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        CommandeVente commande = commandeVenteDomainService.findById(commandeId);
+        magasinService.ensureAccessibleByCurrentUser(commande.getMagasin());
+
+        if (commande.getStatut() != CommandeVenteStatut.VALIDATE) {
+            throw new BadArgumentException("commandeVente.cloturer.notValidated", commande.getStatut().name());
+        }
+
+        commandeVenteDomainService.cloturer(commande);
+
+        return commandeVenteDomainService.findResponseById(commandeId, currentUser.entrepriseId())
+                .orElseThrow(() -> new EntityException("commandeVente.notFound", commandeId));
     }
 }

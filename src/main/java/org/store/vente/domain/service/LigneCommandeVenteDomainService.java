@@ -13,6 +13,7 @@ import org.store.vente.domain.model.LigneCommandeVente;
 import org.store.vente.domain.repository.LigneCommandeVenteRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -36,6 +37,7 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         ligne.setLivraisonStatut(LivraisonStatut.LIVREE);
         ligne.setPrixUnitaire(prixUnitaire);
         ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
+        ligne.setDateAjout(LocalDate.now());
         return save(ligne);
     }
 

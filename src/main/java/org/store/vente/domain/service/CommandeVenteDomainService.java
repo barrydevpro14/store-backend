@@ -93,6 +93,12 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         return save(commande);
     }
 
+    /** Bascule la commande en statut CLOTURE (verrouillage définitif — plus d'ajout de ligne possible). */
+    public CommandeVente cloturer(CommandeVente commande) {
+        commande.setStatut(CommandeVenteStatut.CLOTURE);
+        return save(commande);
+    }
+
     /** Met à jour le montant total dénormalisé de la commande. */
     public CommandeVente updateMontantTotal(CommandeVente commande, java.math.BigDecimal montantTotal) {
         commande.setMontantTotal(montantTotal.max(java.math.BigDecimal.ZERO));

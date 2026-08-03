@@ -195,14 +195,15 @@ public class VenteServiceImpl implements IVenteService {
         );
     }
 
-    /** Ajoute une ligne à une commande DRAFT existante (scoping PF + prix plancher + delta montantTotal). */
+    /** Ajoute une ligne à une commande DRAFT ou VALIDATE non payée (scoping PF + prix plancher + delta montantTotal).
+     *  Sur VALIDATE : consomme le stock FIFO immédiatement et met à jour la facture. */
     @Override
     @Transactional
     public LigneCommandeVenteResponse addLigne(UUID commandeId, LigneVenteRequest ligneVenteRequest) {
         validatorService.validate(ligneVenteRequest);
 
         CommandeVente commande = ensureBelongsToCurrentEntreprise(commandeVenteDomainService.findById(commandeId));
-        ensureCommandeIsDraft(commande);
+        ensureCommandeIsEditable(commande);
         ensureCurrentUserOwnsCommande(commande);
 
         ProductFournisseur productFournisseur = resolveAndValidateLine(ligneVenteRequest);
@@ -212,6 +213,12 @@ public class VenteServiceImpl implements IVenteService {
         ));
 
         commandeVenteDomainService.updateMontantTotal(commande, commande.getMontantTotal().add(ligne.getMontantTotal()));
+
+        if (commande.getStatut() == CommandeVenteStatut.VALIDATE) {
+            consumeStockForLigne(commande.getMagasin(), ligne);
+            factureClientDomainService.findByCommandeId(commande.getId())
+                    .ifPresent(facture -> factureClientDomainService.addMontant(facture, ligne.getMontantTotal()));
+        }
 
         return new LigneCommandeVenteResponse(ligne);
     }
@@ -251,6 +258,9 @@ public class VenteServiceImpl implements IVenteService {
         FactureClient finalFacture = applyPremierPaiementIfPresent(venteValidateRequest.premierPaiement(), facture);
 
         CommandeVente delivered = commandeVenteDomainService.validate(commande);
+        if (commande.getClient() == null) {
+            delivered = commandeVenteDomainService.cloturer(delivered);
+        }
 
         notificationEventPublisher.publishVenteValidated(new VenteValidatedEvent(delivered));
 
@@ -444,6 +454,16 @@ public class VenteServiceImpl implements IVenteService {
         }
     }
 
+    /** Lève BadArgument si la commande n'est ni DRAFT ni VALIDATE non entièrement payée. */
+    public void ensureCommandeIsEditable(CommandeVente commande) {
+        if (commande.getStatut() == CommandeVenteStatut.DRAFT) return;
+        if (commande.getStatut() == CommandeVenteStatut.VALIDATE) {
+            FactureClient facture = commande.getFacture();
+            if (facture == null || facture.getStatut() != StatutFacture.PAYEE) return;
+        }
+        throw new BadArgumentException("commandeVente.notEditable", commande.getStatut().name());
+    }
+
     /** Lève ForbiddenException si la commande n'a pas été créée par l'utilisateur courant.
      *  Un MANAGER (Employe avec rôle MANAGER) peut éditer tous les brouillons de son magasin. */
     public void ensureCurrentUserOwnsCommande(CommandeVente commande) {
@@ -535,13 +555,13 @@ public class VenteServiceImpl implements IVenteService {
         return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
     }
 
-    /** Vérifie que la commande est dans un statut annulable (VALIDATE) — throw BadArgument sinon. */
+    /** Vérifie que la commande est dans un statut annulable (VALIDATE ou CLOTURE) — throw BadArgument sinon. */
     public void ensureCancellable(CommandeVente commande) {
         CommandeVenteStatut statut = commande.getStatut();
         if (statut == CommandeVenteStatut.CANCEL) {
             throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
         }
-        if (statut != CommandeVenteStatut.VALIDATE) {
+        if (statut != CommandeVenteStatut.VALIDATE && statut != CommandeVenteStatut.CLOTURE) {
             throw new BadArgumentException("commandeVente.cancel.notValidated", statut.name());
         }
     }
