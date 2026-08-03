@@ -19,13 +19,17 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.stock.application.dto.EntreeStockCreate;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.EntreeStockResponse;
+import org.store.stock.application.dto.EntreeStockUpdateRequest;
 import org.store.stock.application.dto.LigneEntreeStockRequest;
 import org.store.stock.application.dto.MouvementJournalize;
+import org.store.stock.application.dto.MouvementStockResponse;
 import org.store.stock.application.dto.StockEntryContext;
+import org.store.stock.application.dto.StockLotResponse;
 import org.store.stock.application.service.IEntreeStockService;
 import org.store.stock.application.service.IMouvementStockService;
 import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.enums.MouvementStockType;
+import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
@@ -172,6 +176,50 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         return productFournisseurService.findById(pfId);
     }
 
+    /**
+     * Corrige un lot : met à jour quantiteRestante + prixAchat, recalcule le PMP du stock agrégé depuis
+     * tous les lots actifs, met à jour prixVente du PF, journalise un AJUSTEMENT et publie l'audit.
+     */
+    @Override
+    @Transactional
+    public MouvementStockResponse update(UUID lotId, EntreeStockUpdateRequest request) {
+        EntreeStock lot = entreeStockDomainService.findById(lotId);
+        Magasin magasin = magasinService.ensureAccessibleByCurrentUser(lot.getMagasin());
+        ProductFournisseur pf = lot.getProductFournisseur();
+
+        productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(request.prixVente(), request.prixAchat());
+
+        Stock stock = stockService.findOrCreate(magasin, pf);
+        int stockAvant = stock.getQuantiteDisponible();
+
+        lot.setQuantiteRestante(request.quantite());
+        lot.setPrixAchat(request.prixAchat());
+        entreeStockDomainService.save(lot);
+
+        productFournisseurService.updatePrixVente(pf.getId(), request.prixVente());
+
+        List<EntreeStock> activeLots = entreeStockDomainService
+                .findAvailableLotsForFifoByProductFournisseur(magasin.getId(), pf.getId());
+        Stock updatedStock = stockService.recalculateFromLots(stock, activeLots);
+
+        int stockApres = updatedStock.getQuantiteDisponible();
+
+        MouvementStockResponse mouvement = mouvementStockService.journalize(
+                updatedStock,
+                new MouvementJournalize(
+                        MouvementStockType.AJUSTEMENT,
+                        stockApres - stockAvant,
+                        stockAvant,
+                        stockApres,
+                        "CORRECTION_LOT",
+                        null
+                )
+        );
+
+        publishLotUpdateAudit(lot.getId(), pf.getProduct().getNom(), magasin.getId());
+        return mouvement;
+    }
+
     /** Publie un AuditEvent STOCK_INITIAL_ENTRY global (entityId null, label "ENTREE INITIAL"). */
     public void publishAuditEvent(Magasin magasin) {
         UserPrincipal caller = currentUserService.getCurrent();
@@ -180,5 +228,21 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 null, "ENTREE INITIAL",
                 caller.accountId().toString(), caller.username(), caller.entrepriseId(),
                 magasin.getId(), null));
+    }
+
+    /** Retourne les lots actifs (quantiteRestante > 0) d'un stock donné, triés FIFO. */
+    @Override
+    public List<StockLotResponse> findActiveLotsByStockId(UUID stockId) {
+        return entreeStockDomainService.findActiveLotsByStockId(stockId).stream()
+                .map(StockLotResponse::new)
+                .toList();
+    }
+
+    private void publishLotUpdateAudit(UUID entityId, String label, UUID magasinId) {
+        UserPrincipal caller = currentUserService.getCurrent();
+        auditEventPublisher.publish(new AuditEvent(
+                AuditAction.STOCK_ADJUSTMENT, AuditEntityType.STOCK, entityId, label,
+                caller.accountId().toString(), caller.username(), caller.entrepriseId(),
+                magasinId, null));
     }
 }

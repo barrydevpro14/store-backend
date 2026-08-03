@@ -17,7 +17,8 @@ public record ExpiringLotResponse(
         String numeroLot,
         String dateExpiration,
         int quantiteRestante,
-        BigDecimal prixAchat
+        BigDecimal prixAchat,
+        BigDecimal prixVente
 ) {
     public ExpiringLotResponse(EntreeStock lot) {
         this(
@@ -30,7 +31,8 @@ public record ExpiringLotResponse(
                 lot.getNumeroLot(),
                 DateHelper.format(lot.getDateExpiration()),
                 lot.getQuantiteRestante(),
-                lot.getPrixAchat()
+                lot.getPrixAchat(),
+                lot.getProductFournisseur() != null ? lot.getProductFournisseur().getPrixVente() : null
         );
     }
 }

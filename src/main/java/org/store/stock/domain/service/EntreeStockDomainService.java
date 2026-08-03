@@ -47,6 +47,11 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
         return repository.findByCommandeAchatId(commandeAchatId);
     }
 
+    /** Retourne les lots actifs (quantiteRestante > 0) d'un stock donné, triés FIFO. */
+    public List<EntreeStock> findActiveLotsByStockId(UUID stockId) {
+        return repository.findActiveLotsByStockId(stockId);
+    }
+
     /** Marque un lot comme annulé lors d'une annulation d'achat (lot retiré du stock + retourné au fournisseur). */
     public EntreeStock markAsAnnulee(EntreeStock lot) {
         lot.setAnnulee(true);

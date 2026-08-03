@@ -73,4 +73,14 @@ public interface EntreeStockRepository extends BaseRepository<EntreeStock> {
             WHERE entree.commandeAchat.id = :commandeAchatId
             """)
     List<EntreeStock> findByCommandeAchatId(@Param("commandeAchatId") UUID commandeAchatId);
+
+    @Query("""
+            SELECT entree FROM EntreeStock entree
+            WHERE entree.magasin.id = (SELECT s.magasin.id FROM Stock s WHERE s.id = :stockId)
+              AND entree.productFournisseur.id = (SELECT s.productFournisseur.id FROM Stock s WHERE s.id = :stockId)
+              AND entree.quantiteRestante > 0
+              AND entree.annulee = false
+            ORDER BY entree.createdAt ASC
+            """)
+    List<EntreeStock> findActiveLotsByStockId(@Param("stockId") UUID stockId);
 }
