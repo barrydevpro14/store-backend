@@ -38,7 +38,7 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
             SELECT COALESCE(SUM(paiement.montant), 0) FROM PaiementVente paiement
             WHERE paiement.facture.commande.magasin.entreprise.id = :entrepriseId
               AND paiement.facture.commande.magasin.id = :magasinId
-              AND paiement.facture.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
+              AND paiement.facture.commande.statut NOT IN (org.store.vente.domain.enums.CommandeVenteStatut.DRAFT, org.store.vente.domain.enums.CommandeVenteStatut.CANCEL)
               AND paiement.createdAt >= :startOfDay
               AND paiement.createdAt <= :endOfDay
             """)
@@ -54,7 +54,7 @@ public interface PaiementVenteRepository extends BaseRepository<PaiementVente> {
             FROM PaiementVente paiement
             WHERE paiement.facture.commande.magasin.entreprise.id = :entrepriseId
               AND paiement.facture.commande.magasin.id = :magasinId
-              AND paiement.facture.commande.statut = org.store.vente.domain.enums.CommandeVenteStatut.VALIDATE
+              AND paiement.facture.commande.statut NOT IN (org.store.vente.domain.enums.CommandeVenteStatut.DRAFT, org.store.vente.domain.enums.CommandeVenteStatut.CANCEL)
               AND paiement.createdAt >= :startOfDay
               AND paiement.createdAt <= :endOfDay
             GROUP BY paiement.moyen
