@@ -23,14 +23,14 @@ public class LigneInventaire extends BaseEntity {
     @JoinColumn(name = "product_fournisseur_id", nullable = false)
     private ProductFournisseur productFournisseur;
 
-    @Column(name = "quantite_theorique", nullable = false)
-    private int quantiteTheorique;
+    @Column(name = "quantite_theorique", nullable = false, precision = 19, scale = 2)
+    private BigDecimal quantiteTheorique;
 
-    @Column(name = "quantite_reelle", nullable = false)
-    private int quantiteReelle;
+    @Column(name = "quantite_reelle", nullable = false, precision = 19, scale = 2)
+    private BigDecimal quantiteReelle;
 
-    @Column(nullable = false)
-    private int ecart;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal ecart;
 
     /** Prix unitaire saisi par l'utilisateur (par défaut : prixAchat du PF). Nullable pour rétrocompatibilité. */
     @Column(name = "prix_unitaire", precision = 19, scale = 2)

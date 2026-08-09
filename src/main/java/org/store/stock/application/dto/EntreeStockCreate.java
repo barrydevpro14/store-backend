@@ -12,7 +12,7 @@ public record EntreeStockCreate(
         Magasin magasin,
         Product produit,
         ProductFournisseur productFournisseur,
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixAchat,
         String numeroLot,
         LocalDate dateExpiration,

@@ -32,7 +32,7 @@ public class LigneInventaireServiceImpl implements ILigneInventaireService {
     @Override
     @Transactional
     public LigneInventaire create(Inventaire inventaire, ProductFournisseur productFournisseur,
-                                  int quantiteTheorique, int quantiteReelle, BigDecimal prixUnitaire) {
+                                  BigDecimal quantiteTheorique, BigDecimal quantiteReelle, BigDecimal prixUnitaire) {
         return ligneInventaireDomainService.create(inventaire, productFournisseur, quantiteTheorique, quantiteReelle, prixUnitaire);
     }
 
@@ -58,13 +58,13 @@ public class LigneInventaireServiceImpl implements ILigneInventaireService {
 
     @Override
     @Transactional
-    public LigneInventaire updateQuantiteReelle(LigneInventaire ligne, int quantiteReelle) {
+    public LigneInventaire updateQuantiteReelle(LigneInventaire ligne, BigDecimal quantiteReelle) {
         return ligneInventaireDomainService.updateQuantiteReelle(ligne, quantiteReelle);
     }
 
     @Override
     @Transactional
-    public LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, int quantiteTheorique) {
+    public LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, BigDecimal quantiteTheorique) {
         return ligneInventaireDomainService.updateQuantiteTheorique(ligne, quantiteTheorique);
     }
 

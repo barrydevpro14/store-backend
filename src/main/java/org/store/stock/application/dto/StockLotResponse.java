@@ -4,15 +4,17 @@ import org.store.stock.domain.model.EntreeStock;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Objects;
 import java.util.UUID;
 
 public record StockLotResponse(
         UUID id,
         String numeroLot,
         String dateExpiration,
-        int quantiteRestante,
+        BigDecimal quantiteRestante,
         BigDecimal prixAchat,
-        BigDecimal prixVente
+        BigDecimal prixVente,
+        String uniteMesure
 ) {
     public StockLotResponse(EntreeStock lot) {
         this(
@@ -23,7 +25,8 @@ public record StockLotResponse(
                 lot.getPrixAchat() != null ? lot.getPrixAchat().setScale(2, RoundingMode.HALF_UP) : null,
                 lot.getProductFournisseur() != null && lot.getProductFournisseur().getPrixVente() != null
                         ? lot.getProductFournisseur().getPrixVente().setScale(2, RoundingMode.HALF_UP)
-                        : null
+                        : null,
+                lot.getProductFournisseur() != null ? lot.getProductFournisseur().getProduct().getUniteMesure().getSymbole() : ""
         );
     }
 }

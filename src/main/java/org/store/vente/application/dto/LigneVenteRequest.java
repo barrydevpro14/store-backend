@@ -11,7 +11,7 @@ public record LigneVenteRequest(
         @NotNull UUID productId,
         @NotNull UUID qualityId,
         @NotNull UUID fournisseurId,
-        @NotNull @Positive Integer quantite,
+        @NotNull @Positive BigDecimal quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixUnitaire
 ) {
 }

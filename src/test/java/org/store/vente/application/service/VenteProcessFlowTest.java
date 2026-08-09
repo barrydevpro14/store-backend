@@ -211,8 +211,9 @@ class VenteProcessFlowTest {
     @Test
     void process_create_draft_then_validate_produces_validate_commande_with_facture_and_stock() {
         // ── STEP 1: Create DRAFT ─────────────────────────────────────────────
+        BigDecimal qte = new BigDecimal(10);
         VenteRequest createRequest = new VenteRequest(null, List.of(
-                new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 10, new BigDecimal("12000.00"))));
+                new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), qte, new BigDecimal("12000.00"))));
 
         when(employeService.findCurrentUser()).thenReturn(vendeur);
         when(productFournisseurService.findByTriplet(any(), any(), any())).thenReturn(productFournisseur);
@@ -223,7 +224,7 @@ class VenteProcessFlowTest {
             l.setId(ligneId);
             l.setCommande(draftCommande);
             l.setProductFournisseur(productFournisseur);
-            l.setQuantite(10);
+            l.setQuantite(qte);
             l.setPrixUnitaire(new BigDecimal("12000.00"));
             l.setMontantTotal(new BigDecimal("120000.00"));
             draftCommande.getLignes().add(l);
@@ -274,7 +275,7 @@ class VenteProcessFlowTest {
         existing.setId(ligneId);
         existing.setCommande(draftCommande);
         existing.setProductFournisseur(productFournisseur);
-        existing.setQuantite(5);
+        existing.setQuantite(new BigDecimal(5));
         existing.setPrixUnitaire(new BigDecimal("12000.00"));
         existing.setMontantTotal(new BigDecimal("60000.00"));
         draftCommande.getLignes().add(existing);
@@ -283,21 +284,21 @@ class VenteProcessFlowTest {
         corrected.setId(ligneId);
         corrected.setCommande(draftCommande);
         corrected.setProductFournisseur(productFournisseur);
-        corrected.setQuantite(8);
+        corrected.setQuantite(new BigDecimal(8));
         corrected.setPrixUnitaire(new BigDecimal("13000.00"));
         corrected.setMontantTotal(new BigDecimal("104000.00"));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(draftCommande);
         when(ligneCommandeVenteDomainService.findById(ligneId)).thenReturn(existing);
-        when(ligneCommandeVenteDomainService.update(eq(existing), eq(8), eq(new BigDecimal("13000.00")))).thenReturn(corrected);
+        when(ligneCommandeVenteDomainService.update(eq(existing), eq(new BigDecimal(8)), eq(new BigDecimal("13000.00")))).thenReturn(corrected);
 
         LigneCommandeVenteResponse result = service.updateLigne(commandeId, ligneId,
-                new LigneVenteUpdateRequest(8, new BigDecimal("13000.00")));
+                new LigneVenteUpdateRequest(new BigDecimal(8), new BigDecimal("13000.00")));
 
-        assertThat(result.quantite()).isEqualTo(8);
+        assertThat(result.quantite()).isEqualTo(new BigDecimal(8));
         assertThat(result.prixUnitaire()).isEqualByComparingTo("13000.00");
 
-        verify(ligneCommandeVenteDomainService).update(eq(existing), eq(8), eq(new BigDecimal("13000.00")));
+        verify(ligneCommandeVenteDomainService).update(eq(existing), eq(new BigDecimal(8)), eq(new BigDecimal("13000.00")));
     }
 
     // ── Scenario 3: DRAFT → VALIDATE with initial payment ────────────────────
@@ -308,7 +309,7 @@ class VenteProcessFlowTest {
         ligne.setId(ligneId);
         ligne.setCommande(draftCommande);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantite(10);
+        ligne.setQuantite(new BigDecimal(10));
         ligne.setPrixUnitaire(new BigDecimal("12000.00"));
         ligne.setMontantTotal(new BigDecimal("120000.00"));
         draftCommande.getLignes().add(ligne);
@@ -357,12 +358,12 @@ class VenteProcessFlowTest {
     @Test
     void process_cancel_after_validate_reinjects_stock_and_marks_cancel() {
         draftCommande.setStatut(CommandeVenteStatut.VALIDATE);
-
+        BigDecimal qte = new BigDecimal(10);
         LigneCommandeVente ligne = new LigneCommandeVente();
         ligne.setId(ligneId);
         ligne.setCommande(draftCommande);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantite(10);
+        ligne.setQuantite(qte);
         ligne.setPrixUnitaire(new BigDecimal("12000.00"));
         ligne.setMontantTotal(new BigDecimal("120000.00"));
         draftCommande.getLignes().add(ligne);
@@ -372,23 +373,23 @@ class VenteProcessFlowTest {
         lot.setMagasin(magasin);
         lot.setProduit(productFournisseur.getProduct());
         lot.setProductFournisseur(productFournisseur);
-        lot.setQuantiteRestante(10);
+        lot.setQuantiteRestante(qte);
 
         SortieStock sortie = new SortieStock();
         sortie.setId(UUID.randomUUID());
         sortie.setEntreeStock(lot);
-        sortie.setQuantiteSortie(10);
+        sortie.setQuantiteSortie(qte);
         sortie.setAnnulee(false);
 
         Stock stock = new Stock();
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(10);
+        stock.setQuantiteDisponible(qte);
 
         Stock stockApres = new Stock();
         stockApres.setMagasin(magasin);
         stockApres.setProductFournisseur(productFournisseur);
-        stockApres.setQuantiteDisponible(20);
+        stockApres.setQuantiteDisponible(new BigDecimal(20));
 
         CommandeVente cancelledCommande = new CommandeVente();
         cancelledCommande.setId(commandeId);
@@ -405,7 +406,7 @@ class VenteProcessFlowTest {
         when(sortieStockDomainService.findActiveByLigneVenteId(ligneId)).thenReturn(List.of(sortie));
         when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId))
                 .thenReturn(Optional.of(stock));
-        when(stockDomainService.creditQuantite(stock, 10)).thenReturn(stockApres);
+        when(stockDomainService.creditQuantite(stock, qte)).thenReturn(stockApres);
         when(commandeVenteDomainService.cancel(any(), eq(MotifAnnulationVente.ERREUR_SAISIE), any()))
                 .thenReturn(cancelledCommande);
         when(factureClientDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
@@ -416,13 +417,13 @@ class VenteProcessFlowTest {
 
         assertThat(result.statut()).isEqualTo(CommandeVenteStatut.CANCEL);
         assertThat(result.motif()).isEqualTo(MotifAnnulationVente.ERREUR_SAISIE);
-        assertThat(result.totalQuantiteReinjectee()).isEqualTo(10);
+        assertThat(result.totalQuantiteReinjectee()).isEqualTo(qte);
         assertThat(result.nombreMouvementsCrees()).isEqualTo(1);
 
         // Stock was re-injected
-        verify(entreeStockDomainService).creditQuantiteRestante(lot, 10);
+        verify(entreeStockDomainService).creditQuantiteRestante(lot, qte);
         verify(sortieStockDomainService).markAsAnnulee(sortie);
-        verify(stockDomainService).creditQuantite(stock, 10);
+        verify(stockDomainService).creditQuantite(stock, qte);
         verify(mouvementStockDomainService).journalize(eq(stockApres), any());
         // Facture cancelled
         verify(factureClientDomainService).cancel(facture);
@@ -452,7 +453,7 @@ class VenteProcessFlowTest {
                 .isInstanceOf(BadArgumentException.class);
 
         verify(sortieStockDomainService, never()).findActiveByLigneVenteId(any());
-        verify(stockDomainService, never()).creditQuantite(any(Stock.class), anyInt());
+        verify(stockDomainService, never()).creditQuantite(any(Stock.class), any());
     }
 
     // ── Scenario 7: Guard — cannot validate a non-DRAFT commande ─────────────
@@ -482,7 +483,7 @@ class VenteProcessFlowTest {
         newLigne.setId(UUID.randomUUID());
         newLigne.setCommande(draftCommande);
         newLigne.setProductFournisseur(productFournisseur);
-        newLigne.setQuantite(5);
+        newLigne.setQuantite(new BigDecimal(5));
         newLigne.setPrixUnitaire(new BigDecimal("12000.00"));
         newLigne.setMontantTotal(new BigDecimal("60000.00"));
 
@@ -492,9 +493,9 @@ class VenteProcessFlowTest {
         when(ligneCommandeVenteDomainService.create(any())).thenReturn(newLigne);
 
         LigneCommandeVenteResponse result = service.addLigne(commandeId,
-                new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 5, new BigDecimal("12000.00")));
+                new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), new BigDecimal(5), new BigDecimal("12000.00")));
 
-        assertThat(result.quantite()).isEqualTo(5);
+        assertThat(result.quantite()).isEqualTo(new BigDecimal(5));
         assertThat(result.prixUnitaire()).isEqualByComparingTo("12000.00");
 
         verify(ligneCommandeVenteDomainService).create(any());
@@ -511,7 +512,7 @@ class VenteProcessFlowTest {
         ligne1.setId(ligneId);
         ligne1.setCommande(draftCommande);
         ligne1.setProductFournisseur(productFournisseur);
-        ligne1.setQuantite(10);
+        ligne1.setQuantite(new BigDecimal(10));
         ligne1.setPrixUnitaire(new BigDecimal("12000.00"));
         ligne1.setMontantTotal(new BigDecimal("120000.00"));
 
@@ -519,7 +520,7 @@ class VenteProcessFlowTest {
         ligne2.setId(ligne2Id);
         ligne2.setCommande(draftCommande);
         ligne2.setProductFournisseur(productFournisseur);
-        ligne2.setQuantite(3);
+        ligne2.setQuantite(new BigDecimal(3));
         ligne2.setPrixUnitaire(new BigDecimal("8000.00"));
         ligne2.setMontantTotal(new BigDecimal("24000.00"));
 
@@ -542,7 +543,7 @@ class VenteProcessFlowTest {
         ligne.setId(ligneId);
         ligne.setCommande(draftCommande);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantite(10);
+        ligne.setQuantite(new BigDecimal(10));
         ligne.setPrixUnitaire(new BigDecimal("12000.00"));
         ligne.setMontantTotal(new BigDecimal("120000.00"));
 

@@ -51,7 +51,7 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
     }
 
     /** Met à jour le seuil d'approvisionnement et persiste. */
-    public Stock updateThreshold(Stock stock, int seuilApprovisionnement) {
+    public Stock updateThreshold(Stock stock, BigDecimal seuilApprovisionnement) {
         stock.setSeuilApprovisionnement(seuilApprovisionnement);
         return save(stock);
     }
@@ -59,8 +59,8 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
     /**
      * Décrémente la quantité disponible du stock après une sortie (ne touche pas au prix d'achat moyen).
      */
-    public Stock decrement(Stock stock, int quantite) {
-        stock.setQuantiteDisponible(stock.getQuantiteDisponible() - quantite);
+    public Stock decrement(Stock stock, BigDecimal quantite) {
+        stock.setQuantiteDisponible(stock.getQuantiteDisponible().subtract(quantite));
         return save(stock);
     }
 
@@ -73,8 +73,8 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
      * Recrédite la quantité disponible du stock (ne touche pas au prix d'achat moyen).
      * Utilisé lors d'une annulation de vente pour compenser un {@code decrement} antérieur.
      */
-    public Stock creditQuantite(Stock stock, int quantite) {
-        stock.setQuantiteDisponible(stock.getQuantiteDisponible() + quantite);
+    public Stock creditQuantite(Stock stock, BigDecimal quantite) {
+        stock.setQuantiteDisponible(stock.getQuantiteDisponible().add(quantite));
         return save(stock);
     }
 
@@ -91,18 +91,18 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
                     Stock s = new Stock();
                     s.setMagasin(context.magasin());
                     s.setProductFournisseur(context.productFournisseur());
-                    s.setQuantiteDisponible(0);
+                    s.setQuantiteDisponible(BigDecimal.ZERO);
                     s.setPrixAchatMoyen(BigDecimal.ZERO);
                     return s;
                 });
 
-        int qtyAvant = stock.getQuantiteDisponible();
-        int qtyApres = qtyAvant + context.quantite();
+        BigDecimal qtyAvant = stock.getQuantiteDisponible();
+        BigDecimal qtyApres = qtyAvant.add(context.quantite());
 
         BigDecimal prixMoyenAvant = stock.getPrixAchatMoyen() != null ? stock.getPrixAchatMoyen() : BigDecimal.ZERO;
-        BigDecimal nouvelleMoyenne = prixMoyenAvant.multiply(BigDecimal.valueOf(qtyAvant))
-                .add(context.prixAchat().multiply(BigDecimal.valueOf(context.quantite())))
-                .divide(BigDecimal.valueOf(qtyApres), 6, RoundingMode.HALF_UP);
+        BigDecimal nouvelleMoyenne = prixMoyenAvant.multiply(qtyAvant)
+                .add(context.prixAchat().multiply(context.quantite()))
+                .divide(qtyApres, 6, RoundingMode.HALF_UP);
 
         stock.setQuantiteDisponible(qtyApres);
         stock.setPrixAchatMoyen(nouvelleMoyenne);
@@ -115,13 +115,15 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
      * PMP = SUM(quantiteRestante × prixAchat) / SUM(quantiteRestante). Si aucun lot actif, PMP = 0.
      */
     public Stock recalculateFromLots(Stock stock, List<EntreeStock> activeLots) {
-        int totalQty = activeLots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
+        BigDecimal totalQty = activeLots.stream()
+                .map(EntreeStock::getQuantiteRestante)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal newPmp = totalQty > 0
+        BigDecimal newPmp = totalQty.compareTo(BigDecimal.ZERO) > 0
                 ? activeLots.stream()
-                        .map(l -> l.getPrixAchat().multiply(BigDecimal.valueOf(l.getQuantiteRestante())))
+                        .map(l -> l.getPrixAchat().multiply(l.getQuantiteRestante()))
                         .reduce(BigDecimal.ZERO, BigDecimal::add)
-                        .divide(BigDecimal.valueOf(totalQty), 6, RoundingMode.HALF_UP)
+                        .divide(totalQty, 6, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         stock.setQuantiteDisponible(totalQty);
@@ -136,7 +138,7 @@ public class StockDomainService extends GlobalService<Stock, StockRepository> {
                     Stock stock = new Stock();
                     stock.setMagasin(magasin);
                     stock.setProductFournisseur(productFournisseur);
-                    stock.setQuantiteDisponible(0);
+                    stock.setQuantiteDisponible(BigDecimal.ZERO);
                     stock.setPrixAchatMoyen(BigDecimal.ZERO);
                     return save(stock);
                 });

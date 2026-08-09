@@ -26,7 +26,6 @@ import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.application.service.impl.StockServiceImpl;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
-
 import org.store.stock.application.dto.StockEntryContext;
 
 import java.math.BigDecimal;
@@ -45,10 +44,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class StockServiceImplTest {
 
-    @Mock private StockDomainService stockDomainService;
-    @Mock private IMagasinService magasinService;
-    @Mock private ICurrentUserService currentUserService;
-    @Mock private ValidatorService validatorService;
+    @Mock
+    private StockDomainService stockDomainService;
+
+    @Mock
+    private IMagasinService magasinService;
+
+    @Mock
+    private ICurrentUserService currentUserService;
+
+    @Mock
+    private ValidatorService validatorService;
 
     @InjectMocks
     private StockServiceImpl service;
@@ -95,13 +101,23 @@ class StockServiceImplTest {
         stock.setId(stockId);
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(150);
-        stock.setSeuilApprovisionnement(20);
+        stock.setQuantiteDisponible(new BigDecimal("150"));
+        stock.setSeuilApprovisionnement(new BigDecimal("20"));
         stock.setPrixAchatMoyen(new BigDecimal("13.33"));
     }
 
     private UserPrincipal proprietaire() {
-        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, null, "owner", null, null, "OWNER", List.of("STOCK_READ"));
+        return new UserPrincipal(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                entrepriseId,
+                null,
+                "owner",
+                null,
+                null,
+                "OWNER",
+                List.of("STOCK_READ")
+        );
     }
 
     @Test
@@ -114,8 +130,10 @@ class StockServiceImplTest {
         assertThat(response.id()).isEqualTo(stockId);
         assertThat(response.magasin().id()).isEqualTo(magasinId);
         assertThat(response.produit().id()).isEqualTo(productId);
-        assertThat(response.quantiteDisponible()).isEqualTo(150);
-        assertThat(response.prixAchatMoyen()).isEqualByComparingTo(new BigDecimal("13.33"));
+        assertThat(response.quantiteDisponible())
+                .isEqualByComparingTo(new BigDecimal("150"));
+        assertThat(response.prixAchatMoyen())
+                .isEqualByComparingTo(new BigDecimal("13.33"));
     }
 
     @Test
@@ -131,56 +149,85 @@ class StockServiceImplTest {
     @Test
     void list_should_validate_filter_and_delegate_with_currentUser_entrepriseId() {
         StockFilter filter = new StockFilter(magasinId, null, null, null, 0, 10);
-        Page<StockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+        Page<StockResponse> page = new PageImpl<>(
+                List.of(),
+                PageRequest.of(0, 10),
+                0
+        );
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(stockDomainService.findResponsesByFilter(eq(filter), eq(entrepriseId))).thenReturn(page);
+        when(stockDomainService.findResponsesByFilter(eq(filter), eq(entrepriseId)))
+                .thenReturn(page);
 
         Page<StockResponse> result = service.findAllByCurrentEntreprise(filter);
 
         verify(validatorService).validate(filter);
-        verify(stockDomainService).findResponsesByFilter(eq(filter), eq(entrepriseId));
+        verify(stockDomainService)
+                .findResponsesByFilter(eq(filter), eq(entrepriseId));
         assertThat(result.getContent()).isEmpty();
     }
 
     @Test
     void findBelowThreshold_should_validate_and_delegate() {
-        BelowThresholdFilter filter = new BelowThresholdFilter(magasinId, null, 0, 10);
-        Page<StockResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+        BelowThresholdFilter filter = new BelowThresholdFilter(
+                magasinId,
+                null,
+                0,
+                10
+        );
+
+        Page<StockResponse> page = new PageImpl<>(
+                List.of(),
+                PageRequest.of(0, 10),
+                0
+        );
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
-        when(stockDomainService.findResponsesBelowThreshold(eq(filter), eq(entrepriseId))).thenReturn(page);
+        when(stockDomainService.findResponsesBelowThreshold(
+                eq(filter),
+                eq(entrepriseId)
+        )).thenReturn(page);
 
         service.findBelowThresholdByCurrentEntreprise(filter);
 
         verify(validatorService).validate(filter);
-        verify(stockDomainService).findResponsesBelowThreshold(eq(filter), eq(entrepriseId));
+        verify(stockDomainService)
+                .findResponsesBelowThreshold(eq(filter), eq(entrepriseId));
     }
 
     @Test
     void updateThreshold_should_save_when_accessible() {
-        StockThresholdRequest req = new StockThresholdRequest(30);
+        StockThresholdRequest req =
+                new StockThresholdRequest(new BigDecimal("30"));
+
         Stock updated = new Stock();
         updated.setId(stockId);
         updated.setMagasin(magasin);
         updated.setProductFournisseur(productFournisseur);
-        updated.setQuantiteDisponible(150);
-        updated.setSeuilApprovisionnement(30);
+        updated.setQuantiteDisponible(new BigDecimal("150"));
+        updated.setSeuilApprovisionnement(new BigDecimal("30"));
         updated.setPrixAchatMoyen(new BigDecimal("13.33"));
 
         when(stockDomainService.findById(stockId)).thenReturn(stock);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(stockDomainService.updateThreshold(stock, 30)).thenReturn(updated);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin))
+                .thenReturn(magasin);
+        when(stockDomainService.updateThreshold(
+                stock,
+                new BigDecimal("30")
+        )).thenReturn(updated);
 
         StockResponse response = service.updateThreshold(stockId, req);
 
-        assertThat(response.seuilApprovisionnement()).isEqualTo(30);
+        assertThat(response.seuilApprovisionnement())
+                .isEqualByComparingTo(new BigDecimal("30"));
+
         verify(validatorService).validate(req);
     }
 
     @Test
     void updateThreshold_should_propagate_forbidden_when_magasin_not_accessible() {
-        StockThresholdRequest req = new StockThresholdRequest(30);
+        StockThresholdRequest req =
+                new StockThresholdRequest(new BigDecimal("30"));
 
         when(stockDomainService.findById(stockId)).thenReturn(stock);
         when(magasinService.ensureAccessibleByCurrentUser(magasin))
@@ -192,7 +239,13 @@ class StockServiceImplTest {
 
     @Test
     void createOrUpdateEntry_should_delegate_to_domain_service() {
-        StockEntryContext context = new StockEntryContext(magasin, productFournisseur, 50, new BigDecimal("10.00"));
+        StockEntryContext context = new StockEntryContext(
+                magasin,
+                productFournisseur,
+                new BigDecimal("50"),
+                new BigDecimal("10.00")
+        );
+
         when(stockDomainService.createOrUpdateEntry(context)).thenReturn(stock);
 
         Stock result = service.createOrUpdateEntry(context);
@@ -203,13 +256,24 @@ class StockServiceImplTest {
 
     @Test
     void findByMagasinAndProductFournisseur_should_delegate_to_domain_service() {
-        when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId))
-                .thenReturn(Optional.of(stock));
+        when(stockDomainService.findByMagasinIdAndProductFournisseurId(
+                magasinId,
+                productFournisseurId
+        )).thenReturn(Optional.of(stock));
 
-        Optional<Stock> result = service.findByMagasinAndProductFournisseur(magasinId, productFournisseurId);
+        Optional<Stock> result =
+                service.findByMagasinAndProductFournisseur(
+                        magasinId,
+                        productFournisseurId
+                );
 
         assertThat(result).contains(stock);
-        verify(stockDomainService).findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId);
+
+        verify(stockDomainService)
+                .findByMagasinIdAndProductFournisseurId(
+                        magasinId,
+                        productFournisseurId
+                );
     }
 
     @Test
@@ -218,50 +282,92 @@ class StockServiceImplTest {
         decremented.setId(stockId);
         decremented.setMagasin(magasin);
         decremented.setProductFournisseur(productFournisseur);
-        decremented.setQuantiteDisponible(100);
-        when(stockDomainService.decrement(stock, 50)).thenReturn(decremented);
+        decremented.setQuantiteDisponible(new BigDecimal("100"));
 
-        Stock result = service.decrement(stock, 50);
+        when(stockDomainService.decrement(
+                stock,
+                new BigDecimal("50")
+        )).thenReturn(decremented);
 
-        assertThat(result.getQuantiteDisponible()).isEqualTo(100);
-        verify(stockDomainService).decrement(stock, 50);
+        Stock result = service.decrement(
+                stock,
+                new BigDecimal("50")
+        );
+
+        assertThat(result.getQuantiteDisponible())
+                .isEqualByComparingTo(new BigDecimal("100"));
+
+        verify(stockDomainService)
+                .decrement(stock, new BigDecimal("50"));
     }
 
     @Test
     void computeValuation_should_check_access_and_delegate() {
-        StockValuationResponse expected = new StockValuationResponse(magasinId, new BigDecimal("5000.00"), 3L);
+        StockValuationResponse expected =
+                new StockValuationResponse(
+                        magasinId,
+                        new BigDecimal("5000.00"),
+                        3L
+                );
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(stockDomainService.computeValuation(magasinId, entrepriseId)).thenReturn(expected);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin))
+                .thenReturn(magasin);
+        when(stockDomainService.computeValuation(
+                magasinId,
+                entrepriseId
+        )).thenReturn(expected);
 
-        StockValuationResponse response = service.computeValuation(magasinId);
+        StockValuationResponse response =
+                service.computeValuation(magasinId);
 
-        assertThat(response.valeurTotale()).isEqualByComparingTo(new BigDecimal("5000.00"));
-        assertThat(response.nombreLignes()).isEqualTo(3L);
+        assertThat(response.valeurTotale())
+                .isEqualByComparingTo(new BigDecimal("5000.00"));
+
+        assertThat(response.nombreLignes())
+                .isEqualTo(3L);
     }
 
     @Test
     void computeValuation_with_magasin_should_skip_findById() {
-        StockValuationResponse expected = new StockValuationResponse(magasinId, new BigDecimal("5000.00"), 3L);
+        StockValuationResponse expected =
+                new StockValuationResponse(
+                        magasinId,
+                        new BigDecimal("5000.00"),
+                        3L
+                );
 
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(stockDomainService.computeValuation(magasinId, entrepriseId)).thenReturn(expected);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin))
+                .thenReturn(magasin);
+        when(stockDomainService.computeValuation(
+                magasinId,
+                entrepriseId
+        )).thenReturn(expected);
 
-        StockValuationResponse response = service.computeValuation(magasin);
+        StockValuationResponse response =
+                service.computeValuation(magasin);
 
-        assertThat(response.valeurTotale()).isEqualByComparingTo(new BigDecimal("5000.00"));
-        assertThat(response.nombreLignes()).isEqualTo(3L);
+        assertThat(response.valeurTotale())
+                .isEqualByComparingTo(new BigDecimal("5000.00"));
+
+        assertThat(response.nombreLignes())
+                .isEqualTo(3L);
+
         verify(magasinService, never()).findById(any());
     }
 
     @Test
     void countBelowThresholdByEntreprise_should_delegate_to_domain() {
-        when(stockDomainService.countBelowThresholdByEntreprise(entrepriseId)).thenReturn(4L);
+        when(stockDomainService.countBelowThresholdByEntreprise(entrepriseId))
+                .thenReturn(4L);
 
-        long result = service.countBelowThresholdByEntreprise(entrepriseId);
+        long result =
+                service.countBelowThresholdByEntreprise(entrepriseId);
 
         assertThat(result).isEqualTo(4L);
-        verify(stockDomainService).countBelowThresholdByEntreprise(entrepriseId);
+
+        verify(stockDomainService)
+                .countBelowThresholdByEntreprise(entrepriseId);
     }
 }
+

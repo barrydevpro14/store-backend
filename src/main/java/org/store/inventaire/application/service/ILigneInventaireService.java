@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface ILigneInventaireService {
 
     LigneInventaire create(Inventaire inventaire, ProductFournisseur productFournisseur,
-                           int quantiteTheorique, int quantiteReelle, BigDecimal prixUnitaire);
+                           BigDecimal quantiteTheorique, BigDecimal quantiteReelle, BigDecimal prixUnitaire);
 
     LigneInventaire findLigne(UUID ligneId);
 
@@ -25,9 +25,9 @@ public interface ILigneInventaireService {
 
     Page<LigneInventaireResponse> findResponsesByInventaireId(UUID inventaireId, Pageable pageable);
 
-    LigneInventaire updateQuantiteReelle(LigneInventaire ligne, int quantiteReelle);
+    LigneInventaire updateQuantiteReelle(LigneInventaire ligne, BigDecimal quantiteReelle);
 
-    LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, int quantiteTheorique);
+    LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, BigDecimal quantiteTheorique);
 
     void delete(LigneInventaire ligne);
 

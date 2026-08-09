@@ -6,12 +6,14 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record SortieStockRequest(
         @NotNull UUID magasinId,
         @NotNull UUID productFournisseurId,
-        @NotNull @Positive Integer quantite,
+        @NotNull @Positive BigDecimal quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixVente,
         @Size(max = 500) String commentaire
 ) {

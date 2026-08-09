@@ -1,6 +1,5 @@
 package org.store.stock.presentation;
 
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -20,6 +19,7 @@ import org.store.stock.application.service.IMouvementStockService;
 import org.store.stock.domain.enums.MouvementStockType;
 
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,8 +65,8 @@ class MouvementStockControllerTest {
         return new MouvementStockResponse(
                 mouvementId, stockId,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
-                new MouvementDetailResponse(MouvementStockType.ENTREE_ACHAT, 100, 0, 100, "LOT-001", "achat manuel"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null ,"PIECE"),
+                new MouvementDetailResponse(MouvementStockType.ENTREE_ACHAT, new BigDecimal(100), BigDecimal.ZERO, new BigDecimal(100), "LOT-001", "achat manuel"),
                 "2026-05-14 10:00:00", UUID.randomUUID().toString()
         );
     }

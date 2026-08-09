@@ -29,7 +29,7 @@ class LigneCommandeAchatDomainServiceTest {
     void update_should_apply_all_fields_and_persist() {
         LigneCommandeAchat ligne = new LigneCommandeAchat();
         LigneCommandeAchatUpdate update = new LigneCommandeAchatUpdate(
-                50,
+                new BigDecimal("50"),
                 new BigDecimal("12.00"),
                 new BigDecimal("25.00"),
                 "LOT-2025",
@@ -39,7 +39,7 @@ class LigneCommandeAchatDomainServiceTest {
 
         LigneCommandeAchat result = service.update(ligne, update);
 
-        assertThat(result.getQuantite()).isEqualTo(50);
+        assertThat(result.getQuantite()).isEqualTo(new BigDecimal("50"));
         assertThat(result.getPrixAchat()).isEqualByComparingTo(new BigDecimal("12.00"));
         assertThat(result.getPrixVente()).isEqualByComparingTo(new BigDecimal("25.00"));
         assertThat(result.getNumeroLot()).isEqualTo("LOT-2025");
@@ -51,7 +51,7 @@ class LigneCommandeAchatDomainServiceTest {
     void update_should_accept_null_lot_fields() {
         LigneCommandeAchat ligne = new LigneCommandeAchat();
         LigneCommandeAchatUpdate update = new LigneCommandeAchatUpdate(
-                10,
+                new BigDecimal("10"),
                 new BigDecimal("5.00"),
                 new BigDecimal("15.00"),
                 null,
@@ -61,7 +61,7 @@ class LigneCommandeAchatDomainServiceTest {
 
         LigneCommandeAchat result = service.update(ligne, update);
 
-        assertThat(result.getQuantite()).isEqualTo(10);
+        assertThat(result.getQuantite()).isEqualTo(new BigDecimal("10"));
         assertThat(result.getNumeroLot()).isNull();
         assertThat(result.getDateExpiration()).isNull();
     }

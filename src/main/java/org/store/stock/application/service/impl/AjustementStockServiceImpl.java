@@ -27,6 +27,7 @@ import org.store.stock.domain.enums.TypeAjustement;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -81,10 +82,10 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
 
         MouvementStockResponse mouvement = mouvementStockService.journalize(updatedStock, new MouvementJournalize(
                 MouvementStockType.AJUSTEMENT,
-                request.type() == TypeAjustement.POSITIF ? request.quantite() : -request.quantite(),
+                request.type() == TypeAjustement.POSITIF ? request.quantite() : request.quantite().negate(),
                 request.type() == TypeAjustement.POSITIF
-                        ? updatedStock.getQuantiteDisponible() - request.quantite()
-                        : updatedStock.getQuantiteDisponible() + request.quantite(),
+                        ? updatedStock.getQuantiteDisponible().subtract(request.quantite())
+                        : updatedStock.getQuantiteDisponible().add(request.quantite()),
                 updatedStock.getQuantiteDisponible(),
                 request.motif().name(),
                 request.commentaire()
@@ -110,9 +111,11 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
      */
     public Stock applyNegatif(AjustementStockRequest request, Stock stock, ProductFournisseur pf) {
         List<EntreeStock> lots = entreeStockService.findAvailableLotsForFifo(stock.getMagasin().getId(), pf.getId());
-        int disponibleLots = lots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
+        BigDecimal disponibleLots = lots.stream()
+                .map(EntreeStock::getQuantiteRestante)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (disponibleLots < request.quantite()) {
+        if (disponibleLots.compareTo(request.quantite()) < 0) {
             throw new BadArgumentException("stock.adjustment.insufficientQuantity",
                     disponibleLots, request.quantite());
         }
@@ -122,20 +125,20 @@ public class AjustementStockServiceImpl implements IAjustementStockService {
     }
 
     /** Décrémente quantiteRestante des lots FIFO sans créer de SortieStock. */
-    public void consumeLotsFifoForAdjustment(List<EntreeStock> lots, int quantiteDemandee) {
-        int[] restant = {quantiteDemandee};
+    public void consumeLotsFifoForAdjustment(List<EntreeStock> lots, BigDecimal quantiteDemandee) {
+        BigDecimal[] restant = {quantiteDemandee};
 
         lots.stream()
-                .takeWhile(lot -> restant[0] > 0)
+                .takeWhile(lot -> restant[0].compareTo(BigDecimal.ZERO) > 0)
                 .forEach(lot -> restant[0] = decrementLot(lot, restant[0]));
     }
 
     /** Décrémente la quantité restante du lot du minimum entre sa quantité et le restant à consommer, persiste, et retourne le nouveau restant. */
-    public int decrementLot(EntreeStock lot, int restant) {
-        int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
-        lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
+    public BigDecimal decrementLot(EntreeStock lot, BigDecimal restant) {
+        BigDecimal aConsommer = lot.getQuantiteRestante().min(restant);
+        lot.setQuantiteRestante(lot.getQuantiteRestante().subtract(aConsommer));
         entreeStockService.saveLot(lot);
-        return restant - aConsommer;
+        return restant.subtract(aConsommer);
     }
 
     /** Lève BadArgumentException si le motif n'est pas compatible avec le type d'ajustement, ou si AUTRE sans commentaire. */

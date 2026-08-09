@@ -11,6 +11,7 @@ import org.store.produit.application.dto.QualityRequest;
 import org.store.produit.application.service.ICategoryProductService;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.application.service.IQualityService;
+import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.Quality;
 import org.store.stock.application.dto.EntreeStockRequest;
@@ -44,6 +45,7 @@ public class StockImportServiceImpl implements IStockImportService {
     private final ICategoryProductService categoryProductService;
     private final IProductService productService;
     private final IQualityService qualityService;
+    private final IUniteMesureService uniteMesureService;
     private final IMessageSourceService messageSourceService;
 
     public StockImportServiceImpl(IExcelEntreeStockRowService excelParser,
@@ -51,12 +53,14 @@ public class StockImportServiceImpl implements IStockImportService {
                                   ICategoryProductService categoryProductService,
                                   IProductService productService,
                                   IQualityService qualityService,
+                                  IUniteMesureService uniteMesureService,
                                   IMessageSourceService messageSourceService) {
         this.excelParser = excelParser;
         this.entreeStockService = entreeStockService;
         this.categoryProductService = categoryProductService;
         this.productService = productService;
         this.qualityService = qualityService;
+        this.uniteMesureService = uniteMesureService;
         this.messageSourceService = messageSourceService;
     }
 
@@ -105,7 +109,7 @@ public class StockImportServiceImpl implements IStockImportService {
         context.validLignes().add(new LigneEntreeStockRequest(
                 productId,
                 qualityId,
-                Integer.parseInt(row.quantite()),
+                new BigDecimal(row.quantite()),
                 prixAchat,
                 prixVente,
                 row.numeroLot(),
@@ -121,9 +125,10 @@ public class StockImportServiceImpl implements IStockImportService {
         }
 
         UUID categoryId = categoryProductService.findOrCreateByLibelle(row.categorie()).getId();
+        UUID pieceUnitId = uniteMesureService.findByCode("PIECE").getId();
 
         return productService.create(new ProductRequest(
-                row.nomProduit(), row.referenceProduit(), null, categoryId)).id();
+                row.nomProduit(), row.referenceProduit(), null, categoryId, pieceUnitId)).id();
     }
 
     private List<StockImportError> toImportErrors(List<String> parseErrors) {

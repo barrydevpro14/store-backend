@@ -175,7 +175,7 @@ class AchatServiceImplTest {
     private AchatRequest sampleRequest() {
         return new AchatRequest(
                 magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(produit.getId(), productFournisseur.getQuality().getId(), 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-1", null))
+                List.of(new LigneAchatRequest(produit.getId(), productFournisseur.getQuality().getId(), new BigDecimal("100"), new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-1", null))
         );
     }
 
@@ -190,7 +190,7 @@ class AchatServiceImplTest {
         ligne.setId(ligneId);
         ligne.setCommande(commande);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantite(quantite);
+        ligne.setQuantite(BigDecimal.valueOf(quantite));
         ligne.setPrixAchat(prixAchat);
         ligne.setPrixVente(prixVente);
         ligne.setNumeroLot("LOT-1");
@@ -213,7 +213,7 @@ class AchatServiceImplTest {
         LigneCommandeAchat mockLigne = new LigneCommandeAchat();
         mockLigne.setId(ligneId);
         mockLigne.setProductFournisseur(productFournisseur);
-        mockLigne.setQuantite(5);
+        mockLigne.setQuantite(new BigDecimal("5"));
         mockLigne.setPrixAchat(new BigDecimal("10.00"));
         mockLigne.setPrixVente(new BigDecimal("15.00"));
         when(ligneCommandeAchatDomainService.create(any(LigneCommandeAchatCreate.class))).thenReturn(mockLigne);
@@ -229,7 +229,7 @@ class AchatServiceImplTest {
         verify(factureAchatDomainService, never()).create(any());
         verify(entreeStockService, never()).createEntreeStock(any());
         verify(mouvementStockService, never()).journalize(any(), any());
-        verify(productFournisseurService, never()).applyPrixVenteFromPurchase(any(), any());
+        verify(productFournisseurService, never()).applyPrixFromPurchase(any(), any(), any());
     }
 
 
@@ -250,7 +250,7 @@ class AchatServiceImplTest {
         LigneCommandeAchat ligne = sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"));
         commande.setLignes(List.of(ligne));
         Stock stockAfter = new Stock();
-        stockAfter.setQuantiteDisponible(100);
+        stockAfter.setQuantiteDisponible(new BigDecimal("100"));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
@@ -274,17 +274,17 @@ class AchatServiceImplTest {
 
         ArgumentCaptor<EntreeStockCreate> entreeCaptor = ArgumentCaptor.forClass(EntreeStockCreate.class);
         verify(entreeStockService).createEntreeStock(entreeCaptor.capture());
-        assertThat(entreeCaptor.getValue().quantite()).isEqualTo(100);
+        assertThat(entreeCaptor.getValue().quantite()).isEqualTo(new BigDecimal("100"));
         assertThat(entreeCaptor.getValue().numeroLot()).isEqualTo("LOT-1");
         assertThat(entreeCaptor.getValue().commandeAchat()).isEqualTo(commande);
 
         ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
         verify(mouvementStockService).journalize(eq(stockAfter), mouvementCaptor.capture());
         assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.ENTREE_ACHAT);
-        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(100);
+        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(new BigDecimal("100"));
         assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("CMD-AUTO");
 
-        verify(productFournisseurService).applyPrixVenteFromPurchase(productFournisseur, new BigDecimal("15.00"));
+        verify(productFournisseurService).applyPrixFromPurchase(productFournisseur, new BigDecimal("10.00"), new BigDecimal("15.00"));
         verify(commandeAchatDomainService).markReceptionnee(commande);
     }
 
@@ -295,7 +295,7 @@ class AchatServiceImplTest {
         l2.setId(UUID.randomUUID());
         commande.setLignes(List.of(l1, l2));
         Stock stockAfter = new Stock();
-        stockAfter.setQuantiteDisponible(150);
+        stockAfter.setQuantiteDisponible(new BigDecimal("150"));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
@@ -319,7 +319,7 @@ class AchatServiceImplTest {
         LigneCommandeAchat ligne = sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"));
         commande.setLignes(List.of(ligne));
         Stock stockAfter = new Stock();
-        stockAfter.setQuantiteDisponible(100);
+        stockAfter.setQuantiteDisponible(new BigDecimal("100"));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
@@ -399,14 +399,14 @@ class AchatServiceImplTest {
     void updateLigne_should_update_quantite_and_prices() {
         LigneCommandeAchat ligne = sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"));
         commande.setLignes(List.of(ligne));
-        LigneAchatUpdateRequest req = new LigneAchatUpdateRequest(150, new BigDecimal("12.00"), new BigDecimal("18.00"), "LOT-2", null);
+        LigneAchatUpdateRequest req = new LigneAchatUpdateRequest(new BigDecimal("150"), new BigDecimal("12.00"), new BigDecimal("18.00"), "LOT-2", null);
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(ligneCommandeAchatDomainService.findById(ligneId)).thenReturn(ligne);
         when(ligneCommandeAchatDomainService.update(eq(ligne), any(LigneCommandeAchatUpdate.class)))
                 .thenAnswer(inv -> {
-                    ligne.setQuantite(150);
+                    ligne.setQuantite(new BigDecimal("150"));
                     ligne.setPrixAchat(new BigDecimal("12.00"));
                     ligne.setPrixVente(new BigDecimal("18.00"));
                     ligne.setNumeroLot("LOT-2");
@@ -415,7 +415,7 @@ class AchatServiceImplTest {
 
         LigneCommandeAchatResponse response = service.updateLigne(commandeId, ligneId, req);
 
-        assertThat(response.quantite()).isEqualTo(150);
+        assertThat(response.quantite()).isEqualTo(new BigDecimal("150"));
         assertThat(response.prixAchat()).isEqualByComparingTo("12.00");
         assertThat(response.prixVente()).isEqualByComparingTo("18.00");
         verify(productFournisseurService).ensurePrixVenteGreaterThanPrixAchat(new BigDecimal("18.00"), new BigDecimal("12.00"));
@@ -424,7 +424,7 @@ class AchatServiceImplTest {
     @Test
     void updateLigne_should_throw_when_commande_not_draft() {
         commande.setStatut(CommandeAchatStatut.RECEPTIONNEE);
-        LigneAchatUpdateRequest req = new LigneAchatUpdateRequest(150, new BigDecimal("12.00"), new BigDecimal("18.00"), null, null);
+        LigneAchatUpdateRequest req = new LigneAchatUpdateRequest(new BigDecimal("150"), new BigDecimal("12.00"), new BigDecimal("18.00"), null, null);
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
@@ -441,7 +441,7 @@ class AchatServiceImplTest {
         autreCommande.setId(UUID.randomUUID());
         LigneCommandeAchat ligne = sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"));
         ligne.setCommande(autreCommande);
-        LigneAchatUpdateRequest req = new LigneAchatUpdateRequest(150, new BigDecimal("12.00"), new BigDecimal("18.00"), null, null);
+        LigneAchatUpdateRequest req = new LigneAchatUpdateRequest(new BigDecimal("150"), new BigDecimal("12.00"), new BigDecimal("18.00"), null, null);
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
@@ -580,8 +580,8 @@ class AchatServiceImplTest {
         lot.setMagasin(magasin);
         lot.setProduit(produit);
         lot.setProductFournisseur(productFournisseur);
-        lot.setQuantiteInitiale(quantiteInitiale);
-        lot.setQuantiteRestante(quantiteRestante);
+        lot.setQuantiteInitiale(BigDecimal.valueOf(quantiteInitiale));
+        lot.setQuantiteRestante(BigDecimal.valueOf(quantiteRestante));
         lot.setPrixAchat(new BigDecimal("10.00"));
         lot.setCommandeAchat(commande);
         return lot;
@@ -597,15 +597,15 @@ class AchatServiceImplTest {
         prepareReceptionneeCommande();
         EntreeStock lot = sampleLot(100, 100);
         Stock stock = new Stock();
-        stock.setQuantiteDisponible(100);
+        stock.setQuantiteDisponible(new BigDecimal("100"));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(commande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(commande)).thenReturn(commande);
         when(purchaseProperties.cancelWindowHours()).thenReturn(24);
         when(entreeStockService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
         when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseur.getId())).thenReturn(Optional.of(stock));
-        when(stockService.decrement(stock, 100)).thenAnswer(inv -> {
-            stock.setQuantiteDisponible(0);
+        when(stockService.decrement(stock, new BigDecimal("100"))).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(BigDecimal.ZERO);
             return stock;
         });
         when(commandeAchatDomainService.cancel(eq(commande), eq(MotifAnnulationAchat.ERREUR_SAISIE), any())).thenAnswer(inv -> {
@@ -620,7 +620,7 @@ class AchatServiceImplTest {
 
         assertThat(response.statut()).isEqualTo(CommandeAchatStatut.ANNULEE);
         assertThat(response.motif()).isEqualTo(MotifAnnulationAchat.ERREUR_SAISIE);
-        assertThat(response.totalQuantiteRetiree()).isEqualTo(100);
+        assertThat(response.totalQuantiteRetiree()).isEqualTo(new BigDecimal("100"));
         assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
 
         verify(entreeStockService).markAsAnnulee(lot);
@@ -629,7 +629,7 @@ class AchatServiceImplTest {
         ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
         verify(mouvementStockService).journalize(eq(stock), mouvementCaptor.capture());
         assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.RETOUR_FOURNISSEUR);
-        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(100);
+        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(new BigDecimal("100"));
         assertThat(mouvementCaptor.getValue().referenceDocument()).isEqualTo("CMD-AUTO");
     }
 
@@ -718,7 +718,7 @@ class AchatServiceImplTest {
                 .isInstanceOf(BadArgumentException.class)
                 .hasMessageContaining("lotAlreadyConsumed");
 
-        verify(stockService, never()).decrement(any(), any(int.class));
+        verify(stockService, never()).decrement(any(), any(BigDecimal.class));
         verify(entreeStockService, never()).markAsAnnulee(any());
         verify(commandeAchatDomainService, never()).cancel(any(), any(), any());
     }

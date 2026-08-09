@@ -2,7 +2,7 @@
 
 ## 1. Contexte actuel
 
-Actuellement, BHANTIC considère tous les produits comme étant gérés avec une unité implicite : **la pièce**.
+Actuellement, On considère tous les produits comme étant gérés avec une unité implicite : **la pièce**.
 
 Exemples :
 
@@ -113,7 +113,7 @@ Exemples :
 
 ---
 
-# 4. Convention de précision BHANTIC
+# 4. Convention de précision
 
 ## 4.1 Quantités
 
@@ -235,7 +235,7 @@ public class UniteMesure {
 
 ---
 
-## Unités initiales BHANTIC
+## Unités initiales
 
 | Code        | Libellé     | Symbole | Précision affichage |
 | ----------- | ----------- | ------- | ------------------: |
@@ -305,7 +305,7 @@ Stock restant :
 
 # 8. Limitation volontaire : pas de conversion multiple
 
-Dans cette première version, BHANTIC ne gère pas les conversions entre unités.
+Dans cette première version, ON ne gère pas les conversions entre unités.
 
 Exemples non supportés :
 
@@ -368,7 +368,7 @@ Avec les règles suivantes :
 
 # 10. Conclusion
 
-L'introduction des unités de mesure dans BHANTIC permet :
+L'introduction des unités de mesure permet :
 
 * de gérer différents types de produits ;
 * d'éviter de considérer tout comme une pièce ;

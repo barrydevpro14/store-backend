@@ -179,7 +179,7 @@ public class VenteServiceImpl implements IVenteService {
         List<LigneCommandeVente> savedLignes = persistLignes(venteRequest, commande, productFournisseurs);
 
         BigDecimal montantTotal = venteRequest.lignes().stream()
-                .map(l -> l.prixUnitaire().multiply(java.math.BigDecimal.valueOf(l.quantite())))
+                .map(l -> l.prixUnitaire().multiply(l.quantite()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         commandeVenteDomainService.updateMontantTotal(commande, montantTotal);
 
@@ -258,7 +258,7 @@ public class VenteServiceImpl implements IVenteService {
         FactureClient finalFacture = applyPremierPaiementIfPresent(venteValidateRequest.premierPaiement(), facture);
 
         CommandeVente delivered = commandeVenteDomainService.validate(commande);
-        if (commande.getClient() == null) {
+        if (finalFacture.getMontantTotal().compareTo(finalFacture.getMontantPaye()) == 0) {
             delivered = commandeVenteDomainService.cloturer(delivered);
         }
 
@@ -320,7 +320,7 @@ public class VenteServiceImpl implements IVenteService {
         LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
         ensureQuantiteLivreeWithinRange(request.quantiteLivree(), ligne.getQuantite());
 
-        int previousQuantiteLivree = ligne.getQuantiteLivree();
+        BigDecimal previousQuantiteLivree = ligne.getQuantiteLivree();
         LivraisonStatut previousStatut = ligne.getLivraisonStatut();
 
         LigneCommandeVente updated = ligneCommandeVenteDomainService.applyLivraison(ligne, request.quantiteLivree());
@@ -338,21 +338,22 @@ public class VenteServiceImpl implements IVenteService {
     }
 
     /** Lève BadArgument si {@code quantiteLivree} est hors de [0, quantite]. */
-    public void ensureQuantiteLivreeWithinRange(int quantiteLivree, int quantite) {
-        if (quantiteLivree > quantite) {
+    public void ensureQuantiteLivreeWithinRange(BigDecimal quantiteLivree, BigDecimal quantite) {
+        if (quantiteLivree.compareTo(quantite) > 0) {
             throw new BadArgumentException("ligneVente.livraison.quantiteExceedsOrdered",
-                    String.valueOf(quantiteLivree), String.valueOf(quantite));
+                    quantiteLivree.toPlainString(), quantite.toPlainString());
         }
     }
 
     /** Publie l'event audit avec l'historique (previous → new) dans le champ details. */
     private void publishLivraisonAuditEvent(CommandeVente commande, LigneCommandeVente ligne,
-                                             int previousQuantiteLivree, LivraisonStatut previousStatut) {
+                                             BigDecimal previousQuantiteLivree, LivraisonStatut previousStatut) {
         UserPrincipal caller = currentUserService.getCurrent();
 
         String details = String.format(
-                "Produit=%s;quantiteLivree=%d->%d;livraisonStatut=%s->%s",
-                ligne.getProduct().getNom().concat("("+ligne.getProduct().getReference()+")"), previousQuantiteLivree, ligne.getQuantiteLivree(),
+                "Produit=%s;quantiteLivree=%s->%s;livraisonStatut=%s->%s",
+                ligne.getProduct().getNom().concat("("+ligne.getProduct().getReference()+")"),
+                previousQuantiteLivree.toPlainString(), ligne.getQuantiteLivree().toPlainString(),
                 previousStatut.name(), ligne.getLivraisonStatut().name()
         );
 
@@ -425,7 +426,7 @@ public class VenteServiceImpl implements IVenteService {
         Optional<FactureClient> facture = factureClientDomainService.findByCommandeId(cancelled.getId());
         facture.ifPresent(factureClientDomainService::cancel);
 
-        cancelled.getLignes().forEach(ligne -> ligneCommandeVenteDomainService.applyLivraison(ligne, 0));
+        cancelled.getLignes().forEach(ligne -> ligneCommandeVenteDomainService.applyLivraison(ligne, BigDecimal.ZERO));
 
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(
@@ -587,18 +588,18 @@ public class VenteServiceImpl implements IVenteService {
         Stock stock = stockDomainService.findByMagasinIdAndProductFournisseurId(firstLot.getMagasin().getId(), firstLot.getProductFournisseur().getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
 
-        int totalQuantite = sorties.stream()
-                .mapToInt(sortie -> reinjectOneSortie(sortie, stock))
-                .sum();
+        BigDecimal totalQuantite = sorties.stream()
+                .map(sortie -> reinjectOneSortie(sortie, stock))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new ReinjectionStockResult(totalQuantite, sorties.size());
     }
 
     /** Recrédit le lot d'origine, marque la sortie comme annulée, incrémente le stock agrégé et journalise un RETOUR_CLIENT. */
-    public int reinjectOneSortie(SortieStock sortie, Stock stock) {
+    public BigDecimal reinjectOneSortie(SortieStock sortie, Stock stock) {
         EntreeStock lot = sortie.getEntreeStock();
-        int quantite = sortie.getQuantiteSortie();
-        int stockAvant = stock.getQuantiteDisponible();
+        BigDecimal quantite = sortie.getQuantiteSortie();
+        BigDecimal stockAvant = stock.getQuantiteDisponible();
 
         entreeStockDomainService.creditQuantiteRestante(lot, quantite);
         sortieStockDomainService.markAsAnnulee(sortie);

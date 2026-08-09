@@ -55,7 +55,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -183,7 +182,7 @@ class AchatProcessFlowTest {
         // ── STEP 1: Create DRAFT ─────────────────────────────────────────────
         AchatRequest createRequest = new AchatRequest(
                 magasinId, fournisseurId, LocalDate.of(2026, 6, 3),
-                List.of(new LigneAchatRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), 10,
+                List.of(new LigneAchatRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), new BigDecimal("10"),
                         new BigDecimal("50000.00"), new BigDecimal("75000.00"), "LOT-001", null)));
 
         when(magasinService.findById(magasinId)).thenReturn(magasin);
@@ -199,7 +198,7 @@ class AchatProcessFlowTest {
             l.setId(ligneId);
             l.setCommande(draftCommande);
             l.setProductFournisseur(productFournisseur);
-            l.setQuantite(10);
+            l.setQuantite(new BigDecimal("10"));
             l.setPrixAchat(new BigDecimal("50000.00"));
             l.setPrixVente(new BigDecimal("75000.00"));
             draftCommande.getLignes().add(l);
@@ -222,7 +221,7 @@ class AchatProcessFlowTest {
         Stock stock = new Stock();
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(10);
+        stock.setQuantiteDisponible(new BigDecimal("10"));
         stock.setPrixAchatMoyen(new BigDecimal("50000.00"));
 
         AchatReceiveRequest receiveRequest = new AchatReceiveRequest(
@@ -258,7 +257,7 @@ class AchatProcessFlowTest {
         existing.setId(ligneId);
         existing.setCommande(draftCommande);
         existing.setProductFournisseur(productFournisseur);
-        existing.setQuantite(5);
+        existing.setQuantite(new BigDecimal("5"));
         existing.setPrixAchat(new BigDecimal("50000.00"));
         existing.setPrixVente(new BigDecimal("70000.00"));
         draftCommande.getLignes().add(existing);
@@ -267,7 +266,7 @@ class AchatProcessFlowTest {
         corrected.setId(ligneId);
         corrected.setCommande(draftCommande);
         corrected.setProductFournisseur(productFournisseur);
-        corrected.setQuantite(8);
+        corrected.setQuantite(new BigDecimal("8"));
         corrected.setPrixAchat(new BigDecimal("48000.00"));
         corrected.setPrixVente(new BigDecimal("72000.00"));
 
@@ -277,9 +276,9 @@ class AchatProcessFlowTest {
         when(ligneCommandeAchatDomainService.update(any(), any())).thenReturn(corrected);
 
         LigneCommandeAchatResponse updated = service.updateLigne(commandeId, ligneId,
-                new LigneAchatUpdateRequest(8, new BigDecimal("48000.00"), new BigDecimal("72000.00"), "LOT-001", null));
+                new LigneAchatUpdateRequest(new BigDecimal("8"), new BigDecimal("48000.00"), new BigDecimal("72000.00"), "LOT-001", null));
 
-        assertThat(updated.quantite()).isEqualTo(8);
+        assertThat(updated.quantite()).isEqualTo(new BigDecimal("8"));
         assertThat(updated.prixAchat()).isEqualByComparingTo("48000.00");
         assertThat(updated.prixVente()).isEqualByComparingTo("72000.00");
 
@@ -295,7 +294,7 @@ class AchatProcessFlowTest {
         ligne.setId(ligneId);
         ligne.setCommande(draftCommande);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantite(10);
+        ligne.setQuantite(new BigDecimal("10"));
         ligne.setPrixAchat(new BigDecimal("50000.00"));
         ligne.setPrixVente(new BigDecimal("75000.00"));
         draftCommande.getLignes().add(ligne);
@@ -320,7 +319,7 @@ class AchatProcessFlowTest {
         Stock stock = new Stock();
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(10);
+        stock.setQuantiteDisponible(new BigDecimal("10"));
         stock.setPrixAchatMoyen(new BigDecimal("50000.00"));
 
         AchatReceiveRequest receiveRequest = new AchatReceiveRequest(
@@ -360,7 +359,7 @@ class AchatProcessFlowTest {
         ligne.setId(ligneId);
         ligne.setCommande(draftCommande);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantite(10);
+        ligne.setQuantite(new BigDecimal("10"));
         ligne.setPrixAchat(new BigDecimal("50000.00"));
         draftCommande.getLignes().add(ligne);
 
@@ -369,13 +368,13 @@ class AchatProcessFlowTest {
         lot.setMagasin(magasin);
         lot.setProduit(productFournisseur.getProduct());
         lot.setProductFournisseur(productFournisseur);
-        lot.setQuantiteInitiale(10);
-        lot.setQuantiteRestante(10);
+        lot.setQuantiteInitiale(new BigDecimal("10"));
+        lot.setQuantiteRestante(new BigDecimal("10"));
 
         Stock stock = new Stock();
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(10);
+        stock.setQuantiteDisponible(new BigDecimal("10"));
 
         CommandeAchat annuleeCommande = new CommandeAchat();
         annuleeCommande.setId(commandeId);
@@ -393,8 +392,8 @@ class AchatProcessFlowTest {
         when(factureAchatDomainService.findByCommandeId(commandeId)).thenReturn(Optional.of(facture));
         when(entreeStockService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
         when(stockService.findByMagasinAndProductFournisseur(any(), any())).thenReturn(Optional.of(stock));
-        when(stockService.decrement(eq(stock), eq(10))).thenAnswer(inv -> {
-            stock.setQuantiteDisponible(0);
+        when(stockService.decrement(eq(stock), eq(new BigDecimal("10")))).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(BigDecimal.ZERO);
             return stock;
         });
         when(commandeAchatDomainService.cancel(any(), any(), any())).thenReturn(annuleeCommande);
@@ -406,7 +405,7 @@ class AchatProcessFlowTest {
         assertThat(result.statut()).isEqualTo(CommandeAchatStatut.ANNULEE);
         assertThat(result.motif()).isEqualTo(MotifAnnulationAchat.ERREUR_SAISIE);
 
-        verify(stockService).decrement(eq(stock), eq(10));
+        verify(stockService).decrement(eq(stock), eq(new BigDecimal("10")));
         verify(mouvementStockService).journalize(any(), any());
     }
 
@@ -433,8 +432,8 @@ class AchatProcessFlowTest {
 
         EntreeStock partiallyConsumedLot = new EntreeStock();
         partiallyConsumedLot.setId(UUID.randomUUID());
-        partiallyConsumedLot.setQuantiteInitiale(10);
-        partiallyConsumedLot.setQuantiteRestante(6);
+        partiallyConsumedLot.setQuantiteInitiale(new BigDecimal("10"));
+        partiallyConsumedLot.setQuantiteRestante(new BigDecimal("6"));
 
         when(commandeAchatService.findById(commandeId)).thenReturn(draftCommande);
         when(commandeAchatService.ensureBelongsToCurrentEntreprise(draftCommande)).thenReturn(draftCommande);
@@ -446,7 +445,7 @@ class AchatProcessFlowTest {
                 new AnnulationAchatRequest("ERREUR_SAISIE", "Test")))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(stockService, never()).decrement(any(Stock.class), anyInt());
+        verify(stockService, never()).decrement(any(Stock.class), any(BigDecimal.class));
     }
 
     // ── Scenario 7: Guard — cannot receive a non-DRAFT commande ──────────────

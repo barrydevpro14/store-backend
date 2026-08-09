@@ -71,9 +71,9 @@ class StockControllerTest {
         return new StockResponse(
                 stockId,
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null,null),
                 null,
-                150, 20,
+                new BigDecimal(150), new BigDecimal(20),
                 new BigDecimal("13.33"),
                 null, null
         );

@@ -42,14 +42,15 @@ class StockDomainServiceTest {
 
     @Test
     void createOrUpdateEntry_should_initialize_stock_when_absent() {
+        BigDecimal qty = BigDecimal.valueOf(100);
         when(stockRepository.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())).thenReturn(Optional.empty());
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, 100, new BigDecimal("10.00")));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, qty, new BigDecimal("10.00")));
 
         assertThat(stock.getMagasin()).isSameAs(magasin);
         assertThat(stock.getProductFournisseur()).isSameAs(productFournisseur);
-        assertThat(stock.getQuantiteDisponible()).isEqualTo(100);
+        assertThat(stock.getQuantiteDisponible()).isEqualTo(qty);
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("10.00"));
     }
 
@@ -59,15 +60,15 @@ class StockDomainServiceTest {
         existing.setId(UUID.randomUUID());
         existing.setMagasin(magasin);
         existing.setProductFournisseur(productFournisseur);
-        existing.setQuantiteDisponible(100);
+        existing.setQuantiteDisponible(new BigDecimal(100));
         existing.setPrixAchatMoyen(new BigDecimal("10.00"));
 
         when(stockRepository.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, 50, new BigDecimal("20.00")));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, new BigDecimal(50), new BigDecimal("20.00")));
 
-        assertThat(stock.getQuantiteDisponible()).isEqualTo(150);
+        assertThat(stock.getQuantiteDisponible()).isEqualTo(new BigDecimal(150));
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("13.333333"));
     }
 
@@ -76,15 +77,15 @@ class StockDomainServiceTest {
         Stock existing = new Stock();
         existing.setMagasin(magasin);
         existing.setProductFournisseur(productFournisseur);
-        existing.setQuantiteDisponible(200);
+        existing.setQuantiteDisponible(new BigDecimal(200));
         existing.setPrixAchatMoyen(new BigDecimal("12.50"));
 
         when(stockRepository.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, 100, new BigDecimal("25.00")));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, new BigDecimal(100), new BigDecimal("25.00")));
 
-        assertThat(stock.getQuantiteDisponible()).isEqualTo(300);
+        assertThat(stock.getQuantiteDisponible()).isEqualTo(new BigDecimal(300));
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("16.666667"));
     }
 
@@ -93,15 +94,15 @@ class StockDomainServiceTest {
         Stock existing = new Stock();
         existing.setMagasin(magasin);
         existing.setProductFournisseur(productFournisseur);
-        existing.setQuantiteDisponible(0);
+        existing.setQuantiteDisponible(BigDecimal.ZERO);
         existing.setPrixAchatMoyen(null);
 
         when(stockRepository.findByMagasinIdAndProductFournisseurId(magasin.getId(), productFournisseur.getId())).thenReturn(Optional.of(existing));
         when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, 10, new BigDecimal("15.00")));
+        Stock stock = stockDomainService.createOrUpdateEntry(new StockEntryContext(magasin, productFournisseur, new BigDecimal(10), new BigDecimal("15.00")));
 
-        assertThat(stock.getQuantiteDisponible()).isEqualTo(10);
+        assertThat(stock.getQuantiteDisponible()).isEqualTo(new BigDecimal(10));
         assertThat(stock.getPrixAchatMoyen()).isEqualByComparingTo(new BigDecimal("15.00"));
     }
 }

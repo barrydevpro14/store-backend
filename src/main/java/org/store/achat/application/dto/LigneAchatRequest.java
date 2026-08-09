@@ -12,7 +12,7 @@ import java.util.UUID;
 public record LigneAchatRequest(
         @NotNull UUID productId,
         @NotNull UUID qualityId,
-        @NotNull @Positive Integer quantite,
+        @NotNull @Positive BigDecimal quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixAchat,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixVente,
         @Size(max = 100) String numeroLot,

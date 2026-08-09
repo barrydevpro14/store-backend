@@ -13,7 +13,7 @@ import java.time.LocalDate;
  * édite quantité / prix / traçabilité lot d'une ligne tant que la commande est en DRAFT.
  */
 public record LigneAchatUpdateRequest(
-        @NotNull @Positive Integer quantite,
+        @NotNull @Positive BigDecimal quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixAchat,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixVente,
         @Size(max = 100) String numeroLot,

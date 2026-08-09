@@ -90,10 +90,10 @@ class InventaireControllerTest {
     private LigneInventaireResponse sampleLigne() {
         return new LigneInventaireResponse(
                 UUID.randomUUID(), inventaireId, productFournisseurId,
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", "Visserie"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", "Visserie","PIECE"),
                 new org.store.achat.application.dto.FournisseurSummaryResponse(UUID.randomUUID(), "Fournisseur Test"),
                 null,
-                10, 8, -2,
+                new java.math.BigDecimal("10"), new java.math.BigDecimal("8"), new java.math.BigDecimal("-2"),
                 new java.math.BigDecimal("10.00")
         );
     }
@@ -121,7 +121,7 @@ class InventaireControllerTest {
 
     @Test
     void should_return_201_when_ligne_added() throws Exception {
-        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, 8, new java.math.BigDecimal("10.00"));
+        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, new java.math.BigDecimal("8"), new java.math.BigDecimal("10.00"));
         when(inventaireService.addLigne(eq(inventaireId), any(LigneInventaireRequest.class))).thenReturn(sampleLigne());
 
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes")
@@ -144,7 +144,7 @@ class InventaireControllerTest {
 
     @Test
     void should_return_400_when_quantiteReelle_negative() throws Exception {
-        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, -1, new java.math.BigDecimal("10.00"));
+        LigneInventaireRequest body = new LigneInventaireRequest(productFournisseurId, new java.math.BigDecimal("-1"), new java.math.BigDecimal("10.00"));
 
         mockMvc.perform(post(InventaireController.BASE_PATH + "/" + inventaireId + "/lignes")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -228,7 +228,7 @@ class InventaireControllerTest {
     @Test
     void should_return_200_when_update_ligne() throws Exception {
         UUID ligneId = UUID.randomUUID();
-        LigneInventaireUpdateRequest body = new LigneInventaireUpdateRequest(7);
+        LigneInventaireUpdateRequest body = new LigneInventaireUpdateRequest(new java.math.BigDecimal("7"));
         when(inventaireService.updateLigne(eq(inventaireId), eq(ligneId), any(LigneInventaireUpdateRequest.class)))
                 .thenReturn(sampleLigne());
 

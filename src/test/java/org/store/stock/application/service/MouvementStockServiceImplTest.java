@@ -24,6 +24,7 @@ import org.store.stock.domain.model.MouvementStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.MouvementStockDomainService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,15 +91,15 @@ class MouvementStockServiceImplTest {
         stock.setMagasin(magasin);
         stock.setProductFournisseur(pf);
 
-        MouvementJournalize cmd = new MouvementJournalize(MouvementStockType.ENTREE_ACHAT, 50, 100, 150, "CMD-001", null);
+        MouvementJournalize cmd = new MouvementJournalize(MouvementStockType.ENTREE_ACHAT, new BigDecimal("50"), new BigDecimal("100"), new BigDecimal("150"), "CMD-001", null);
 
         MouvementStock mouvement = new MouvementStock();
         mouvement.setId(UUID.randomUUID());
         mouvement.setStock(stock);
         mouvement.setType(MouvementStockType.ENTREE_ACHAT);
-        mouvement.setQuantite(50);
-        mouvement.setStockAvant(100);
-        mouvement.setStockApres(150);
+        mouvement.setQuantite(new BigDecimal("50"));
+        mouvement.setStockAvant(new BigDecimal("100"));
+        mouvement.setStockApres(new BigDecimal("150"));
         mouvement.setReferenceDocument("CMD-001");
 
         when(mouvementStockDomainService.journalize(stock, cmd)).thenReturn(mouvement);
@@ -106,7 +107,7 @@ class MouvementStockServiceImplTest {
         MouvementStockResponse result = service.journalize(stock, cmd);
 
         assertThat(result.detail().type()).isEqualTo(MouvementStockType.ENTREE_ACHAT);
-        assertThat(result.detail().quantite()).isEqualTo(50);
+        assertThat(result.detail().quantite()).isEqualTo(new BigDecimal("50"));
         verify(mouvementStockDomainService).journalize(stock, cmd);
     }
 

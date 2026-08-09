@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 
 public record SortieStockCreate(
         EntreeStock lot,
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixVente,
         LigneCommandeVente ligneVente
 ) {

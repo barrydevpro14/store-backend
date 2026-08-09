@@ -13,12 +13,15 @@ import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.ProductCreate;
 import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
 import org.store.produit.application.service.ICategoryProductService;
 import org.store.produit.application.service.IProductService;
+import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.domain.model.CategoryProduct;
+import org.store.produit.domain.model.UniteMesure;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.service.ProductDomainService;
 import org.store.security.application.service.ICurrentUserService;
@@ -36,33 +39,39 @@ public class ProductServiceImpl implements IProductService {
 
     private final ProductDomainService productDomainService;
     private final ICategoryProductService categoryProductService;
+    private final IUniteMesureService uniteMesureService;
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
     private final IUploadFileService uploadFileService;
 
     public ProductServiceImpl(ProductDomainService productDomainService,
                               ICategoryProductService categoryProductService,
+                              IUniteMesureService uniteMesureService,
                               IEntrepriseService entrepriseService,
                               ICurrentUserService currentUserService,
                               IUploadFileService uploadFileService) {
         this.productDomainService = productDomainService;
         this.categoryProductService = categoryProductService;
+        this.uniteMesureService = uniteMesureService;
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
         this.uploadFileService = uploadFileService;
     }
 
-    /** Crée un produit après vérification de l'unicité (reference, nom) et de l'appartenance de la catégorie à l'entreprise du caller. */
+    /** Crée un produit après vérification de l'unicité (reference, nom), de l'appartenance de la catégorie et de la validité de l'unité. */
     @Override
     @Transactional
     public ProductResponse create(ProductRequest productRequest) {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         ensureReferenceAndNomAvailable(productRequest.reference(), productRequest.nom(), entrepriseId);
+
         CategoryProduct categoryProduct = categoryProductService.ensureBelongsToCurrentEntreprise(
                 categoryProductService.findById(productRequest.categoryProductId()));
+        UniteMesure uniteMesure = uniteMesureService.findById(productRequest.uniteMesureId());
         Entreprise entreprise = entrepriseService.findById(entrepriseId);
-        Product saved = productDomainService.create(productRequest, categoryProduct, entreprise);
-        return new ProductResponse(saved);
+
+        ProductCreate context = new ProductCreate(productRequest, categoryProduct, entreprise, uniteMesure);
+        return new ProductResponse(productDomainService.create(context));
     }
 
     /** Retourne le produit ou lève `EntityException`. */
@@ -99,10 +108,13 @@ public class ProductServiceImpl implements IProductService {
 
         CategoryProduct categoryProduct = categoryProductService.ensureBelongsToCurrentEntreprise(
                 categoryProductService.findById(productRequest.categoryProductId()));
+        UniteMesure uniteMesure = uniteMesureService.findById(productRequest.uniteMesureId());
+
         product.setNom(productRequest.nom());
         product.setReference(productRequest.reference());
         product.setDescription(productRequest.description());
         product.setCategoryProduct(categoryProduct);
+        product.setUniteMesure(uniteMesure);
         return new ProductResponse(productDomainService.save(product));
     }
 

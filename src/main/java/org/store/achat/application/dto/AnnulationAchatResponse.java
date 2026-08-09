@@ -5,6 +5,7 @@ import org.store.achat.domain.enums.MotifAnnulationAchat;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.common.tools.DateHelper;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record AnnulationAchatResponse(
@@ -14,10 +15,10 @@ public record AnnulationAchatResponse(
         MotifAnnulationAchat motif,
         String commentaire,
         String dateAnnulation,
-        int totalQuantiteRetiree,
+        BigDecimal totalQuantiteRetiree,
         int nombreMouvementsCrees
 ) {
-    public AnnulationAchatResponse(CommandeAchat commande, int totalQuantiteRetiree, int nombreMouvementsCrees) {
+    public AnnulationAchatResponse(CommandeAchat commande, BigDecimal totalQuantiteRetiree, int nombreMouvementsCrees) {
         this(
                 commande.getId(),
                 commande.getReference(),

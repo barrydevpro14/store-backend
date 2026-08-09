@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 public record LigneCommandeVenteCreate(
         CommandeVente commande,
         ProductFournisseur productFournisseur,
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixUnitaire
 ) {
 }

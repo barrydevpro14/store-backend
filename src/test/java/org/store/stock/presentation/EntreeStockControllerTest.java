@@ -1,4 +1,4 @@
-package org.store.stock.presentation;
+ package org.store.stock.presentation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -39,7 +39,9 @@ class EntreeStockControllerTest {
     private MockMvc mockMvc;
     private IEntreeStockService entreeStockService;
     private IStockImportService stockImportService;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    private final ObjectMapper objectMapper =
+            new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID entreeStockId;
     private UUID magasinId;
@@ -51,13 +53,25 @@ class EntreeStockControllerTest {
     void setUp() {
         entreeStockService = mock(IEntreeStockService.class);
         stockImportService = mock(IStockImportService.class);
-        IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
-        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        IMessageSourceService messageSourceService =
+                mock(IMessageSourceService.class);
+
+        LocalValidatorFactoryBean validator =
+                new LocalValidatorFactoryBean();
+
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new EntreeStockController(entreeStockService, stockImportService))
-                .setControllerAdvice(new GlobalException(messageSourceService))
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(
+                        new EntreeStockController(
+                                entreeStockService,
+                                stockImportService
+                        )
+                )
+                .setControllerAdvice(
+                        new GlobalException(messageSourceService)
+                )
                 .setValidator(validator)
                 .build();
 
@@ -71,138 +85,352 @@ class EntreeStockControllerTest {
     private EntreeStockResponse sampleResponse() {
         return new EntreeStockResponse(
                 entreeStockId,
-                new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
-                new FournisseurSummaryResponse(fournisseurId, "Fournisseur anonyme"),
-                100, 100,
-                new BigDecimal("10.00"), "LOT-001",
+                new MagasinSummaryResponse(
+                        magasinId,
+                        "Magasin Central"
+                ),
+                new ProductSummaryResponse(
+                        productId,
+                        "Clou 10mm",
+                        "CL-10",
+                        null,
+                        "PIECE"
+                ),
+                new FournisseurSummaryResponse(
+                        fournisseurId,
+                        "Fournisseur anonyme"
+                ),
+                new BigDecimal("100"),
+                new BigDecimal("100"),
+                new BigDecimal("10.00"),
+                "LOT-001",
                 "2027-05-14",
                 "2026-05-14 10:00:00"
         );
     }
 
     private LigneEntreeStockRequest validLigne() {
-        return new LigneEntreeStockRequest(productId, qualityId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", LocalDate.now().plusYears(1));
+        return new LigneEntreeStockRequest(
+                productId,
+                qualityId,
+                new BigDecimal("100"),
+                new BigDecimal("10.00"),
+                new BigDecimal("15.00"),
+                "LOT-001",
+                LocalDate.now().plusYears(1)
+        );
     }
 
     private EntreeStockRequest validBody() {
-        return new EntreeStockRequest(magasinId, fournisseurId, List.of(validLigne()));
+        return new EntreeStockRequest(
+                magasinId,
+                fournisseurId,
+                List.of(validLigne())
+        );
     }
 
     @Test
     void should_return_201_with_list_when_created() throws Exception {
-        when(entreeStockService.create(any(EntreeStockRequest.class))).thenReturn(List.of(sampleResponse()));
+        when(entreeStockService.create(
+                any(EntreeStockRequest.class)
+        )).thenReturn(List.of(sampleResponse()));
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validBody())))
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                validBody()
+                                        )
+                                )
+                )
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].id").value(entreeStockId.toString()))
-                .andExpect(jsonPath("$[0].magasin.id").value(magasinId.toString()))
-                .andExpect(jsonPath("$[0].produit.id").value(productId.toString()))
-                .andExpect(jsonPath("$[0].fournisseur.id").value(fournisseurId.toString()))
-                .andExpect(jsonPath("$[0].quantiteInitiale").value(100))
-                .andExpect(jsonPath("$[0].prixAchat").value(10.00))
-                .andExpect(jsonPath("$[0].numeroLot").value("LOT-001"));
+                .andExpect(
+                        jsonPath("$[0].id")
+                                .value(entreeStockId.toString())
+                )
+                .andExpect(
+                        jsonPath("$[0].magasin.id")
+                                .value(magasinId.toString())
+                )
+                .andExpect(
+                        jsonPath("$[0].produit.id")
+                                .value(productId.toString())
+                )
+                .andExpect(
+                        jsonPath("$[0].fournisseur.id")
+                                .value(fournisseurId.toString())
+                )
+                .andExpect(
+                        jsonPath("$[0].quantiteInitiale")
+                                .value(100)
+                )
+                .andExpect(
+                        jsonPath("$[0].prixAchat")
+                                .value(10.00)
+                )
+                .andExpect(
+                        jsonPath("$[0].numeroLot")
+                                .value("LOT-001")
+                );
     }
 
     @Test
     void should_return_400_when_magasinId_null() throws Exception {
-        EntreeStockRequest body = new EntreeStockRequest(null, fournisseurId, List.of(validLigne()));
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        null,
+                        fournisseurId,
+                        List.of(validLigne())
+                );
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void should_return_400_when_fournisseurId_null() throws Exception {
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, null, List.of(validLigne()));
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        null,
+                        List.of(validLigne())
+                );
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void should_return_400_when_lignes_empty() throws Exception {
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, fournisseurId, List.of());
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        fournisseurId,
+                        List.of()
+                );
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void should_return_400_when_ligne_productId_null() throws Exception {
-        LigneEntreeStockRequest ligne = new LigneEntreeStockRequest(null, qualityId, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), null, null);
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, fournisseurId, List.of(ligne));
+        LigneEntreeStockRequest ligne =
+                new LigneEntreeStockRequest(
+                        null,
+                        qualityId,
+                        new BigDecimal("100"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        null,
+                        null
+                );
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        fournisseurId,
+                        List.of(ligne)
+                );
+
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void should_return_400_when_ligne_qualityId_null() throws Exception {
-        LigneEntreeStockRequest ligne = new LigneEntreeStockRequest(productId, null, 100, new BigDecimal("10.00"), new BigDecimal("15.00"), null, null);
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, fournisseurId, List.of(ligne));
+        LigneEntreeStockRequest ligne =
+                new LigneEntreeStockRequest(
+                        productId,
+                        null,
+                        new BigDecimal("100"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        null,
+                        null
+                );
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        fournisseurId,
+                        List.of(ligne)
+                );
+
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void should_return_400_when_ligne_quantite_zero_or_negative() throws Exception {
-        LigneEntreeStockRequest ligne = new LigneEntreeStockRequest(productId, qualityId, 0, new BigDecimal("10.00"), new BigDecimal("15.00"), null, null);
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, fournisseurId, List.of(ligne));
+    void should_return_400_when_ligne_quantite_zero_or_negative()
+            throws Exception {
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        LigneEntreeStockRequest ligne =
+                new LigneEntreeStockRequest(
+                        productId,
+                        qualityId,
+                        BigDecimal.ZERO,
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        null,
+                        null
+                );
+
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        fournisseurId,
+                        List.of(ligne)
+                );
+
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void should_return_400_when_ligne_prixAchat_zero() throws Exception {
-        LigneEntreeStockRequest ligne = new LigneEntreeStockRequest(productId, qualityId, 100, BigDecimal.ZERO, new BigDecimal("15.00"), null, null);
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, fournisseurId, List.of(ligne));
+    void should_return_400_when_ligne_prixAchat_zero()
+            throws Exception {
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        LigneEntreeStockRequest ligne =
+                new LigneEntreeStockRequest(
+                        productId,
+                        qualityId,
+                        new BigDecimal("100"),
+                        BigDecimal.ZERO,
+                        new BigDecimal("15.00"),
+                        null,
+                        null
+                );
+
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        fournisseurId,
+                        List.of(ligne)
+                );
+
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void should_return_400_when_ligne_prixVente_zero() throws Exception {
-        LigneEntreeStockRequest ligne = new LigneEntreeStockRequest(productId, qualityId, 100, new BigDecimal("10.00"), BigDecimal.ZERO, null, null);
-        EntreeStockRequest body = new EntreeStockRequest(magasinId, fournisseurId, List.of(ligne));
+    void should_return_400_when_ligne_prixVente_zero()
+            throws Exception {
 
-        mockMvc.perform(post(EntreeStockController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+        LigneEntreeStockRequest ligne =
+                new LigneEntreeStockRequest(
+                        productId,
+                        qualityId,
+                        new BigDecimal("100"),
+                        new BigDecimal("10.00"),
+                        BigDecimal.ZERO,
+                        null,
+                        null
+                );
+
+        EntreeStockRequest body =
+                new EntreeStockRequest(
+                        magasinId,
+                        fournisseurId,
+                        List.of(ligne)
+                );
+
+        mockMvc.perform(
+                        post(EntreeStockController.BASE_PATH)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(body)
+                                )
+                )
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void should_return_200_with_import_result_when_file_uploaded() throws Exception {
-        StockImportResult result = new StockImportResult(2, 0, List.of());
-        when(stockImportService.importFromFile(any(), eq(magasinId), eq(fournisseurId))).thenReturn(result);
+    void should_return_200_with_import_result_when_file_uploaded()
+            throws Exception {
 
-        mockMvc.perform(multipart(EntreeStockController.BASE_PATH + "/file")
-                        .file("file", "col1,col2".getBytes())
-                        .param("magasinId", magasinId.toString())
-                        .param("fournisseurId", fournisseurId.toString()))
+        StockImportResult result =
+                new StockImportResult(
+                        2,
+                        0,
+                        List.of()
+                );
+
+        when(stockImportService.importFromFile(
+                any(),
+                eq(magasinId),
+                eq(fournisseurId)
+        )).thenReturn(result);
+
+        mockMvc.perform(
+                        multipart(
+                                EntreeStockController.BASE_PATH + "/file"
+                        )
+                                .file(
+                                        "file",
+                                        "col1,col2".getBytes()
+                                )
+                                .param(
+                                        "magasinId",
+                                        magasinId.toString()
+                                )
+                                .param(
+                                        "fournisseurId",
+                                        fournisseurId.toString()
+                                )
+                )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lignesImportees").value(2))
-                .andExpect(jsonPath("$.lignesIgnorees").value(0));
+                .andExpect(
+                        jsonPath("$.lignesImportees")
+                                .value(2)
+                )
+                .andExpect(
+                        jsonPath("$.lignesIgnorees")
+                                .value(0)
+                );
     }
 }

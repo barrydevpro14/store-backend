@@ -12,7 +12,7 @@ public record LigneCommandeAchatResponse(
         UUID id,
         ProductSummaryResponse produit,
         QualitySummaryResponse quality,
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixAchat,
         BigDecimal prixVente,
         BigDecimal montantLigne,
@@ -27,7 +27,7 @@ public record LigneCommandeAchatResponse(
                 ligne.getQuantite(),
                 ligne.getPrixAchat(),
                 ligne.getPrixVente(),
-                ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite())),
+                ligne.getPrixAchat().multiply(ligne.getQuantite()),
                 ligne.getNumeroLot(),
                 ligne.getDateExpiration()
         );

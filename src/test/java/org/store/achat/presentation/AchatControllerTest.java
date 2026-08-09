@@ -83,7 +83,7 @@ class AchatControllerTest {
 
     private AchatRequest validDraftBody() {
         return new AchatRequest(magasinId, fournisseurId, LocalDate.of(2026, 5, 15),
-                List.of(new LigneAchatRequest(UUID.randomUUID(), UUID.randomUUID(), 100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", null)));
+                List.of(new LigneAchatRequest(UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("100"), new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001", null)));
     }
 
     private AchatReceiveRequest validReceiveBody() {
@@ -185,9 +185,9 @@ class AchatControllerTest {
     void should_return_200_when_get_purchase_details() throws Exception {
         LigneCommandeAchatResponse ligne = new LigneCommandeAchatResponse(
                 UUID.randomUUID(),
-                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto" , "PIECE"),
                 new QualitySummaryResponse(UUID.randomUUID(), "Original"),
-                10, new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
+                new BigDecimal("10"), new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("100.00"),
                 "LOT-001", null
         );
         AchatDetailsResponse details = new AchatDetailsResponse(receptionneeCommandeResponse(), sampleFacture(), List.of(ligne));
@@ -205,15 +205,15 @@ class AchatControllerTest {
     void should_return_200_when_update_ligne() throws Exception {
         LigneCommandeAchatResponse updated = new LigneCommandeAchatResponse(
                 ligneId,
-                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto"),
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", "Auto","PIECE"),
                 new QualitySummaryResponse(UUID.randomUUID(), "Original"),
-                200, new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
+                new BigDecimal("200"), new BigDecimal("12.00"), new BigDecimal("18.00"), new BigDecimal("2400.00"),
                 "LOT-002", null
         );
         when(achatService.updateLigne(eq(commandeId), eq(ligneId), any(LigneAchatUpdateRequest.class)))
                 .thenReturn(updated);
 
-        LigneAchatUpdateRequest body = new LigneAchatUpdateRequest(200, new BigDecimal("12.00"), new BigDecimal("18.00"), "LOT-002", null);
+        LigneAchatUpdateRequest body = new LigneAchatUpdateRequest(new BigDecimal("200"), new BigDecimal("12.00"), new BigDecimal("18.00"), "LOT-002", null);
 
         mockMvc.perform(put(AchatController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -226,7 +226,7 @@ class AchatControllerTest {
 
     @Test
     void should_return_400_when_update_ligne_quantite_zero() throws Exception {
-        LigneAchatUpdateRequest body = new LigneAchatUpdateRequest(0, new BigDecimal("12.00"), new BigDecimal("18.00"), null, null);
+        LigneAchatUpdateRequest body = new LigneAchatUpdateRequest(BigDecimal.ZERO, new BigDecimal("12.00"), new BigDecimal("18.00"), null, null);
 
         mockMvc.perform(put(AchatController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -255,7 +255,7 @@ class AchatControllerTest {
         AnnulationAchatResponse response = new AnnulationAchatResponse(
                 commandeId, "CMD-AUTO", CommandeAchatStatut.ANNULEE,
                 MotifAnnulationAchat.ERREUR_SAISIE, "Saisie erronée", "2026-05-18 10:00:00",
-                100, 1
+                new BigDecimal("100"), 1
         );
         when(achatService.cancel(eq(commandeId), any(AnnulationAchatRequest.class))).thenReturn(response);
 

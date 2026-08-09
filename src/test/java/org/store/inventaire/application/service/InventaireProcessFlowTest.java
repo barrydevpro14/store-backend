@@ -145,14 +145,14 @@ class InventaireProcessFlowTest {
                 "manager", null, null, "MANAGER", List.of()));
     }
 
-    private LigneInventaire buildLigne(int qteTheorique, int qteReelle) {
+    private LigneInventaire buildLigne(BigDecimal qteTheorique, BigDecimal qteReelle) {
         LigneInventaire ligne = new LigneInventaire();
         ligne.setId(ligneId);
         ligne.setInventaire(inventaire);
         ligne.setProductFournisseur(productFournisseur);
         ligne.setQuantiteTheorique(qteTheorique);
         ligne.setQuantiteReelle(qteReelle);
-        ligne.setEcart(qteReelle - qteTheorique);
+        ligne.setEcart(qteReelle.subtract(qteTheorique));
         ligne.setPrixUnitaire(productFournisseur.getPrixAchat());
         return ligne;
     }
@@ -174,23 +174,23 @@ class InventaireProcessFlowTest {
 
         // ── STEP 2: Add ligne (5 lots theoriques, 4 counted physically) ─────
         Stock stockTheorique = new Stock();
-        stockTheorique.setQuantiteDisponible(5);
+        stockTheorique.setQuantiteDisponible(new BigDecimal("5"));
 
-        LigneInventaire ligne = buildLigne(5, 4); // ecart = -1
+        LigneInventaire ligne = buildLigne(new BigDecimal("5"), new BigDecimal("4")); // ecart = -1
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
         when(productFournisseurService.ensureBelongsToCurrentEntreprise(productFournisseur)).thenReturn(productFournisseur);
         when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId)).thenReturn(Optional.empty());
         when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.of(stockTheorique));
-        when(ligneInventaireService.create(eq(inventaire), eq(productFournisseur), eq(5), eq(4), any(java.math.BigDecimal.class))).thenReturn(ligne);
+        when(ligneInventaireService.create(eq(inventaire), eq(productFournisseur), eq(new BigDecimal("5")), eq(new BigDecimal("4")), any(java.math.BigDecimal.class))).thenReturn(ligne);
 
         LigneInventaireResponse ligneResult = service.addLigne(inventaireId,
-                new LigneInventaireRequest(productFournisseurId, 4, new java.math.BigDecimal("8000.00")));
+                new LigneInventaireRequest(productFournisseurId, new java.math.BigDecimal("4"), new java.math.BigDecimal("8000.00")));
 
-        assertThat(ligneResult.quantiteTheorique()).isEqualTo(5);
-        assertThat(ligneResult.quantiteReelle()).isEqualTo(4);
-        assertThat(ligneResult.ecart()).isEqualTo(-1);
+        assertThat(ligneResult.quantiteTheorique()).isEqualTo(new BigDecimal("5"));
+        assertThat(ligneResult.quantiteReelle()).isEqualTo(new BigDecimal("4"));
+        assertThat(ligneResult.ecart()).isEqualTo(new BigDecimal("-1"));
 
         // ── STEP 3: Passer EN BILAN (fige les saisies + rapport comptable) ───
         Inventaire bilanInventaire = new Inventaire();
@@ -221,7 +221,7 @@ class InventaireProcessFlowTest {
         org.store.stock.domain.model.Stock stock = new org.store.stock.domain.model.Stock();
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(5);
+        stock.setQuantiteDisponible(new BigDecimal("5"));
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(bilanInventaire);
         when(ligneInventaireService.findAllByInventaireId(inventaireId)).thenReturn(List.of(ligne));
@@ -241,7 +241,7 @@ class InventaireProcessFlowTest {
 
     @Test
     void process_add_ligne_twice_aggregates_quantite_reelle() {
-        LigneInventaire existing = buildLigne(5, 4);
+        LigneInventaire existing = buildLigne(new BigDecimal(5), new BigDecimal(4));
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
         when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
@@ -249,41 +249,43 @@ class InventaireProcessFlowTest {
         when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
                 .thenReturn(Optional.of(existing));
 
-        LigneInventaire aggregated = buildLigne(5, 7); // 4 + 3 = 7
-        when(ligneInventaireService.updateQuantiteReelle(existing, 7)).thenReturn(aggregated);
+        LigneInventaire aggregated = buildLigne(new BigDecimal("5"), new BigDecimal("7")); // 4 + 3 = 7
+        when(ligneInventaireService.updateQuantiteReelle(existing, new BigDecimal("7"))).thenReturn(aggregated);
 
         LigneInventaireResponse result = service.addLigne(inventaireId,
-                new LigneInventaireRequest(productFournisseurId, 3, new java.math.BigDecimal("8000.00")));
+                new LigneInventaireRequest(productFournisseurId, new java.math.BigDecimal("3"), new java.math.BigDecimal("8000.00")));
 
-        assertThat(result.quantiteReelle()).isEqualTo(7);
-        assertThat(result.ecart()).isEqualTo(2); // 7 - 5 = +2 surplus
+        assertThat(result.quantiteReelle()).isEqualTo(new BigDecimal("7"));
+        assertThat(result.ecart()).isEqualTo(new BigDecimal("2")); // 7 - 5 = +2 surplus
     }
 
     // ── Scenario 2: Update ligne corrects the physical count ─────────────────
 
     @Test
     void process_update_ligne_corrects_quantite_reelle() {
-        LigneInventaire existing = buildLigne(5, 4);
-        LigneInventaire corrected = buildLigne(5, 6); // correction: found more
+        BigDecimal qteTheorique = new BigDecimal(5);
+        BigDecimal qteReel = new BigDecimal(6);
+        LigneInventaire existing = buildLigne(qteTheorique, new BigDecimal(4));
+        LigneInventaire corrected = buildLigne(qteTheorique, qteReel); // correction: found more
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
         when(ligneInventaireService.findLigne(ligneId)).thenReturn(existing);
-        when(ligneInventaireService.updateQuantiteReelle(existing, 6)).thenReturn(corrected);
+        when(ligneInventaireService.updateQuantiteReelle(existing, qteReel)).thenReturn(corrected);
 
         LigneInventaireResponse result = service.updateLigne(inventaireId, ligneId,
-                new LigneInventaireUpdateRequest(6));
+                new LigneInventaireUpdateRequest(new java.math.BigDecimal("6")));
 
-        assertThat(result.quantiteReelle()).isEqualTo(6);
-        assertThat(result.ecart()).isEqualTo(1); // 6 - 5 = +1 surplus
+        assertThat(result.quantiteReelle()).isEqualTo(new BigDecimal("6"));
+        assertThat(result.ecart()).isEqualTo(new BigDecimal("1")); // 6 - 5 = +1 surplus
 
-        verify(ligneInventaireService).updateQuantiteReelle(existing, 6);
+        verify(ligneInventaireService).updateQuantiteReelle(existing, qteReel);
     }
 
     // ── Scenario 3: Delete ligne removes it from the inventory ───────────────
 
     @Test
     void process_delete_ligne_removes_line_from_en_cours_inventory() {
-        LigneInventaire ligne = buildLigne(5, 4);
+        LigneInventaire ligne = buildLigne(new BigDecimal(5), new BigDecimal(4));
 
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
         when(ligneInventaireService.findLigne(ligneId)).thenReturn(ligne);
@@ -360,9 +362,9 @@ class InventaireProcessFlowTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaire);
 
         assertThatThrownBy(() -> service.addLigne(inventaireId,
-                new LigneInventaireRequest(productFournisseurId, 3, new java.math.BigDecimal("8000.00"))))
+                new LigneInventaireRequest(productFournisseurId, new java.math.BigDecimal("3"), new java.math.BigDecimal("8000.00"))))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireService, never()).create(any(), any(), any(int.class), any(int.class), any());
+        verify(ligneInventaireService, never()).create(any(), any(), any(BigDecimal.class), any(BigDecimal.class), any());
     }
 }

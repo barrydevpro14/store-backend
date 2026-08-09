@@ -59,14 +59,29 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class EntreeStockServiceImplTest {
 
-    @Mock private EntreeStockDomainService entreeStockDomainService;
-    @Mock private IStockService stockService;
-    @Mock private IMouvementStockService mouvementStockService;
-    @Mock private IMagasinService magasinService;
-    @Mock private IFournisseurService fournisseurService;
-    @Mock private IProductFournisseurService productFournisseurService;
-    @Mock private ICurrentUserService currentUserService;
-    @Mock private IAuditEventPublisher auditEventPublisher;
+    @Mock
+    private EntreeStockDomainService entreeStockDomainService;
+
+    @Mock
+    private IStockService stockService;
+
+    @Mock
+    private IMouvementStockService mouvementStockService;
+
+    @Mock
+    private IMagasinService magasinService;
+
+    @Mock
+    private IFournisseurService fournisseurService;
+
+    @Mock
+    private IProductFournisseurService productFournisseurService;
+
+    @Mock
+    private ICurrentUserService currentUserService;
+
+    @Mock
+    private IAuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private EntreeStockServiceImpl service;
@@ -127,20 +142,55 @@ class EntreeStockServiceImplTest {
         productFournisseur.setPrixAchat(new BigDecimal("10.00"));
         productFournisseur.setPrixVente(new BigDecimal("15.00"));
 
-        lenient().when(currentUserService.getCurrent()).thenReturn(new UserPrincipal(
-                accountId, UUID.randomUUID(), entrepriseId, magasinId,
-                "owner", null, null, "OWNER", List.of()));
+        lenient()
+                .when(currentUserService.getCurrent())
+                .thenReturn(
+                        new UserPrincipal(
+                                accountId,
+                                UUID.randomUUID(),
+                                entrepriseId,
+                                magasinId,
+                                "owner",
+                                null,
+                                null,
+                                "OWNER",
+                                List.of()
+                        )
+                );
     }
 
-    private LigneEntreeStockRequest sampleLigne(int qty, BigDecimal prixAchat, BigDecimal prixVente, String numeroLot) {
-        return new LigneEntreeStockRequest(productId, qualityId, qty, prixAchat, prixVente, numeroLot, LocalDate.now().plusYears(1));
+    private LigneEntreeStockRequest sampleLigne(
+            BigDecimal qty,
+            BigDecimal prixAchat,
+            BigDecimal prixVente,
+            String numeroLot
+    ) {
+        return new LigneEntreeStockRequest(
+                productId,
+                qualityId,
+                qty,
+                prixAchat,
+                prixVente,
+                numeroLot,
+                LocalDate.now().plusYears(1)
+        );
     }
 
-    private EntreeStockRequest sampleRequest(LigneEntreeStockRequest... lignes) {
-        return new EntreeStockRequest(magasinId, fournisseurId, List.of(lignes));
+    private EntreeStockRequest sampleRequest(
+            LigneEntreeStockRequest... lignes
+    ) {
+        return new EntreeStockRequest(
+                magasinId,
+                fournisseurId,
+                List.of(lignes)
+        );
     }
 
-    private EntreeStock sampleSaved(int qty, BigDecimal prix, String numeroLot) {
+    private EntreeStock sampleSaved(
+            BigDecimal qty,
+            BigDecimal prix,
+            String numeroLot
+    ) {
         EntreeStock entreeStock = new EntreeStock();
         entreeStock.setId(UUID.randomUUID());
         entreeStock.setMagasin(magasin);
@@ -150,249 +200,584 @@ class EntreeStockServiceImplTest {
         entreeStock.setQuantiteRestante(qty);
         entreeStock.setPrixAchat(prix);
         entreeStock.setNumeroLot(numeroLot);
-        entreeStock.setDateExpiration(LocalDate.now().plusYears(1));
+        entreeStock.setDateExpiration(
+                LocalDate.now().plusYears(1)
+        );
+
         return entreeStock;
     }
 
     private void stubResolveMagasinAndFournisseur() {
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
-        when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur)).thenReturn(fournisseur);
+        when(magasinService.findById(magasinId))
+                .thenReturn(magasin);
+
+        when(magasinService.ensureAccessibleByCurrentUser(magasin))
+                .thenReturn(magasin);
+
+        when(fournisseurService.findById(fournisseurId))
+                .thenReturn(fournisseur);
+
+        when(fournisseurService.ensureBelongsToCurrentEntreprise(
+                fournisseur
+        )).thenReturn(fournisseur);
     }
 
     private void stubFindOrCreateProductFournisseur() {
-        when(productFournisseurService.findOrCreate(any())).thenReturn(new ProductFournisseurResponse(productFournisseur));
-        when(productFournisseurService.findById(productFournisseurId)).thenReturn(productFournisseur);
+        when(productFournisseurService.findOrCreate(any()))
+                .thenReturn(
+                        new ProductFournisseurResponse(
+                                productFournisseur
+                        )
+                );
+
+        when(productFournisseurService.findById(productFournisseurId))
+                .thenReturn(productFournisseur);
     }
 
     @Test
     void create_should_materialize_one_line_with_ENTREE_INITIAL_when_stock_absent() {
-        EntreeStockRequest request = sampleRequest(sampleLigne(100, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-001"));
-        EntreeStock savedLot = sampleSaved(100, new BigDecimal("10.00"), "LOT-001");
+        EntreeStockRequest request = sampleRequest(
+                sampleLigne(
+                        new BigDecimal("100"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "LOT-001"
+                )
+        );
+
+        EntreeStock savedLot = sampleSaved(
+                new BigDecimal("100"),
+                new BigDecimal("10.00"),
+                "LOT-001"
+        );
+
         Stock upsertedStock = new Stock();
         upsertedStock.setId(UUID.randomUUID());
         upsertedStock.setMagasin(magasin);
         upsertedStock.setProductFournisseur(productFournisseur);
-        upsertedStock.setQuantiteDisponible(100);
-        upsertedStock.setPrixAchatMoyen(new BigDecimal("10.00"));
+        upsertedStock.setQuantiteDisponible(
+                new BigDecimal("100")
+        );
+        upsertedStock.setPrixAchatMoyen(
+                new BigDecimal("10.00")
+        );
 
         stubResolveMagasinAndFournisseur();
         stubFindOrCreateProductFournisseur();
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(savedLot);
-        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upsertedStock);
 
-        List<EntreeStockResponse> responses = service.create(request);
+        when(stockService.findByMagasinAndProductFournisseur(
+                magasinId,
+                productFournisseurId
+        )).thenReturn(Optional.empty());
+
+        when(entreeStockDomainService.create(
+                any(EntreeStockCreate.class)
+        )).thenReturn(savedLot);
+
+        when(stockService.createOrUpdateEntry(
+                any(StockEntryContext.class)
+        )).thenReturn(upsertedStock);
+
+        List<EntreeStockResponse> responses =
+                service.create(request);
 
         assertThat(responses).hasSize(1);
-        EntreeStockResponse response = responses.get(0);
-        assertThat(response.id()).isEqualTo(savedLot.getId());
-        assertThat(response.quantiteInitiale()).isEqualTo(100);
-        assertThat(response.prixAchat()).isEqualByComparingTo(new BigDecimal("10.00"));
-        assertThat(response.numeroLot()).isEqualTo("LOT-001");
+
+        EntreeStockResponse response =
+                responses.getFirst();
+
+        assertThat(response.id())
+                .isEqualTo(savedLot.getId());
+
+        assertThat(response.quantiteInitiale())
+                .isEqualByComparingTo(new BigDecimal("100"));
+
+        assertThat(response.prixAchat())
+                .isEqualByComparingTo(new BigDecimal("10.00"));
+
+        assertThat(response.numeroLot())
+                .isEqualTo("LOT-001");
 
         verify(mouvementStockService).journalize(
                 eq(upsertedStock),
-                eq(new MouvementJournalize(MouvementStockType.ENTREE_INITIAL, 100, 0, 100, "LOT-001", null))
+                eq(
+                        new MouvementJournalize(
+                                MouvementStockType.ENTREE_INITIAL,
+                                new BigDecimal("100"),
+                                BigDecimal.ZERO,
+                                new BigDecimal("100"),
+                                "LOT-001",
+                                null
+                        )
+                )
         );
-        verify(productFournisseurService).applyPrixVenteFromPurchase(productFournisseur, new BigDecimal("15.00"));
+
+        verify(productFournisseurService)
+                .applyPrixFromPurchase(
+                        productFournisseur,
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00")
+                );
     }
 
     @Test
     void create_should_materialize_multiple_lines_in_one_call() {
         EntreeStockRequest request = sampleRequest(
-                sampleLigne(50, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-A"),
-                sampleLigne(30, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-B")
+                sampleLigne(
+                        new BigDecimal("50"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "LOT-A"
+                ),
+                sampleLigne(
+                        new BigDecimal("30"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "LOT-B"
+                )
         );
 
         stubResolveMagasinAndFournisseur();
         stubFindOrCreateProductFournisseur();
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class)))
-                .thenReturn(sampleSaved(50, new BigDecimal("10.00"), "LOT-A"))
-                .thenReturn(sampleSaved(30, new BigDecimal("10.00"), "LOT-B"));
+
+        when(stockService.findByMagasinAndProductFournisseur(
+                magasinId,
+                productFournisseurId
+        )).thenReturn(Optional.empty());
+
+        when(entreeStockDomainService.create(
+                any(EntreeStockCreate.class)
+        ))
+                .thenReturn(
+                        sampleSaved(
+                                new BigDecimal("50"),
+                                new BigDecimal("10.00"),
+                                "LOT-A"
+                        )
+                )
+                .thenReturn(
+                        sampleSaved(
+                                new BigDecimal("30"),
+                                new BigDecimal("10.00"),
+                                "LOT-B"
+                        )
+                );
+
         Stock upserted = new Stock();
         upserted.setId(UUID.randomUUID());
         upserted.setMagasin(magasin);
         upserted.setProductFournisseur(productFournisseur);
-        upserted.setQuantiteDisponible(50);
-        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upserted);
+        upserted.setQuantiteDisponible(
+                new BigDecimal("50")
+        );
 
-        List<EntreeStockResponse> responses = service.create(request);
+        when(stockService.createOrUpdateEntry(
+                any(StockEntryContext.class)
+        )).thenReturn(upserted);
+
+        List<EntreeStockResponse> responses =
+                service.create(request);
 
         assertThat(responses).hasSize(2);
-        verify(entreeStockDomainService, times(2)).create(any(EntreeStockCreate.class));
-        verify(stockService, times(2)).createOrUpdateEntry(any(StockEntryContext.class));
-        verify(mouvementStockService, times(2)).journalize(any(), any());
-        verify(productFournisseurService, times(2)).applyPrixVenteFromPurchase(any(), any());
+
+        verify(entreeStockDomainService, times(2))
+                .create(any(EntreeStockCreate.class));
+
+        verify(stockService, times(2))
+                .createOrUpdateEntry(any(StockEntryContext.class));
+
+        verify(mouvementStockService, times(2))
+                .journalize(any(), any());
+
+        verify(productFournisseurService, times(2))
+                .applyPrixFromPurchase(any(), any(), any());
     }
 
     @Test
     void create_should_publish_single_global_audit_event_for_the_batch() {
         EntreeStockRequest request = sampleRequest(
-                sampleLigne(10, new BigDecimal("10.00"), new BigDecimal("15.00"), "L1"),
-                sampleLigne(20, new BigDecimal("10.00"), new BigDecimal("15.00"), "L2"),
-                sampleLigne(30, new BigDecimal("10.00"), new BigDecimal("15.00"), "L3")
+                sampleLigne(
+                        new BigDecimal("10"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "L1"
+                ),
+                sampleLigne(
+                        new BigDecimal("20"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "L2"
+                ),
+                sampleLigne(
+                        new BigDecimal("30"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "L3"
+                )
         );
 
         stubResolveMagasinAndFournisseur();
         stubFindOrCreateProductFournisseur();
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.empty());
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(sampleSaved(10, new BigDecimal("10.00"), "L1"));
+
+        when(stockService.findByMagasinAndProductFournisseur(
+                magasinId,
+                productFournisseurId
+        )).thenReturn(Optional.empty());
+
+        when(entreeStockDomainService.create(
+                any(EntreeStockCreate.class)
+        )).thenReturn(
+                sampleSaved(
+                        new BigDecimal("10"),
+                        new BigDecimal("10.00"),
+                        "L1"
+                )
+        );
+
         Stock upserted = new Stock();
         upserted.setId(UUID.randomUUID());
-        upserted.setQuantiteDisponible(10);
-        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upserted);
+        upserted.setQuantiteDisponible(
+                new BigDecimal("10")
+        );
+
+        when(stockService.createOrUpdateEntry(
+                any(StockEntryContext.class)
+        )).thenReturn(upserted);
 
         service.create(request);
 
-        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
-        verify(auditEventPublisher, times(1)).publish(captor.capture());
+        ArgumentCaptor<AuditEvent> captor =
+                ArgumentCaptor.forClass(AuditEvent.class);
+
+        verify(auditEventPublisher, times(1))
+                .publish(captor.capture());
+
         AuditEvent event = captor.getValue();
-        assertThat(event.action()).isEqualTo(AuditAction.STOCK_INITIAL_ENTRY);
-        assertThat(event.entityType()).isEqualTo(AuditEntityType.STOCK);
-        assertThat(event.entityId()).isNull();
-        assertThat(event.entityLabel()).isEqualTo("ENTREE INITIAL");
-        assertThat(event.magasinId()).isEqualTo(magasinId);
-        assertThat(event.entrepriseId()).isEqualTo(entrepriseId);
-        assertThat(event.performedBy()).isEqualTo(accountId.toString());
+
+        assertThat(event.action())
+                .isEqualTo(AuditAction.STOCK_INITIAL_ENTRY);
+
+        assertThat(event.entityType())
+                .isEqualTo(AuditEntityType.STOCK);
+
+        assertThat(event.entityId())
+                .isNull();
+
+        assertThat(event.entityLabel())
+                .isEqualTo("ENTREE INITIAL");
+
+        assertThat(event.magasinId())
+                .isEqualTo(magasinId);
+
+        assertThat(event.entrepriseId())
+                .isEqualTo(entrepriseId);
+
+        assertThat(event.performedBy())
+                .isEqualTo(accountId.toString());
     }
 
     @Test
     void create_should_use_existing_stockAvant_when_stock_already_exists() {
-        EntreeStockRequest request = sampleRequest(sampleLigne(50, new BigDecimal("20.00"), new BigDecimal("30.00"), "LOT-X"));
+        EntreeStockRequest request = sampleRequest(
+                sampleLigne(
+                        new BigDecimal("50"),
+                        new BigDecimal("20.00"),
+                        new BigDecimal("30.00"),
+                        "LOT-X"
+                )
+        );
+
         Stock existingStock = new Stock();
         existingStock.setId(UUID.randomUUID());
         existingStock.setMagasin(magasin);
         existingStock.setProductFournisseur(productFournisseur);
-        existingStock.setQuantiteDisponible(100);
-        existingStock.setPrixAchatMoyen(new BigDecimal("10.00"));
+        existingStock.setQuantiteDisponible(
+                new BigDecimal("100")
+        );
+        existingStock.setPrixAchatMoyen(
+                new BigDecimal("10.00")
+        );
+
         Stock upsertedStock = new Stock();
         upsertedStock.setId(existingStock.getId());
-        upsertedStock.setQuantiteDisponible(150);
-        upsertedStock.setPrixAchatMoyen(new BigDecimal("13.33"));
+        upsertedStock.setQuantiteDisponible(
+                new BigDecimal("150")
+        );
+        upsertedStock.setPrixAchatMoyen(
+                new BigDecimal("13.33")
+        );
 
         stubResolveMagasinAndFournisseur();
         stubFindOrCreateProductFournisseur();
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)).thenReturn(Optional.of(existingStock));
-        when(entreeStockDomainService.create(any(EntreeStockCreate.class))).thenReturn(sampleSaved(50, new BigDecimal("20.00"), "LOT-X"));
-        when(stockService.createOrUpdateEntry(any(StockEntryContext.class))).thenReturn(upsertedStock);
+
+        when(stockService.findByMagasinAndProductFournisseur(
+                magasinId,
+                productFournisseurId
+        )).thenReturn(Optional.of(existingStock));
+
+        when(entreeStockDomainService.create(
+                any(EntreeStockCreate.class)
+        )).thenReturn(
+                sampleSaved(
+                        new BigDecimal("50"),
+                        new BigDecimal("20.00"),
+                        "LOT-X"
+                )
+        );
+
+        when(stockService.createOrUpdateEntry(
+                any(StockEntryContext.class)
+        )).thenReturn(upsertedStock);
 
         service.create(request);
 
-        ArgumentCaptor<MouvementJournalize> captor = ArgumentCaptor.forClass(MouvementJournalize.class);
-        verify(mouvementStockService).journalize(eq(upsertedStock), captor.capture());
-        MouvementJournalize captured = captor.getValue();
-        assertThat(captured.type()).isEqualTo(MouvementStockType.ENTREE_INITIAL);
-        assertThat(captured.quantite()).isEqualTo(50);
-        assertThat(captured.stockAvant()).isEqualTo(100);
-        assertThat(captured.stockApres()).isEqualTo(150);
+        ArgumentCaptor<MouvementJournalize> captor =
+                ArgumentCaptor.forClass(MouvementJournalize.class);
+
+        verify(mouvementStockService)
+                .journalize(eq(upsertedStock), captor.capture());
+
+        MouvementJournalize captured =
+                captor.getValue();
+
+        assertThat(captured.type())
+                .isEqualTo(MouvementStockType.ENTREE_INITIAL);
+
+        assertThat(captured.quantite())
+                .isEqualByComparingTo(new BigDecimal("50"));
+
+        assertThat(captured.stockAvant())
+                .isEqualByComparingTo(new BigDecimal("100"));
+
+        assertThat(captured.stockApres())
+                .isEqualByComparingTo(new BigDecimal("150"));
     }
 
     @Test
     void create_should_propagate_when_prixVente_not_greater_than_prixAchat() {
-        EntreeStockRequest request = sampleRequest(sampleLigne(10, new BigDecimal("15.00"), new BigDecimal("15.00"), "LOT-X"));
+        EntreeStockRequest request = sampleRequest(
+                sampleLigne(
+                        new BigDecimal("10"),
+                        new BigDecimal("15.00"),
+                        new BigDecimal("15.00"),
+                        "LOT-X"
+                )
+        );
 
         stubResolveMagasinAndFournisseur();
-        doThrow(new BadArgumentException("productFournisseur.prixVente.belowOrEqualAchat"))
-                .when(productFournisseurService).ensurePrixVenteGreaterThanPrixAchat(new BigDecimal("15.00"), new BigDecimal("15.00"));
 
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(BadArgumentException.class);
+        doThrow(
+                new BadArgumentException(
+                        "productFournisseur.prixVente.belowOrEqualAchat"
+                )
+        )
+                .when(productFournisseurService)
+                .ensurePrixVenteGreaterThanPrixAchat(
+                        new BigDecimal("15.00"),
+                        new BigDecimal("15.00")
+                );
 
-        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
-        verify(mouvementStockService, never()).journalize(any(), any());
-        verify(auditEventPublisher, never()).publish(any());
+        assertThatThrownBy(() ->
+                service.create(request)
+        ).isInstanceOf(BadArgumentException.class);
+
+        verify(entreeStockDomainService, never())
+                .create(any(EntreeStockCreate.class));
+
+        verify(mouvementStockService, never())
+                .journalize(any(), any());
+
+        verify(auditEventPublisher, never())
+                .publish(any());
     }
 
     @Test
     void create_should_propagate_forbidden_when_magasin_not_accessible() {
-        EntreeStockRequest request = sampleRequest(sampleLigne(10, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-X"));
+        EntreeStockRequest request = sampleRequest(
+                sampleLigne(
+                        new BigDecimal("10"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "LOT-X"
+                )
+        );
 
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenThrow(new ForbiddenException("magasin.notOwned"));
+        when(magasinService.findById(magasinId))
+                .thenReturn(magasin);
 
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(ForbiddenException.class);
+        when(magasinService.ensureAccessibleByCurrentUser(
+                magasin
+        )).thenThrow(
+                new ForbiddenException("magasin.notOwned")
+        );
 
-        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
-        verify(auditEventPublisher, never()).publish(any());
+        assertThatThrownBy(() ->
+                service.create(request)
+        ).isInstanceOf(ForbiddenException.class);
+
+        verify(entreeStockDomainService, never())
+                .create(any(EntreeStockCreate.class));
+
+        verify(auditEventPublisher, never())
+                .publish(any());
     }
 
     @Test
     void findAvailableLotsForFifo_should_delegate_to_domain_service() {
         UUID pfId = UUID.randomUUID();
+
         EntreeStock lot = new EntreeStock();
         lot.setId(UUID.randomUUID());
-        when(entreeStockDomainService.findAvailableLotsForFifoByProductFournisseur(magasinId, pfId))
-                .thenReturn(List.of(lot));
 
-        List<EntreeStock> result = service.findAvailableLotsForFifo(magasinId, pfId);
+        when(
+                entreeStockDomainService
+                        .findAvailableLotsForFifoByProductFournisseur(
+                                magasinId,
+                                pfId
+                        )
+        ).thenReturn(List.of(lot));
 
-        assertThat(result).containsExactly(lot);
-        verify(entreeStockDomainService).findAvailableLotsForFifoByProductFournisseur(magasinId, pfId);
+        List<EntreeStock> result =
+                service.findAvailableLotsForFifo(
+                        magasinId,
+                        pfId
+                );
+
+        assertThat(result)
+                .containsExactly(lot);
+
+        verify(entreeStockDomainService)
+                .findAvailableLotsForFifoByProductFournisseur(
+                        magasinId,
+                        pfId
+                );
     }
 
     @Test
     void saveLot_should_delegate_to_domain_service() {
         EntreeStock lot = new EntreeStock();
         lot.setId(UUID.randomUUID());
-        lot.setQuantiteRestante(5);
+        lot.setQuantiteRestante(
+                new BigDecimal("5")
+        );
 
         service.saveLot(lot);
 
-        verify(entreeStockDomainService).save(lot);
+        verify(entreeStockDomainService)
+                .save(lot);
     }
 
     @Test
     void createEntreeStock_should_delegate_to_domain_service() {
-        EntreeStockCreate cmd = new EntreeStockCreate(magasin, produit, productFournisseur,
-                10, new BigDecimal("10.00"), "LOT-Z", LocalDate.now().plusYears(1), null);
-        EntreeStock saved = sampleSaved(10, new BigDecimal("10.00"), "LOT-Z");
-        when(entreeStockDomainService.create(cmd)).thenReturn(saved);
+        BigDecimal val10 = new BigDecimal("10");
 
-        EntreeStock result = service.createEntreeStock(cmd);
+        EntreeStockCreate cmd =
+                new EntreeStockCreate(
+                        magasin,
+                        produit,
+                        productFournisseur,
+                        val10,
+                        new BigDecimal("10.00"),
+                        "LOT-Z",
+                        LocalDate.now().plusYears(1),
+                        null
+                );
 
-        assertThat(result).isEqualTo(saved);
-        verify(entreeStockDomainService).create(cmd);
+        EntreeStock saved =
+                sampleSaved(
+                        val10,
+                        new BigDecimal("10.00"),
+                        "LOT-Z"
+                );
+
+        when(entreeStockDomainService.create(cmd))
+                .thenReturn(saved);
+
+        EntreeStock result =
+                service.createEntreeStock(cmd);
+
+        assertThat(result)
+                .isEqualTo(saved);
+
+        verify(entreeStockDomainService)
+                .create(cmd);
     }
 
     @Test
     void findByCommandeAchatId_should_delegate_to_domain_service() {
         UUID commandeId = UUID.randomUUID();
-        EntreeStock lot = sampleSaved(50, new BigDecimal("10.00"), "LOT-A");
-        when(entreeStockDomainService.findByCommandeAchatId(commandeId)).thenReturn(List.of(lot));
 
-        List<EntreeStock> result = service.findByCommandeAchatId(commandeId);
+        EntreeStock lot =
+                sampleSaved(
+                        new BigDecimal("50"),
+                        new BigDecimal("10.00"),
+                        "LOT-A"
+                );
 
-        assertThat(result).containsExactly(lot);
-        verify(entreeStockDomainService).findByCommandeAchatId(commandeId);
+        when(entreeStockDomainService
+                .findByCommandeAchatId(commandeId))
+                .thenReturn(List.of(lot));
+
+        List<EntreeStock> result =
+                service.findByCommandeAchatId(commandeId);
+
+        assertThat(result)
+                .containsExactly(lot);
+
+        verify(entreeStockDomainService)
+                .findByCommandeAchatId(commandeId);
     }
 
     @Test
     void markAsAnnulee_should_delegate_to_domain_service() {
-        EntreeStock lot = sampleSaved(100, new BigDecimal("10.00"), "LOT-B");
+        EntreeStock lot =
+                sampleSaved(
+                        new BigDecimal("100"),
+                        new BigDecimal("10.00"),
+                        "LOT-B"
+                );
 
         service.markAsAnnulee(lot);
 
-        verify(entreeStockDomainService).markAsAnnulee(lot);
+        verify(entreeStockDomainService)
+                .markAsAnnulee(lot);
     }
 
     @Test
     void create_should_propagate_forbidden_when_fournisseur_not_in_entreprise() {
-        EntreeStockRequest request = sampleRequest(sampleLigne(10, new BigDecimal("10.00"), new BigDecimal("15.00"), "LOT-X"));
+        EntreeStockRequest request = sampleRequest(
+                sampleLigne(
+                        new BigDecimal("10"),
+                        new BigDecimal("10.00"),
+                        new BigDecimal("15.00"),
+                        "LOT-X"
+                )
+        );
 
-        when(magasinService.findById(magasinId)).thenReturn(magasin);
-        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
-        when(fournisseurService.findById(fournisseurId)).thenReturn(fournisseur);
-        when(fournisseurService.ensureBelongsToCurrentEntreprise(fournisseur))
-                .thenThrow(new ForbiddenException("fournisseur.notOwned"));
+        when(magasinService.findById(magasinId))
+                .thenReturn(magasin);
 
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(ForbiddenException.class);
+        when(magasinService.ensureAccessibleByCurrentUser(
+                magasin
+        )).thenReturn(magasin);
 
-        verify(entreeStockDomainService, never()).create(any(EntreeStockCreate.class));
-        verify(auditEventPublisher, never()).publish(any());
+        when(fournisseurService.findById(fournisseurId))
+                .thenReturn(fournisseur);
+
+        when(fournisseurService.ensureBelongsToCurrentEntreprise(
+                fournisseur
+        )).thenThrow(
+                new ForbiddenException("fournisseur.notOwned")
+        );
+
+        assertThatThrownBy(() ->
+                service.create(request)
+        ).isInstanceOf(ForbiddenException.class);
+
+        verify(entreeStockDomainService, never())
+                .create(any(EntreeStockCreate.class));
+
+        verify(auditEventPublisher, never())
+                .publish(any());
     }
 }

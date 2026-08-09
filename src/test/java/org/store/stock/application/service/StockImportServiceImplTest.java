@@ -20,9 +20,11 @@ import org.store.produit.application.dto.QualityResponse;
 import org.store.produit.application.service.ICategoryProductService;
 import org.store.produit.application.service.IProductService;
 import org.store.produit.application.service.IQualityService;
+import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.Quality;
+import org.store.produit.domain.model.UniteMesure;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.StockImportResult;
 import org.store.stock.application.service.impl.StockImportServiceImpl;
@@ -46,6 +48,7 @@ class StockImportServiceImplTest {
     @Mock private ICategoryProductService categoryProductService;
     @Mock private IProductService productService;
     @Mock private IQualityService qualityService;
+    @Mock private IUniteMesureService uniteMesureService;
     @Mock private IMessageSourceService messageSourceService;
 
     @InjectMocks
@@ -55,6 +58,7 @@ class StockImportServiceImplTest {
     private UUID fournisseurId;
     private UUID productId;
     private UUID qualityId;
+    private UUID pieceUnitId;
     private MockMultipartFile dummyFile;
 
     @BeforeEach
@@ -63,7 +67,15 @@ class StockImportServiceImplTest {
         fournisseurId = UUID.randomUUID();
         productId     = UUID.randomUUID();
         qualityId     = UUID.randomUUID();
+        pieceUnitId   = UUID.randomUUID();
         dummyFile     = new MockMultipartFile("file", "stock.xlsx", "application/vnd.ms-excel", new byte[0]);
+
+        UniteMesure pieceUnit = new UniteMesure();
+        pieceUnit.setId(pieceUnitId);
+        pieceUnit.setCode("PIECE");
+        pieceUnit.setLibelle("Pièce");
+        pieceUnit.setSymbole("pce");
+        org.mockito.Mockito.lenient().when(uniteMesureService.findByCode("PIECE")).thenReturn(pieceUnit);
     }
 
     private ExcelEntreeStockRow validRow(int lineNumber) {
@@ -115,7 +127,7 @@ class StockImportServiceImplTest {
         CategoryProduct stubCategory = new CategoryProduct();
         stubCategory.setId(categoryId);
 
-        ProductResponse createdProduct = new ProductResponse(newProductId, "Produit A", "REF-01", null, null, null, null);
+        ProductResponse createdProduct = new ProductResponse(newProductId, "Produit A", "REF-01", null, null, null, null, null);
 
         when(excelParser.parseRows(any())).thenReturn(new ExcelStockParseResult(List.of(validRow(2)), List.of()));
         when(productService.findByReferenceAndNom(any(), any())).thenReturn(Optional.empty());

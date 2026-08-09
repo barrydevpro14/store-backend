@@ -13,12 +13,12 @@ public record ProductVariantSearchResponse(
         BigDecimal prixAchat,
         BigDecimal prixVente
 ) {
-    /** Constructeur appelé par JPQL depuis Stock.quantiteDisponible (int). */
+    /** Constructeur appelé par JPQL depuis Stock.quantiteDisponible (BigDecimal). */
     public ProductVariantSearchResponse(UUID value, UUID productId, UUID qualityId, UUID fournisseurId,
                                         String labelBase, BigDecimal prixAchat, BigDecimal prixVente,
-                                        Integer quantiteEnStock) {
+                                        BigDecimal quantiteEnStock) {
         this(value, productId, qualityId, fournisseurId,
-                labelBase + " (" + quantiteEnStock + ")",
+                labelBase + " (" + quantiteEnStock.toPlainString() + ")",
                 prixAchat, prixVente);
     }
 }

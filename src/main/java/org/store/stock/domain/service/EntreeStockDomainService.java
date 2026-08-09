@@ -9,6 +9,7 @@ import org.store.stock.application.dto.ExpiringLotsFilter;
 import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.repository.EntreeStockRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,8 +38,8 @@ public class EntreeStockDomainService extends GlobalService<EntreeStock, EntreeS
     }
 
 /** Recrédite la quantité restante d'un lot lors d'une annulation de vente (compense les SortieStock annulées). */
-    public EntreeStock creditQuantiteRestante(EntreeStock lot, int quantite) {
-        lot.setQuantiteRestante(lot.getQuantiteRestante() + quantite);
+    public EntreeStock creditQuantiteRestante(EntreeStock lot, BigDecimal quantite) {
+        lot.setQuantiteRestante(lot.getQuantiteRestante().add(quantite));
         return save(lot);
     }
 

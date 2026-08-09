@@ -28,9 +28,11 @@ public class EntreeStock extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Magasin magasin;
 
-    private int quantiteInitiale;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantiteInitiale;
 
-    private int quantiteRestante;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantiteRestante;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal prixAchat;

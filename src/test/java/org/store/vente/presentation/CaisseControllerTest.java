@@ -107,9 +107,9 @@ class CaisseControllerTest {
     @Test
     void topProduits_should_return_200_with_default_nombre_10() throws Exception {
         List<TopProduitResponse> top = List.of(
-                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", 250L, new BigDecimal("12500.00")),
-                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", 180L, new BigDecimal("9000.00")),
-                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", 95L, new BigDecimal("4750.00"))
+                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", new BigDecimal("250"), new BigDecimal("12500.00"), "PIECE"),
+                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", new BigDecimal("180"), new BigDecimal("9000.00"), "PIECE"),
+                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", new BigDecimal("95"), new BigDecimal("4750.00"),"PIECE")
         );
         when(caisseService.findTopProduits(any())).thenReturn(new PageImpl<>(top, PageRequest.of(0, 10), top.size()));
 

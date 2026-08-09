@@ -12,9 +12,9 @@ public record ProductFournisseurStockResponse(
         FournisseurSummaryResponse fournisseur,
         BigDecimal prixAchat,
         BigDecimal prixVente,
-        Integer quantiteEnStock
+        BigDecimal quantiteEnStock
 ) {
-    public ProductFournisseurStockResponse(ProductFournisseur productFournisseur, Integer quantiteEnStock) {
+    public ProductFournisseurStockResponse(ProductFournisseur productFournisseur, BigDecimal quantiteEnStock) {
         this(
                 productFournisseur.getId(),
                 new QualitySummaryResponse(productFournisseur.getQuality()),

@@ -81,7 +81,7 @@ class VenteControllerTest {
     private VenteRequest validDraftBody() {
         return new VenteRequest(
                 null,
-                List.of(new LigneVenteRequest(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 10, new BigDecimal("15.00")))
+                List.of(new LigneVenteRequest(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), new BigDecimal(10), new BigDecimal("15.00")))
         );
     }
 
@@ -182,15 +182,15 @@ class VenteControllerTest {
     void should_return_200_when_update_ligne() throws Exception {
         LigneCommandeVenteResponse updated = new LigneCommandeVenteResponse(
                 ligneId,
-                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", null),
+                new ProductSummaryResponse(UUID.randomUUID(), "Pneu", "PN-1", null , null),
                 null,
-                20, 20, org.store.vente.domain.enums.LivraisonStatut.LIVREE,
+                new BigDecimal(20), new BigDecimal(20), org.store.vente.domain.enums.LivraisonStatut.LIVREE,
                 new BigDecimal("18.00"), new BigDecimal("360.00"), null
         );
         when(venteService.updateLigne(eq(commandeId), eq(ligneId), any(LigneVenteUpdateRequest.class)))
                 .thenReturn(updated);
 
-        LigneVenteUpdateRequest body = new LigneVenteUpdateRequest(20, new BigDecimal("18.00"));
+        LigneVenteUpdateRequest body = new LigneVenteUpdateRequest(new BigDecimal(20), new BigDecimal("18.00"));
 
         mockMvc.perform(put(VenteController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -202,7 +202,7 @@ class VenteControllerTest {
 
     @Test
     void should_return_400_when_update_ligne_quantite_zero() throws Exception {
-        LigneVenteUpdateRequest body = new LigneVenteUpdateRequest(0, new BigDecimal("18.00"));
+        LigneVenteUpdateRequest body = new LigneVenteUpdateRequest(BigDecimal.ZERO, new BigDecimal("18.00"));
 
         mockMvc.perform(put(VenteController.BASE_PATH + "/orders/" + commandeId + "/lignes/" + ligneId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -226,7 +226,7 @@ class VenteControllerTest {
                 MotifAnnulationVente.ERREUR_SAISIE,
                 "Saisie incorrecte",
                 "2026-05-18 14:30:00",
-                8, 1
+                new BigDecimal(8), 1
         );
         when(venteService.cancel(eq(commandeId), any(AnnulationVenteRequest.class))).thenReturn(cancelResponse);
 

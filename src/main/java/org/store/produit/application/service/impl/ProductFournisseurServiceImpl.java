@@ -162,11 +162,11 @@ public class ProductFournisseurServiceImpl implements IProductFournisseurService
         return new ProductFournisseurResponse(productFournisseurDomainService.updatePrixVente(productFournisseur, prixVente));
     }
 
-    /** Met à jour le prix de vente sans revérifier l'appartenance entreprise (appelé depuis le flux d'achat déjà scopé). */
+    /** Met à jour prix d'achat et prix de vente sans revérifier l'appartenance entreprise (appelé depuis le flux d'achat déjà scopé). */
     @Override
     @Transactional
-    public ProductFournisseur applyPrixVenteFromPurchase(ProductFournisseur productFournisseur, BigDecimal newPrixVente) {
-        return productFournisseurDomainService.updatePrixVente(productFournisseur, newPrixVente);
+    public ProductFournisseur applyPrixFromPurchase(ProductFournisseur productFournisseur, BigDecimal prixAchat, BigDecimal prixVente) {
+        return productFournisseurDomainService.updatePrix(productFournisseur, prixAchat, prixVente);
     }
 
     /** Supprime le lien après contrôle d'appartenance à l'entreprise du caller. */

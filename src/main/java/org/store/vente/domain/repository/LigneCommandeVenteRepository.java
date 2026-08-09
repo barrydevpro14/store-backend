@@ -20,7 +20,8 @@ public interface LigneCommandeVenteRepository extends BaseRepository<LigneComman
             SELECT new org.store.vente.application.dto.TopProduitResponse(
                 produit.id, produit.nom, produit.reference,
                 SUM(ligne.quantite),
-                COALESCE(SUM(ligne.montantTotal), 0)
+                COALESCE(SUM(ligne.montantTotal), 0),
+                produit.uniteMesure.symbole
             )
             FROM LigneCommandeVente ligne
             JOIN ligne.product produit
@@ -30,7 +31,7 @@ public interface LigneCommandeVenteRepository extends BaseRepository<LigneComman
               AND commande.statut NOT IN (org.store.vente.domain.enums.CommandeVenteStatut.DRAFT, org.store.vente.domain.enums.CommandeVenteStatut.CANCEL)
               AND commande.createdAt >= :startOfDay
               AND commande.createdAt <= :endOfDay
-            GROUP BY produit.id, produit.nom, produit.reference
+            GROUP BY produit.id, produit.nom, produit.reference, produit.uniteMesure.symbole
             ORDER BY SUM(ligne.quantite) DESC
             """,
             countQuery = """

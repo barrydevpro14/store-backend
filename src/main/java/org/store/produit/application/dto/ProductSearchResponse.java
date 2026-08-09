@@ -2,6 +2,7 @@ package org.store.produit.application.dto;
 
 import org.store.produit.domain.model.Product;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,10 +13,10 @@ public record ProductSearchResponse(
         String description,
         CategoryProductSummaryResponse category,
         String image,
-        Integer quantiteEnStock,
+        BigDecimal quantiteEnStock,
         List<ProductFournisseurStockResponse> productFournisseurs
 ) {
-    public ProductSearchResponse(Product product, Integer quantiteEnStock, List<ProductFournisseurStockResponse> productFournisseurs) {
+    public ProductSearchResponse(Product product, BigDecimal quantiteEnStock, List<ProductFournisseurStockResponse> productFournisseurs) {
         this(
                 product.getId(),
                 product.getNom(),

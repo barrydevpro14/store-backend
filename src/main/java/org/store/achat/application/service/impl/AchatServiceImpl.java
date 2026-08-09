@@ -165,7 +165,7 @@ public class AchatServiceImpl implements IAchatService {
         List<LigneCommandeAchat> savedLignes = persistLignes(achatRequest, commande, productFournisseurs);
 
         BigDecimal montantTotal = achatRequest.lignes().stream()
-                .map(l -> l.prixAchat().multiply(BigDecimal.valueOf(l.quantite())))
+                .map(l -> l.prixAchat().multiply(l.quantite()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         commandeAchatDomainService.updateMontantTotal(commande, montantTotal);
 
@@ -205,7 +205,7 @@ public class AchatServiceImpl implements IAchatService {
                 ligneAchatRequest.numeroLot(), ligneAchatRequest.dateExpiration()
         ));
 
-        BigDecimal lineTotal = ligneAchatRequest.prixAchat().multiply(BigDecimal.valueOf(ligneAchatRequest.quantite()));
+        BigDecimal lineTotal = ligneAchatRequest.prixAchat().multiply(ligneAchatRequest.quantite());
         commandeAchatDomainService.updateMontantTotal(commande, commande.getMontantTotal().add(lineTotal));
 
         return new LigneCommandeAchatResponse(ligne);
@@ -226,7 +226,7 @@ public class AchatServiceImpl implements IAchatService {
         ensureCommandeIsDraft(commande);
 
         BigDecimal montantTotal = commande.getLignes().stream()
-                .map(ligne -> ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite())))
+                .map(ligne -> ligne.getPrixAchat().multiply(ligne.getQuantite()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         FactureAchatCreateRequest factureRequest = achatReceiveRequest.facture();
@@ -301,10 +301,10 @@ public class AchatServiceImpl implements IAchatService {
         Magasin magasin = commande.getMagasin();
         ProductFournisseur productFournisseur = ligne.getProductFournisseur();
         Product produit = productFournisseur.getProduct();
-        int quantite = ligne.getQuantite();
+        BigDecimal quantite = ligne.getQuantite();
 
-        int stockAvant = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
-                .map(Stock::getQuantiteDisponible).orElse(0);
+        BigDecimal stockAvant = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
+                .map(Stock::getQuantiteDisponible).orElse(BigDecimal.ZERO);
 
         entreeStockService.createEntreeStock(new EntreeStockCreate(
                 magasin, produit, productFournisseur,
@@ -322,7 +322,7 @@ public class AchatServiceImpl implements IAchatService {
                 null
         ));
 
-        productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.getPrixVente());
+        productFournisseurService.applyPrixFromPurchase(productFournisseur, ligne.getPrixAchat(), ligne.getPrixVente());
     }
 
     /** Édite une ligne d'une commande DRAFT (quantité, prix, traçabilité lot) après validations publiques. */
@@ -337,8 +337,8 @@ public class AchatServiceImpl implements IAchatService {
         LigneCommandeAchat ligne = ensureLigneBelongsToCommande(ligneCommandeAchatDomainService.findById(ligneId), commande);
         productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(ligneAchatUpdateRequest.prixVente(), ligneAchatUpdateRequest.prixAchat());
 
-        BigDecimal oldLineTotal = ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()));
-        BigDecimal newLineTotal = ligneAchatUpdateRequest.prixAchat().multiply(BigDecimal.valueOf(ligneAchatUpdateRequest.quantite()));
+        BigDecimal oldLineTotal = ligne.getPrixAchat().multiply(ligne.getQuantite());
+        BigDecimal newLineTotal = ligneAchatUpdateRequest.prixAchat().multiply(ligneAchatUpdateRequest.quantite());
 
         LigneCommandeAchat updated = ligneCommandeAchatDomainService.update(
                 ligne,
@@ -367,7 +367,7 @@ public class AchatServiceImpl implements IAchatService {
         LigneCommandeAchat ligne = ensureLigneBelongsToCommande(ligneCommandeAchatDomainService.findById(ligneId), commande);
         ensureNotLastLigne(commande);
 
-        BigDecimal lineTotal = ligne.getPrixAchat().multiply(BigDecimal.valueOf(ligne.getQuantite()));
+        BigDecimal lineTotal = ligne.getPrixAchat().multiply(ligne.getQuantite());
         commande.getLignes().remove(ligne);
         ligneCommandeAchatDomainService.delete(ligne);
         commandeAchatDomainService.updateMontantTotal(commande, commande.getMontantTotal().subtract(lineTotal));
@@ -545,7 +545,7 @@ public class AchatServiceImpl implements IAchatService {
      */
     public void ensureNoLotConsumed(List<EntreeStock> lots) {
         boolean atLeastOneConsumed = lots.stream()
-                .anyMatch(lot -> lot.getQuantiteRestante() < lot.getQuantiteInitiale());
+                .anyMatch(lot -> lot.getQuantiteRestante().compareTo(lot.getQuantiteInitiale()) < 0);
         if (atLeastOneConsumed) {
             throw new BadArgumentException("commandeAchat.cancel.lotAlreadyConsumed");
         }
@@ -588,11 +588,11 @@ public class AchatServiceImpl implements IAchatService {
 
     /** Décrémente le stock agrégé de la quantité du lot, marque le lot comme annulé et journalise un RETOUR_FOURNISSEUR. */
     public RetraitStockResult withdrawStockForLot(CommandeAchat commande, EntreeStock lot) {
-        int quantite = lot.getQuantiteRestante();
+        BigDecimal quantite = lot.getQuantiteRestante();
 
         Stock stock = stockService.findByMagasinAndProductFournisseur(lot.getMagasin().getId(), lot.getProductFournisseur().getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
-        int stockAvant = stock.getQuantiteDisponible();
+        BigDecimal stockAvant = stock.getQuantiteDisponible();
 
         Stock updated = stockService.decrement(stock, quantite);
         entreeStockService.markAsAnnulee(lot);

@@ -39,6 +39,12 @@ public class ProductFournisseurDomainService extends GlobalService<ProductFourni
         return save(productFournisseur);
     }
 
+    public ProductFournisseur updatePrix(ProductFournisseur productFournisseur, BigDecimal prixAchat, BigDecimal prixVente) {
+        productFournisseur.setPrixAchat(prixAchat);
+        productFournisseur.setPrixVente(prixVente);
+        return save(productFournisseur);
+    }
+
     public Page<ProductFournisseurResponse> findResponsesByEntrepriseId(UUID entrepriseId, Pageable pageable) {
         return repository.findResponsesByEntrepriseId(entrepriseId, pageable);
     }
