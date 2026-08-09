@@ -12,7 +12,7 @@ public record SortieStockResponse(
         UUID entreeStockId,
         String numeroLot,
         FournisseurSummaryResponse fournisseur,
-        int quantiteSortie,
+        BigDecimal quantiteSortie,
         BigDecimal prixAchat,
         BigDecimal prixVente,
         BigDecimal marge,

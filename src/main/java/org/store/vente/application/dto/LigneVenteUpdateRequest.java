@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  * Le {@code productFournisseur} est immuable (pour changer de variante, supprimer et recréer la ligne).
  */
 public record LigneVenteUpdateRequest(
-        @NotNull @Positive Integer quantite,
+        @NotNull @Positive BigDecimal quantite,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal prixUnitaire
 ) {
 }

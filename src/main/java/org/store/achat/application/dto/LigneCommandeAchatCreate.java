@@ -9,7 +9,7 @@ import java.time.LocalDate;
 public record LigneCommandeAchatCreate(
         CommandeAchat commande,
         ProductFournisseur productFournisseur,
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixAchat,
         BigDecimal prixVente,
         String numeroLot,

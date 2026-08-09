@@ -24,13 +24,13 @@ public class LigneInventaireDomainService extends GlobalService<LigneInventaire,
 
     /** Crée une ligne d'inventaire avec écart = quantiteReelle - quantiteTheorique. */
     public LigneInventaire create(Inventaire inventaire, ProductFournisseur productFournisseur,
-                                  int quantiteTheorique, int quantiteReelle, BigDecimal prixUnitaire) {
+                                  BigDecimal quantiteTheorique, BigDecimal quantiteReelle, BigDecimal prixUnitaire) {
         LigneInventaire ligne = new LigneInventaire();
         ligne.setInventaire(inventaire);
         ligne.setProductFournisseur(productFournisseur);
         ligne.setQuantiteTheorique(quantiteTheorique);
         ligne.setQuantiteReelle(quantiteReelle);
-        ligne.setEcart(quantiteReelle - quantiteTheorique);
+        ligne.setEcart(quantiteReelle.subtract(quantiteTheorique));
         ligne.setPrixUnitaire(prixUnitaire);
         return save(ligne);
     }
@@ -58,16 +58,16 @@ public class LigneInventaireDomainService extends GlobalService<LigneInventaire,
     }
 
     /** Modifie la quantite reelle saisie et recalcule l'ecart (quantite_theorique reste fige). */
-    public LigneInventaire updateQuantiteReelle(LigneInventaire ligne, int quantiteReelle) {
+    public LigneInventaire updateQuantiteReelle(LigneInventaire ligne, BigDecimal quantiteReelle) {
         ligne.setQuantiteReelle(quantiteReelle);
-        ligne.setEcart(quantiteReelle - ligne.getQuantiteTheorique());
+        ligne.setEcart(quantiteReelle.subtract(ligne.getQuantiteTheorique()));
         return save(ligne);
     }
 
     /** Reconcilie la quantite theorique avec le stock courant et recalcule l'ecart. */
-    public LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, int quantiteTheorique) {
+    public LigneInventaire updateQuantiteTheorique(LigneInventaire ligne, BigDecimal quantiteTheorique) {
         ligne.setQuantiteTheorique(quantiteTheorique);
-        ligne.setEcart(ligne.getQuantiteReelle() - quantiteTheorique);
+        ligne.setEcart(ligne.getQuantiteReelle().subtract(quantiteTheorique));
         return save(ligne);
     }
 }

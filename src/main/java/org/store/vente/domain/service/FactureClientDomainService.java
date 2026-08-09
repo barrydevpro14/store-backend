@@ -95,6 +95,7 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
             facture.setStatut(StatutFacture.PARTIELLEMENT_PAYEE);
         } else {
             facture.setStatut(StatutFacture.PAYEE);
+
         }
 
         return save(facture);

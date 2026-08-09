@@ -25,7 +25,7 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
     /** Crée et persiste une ligne de commande vente avec montantTotal = quantite * prixUnitaire. */
     public LigneCommandeVente create(LigneCommandeVenteCreate ligneCommandeVenteCreate) {
         ProductFournisseur productFournisseur = ligneCommandeVenteCreate.productFournisseur();
-        int quantite = ligneCommandeVenteCreate.quantite();
+        BigDecimal quantite = ligneCommandeVenteCreate.quantite();
         BigDecimal prixUnitaire = ligneCommandeVenteCreate.prixUnitaire();
 
         LigneCommandeVente ligne = new LigneCommandeVente();
@@ -36,7 +36,7 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         ligne.setQuantiteLivree(quantite);
         ligne.setLivraisonStatut(LivraisonStatut.LIVREE);
         ligne.setPrixUnitaire(prixUnitaire);
-        ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
+        ligne.setMontantTotal(prixUnitaire.multiply(quantite).setScale(2, java.math.RoundingMode.HALF_UP));
         ligne.setDateAjout(LocalDate.now());
         return save(ligne);
     }
@@ -53,26 +53,26 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
     }
 
     /** Met à jour quantité et prix unitaire d'une ligne en DRAFT (recalcule montantTotal, réinitialise la livraison au défaut LIVREE). */
-    public LigneCommandeVente update(LigneCommandeVente ligne, int quantite, BigDecimal prixUnitaire) {
+    public LigneCommandeVente update(LigneCommandeVente ligne, BigDecimal quantite, BigDecimal prixUnitaire) {
         ligne.setQuantite(quantite);
         ligne.setQuantiteLivree(quantite);
         ligne.setLivraisonStatut(LivraisonStatut.LIVREE);
         ligne.setPrixUnitaire(prixUnitaire);
-        ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
+        ligne.setMontantTotal(prixUnitaire.multiply(quantite).setScale(2, java.math.RoundingMode.HALF_UP));
         return save(ligne);
     }
 
     /** Recalcule `livraisonStatut` depuis `quantiteLivree` et met à jour la ligne. Appelé par le use-case livraison. */
-    public LigneCommandeVente applyLivraison(LigneCommandeVente ligne, int quantiteLivree) {
+    public LigneCommandeVente applyLivraison(LigneCommandeVente ligne, BigDecimal quantiteLivree) {
         ligne.setQuantiteLivree(quantiteLivree);
         ligne.setLivraisonStatut(computeStatut(quantiteLivree, ligne.getQuantite()));
         return save(ligne);
     }
 
     /** Règle métier unique : `LIVREE` si tout, `NON_LIVREE` si zéro, `PARTIELLEMENT_LIVREE` sinon. */
-    private LivraisonStatut computeStatut(int quantiteLivree, int quantite) {
-        if (quantiteLivree == 0) return LivraisonStatut.NON_LIVREE;
-        if (quantiteLivree == quantite) return LivraisonStatut.LIVREE;
+    private LivraisonStatut computeStatut(BigDecimal quantiteLivree, BigDecimal quantite) {
+        if (quantiteLivree.compareTo(BigDecimal.ZERO) == 0) return LivraisonStatut.NON_LIVREE;
+        if (quantiteLivree.compareTo(quantite) == 0) return LivraisonStatut.LIVREE;
         return LivraisonStatut.PARTIELLEMENT_LIVREE;
     }
 }

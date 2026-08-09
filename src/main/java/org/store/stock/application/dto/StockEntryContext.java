@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 public record StockEntryContext(
         Magasin magasin,
         ProductFournisseur productFournisseur,
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixAchat
 ) {
 }

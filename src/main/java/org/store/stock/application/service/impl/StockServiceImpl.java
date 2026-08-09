@@ -19,6 +19,7 @@ import org.store.stock.application.service.IStockService;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.StockDomainService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -129,7 +130,7 @@ public class StockServiceImpl implements IStockService {
 
     @Override
     @Transactional
-    public Stock decrement(Stock stock, int quantite) {
+    public Stock decrement(Stock stock, BigDecimal quantite) {
         return stockDomainService.decrement(stock, quantite);
     }
 

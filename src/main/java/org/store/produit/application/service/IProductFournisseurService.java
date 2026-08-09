@@ -68,9 +68,10 @@ public interface IProductFournisseurService {
     void ensureTripletAvailable(UUID productId, UUID fournisseurId, UUID qualityId);
 
     /**
-     * Met à jour le prix de vente courant du PF avec celui de l'entité fournie (réutilisé par AchatServiceImpl après chaque ligne d'achat).
+     * Met à jour le prix d'achat et le prix de vente du PF avec ceux de la ligne reçue
+     * (réutilisé par AchatServiceImpl et EntreeStockServiceImpl après chaque ligne).
      */
-    ProductFournisseur applyPrixVenteFromPurchase(ProductFournisseur productFournisseur, BigDecimal newPrixVente);
+    ProductFournisseur applyPrixFromPurchase(ProductFournisseur productFournisseur, BigDecimal prixAchat, BigDecimal prixVente);
 
     /**
      * Retourne le lien existant (productId, fournisseurId, qualityId). Lève EntityException s'il n'existe pas.

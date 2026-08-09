@@ -1,6 +1,7 @@
 package org.store.vente.presentation;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,7 +57,8 @@ public class CommandeVenteController {
 
     @PostMapping("/{id}/cloturer")
     @PreAuthorize("hasAuthority('SALE_UPDATE')")
-    public ResponseEntity<CommandeVenteResponse> cloturer(@PathVariable UUID id) {
-        return ResponseEntity.ok(commandeVenteService.cloturerCommande(id));
+    public ResponseEntity<?> cloturer(@PathVariable UUID id) {
+        commandeVenteService.cloturerCommande(id);
+        return ResponseEntity.status(HttpStatus.CREATED).body("ok");
     }
 }

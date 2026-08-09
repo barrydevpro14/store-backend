@@ -7,7 +7,8 @@ public record TopProduitResponse(
         UUID productId,
         String nom,
         String reference,
-        long quantiteVendue,
-        BigDecimal chiffreAffaires
+        BigDecimal quantiteVendue,
+        BigDecimal chiffreAffaires,
+        String uniteMesure
 ) {
 }

@@ -54,6 +54,7 @@ class ProductControllerTest {
     private UUID productId;
     private UUID categoryId;
     private UUID entrepriseId;
+    private UUID uniteMesureId;
 
     @BeforeEach
     void setUp() {
@@ -73,16 +74,17 @@ class ProductControllerTest {
         productId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
         entrepriseId = UUID.randomUUID();
+        uniteMesureId = UUID.randomUUID();
     }
 
     private ProductResponse sample() {
         return new ProductResponse(productId, "Pneu 195/65 R15", "PN-195-65-R15", "Pneu été",
                 new CategoryProductSummaryResponse(categoryId, "Pneus"),
-                entrepriseId, null);
+                null, entrepriseId, null);
     }
 
     private ProductRequest validBody() {
-        return new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Pneu été", categoryId);
+        return new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Pneu été", categoryId, uniteMesureId);
     }
 
     @Test
@@ -102,7 +104,7 @@ class ProductControllerTest {
 
     @Test
     void should_return_400_when_nom_blank() throws Exception {
-        ProductRequest body = new ProductRequest("", "PN-OK", null, categoryId);
+        ProductRequest body = new ProductRequest("", "PN-OK", null, categoryId, uniteMesureId);
 
         mockMvc.perform(post(ProductController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -112,7 +114,7 @@ class ProductControllerTest {
 
     @Test
     void should_return_400_when_category_id_null() throws Exception {
-        ProductRequest body = new ProductRequest("nom", "PN-OK", null, null);
+        ProductRequest body = new ProductRequest("nom", "PN-OK", null, null, uniteMesureId);
 
         mockMvc.perform(post(ProductController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -146,7 +148,7 @@ class ProductControllerTest {
     void should_return_200_when_search_all() throws Exception {
         UUID magasinId = UUID.randomUUID();
         ProductSelectorResponse searchResponse = new ProductSelectorResponse(productId, "Clou 10mm", "CL-10",
-                new CategoryProductSummaryResponse(categoryId, "Visserie"));
+                new CategoryProductSummaryResponse(categoryId, "Visserie") , "PIECE");
         Page<ProductSelectorResponse> page = new PageImpl<>(List.of(searchResponse), PageRequest.of(0, 10), 1);
         when(productSearchService.searchAll(eq("clou"), eq(magasinId), any(Pageable.class))).thenReturn(page);
 
@@ -185,7 +187,7 @@ class ProductControllerTest {
     void should_return_200_when_updated() throws Exception {
         ProductResponse updated = new ProductResponse(productId, "Nouveau", "PN-NEW", "desc",
                 new CategoryProductSummaryResponse(categoryId, "Pneus"),
-                entrepriseId, null);
+                null, entrepriseId, null);
         when(productService.update(eq(productId), any(ProductRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put(ProductController.BASE_PATH + "/" + productId)
@@ -208,7 +210,7 @@ class ProductControllerTest {
     void should_return_200_when_image_uploaded() throws Exception {
         ProductResponse withImage = new ProductResponse(productId, "Pneu", "PN-1", "desc",
                 new CategoryProductSummaryResponse(categoryId, "Pneus"),
-                entrepriseId,
+                null, entrepriseId,
                 "/api/v1/products/" + productId + "/image");
         when(productService.uploadImagePrincipal(eq(productId), any())).thenReturn(withImage);
 

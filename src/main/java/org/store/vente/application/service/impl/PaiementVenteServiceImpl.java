@@ -13,6 +13,7 @@ import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.PaiementVenteCreate;
 import org.store.vente.application.dto.PaiementVenteRequest;
 import org.store.vente.application.dto.PaiementVenteResponse;
+import org.store.vente.application.service.ICommandeVenteService;
 import org.store.vente.application.service.IPaiementVenteService;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.PaiementVente;
@@ -39,17 +40,19 @@ public class PaiementVenteServiceImpl implements IPaiementVenteService {
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final IMoyenPaiementService moyenPaiementService;
+    private final ICommandeVenteService commandeVenteService;
 
     public PaiementVenteServiceImpl(PaiementVenteDomainService paiementVenteDomainService,
                                     FactureClientDomainService factureClientDomainService,
                                     ICurrentUserService currentUserService,
                                     ValidatorService validatorService,
-                                    IMoyenPaiementService moyenPaiementService) {
+                                    IMoyenPaiementService moyenPaiementService, ICommandeVenteService commandeVenteService) {
         this.paiementVenteDomainService = paiementVenteDomainService;
         this.factureClientDomainService = factureClientDomainService;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.moyenPaiementService = moyenPaiementService;
+        this.commandeVenteService = commandeVenteService;
     }
 
     /** Retourne les paiements de la facture filtres par l'entreprise du caller (page vide si la facture n'appartient pas a l'entreprise). */
@@ -84,7 +87,10 @@ public class PaiementVenteServiceImpl implements IPaiementVenteService {
                 facture, paiementVenteRequest.montant(),
                 moyenPaiementService.findById(paiementVenteRequest.moyenPaiementId()), datePaiement
         ));
-        factureClientDomainService.applyPaiement(facture, paiementVenteRequest.montant());
+        FactureClient factureClient = factureClientDomainService.applyPaiement(facture, paiementVenteRequest.montant());
+        if(factureClient.getMontantTotal().compareTo(factureClient.getMontantPaye()) == 0){
+            commandeVenteService.cloturerCommande(factureClient.getCommande());
+        }
 
         return new PaiementVenteResponse(paiement);
     }

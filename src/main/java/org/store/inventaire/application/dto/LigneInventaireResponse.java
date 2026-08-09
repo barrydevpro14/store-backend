@@ -16,9 +16,9 @@ public record LigneInventaireResponse(
         ProductSummaryResponse product,
         FournisseurSummaryResponse fournisseur,
         QualitySummaryResponse quality,
-        int quantiteTheorique,
-        int quantiteReelle,
-        int ecart,
+        BigDecimal quantiteTheorique,
+        BigDecimal quantiteReelle,
+        BigDecimal ecart,
         BigDecimal prixUnitaire
 ) {
     public LigneInventaireResponse(LigneInventaire ligne) {

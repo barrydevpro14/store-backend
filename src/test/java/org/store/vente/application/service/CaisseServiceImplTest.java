@@ -137,9 +137,9 @@ class CaisseServiceImplTest {
     void findTopProduits_should_delegate_and_return_page() {
         TopProduitsFilter filter = new TopProduitsFilter(magasinId, "2026-05-16", 10);
         List<TopProduitResponse> top = List.of(
-                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", 250L, new BigDecimal("12500.00")),
-                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", 180L, new BigDecimal("9000.00")),
-                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", 95L, new BigDecimal("4750.00"))
+                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", new BigDecimal("250"), new BigDecimal("12500.00") , "PIECE"),
+                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", new BigDecimal("180"), new BigDecimal("9000.00") , "PIECE"),
+                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", new BigDecimal("95"), new BigDecimal("4750.00"), "PIECE")
         );
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
@@ -150,7 +150,7 @@ class CaisseServiceImplTest {
         Page<TopProduitResponse> result = service.findTopProduits(filter);
 
         assertThat(result.getContent()).hasSize(3);
-        assertThat(result.getContent().get(0).quantiteVendue()).isEqualTo(250L);
+        assertThat(result.getContent().get(0).quantiteVendue()).isEqualByComparingTo(new BigDecimal("250"));
         assertThat(result.getContent().get(0).nom()).isEqualTo("Clou 10mm");
         verify(validatorService).validate(filter);
     }

@@ -28,10 +28,11 @@ public class LigneCommandeVente extends BaseEntity {
     @JoinColumn(name = "product_fournisseur_id", nullable = false)
     private ProductFournisseur productFournisseur;
 
-    private int quantite;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantite;
 
-    @Column(nullable = false)
-    private int quantiteLivree;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantiteLivree;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)

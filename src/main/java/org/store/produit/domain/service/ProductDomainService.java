@@ -9,6 +9,7 @@ import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 import org.store.common.tools.LikePatternHelper;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.produit.application.dto.ProductCreate;
 import org.store.produit.application.dto.ProductFilter;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
@@ -28,13 +29,16 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
         super(repository);
     }
 
-    public Product create(ProductRequest productRequest, CategoryProduct categoryProduct, Entreprise entreprise) {
+    public Product create(ProductCreate context) {
         Product product = new Product();
-        product.setNom(productRequest.nom());
-        product.setReference(productRequest.reference());
-        product.setDescription(productRequest.description());
-        product.setCategoryProduct(categoryProduct);
-        product.setEntreprise(entreprise);
+
+        product.setNom(context.request().nom());
+        product.setReference(context.request().reference());
+        product.setDescription(context.request().description());
+        product.setCategoryProduct(context.categoryProduct());
+        product.setEntreprise(context.entreprise());
+        product.setUniteMesure(context.uniteMesure());
+
         return save(product);
     }
 

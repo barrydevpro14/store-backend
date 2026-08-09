@@ -78,9 +78,9 @@ class LigneInventaireServiceImplTest {
         ligne.setId(ligneId);
         ligne.setInventaire(inventaire);
         ligne.setProductFournisseur(productFournisseur);
-        ligne.setQuantiteTheorique(qteTheorique);
-        ligne.setQuantiteReelle(qteReelle);
-        ligne.setEcart(qteReelle - qteTheorique);
+        ligne.setQuantiteTheorique(BigDecimal.valueOf(qteTheorique));
+        ligne.setQuantiteReelle(BigDecimal.valueOf(qteReelle));
+        ligne.setEcart(BigDecimal.valueOf(qteReelle - qteTheorique));
         ligne.setPrixUnitaire(productFournisseur.getPrixAchat());
         return ligne;
     }
@@ -88,15 +88,15 @@ class LigneInventaireServiceImplTest {
     @Test
     void create_should_delegate_to_domain_service() {
         LigneInventaire created = buildLigne(10, 8);
-        when(ligneInventaireDomainService.create(inventaire, productFournisseur, 10, 8, new BigDecimal("10.00")))
+        when(ligneInventaireDomainService.create(inventaire, productFournisseur, new BigDecimal("10"), new BigDecimal("8"), new BigDecimal("10.00")))
                 .thenReturn(created);
 
-        LigneInventaire result = service.create(inventaire, productFournisseur, 10, 8, new BigDecimal("10.00"));
+        LigneInventaire result = service.create(inventaire, productFournisseur, new BigDecimal("10"), new BigDecimal("8"), new BigDecimal("10.00"));
 
-        assertThat(result.getQuantiteTheorique()).isEqualTo(10);
-        assertThat(result.getQuantiteReelle()).isEqualTo(8);
-        assertThat(result.getEcart()).isEqualTo(-2);
-        verify(ligneInventaireDomainService).create(inventaire, productFournisseur, 10, 8, new BigDecimal("10.00"));
+        assertThat(result.getQuantiteTheorique()).isEqualTo(new BigDecimal("10"));
+        assertThat(result.getQuantiteReelle()).isEqualTo(new BigDecimal("8"));
+        assertThat(result.getEcart()).isEqualTo(new BigDecimal("-2"));
+        verify(ligneInventaireDomainService).create(inventaire, productFournisseur, new BigDecimal("10"), new BigDecimal("8"), new BigDecimal("10.00"));
     }
 
     @Test
@@ -151,13 +151,13 @@ class LigneInventaireServiceImplTest {
     void updateQuantiteReelle_should_delegate_and_return_updated_ligne() {
         LigneInventaire ligne = buildLigne(10, 8);
         LigneInventaire updated = buildLigne(10, 6);
-        when(ligneInventaireDomainService.updateQuantiteReelle(ligne, 6)).thenReturn(updated);
+        when(ligneInventaireDomainService.updateQuantiteReelle(ligne, new BigDecimal("6"))).thenReturn(updated);
 
-        LigneInventaire result = service.updateQuantiteReelle(ligne, 6);
+        LigneInventaire result = service.updateQuantiteReelle(ligne, new BigDecimal("6"));
 
-        assertThat(result.getQuantiteReelle()).isEqualTo(6);
-        assertThat(result.getEcart()).isEqualTo(-4);
-        verify(ligneInventaireDomainService).updateQuantiteReelle(ligne, 6);
+        assertThat(result.getQuantiteReelle()).isEqualTo(new BigDecimal("6"));
+        assertThat(result.getEcart()).isEqualTo(new BigDecimal("-4"));
+        verify(ligneInventaireDomainService).updateQuantiteReelle(ligne, new BigDecimal("6"));
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.store.stock.application.dto.StockThresholdRequest;
 import org.store.stock.application.dto.StockValuationResponse;
 import org.store.stock.domain.model.Stock;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -90,5 +91,5 @@ public interface IStockService {
      * Décrémente la quantité disponible du stock agrégé après une sortie.
      * Réservé à la coordination interne au domaine stock.
      */
-    Stock decrement(Stock stock, int quantite);
+    Stock decrement(Stock stock, BigDecimal quantite);
 }

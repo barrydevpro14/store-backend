@@ -22,7 +22,8 @@ public class LigneCommandeAchat extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private ProductFournisseur productFournisseur;
 
-    private int quantite;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantite;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal prixAchat;

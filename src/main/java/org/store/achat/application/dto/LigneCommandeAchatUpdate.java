@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 /** Command record for updating a ligne d'achat: quantité, prix, traçabilité lot. */
 public record LigneCommandeAchatUpdate(
-        int quantite,
+        BigDecimal quantite,
         BigDecimal prixAchat,
         BigDecimal prixVente,
         String numeroLot,

@@ -16,7 +16,7 @@ public record ExpiringLotResponse(
         FournisseurSummaryResponse fournisseur,
         String numeroLot,
         String dateExpiration,
-        int quantiteRestante,
+        BigDecimal quantiteRestante,
         BigDecimal prixAchat,
         BigDecimal prixVente
 ) {

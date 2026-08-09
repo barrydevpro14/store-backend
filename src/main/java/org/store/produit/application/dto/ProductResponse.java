@@ -11,6 +11,7 @@ public record ProductResponse(
         String reference,
         String description,
         CategoryProductSummaryResponse category,
+        UniteMesureSummaryResponse uniteMesure,
         UUID entrepriseId,
         String image
 ) {
@@ -21,6 +22,7 @@ public record ProductResponse(
                 product.getReference(),
                 product.getDescription(),
                 new CategoryProductSummaryResponse(product.getCategoryProduct()),
+                new UniteMesureSummaryResponse(product.getUniteMesure()),
                 product.getEntreprise().getId(),
                 product.getImagePrincipal() != null ? ProductController.BASE_PATH + "/" + product.getId() + "/image" : null
         );

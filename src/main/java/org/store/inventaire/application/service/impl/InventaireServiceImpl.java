@@ -128,12 +128,12 @@ public class InventaireServiceImpl implements IInventaireService {
 
         if (existing.isPresent()) {
             LigneInventaire ligne = existing.get();
-            int nouvQte = ligne.getQuantiteReelle() + request.quantiteReelle();
+            BigDecimal nouvQte = ligne.getQuantiteReelle().add(request.quantiteReelle());
             ligne.setPrixUnitaire(request.prixUnitaire());
             return new LigneInventaireResponse(ligneInventaireService.updateQuantiteReelle(ligne, nouvQte));
         }
 
-        int quantiteTheorique = computeQuantiteTheorique(inventaire.getMagasin().getId(), productFournisseur.getId());
+        BigDecimal quantiteTheorique = computeQuantiteTheorique(inventaire.getMagasin().getId(), productFournisseur.getId());
         LigneInventaire ligne = ligneInventaireService.create(
                 inventaire, productFournisseur, quantiteTheorique, request.quantiteReelle(), request.prixUnitaire()
         );
@@ -222,7 +222,7 @@ public class InventaireServiceImpl implements IInventaireService {
             List<LigneInventaire> lignes = ligneInventaireService.findAllByInventaireId(inventaireId);
             reconcilierQuantitesTheoriques(inventaire, lignes);
             lignes.stream()
-                    .filter(ligne -> ligne.getEcart() != 0)
+                    .filter(ligne -> ligne.getEcart().compareTo(BigDecimal.ZERO) != 0)
                     .forEach(ligne -> appliquerAjustement(inventaire, ligne));
         }
 
@@ -337,19 +337,19 @@ public class InventaireServiceImpl implements IInventaireService {
         UUID magasinId = inventaire.getMagasin().getId();
 
         lignes.forEach(ligne -> {
-            int lotsActuels = computeQuantiteTheorique(magasinId, ligne.getProductFournisseur().getId());
+            BigDecimal lotsActuels = computeQuantiteTheorique(magasinId, ligne.getProductFournisseur().getId());
 
-            if (lotsActuels != ligne.getQuantiteTheorique()) {
+            if (lotsActuels.compareTo(ligne.getQuantiteTheorique()) != 0) {
                 ligneInventaireService.updateQuantiteTheorique(ligne, lotsActuels);
             }
         });
     }
 
     /** Stock theorique d'un PF dans un magasin = quantiteDisponible du Stock agrege (toujours synchronise). */
-    public int computeQuantiteTheorique(UUID magasinId, UUID productFournisseurId) {
+    public BigDecimal computeQuantiteTheorique(UUID magasinId, UUID productFournisseurId) {
         return stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId)
                 .map(Stock::getQuantiteDisponible)
-                .orElse(0);
+                .orElse(BigDecimal.ZERO);
     }
 
     /**
@@ -359,10 +359,10 @@ public class InventaireServiceImpl implements IInventaireService {
      * Pour un POSITIF sans stock existant, un stock vierge est initialisé avant l'ajustement.
      */
     public void appliquerAjustement(Inventaire inventaire, LigneInventaire ligne) {
-        int ecart = ligne.getEcart();
+        BigDecimal ecart = ligne.getEcart();
         ProductFournisseur productFournisseur = ligne.getProductFournisseur();
         Magasin magasin = inventaire.getMagasin();
-        TypeAjustement type = ecart > 0 ? TypeAjustement.POSITIF : TypeAjustement.NEGATIF;
+        TypeAjustement type = ecart.compareTo(BigDecimal.ZERO) > 0 ? TypeAjustement.POSITIF : TypeAjustement.NEGATIF;
 
         Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .orElse(null);
@@ -376,7 +376,7 @@ public class InventaireServiceImpl implements IInventaireService {
         AjustementStockRequest request = new AjustementStockRequest(
                 stock.getId(),
                 type,
-                Math.abs(ecart),
+                ecart.abs(),
                 MotifAjustement.INVENTAIRE_PHYSIQUE,
                 messageSourceService.getMessage("inventaire.cloture.commentaire", new Object[]{inventaire.getId()})
         );
@@ -419,11 +419,11 @@ public class InventaireServiceImpl implements IInventaireService {
     public BigDecimal computeMontantStock(List<LigneInventaire> lignes, boolean theorique) {
         return lignes.stream()
                 .map(ligne -> {
-                    int qte = theorique ? ligne.getQuantiteTheorique() : ligne.getQuantiteReelle();
+                    BigDecimal qte = theorique ? ligne.getQuantiteTheorique() : ligne.getQuantiteReelle();
                     BigDecimal prix = ligne.getPrixUnitaire() != null
                             ? ligne.getPrixUnitaire()
                             : ligne.getProductFournisseur().getPrixAchat();
-                    return prix.multiply(BigDecimal.valueOf(qte));
+                    return prix.multiply(qte);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

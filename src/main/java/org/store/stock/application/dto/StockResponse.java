@@ -16,8 +16,8 @@ public record StockResponse(
         MagasinSummaryResponse magasin,
         ProductSummaryResponse produit,
         QualitySummaryResponse quality,
-        int quantiteDisponible,
-        int seuilApprovisionnement,
+        BigDecimal quantiteDisponible,
+        BigDecimal seuilApprovisionnement,
         BigDecimal prixAchatMoyen,
         String createdAt,
         String updatedAt

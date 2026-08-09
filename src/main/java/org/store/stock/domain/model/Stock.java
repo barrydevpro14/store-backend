@@ -23,10 +23,12 @@ public class Stock extends AuditableEntity {
     @JoinColumn(name = "product_fournisseur_id")
     private ProductFournisseur productFournisseur;
 
-    private int quantiteDisponible = 0;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantiteDisponible = BigDecimal.ZERO;
 
-    private int seuilApprovisionnement;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal seuilApprovisionnement = BigDecimal.ZERO;
 
-    @Column(precision = 19, scale = 6)
+    @Column(precision = 19, scale = 2)
     private BigDecimal prixAchatMoyen;
 }

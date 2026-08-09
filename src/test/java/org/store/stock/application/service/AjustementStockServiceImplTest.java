@@ -34,7 +34,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -94,21 +93,21 @@ class AjustementStockServiceImplTest {
         stock.setId(stockId);
         stock.setMagasin(magasin);
         stock.setProductFournisseur(productFournisseur);
-        stock.setQuantiteDisponible(100);
+        stock.setQuantiteDisponible(new BigDecimal("100"));
     }
 
     private AjustementStockRequest positifRequest(int qty, MotifAjustement motif) {
-        return new AjustementStockRequest(stockId, TypeAjustement.POSITIF, qty, motif, "retrouvaille");
+        return new AjustementStockRequest(stockId, TypeAjustement.POSITIF, BigDecimal.valueOf(qty), motif, "retrouvaille");
     }
 
     private AjustementStockRequest negatifRequest(int qty, MotifAjustement motif) {
-        return new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, qty, motif, "perte rayon");
+        return new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, BigDecimal.valueOf(qty), motif, "perte rayon");
     }
 
     private MouvementStockResponse buildMouvementResponse() {
         return new MouvementStockResponse(
                 UUID.randomUUID(), UUID.randomUUID(), null, null,
-                new MouvementDetailResponse(MouvementStockType.AJUSTEMENT, 20, 100, 120, "RETROUVAILLE", null),
+                new MouvementDetailResponse(MouvementStockType.AJUSTEMENT, new BigDecimal("20"), new BigDecimal("100"), new BigDecimal("120"), "RETROUVAILLE", null),
                 null, null);
     }
 
@@ -116,7 +115,7 @@ class AjustementStockServiceImplTest {
     void create_positif_should_create_lot_and_upsert_stock() {
         AjustementStockRequest req = positifRequest(20, MotifAjustement.RETROUVAILLE);
         Stock updated = new Stock();
-        updated.setQuantiteDisponible(120);
+        updated.setQuantiteDisponible(new BigDecimal("120"));
 
         when(stockService.findById(stockId)).thenReturn(stock);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
@@ -135,20 +134,20 @@ class AjustementStockServiceImplTest {
         AjustementStockRequest req = negatifRequest(30, MotifAjustement.CASSE);
         EntreeStock l1 = new EntreeStock();
         l1.setId(UUID.randomUUID());
-        l1.setQuantiteRestante(50);
+        l1.setQuantiteRestante(new BigDecimal("50"));
         Stock updated = new Stock();
-        updated.setQuantiteDisponible(70);
+        updated.setQuantiteDisponible(new BigDecimal("70"));
 
         when(stockService.findById(stockId)).thenReturn(stock);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseur.getId())).thenReturn(List.of(l1));
-        when(stockService.decrement(stock, 30)).thenReturn(updated);
+        when(stockService.decrement(stock, new BigDecimal("30"))).thenReturn(updated);
         when(mouvementStockService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(null);
 
         service.create(req);
 
-        assertThat(l1.getQuantiteRestante()).isEqualTo(20);
-        verify(stockService).decrement(stock, 30);
+        assertThat(l1.getQuantiteRestante()).isEqualTo(new BigDecimal("20"));
+        verify(stockService).decrement(stock, new BigDecimal("30"));
     }
 
     @Test
@@ -162,12 +161,12 @@ class AjustementStockServiceImplTest {
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(stockService, never()).decrement(any(), anyInt());
+        verify(stockService, never()).decrement(any(), any(BigDecimal.class));
     }
 
     @Test
     void create_should_throw_when_motif_VOL_with_type_POSITIF() {
-        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.POSITIF, 20, MotifAjustement.VOL, null);
+        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.POSITIF, new BigDecimal("20"), MotifAjustement.VOL, null);
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
@@ -177,7 +176,7 @@ class AjustementStockServiceImplTest {
 
     @Test
     void create_should_throw_when_motif_RETROUVAILLE_with_type_NEGATIF() {
-        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, 20, MotifAjustement.RETROUVAILLE, null);
+        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, new BigDecimal("20"), MotifAjustement.RETROUVAILLE, null);
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
@@ -185,7 +184,7 @@ class AjustementStockServiceImplTest {
 
     @Test
     void create_should_throw_when_motif_AUTRE_and_commentaire_blank() {
-        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.POSITIF, 5, MotifAjustement.AUTRE, "   ");
+        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.POSITIF, new BigDecimal("5"), MotifAjustement.AUTRE, "   ");
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
@@ -195,7 +194,7 @@ class AjustementStockServiceImplTest {
 
     @Test
     void create_should_throw_when_motif_AUTRE_and_commentaire_null() {
-        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.POSITIF, 5, MotifAjustement.AUTRE, null);
+        AjustementStockRequest req = new AjustementStockRequest(stockId, TypeAjustement.POSITIF, new BigDecimal("5"), MotifAjustement.AUTRE, null);
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(BadArgumentException.class);
@@ -205,17 +204,17 @@ class AjustementStockServiceImplTest {
 
     @Test
     void create_negatif_should_journalize_with_correct_quantities() {
-        stock.setQuantiteDisponible(100);
+        stock.setQuantiteDisponible(new BigDecimal("100"));
         AjustementStockRequest req = negatifRequest(30, MotifAjustement.CASSE);
         EntreeStock l1 = new EntreeStock();
-        l1.setQuantiteRestante(50);
+        l1.setQuantiteRestante(new BigDecimal("50"));
         Stock updated = new Stock();
-        updated.setQuantiteDisponible(70);
+        updated.setQuantiteDisponible(new BigDecimal("70"));
 
         when(stockService.findById(stockId)).thenReturn(stock);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(entreeStockService.findAvailableLotsForFifo(magasinId, productFournisseur.getId())).thenReturn(List.of(l1));
-        when(stockService.decrement(stock, 30)).thenReturn(updated);
+        when(stockService.decrement(stock, new BigDecimal("30"))).thenReturn(updated);
         when(mouvementStockService.journalize(eq(updated), any(MouvementJournalize.class))).thenReturn(null);
 
         service.create(req);
@@ -224,9 +223,9 @@ class AjustementStockServiceImplTest {
         verify(mouvementStockService).journalize(eq(updated), captor.capture());
         MouvementJournalize captured = captor.getValue();
         assertThat(captured.type()).isEqualTo(MouvementStockType.AJUSTEMENT);
-        assertThat(captured.quantite()).isEqualTo(-30);
-        assertThat(captured.stockAvant()).isEqualTo(100);
-        assertThat(captured.stockApres()).isEqualTo(70);
+        assertThat(captured.quantite()).isEqualTo(new BigDecimal("-30"));
+        assertThat(captured.stockAvant()).isEqualTo(new BigDecimal("100"));
+        assertThat(captured.stockApres()).isEqualTo(new BigDecimal("70"));
         assertThat(captured.referenceDocument()).isEqualTo("CASSE");
     }
 }

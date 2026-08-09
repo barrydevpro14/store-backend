@@ -39,6 +39,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,6 +52,7 @@ class PaiementVenteServiceImplTest {
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
     @Mock private IMoyenPaiementService moyenPaiementService;
+    @Mock private ICommandeVenteService commandeVenteService;
 
     @InjectMocks
     private PaiementVenteServiceImpl service;
@@ -146,6 +148,16 @@ class PaiementVenteServiceImplTest {
         paiement.setDatePaiement(LocalDate.now());
         when(paiementVenteDomainService.create(any(PaiementVenteCreate.class))).thenReturn(paiement);
 
+        // La facture devient totalement payée après l'application du paiement
+        FactureClient paidFacture = new FactureClient();
+        paidFacture.setId(factureId);
+        paidFacture.setCommande(facture.getCommande());
+        paidFacture.setMontantTotal(new BigDecimal("1000.00"));
+        paidFacture.setMontantPaye(new BigDecimal("1000.00"));
+        paidFacture.setStatut(StatutFacture.PAYEE);
+        when(factureClientDomainService.applyPaiement( eq(facture), eq(new BigDecimal("400.00")) ))
+                .thenReturn(paidFacture);
+
         PaiementVenteResponse response = service.create(factureId, request);
 
         assertThat(response.montant()).isEqualByComparingTo(new BigDecimal("400.00"));
@@ -154,8 +166,45 @@ class PaiementVenteServiceImplTest {
         ArgumentCaptor<PaiementVenteCreate> captor = ArgumentCaptor.forClass(PaiementVenteCreate.class);
         verify(paiementVenteDomainService).create(captor.capture());
         assertThat(captor.getValue().datePaiement()).isEqualTo(LocalDate.now());
+        verify(commandeVenteService).cloturerCommande(facture.getCommande());
         verify(factureClientDomainService).applyPaiement(facture, new BigDecimal("400.00"));
         verify(validatorService).validate(request);
+    }
+
+    @Test
+    void create_should_not_close_commande_when_facture_is_not_fully_paid() {
+        PaiementVenteRequest request =
+                new PaiementVenteRequest(new BigDecimal("200.00"), MOYEN_ID, null);
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(factureClientDomainService.findById(factureId)).thenReturn(facture);
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyenCash());
+
+        PaiementVente paiement = new PaiementVente();
+        paiement.setId(UUID.randomUUID());
+        paiement.setFacture(facture);
+        paiement.setMontant(new BigDecimal("200.00"));
+        paiement.setMoyen(moyenCash());
+        paiement.setDatePaiement(LocalDate.now());
+
+        when(paiementVenteDomainService.create(any(PaiementVenteCreate.class)))
+                .thenReturn(paiement);
+
+        facture.setMontantTotal(new BigDecimal("400.00"));
+        facture.setMontantPaye(new BigDecimal("200.00"));
+
+        when(factureClientDomainService.applyPaiement(
+                eq(facture),
+                eq(new BigDecimal("200.00"))
+        )).thenReturn(facture);
+
+        service.create(factureId, request);
+
+        verify(factureClientDomainService)
+                .applyPaiement(facture, new BigDecimal("200.00"));
+
+        verify(commandeVenteService, never())
+                .cloturerCommande(any(CommandeVente.class));
     }
 
     @Test
@@ -167,6 +216,7 @@ class PaiementVenteServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(factureClientDomainService.findById(factureId)).thenReturn(facture);
         when(paiementVenteDomainService.create(any(PaiementVenteCreate.class))).thenReturn(new PaiementVente());
+        when(factureClientDomainService.applyPaiement(any(), any())).thenReturn(facture);
 
         service.create(factureId, request);
 

@@ -26,7 +26,7 @@ public class SortieStockDomainService extends GlobalService<SortieStock, SortieS
      */
     public SortieStock create(SortieStockCreate sortieStockCreate) {
         EntreeStock lot = sortieStockCreate.lot();
-        int quantite = sortieStockCreate.quantite();
+        BigDecimal quantite = sortieStockCreate.quantite();
         BigDecimal prixVente = sortieStockCreate.prixVente();
 
         SortieStock sortie = new SortieStock();
@@ -34,13 +34,13 @@ public class SortieStockDomainService extends GlobalService<SortieStock, SortieS
         sortie.setQuantiteSortie(quantite);
         sortie.setPrixAchat(lot.getPrixAchat());
         sortie.setPrixVente(prixVente);
-        sortie.setMarge(prixVente.subtract(lot.getPrixAchat()).multiply(BigDecimal.valueOf(quantite)));
+        sortie.setMarge(prixVente.subtract(lot.getPrixAchat()).multiply(quantite).setScale(2, java.math.RoundingMode.HALF_UP));
         sortie.setLigneVente(sortieStockCreate.ligneVente());
         return save(sortie);
     }
 
     /** Surcharge pratique sans lien vente (utilisée pour ajustements stock ou sorties internes). */
-    public SortieStock create(EntreeStock lot, int quantite, BigDecimal prixVente) {
+    public SortieStock create(EntreeStock lot, BigDecimal quantite, BigDecimal prixVente) {
         return create(new SortieStockCreate(lot, quantite, prixVente, null));
     }
 

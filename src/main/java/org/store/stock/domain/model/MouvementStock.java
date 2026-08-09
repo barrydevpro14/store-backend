@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.stock.domain.enums.MouvementStockType;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Entity
@@ -19,11 +21,14 @@ public class MouvementStock extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private MouvementStockType type;
 
-    private int quantite;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal quantite;
 
-    private int stockAvant;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal stockAvant;
 
-    private int stockApres;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal stockApres;
 
     private String referenceDocument;
 

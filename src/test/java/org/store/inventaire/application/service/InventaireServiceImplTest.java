@@ -136,24 +136,24 @@ class InventaireServiceImplTest {
                 "owner", null, null, "OWNER", List.of("STOCK_INVENTORY"));
     }
 
-    private Stock stockWith(int quantiteDisponible) {
+    private Stock stockWith(BigDecimal quantiteDisponible) {
         Stock stock = new Stock();
         stock.setQuantiteDisponible(quantiteDisponible);
         return stock;
     }
 
-    private LigneInventaire ligne(int qteTheorique, int qteReelle) {
+    private LigneInventaire ligne(BigDecimal qteTheorique, BigDecimal qteReelle) {
         return ligne(qteTheorique, qteReelle, productFournisseur.getPrixAchat());
     }
 
-    private LigneInventaire ligne(int qteTheorique, int qteReelle, BigDecimal prixUnitaire) {
+    private LigneInventaire ligne(BigDecimal qteTheorique, BigDecimal qteReelle, BigDecimal prixUnitaire) {
         LigneInventaire ligne = new LigneInventaire();
         ligne.setId(UUID.randomUUID());
         ligne.setInventaire(inventaireEnCours);
         ligne.setProductFournisseur(productFournisseur);
         ligne.setQuantiteTheorique(qteTheorique);
         ligne.setQuantiteReelle(qteReelle);
-        ligne.setEcart(qteReelle - qteTheorique);
+        ligne.setEcart(qteReelle.subtract( qteTheorique));
         ligne.setPrixUnitaire(prixUnitaire);
         return ligne;
     }
@@ -205,7 +205,8 @@ class InventaireServiceImplTest {
     @Test
     void addLigne_should_compute_quantiteTheorique_from_lots_and_persist_ligne() {
         BigDecimal prix = new BigDecimal("10.00");
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 8, prix);
+        BigDecimal qteTHeorique = new BigDecimal("10");
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, new BigDecimal("8"), prix);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -214,22 +215,22 @@ class InventaireServiceImplTest {
         when(ligneInventaireService.findByInventaireIdAndProductFournisseurId(inventaireId, productFournisseurId))
                 .thenReturn(Optional.empty());
         when(stockService.findByMagasinAndProductFournisseur(magasinId, productFournisseurId))
-                .thenReturn(Optional.of(stockWith(10)));
-        when(ligneInventaireService.create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix)))
-                .thenReturn(ligne(10, 8));
+                .thenReturn(Optional.of(stockWith(qteTHeorique)));
+        when(ligneInventaireService.create(eq(inventaireEnCours), eq(productFournisseur), eq(qteTHeorique), eq(new BigDecimal("8")), eq(prix)))
+                .thenReturn(ligne(qteTHeorique, new BigDecimal(8)));
 
         LigneInventaireResponse response = service.addLigne(inventaireId, request);
 
-        assertThat(response.quantiteTheorique()).isEqualTo(10);
-        assertThat(response.quantiteReelle()).isEqualTo(8);
-        assertThat(response.ecart()).isEqualTo(-2);
-        verify(ligneInventaireService).create(eq(inventaireEnCours), eq(productFournisseur), eq(10), eq(8), eq(prix));
+        assertThat(response.quantiteTheorique()).isEqualTo(new BigDecimal("10"));
+        assertThat(response.quantiteReelle()).isEqualTo(new BigDecimal("8"));
+        assertThat(response.ecart()).isEqualTo(new BigDecimal("-2"));
+        verify(ligneInventaireService).create(eq(inventaireEnCours), eq(productFournisseur), eq(qteTHeorique), eq(new BigDecimal("8")), eq(prix));
     }
 
     @Test
     void addLigne_should_throw_when_inventaire_not_en_cours() {
         inventaireEnCours.setStatut(InventaireStatut.BILAN);
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3, new BigDecimal("10.00"));
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, new BigDecimal("3"), new BigDecimal("10.00"));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -243,7 +244,7 @@ class InventaireServiceImplTest {
         Entreprise autre = new Entreprise();
         autre.setId(UUID.randomUUID());
         magasin.setEntreprise(autre);
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3, new BigDecimal("10.00"));
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, new BigDecimal("3"), new BigDecimal("10.00"));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -255,21 +256,21 @@ class InventaireServiceImplTest {
     @Test
     void updateLigne_should_update_quantite_and_recompute_ecart() {
         UUID ligneId = UUID.randomUUID();
-        LigneInventaire existing = ligne(10, 8);
+        LigneInventaire existing = ligne(new BigDecimal("10"), new BigDecimal("8"));
         existing.setId(ligneId);
-        LigneInventaire updated = ligne(10, 7);
+        LigneInventaire updated = ligne(new BigDecimal("10"), new BigDecimal("7"));
         updated.setId(ligneId);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
         when(ligneInventaireService.findLigne(ligneId)).thenReturn(existing);
-        when(ligneInventaireService.updateQuantiteReelle(existing, 7)).thenReturn(updated);
+        when(ligneInventaireService.updateQuantiteReelle(existing, new BigDecimal("7"))).thenReturn(updated);
 
-        LigneInventaireResponse response = service.updateLigne(inventaireId, ligneId, new LigneInventaireUpdateRequest(7));
+        LigneInventaireResponse response = service.updateLigne(inventaireId, ligneId, new LigneInventaireUpdateRequest(new BigDecimal("7")));
 
-        assertThat(response.quantiteReelle()).isEqualTo(7);
-        assertThat(response.ecart()).isEqualTo(-3);
-        verify(ligneInventaireService).updateQuantiteReelle(existing, 7);
+        assertThat(response.quantiteReelle()).isEqualTo(new BigDecimal("7"));
+        assertThat(response.ecart()).isEqualTo(new BigDecimal("-3"));
+        verify(ligneInventaireService).updateQuantiteReelle(existing, new BigDecimal("7"));
     }
 
     @Test
@@ -280,12 +281,12 @@ class InventaireServiceImplTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
 
         UUID randomLigneId = UUID.randomUUID();
-        LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(5);
+        LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(new BigDecimal("5"));
 
         assertThatThrownBy(() -> service.updateLigne(inventaireId, randomLigneId, updateReq))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireService, never()).updateQuantiteReelle(any(), eq(5));
+        verify(ligneInventaireService, never()).updateQuantiteReelle(any(), eq(new BigDecimal("5")));
     }
 
     @Test
@@ -302,18 +303,18 @@ class InventaireServiceImplTest {
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
         when(ligneInventaireService.findLigne(ligneId)).thenReturn(ligneAutre);
 
-        LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(5);
+        LigneInventaireUpdateRequest updateReq = new LigneInventaireUpdateRequest(new BigDecimal("5"));
 
         assertThatThrownBy(() -> service.updateLigne(inventaireId, ligneId, updateReq))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireService, never()).updateQuantiteReelle(any(), eq(5));
+        verify(ligneInventaireService, never()).updateQuantiteReelle(any(), eq(new BigDecimal("5")));
     }
 
     @Test
     void deleteLigne_should_delete_when_en_cours_and_ligne_matches() {
         UUID ligneId = UUID.randomUUID();
-        LigneInventaire existing = ligne(10, 8);
+        LigneInventaire existing = ligne(new BigDecimal("10"), new BigDecimal("8"));
         existing.setId(ligneId);
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
@@ -342,7 +343,7 @@ class InventaireServiceImplTest {
 
     @Test
     void passerEnBilan_should_transition_and_delegate_rapport_creation_with_computed_command() {
-        LigneInventaire ligne = ligne(10, 12, new BigDecimal("15.00"));
+        LigneInventaire ligne = ligne(new BigDecimal("10"), new BigDecimal("12"), new BigDecimal("15.00"));
         Inventaire bilan = new Inventaire();
         bilan.setId(inventaireId);
         bilan.setMagasin(magasin);
@@ -393,9 +394,9 @@ class InventaireServiceImplTest {
     @Test
     void cloturer_should_apply_ajustement_for_each_line_with_non_zero_ecart_and_pose_cloture() {
         inventaireEnCours.setStatut(InventaireStatut.BILAN);
-        LigneInventaire surplus = ligne(5, 8);
-        LigneInventaire neutre = ligne(10, 10);
-        LigneInventaire manque = ligne(20, 18);
+        LigneInventaire surplus = ligne(new BigDecimal("5"), new BigDecimal("8"));
+        LigneInventaire neutre = ligne(new BigDecimal("10"), new BigDecimal("10"));
+        LigneInventaire manque = ligne(new BigDecimal("20"), new BigDecimal("18"));
         Inventaire cloture = new Inventaire();
         cloture.setId(inventaireId);
         cloture.setMagasin(magasin);
@@ -405,7 +406,7 @@ class InventaireServiceImplTest {
         org.store.stock.domain.model.Stock stock = new org.store.stock.domain.model.Stock();
         stock.setId(UUID.randomUUID());
         stock.setMagasin(magasin);
-        stock.setQuantiteDisponible(20);
+        stock.setQuantiteDisponible(new BigDecimal("20"));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -423,7 +424,7 @@ class InventaireServiceImplTest {
         List<AjustementStockRequest> calls = captor.getAllValues();
         assertThat(calls).extracting(AjustementStockRequest::type)
                 .containsExactly(TypeAjustement.POSITIF, TypeAjustement.NEGATIF);
-        assertThat(calls).extracting(AjustementStockRequest::quantite).containsExactly(3, 2);
+        assertThat(calls).extracting(AjustementStockRequest::quantite).containsExactly(new BigDecimal("3"), new BigDecimal("2"));
         assertThat(calls).allMatch(req -> req.motif() == MotifAjustement.INVENTAIRE_PHYSIQUE);
         assertThat(calls).allMatch(req -> req.stockId().equals(stock.getId()));
         verify(rapportInventaireService, never()).create(any(), any());
@@ -445,25 +446,25 @@ class InventaireServiceImplTest {
         ligneStale.setId(UUID.randomUUID());
         ligneStale.setInventaire(inventaireEnCours);
         ligneStale.setProductFournisseur(pf1);
-        ligneStale.setQuantiteTheorique(9);
-        ligneStale.setQuantiteReelle(0);
-        ligneStale.setEcart(-9);
+        ligneStale.setQuantiteTheorique(new BigDecimal("9"));
+        ligneStale.setQuantiteReelle(BigDecimal.ZERO);
+        ligneStale.setEcart(new BigDecimal("-9"));
 
         LigneInventaire ligneOk = new LigneInventaire();
         ligneOk.setId(UUID.randomUUID());
         ligneOk.setInventaire(inventaireEnCours);
         ligneOk.setProductFournisseur(pf2);
-        ligneOk.setQuantiteTheorique(5);
-        ligneOk.setQuantiteReelle(5);
-        ligneOk.setEcart(0);
+        ligneOk.setQuantiteTheorique(new BigDecimal("5"));
+        ligneOk.setQuantiteReelle(new BigDecimal("5"));
+        ligneOk.setEcart(BigDecimal.ZERO);
 
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId1)).thenReturn(Optional.of(stockWith(8)));
-        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId2)).thenReturn(Optional.of(stockWith(5)));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId1)).thenReturn(Optional.of(stockWith(new BigDecimal("8"))));
+        when(stockService.findByMagasinAndProductFournisseur(magasinId, pfId2)).thenReturn(Optional.of(stockWith(new BigDecimal("5"))));
 
         service.reconcilierQuantitesTheoriques(inventaireEnCours, List.of(ligneStale, ligneOk));
 
-        verify(ligneInventaireService).updateQuantiteTheorique(ligneStale, 8);
-        verify(ligneInventaireService, never()).updateQuantiteTheorique(eq(ligneOk), anyInt());
+        verify(ligneInventaireService).updateQuantiteTheorique(ligneStale, new BigDecimal("8"));
+        verify(ligneInventaireService, never()).updateQuantiteTheorique(eq(ligneOk), BigDecimal.valueOf(anyInt()));
     }
 
     @Test
@@ -562,7 +563,7 @@ class InventaireServiceImplTest {
     @Test
     void addLigne_should_throw_when_type_automatique() {
         inventaireEnCours.setType(TypeInventaire.AUTOMATIQUE);
-        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, 3, new BigDecimal("10.00"));
+        LigneInventaireRequest request = new LigneInventaireRequest(productFournisseurId, new BigDecimal("3"), new BigDecimal("10.00"));
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
         when(inventaireDomainService.findById(inventaireId)).thenReturn(inventaireEnCours);
@@ -570,7 +571,7 @@ class InventaireServiceImplTest {
         assertThatThrownBy(() -> service.addLigne(inventaireId, request))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneInventaireService, never()).create(any(), any(), any(int.class), any(int.class), any());
+        verify(ligneInventaireService, never()).create(any(), any(), any(BigDecimal.class), any(BigDecimal.class), any());
     }
 
     @Test

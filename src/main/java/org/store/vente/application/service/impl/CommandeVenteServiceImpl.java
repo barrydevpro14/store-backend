@@ -69,8 +69,7 @@ public class CommandeVenteServiceImpl implements ICommandeVenteService {
     /** Bascule une commande VALIDATE en CLOTURE après vérification d'accès et de statut. */
     @Override
     @Transactional
-    public CommandeVenteResponse cloturerCommande(UUID commandeId) {
-        UserPrincipal currentUser = currentUserService.getCurrent();
+    public void cloturerCommande(UUID commandeId) {
         CommandeVente commande = commandeVenteDomainService.findById(commandeId);
         magasinService.ensureAccessibleByCurrentUser(commande.getMagasin());
 
@@ -78,9 +77,12 @@ public class CommandeVenteServiceImpl implements ICommandeVenteService {
             throw new BadArgumentException("commandeVente.cloturer.notValidated", commande.getStatut().name());
         }
 
-        commandeVenteDomainService.cloturer(commande);
+      commandeVenteDomainService.cloturer(commande);
 
-        return commandeVenteDomainService.findResponseById(commandeId, currentUser.entrepriseId())
-                .orElseThrow(() -> new EntityException("commandeVente.notFound", commandeId));
+    }
+
+    @Override
+    public void cloturerCommande(CommandeVente commande) {
+        commandeVenteDomainService.cloturer(commande);
     }
 }

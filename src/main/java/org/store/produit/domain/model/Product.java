@@ -26,6 +26,10 @@ public class Product extends AuditableEntity {
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unite_mesure_id", nullable = false)
+    private UniteMesure uniteMesure;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     private CategoryProduct categoryProduct;
 
     @ManyToOne(fetch = FetchType.LAZY)

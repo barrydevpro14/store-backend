@@ -13,10 +13,12 @@ import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.service.ICategoryProductService;
 import org.store.produit.application.service.IProductImportService;
 import org.store.produit.application.service.IProductService;
+import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.domain.model.CategoryProduct;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -31,15 +33,18 @@ public class ProductImportServiceImpl implements IProductImportService {
 
     private final IProductService productService;
     private final ICategoryProductService categoryProductService;
+    private final IUniteMesureService uniteMesureService;
     private final IExcelProductRowService excelProductRowService;
     private final IMessageSourceService messageSourceService;
 
     public ProductImportServiceImpl(IProductService productService,
                                     ICategoryProductService categoryProductService,
+                                    IUniteMesureService uniteMesureService,
                                     IExcelProductRowService excelProductRowService,
                                     IMessageSourceService messageSourceService) {
         this.productService = productService;
         this.categoryProductService = categoryProductService;
+        this.uniteMesureService = uniteMesureService;
         this.excelProductRowService = excelProductRowService;
         this.messageSourceService = messageSourceService;
     }
@@ -76,6 +81,8 @@ public class ProductImportServiceImpl implements IProductImportService {
 
     @Override
     public ProductImportResult importProducts(ProductImportRequest productImportRequest) {
+        UUID pieceUnitId = uniteMesureService.findByCode("PIECE").getId();
+
         int imported = 0;
         int ignored = 0;
         int categoriesCreated = 0;
@@ -98,7 +105,7 @@ public class ProductImportServiceImpl implements IProductImportService {
                 CategoryProduct category = categoryProductService.findOrCreateByLibelle(item.categorie());
                 categoriesCreated += categoryExisted ? 0 : 1;
 
-                productService.create(new ProductRequest(item.libelle(), item.reference(), item.description(), category.getId()));
+                productService.create(new ProductRequest(item.libelle(), item.reference(), item.description(), category.getId(), pieceUnitId));
                 imported++;
 
             } catch (Exception e) {

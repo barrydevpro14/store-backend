@@ -34,6 +34,7 @@ import org.store.stock.domain.model.EntreeStock;
 import org.store.stock.domain.model.Stock;
 import org.store.stock.domain.service.EntreeStockDomainService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -140,9 +141,9 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         ProductFournisseur productFournisseur = resolveProductFournisseur(fournisseur, ligne);
         Product produit = productFournisseur.getProduct();
 
-        int stockAvant = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
+        BigDecimal stockAvant = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .map(Stock::getQuantiteDisponible)
-                .orElse(0);
+                .orElse(BigDecimal.ZERO);
 
         EntreeStock entreeStock = entreeStockDomainService.create(new EntreeStockCreate(
                 magasin, produit, productFournisseur,
@@ -161,7 +162,7 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 ligne.numeroLot(),
                 null));
 
-        productFournisseurService.applyPrixVenteFromPurchase(productFournisseur, ligne.prixVente());
+        productFournisseurService.applyPrixFromPurchase(productFournisseur, ligne.prixAchat(), ligne.prixVente());
 
         return new EntreeStockResponse(entreeStock);
     }
@@ -190,7 +191,7 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         productFournisseurService.ensurePrixVenteGreaterThanPrixAchat(request.prixVente(), request.prixAchat());
 
         Stock stock = stockService.findOrCreate(magasin, pf);
-        int stockAvant = stock.getQuantiteDisponible();
+        BigDecimal stockAvant = stock.getQuantiteDisponible();
 
         lot.setQuantiteRestante(request.quantite());
         lot.setPrixAchat(request.prixAchat());
@@ -202,13 +203,13 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
                 .findAvailableLotsForFifoByProductFournisseur(magasin.getId(), pf.getId());
         Stock updatedStock = stockService.recalculateFromLots(stock, activeLots);
 
-        int stockApres = updatedStock.getQuantiteDisponible();
+        BigDecimal stockApres = updatedStock.getQuantiteDisponible();
 
         MouvementStockResponse mouvement = mouvementStockService.journalize(
                 updatedStock,
                 new MouvementJournalize(
                         MouvementStockType.AJUSTEMENT,
-                        stockApres - stockAvant,
+                        stockApres.subtract(stockAvant),
                         stockAvant,
                         stockApres,
                         "CORRECTION_LOT",

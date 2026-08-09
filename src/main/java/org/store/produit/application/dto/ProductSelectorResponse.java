@@ -9,14 +9,16 @@ public record ProductSelectorResponse(
         UUID id,
         String nom,
         String reference,
-        CategoryProductSummaryResponse category
+        CategoryProductSummaryResponse category,
+        String uniteMesure
 ) {
     public ProductSelectorResponse(Product product) {
         this(
                 product.getId(),
                 product.getNom(),
                 product.getReference(),
-                new CategoryProductSummaryResponse(product.getCategoryProduct())
+                new CategoryProductSummaryResponse(product.getCategoryProduct()),
+                product.getUniteMesure() != null ? product.getUniteMesure().getSymbole() : ""
         );
     }
 }

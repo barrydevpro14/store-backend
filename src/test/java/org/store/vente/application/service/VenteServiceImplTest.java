@@ -127,6 +127,7 @@ class VenteServiceImplTest {
     private ProductFournisseur productFournisseur;
     private CommandeVente commande;
     private FactureClient facture;
+    private BigDecimal quantite = new BigDecimal("100");
 
     @BeforeEach
     void setUp() {
@@ -203,7 +204,7 @@ class VenteServiceImplTest {
     private VenteRequest sampleRequest() {
         return new VenteRequest(
                 null,
-                List.of(new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 100, new BigDecimal("10.00")))
+                List.of(new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), new BigDecimal(100), new BigDecimal("10.00")))
         );
     }
 
@@ -211,14 +212,14 @@ class VenteServiceImplTest {
         return new VenteValidateRequest(LocalDate.now().plusDays(30), null);
     }
 
-    private LigneCommandeVente sampleLigne(int quantite, BigDecimal prixUnitaire) {
+    private LigneCommandeVente sampleLigne(BigDecimal quantite, BigDecimal prixUnitaire) {
         LigneCommandeVente ligne = new LigneCommandeVente();
         ligne.setId(ligneId);
         ligne.setCommande(commande);
         ligne.setProductFournisseur(productFournisseur);
         ligne.setQuantite(quantite);
         ligne.setPrixUnitaire(prixUnitaire);
-        ligne.setMontantTotal(prixUnitaire.multiply(BigDecimal.valueOf(quantite)));
+        ligne.setMontantTotal(prixUnitaire.multiply(quantite));
         return ligne;
     }
 
@@ -232,7 +233,7 @@ class VenteServiceImplTest {
         when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.COMMANDE_CLIENT))).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
-        when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(100, new BigDecimal("10.00")));
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(new BigDecimal(100), new BigDecimal("10.00")));
 
         VenteDraftResponse response = service.create(req);
 
@@ -256,7 +257,7 @@ class VenteServiceImplTest {
         when(documentSequenceService.generateReference(any(), eq(org.store.sequence.domain.enums.TypeDocument.COMMANDE_CLIENT))).thenReturn("VTE-AUTO");
         when(commandeVenteDomainService.create(any())).thenReturn(commande);
         when(commandeVenteDomainService.findById(commande.getId())).thenReturn(commande);
-        when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(100, new BigDecimal("10.00")));
+        when(ligneCommandeVenteDomainService.create(any())).thenReturn(sampleLigne(new BigDecimal(100), new BigDecimal("10.00")));
 
         ArgumentCaptor<CommandeVenteCreate> commandeCaptor = ArgumentCaptor.forClass(CommandeVenteCreate.class);
         service.create(sampleRequest());
@@ -281,7 +282,7 @@ class VenteServiceImplTest {
     void create_should_throw_when_prix_below_floor() {
         VenteRequest req = new VenteRequest(
                 null,
-                List.of(new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), 100, new BigDecimal("5.00")))
+                List.of(new LigneVenteRequest(productFournisseur.getProduct().getId(), productFournisseur.getQuality().getId(), productFournisseur.getFournisseur().getId(), new BigDecimal(100), new BigDecimal("5.00")))
         );
 
         when(employeService.findCurrentUser()).thenReturn(vendeur);
@@ -296,7 +297,7 @@ class VenteServiceImplTest {
 
     @Test
     void validate_should_consume_stock_and_create_facture_and_switch_status() {
-        LigneCommandeVente ligne = sampleLigne(100, new BigDecimal("10.00"));
+        LigneCommandeVente ligne = sampleLigne(new BigDecimal(100), new BigDecimal("10.00"));
         commande.setLignes(List.of(ligne));
         commande.setDate(LocalDate.now());
 
@@ -320,7 +321,7 @@ class VenteServiceImplTest {
 
     @Test
     void validate_should_apply_premier_paiement_when_present() {
-        LigneCommandeVente ligne = sampleLigne(100, new BigDecimal("10.00"));
+        LigneCommandeVente ligne = sampleLigne(quantite, new BigDecimal("10.00"));
         commande.setLignes(List.of(ligne));
         commande.setDate(LocalDate.now());
 
@@ -358,7 +359,7 @@ class VenteServiceImplTest {
 
     @Test
     void validate_should_use_datePaiement_from_request_when_provided() {
-        LigneCommandeVente ligne = sampleLigne(100, new BigDecimal("10.00"));
+        LigneCommandeVente ligne = sampleLigne(quantite, new BigDecimal("10.00"));
         commande.setLignes(List.of(ligne));
         commande.setDate(LocalDate.now());
 
@@ -420,16 +421,16 @@ class VenteServiceImplTest {
 
     @Test
     void updateLigne_should_update_quantite_and_prix() {
-        LigneCommandeVente ligne = sampleLigne(100, new BigDecimal("10.00"));
+        LigneCommandeVente ligne = sampleLigne(quantite, new BigDecimal("10.00"));
         commande.setLignes(List.of(ligne));
-        LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(150, new BigDecimal("12.00"));
+        LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(new BigDecimal(150), new BigDecimal("12.00"));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(ligneCommandeVenteDomainService.findById(ligneId)).thenReturn(ligne);
-        when(ligneCommandeVenteDomainService.update(eq(ligne), eq(150), eq(new BigDecimal("12.00"))))
+        when(ligneCommandeVenteDomainService.update(eq(ligne), eq(new BigDecimal(150)), eq(new BigDecimal("12.00"))))
                 .thenAnswer(inv -> {
-                    ligne.setQuantite(150);
+                    ligne.setQuantite(new BigDecimal(150));
                     ligne.setPrixUnitaire(new BigDecimal("12.00"));
                     ligne.setMontantTotal(new BigDecimal("1800.00"));
                     return ligne;
@@ -437,15 +438,15 @@ class VenteServiceImplTest {
 
         var response = service.updateLigne(commandeId, ligneId, req);
 
-        assertThat(response.quantite()).isEqualTo(150);
+        assertThat(response.quantite()).isEqualTo(new BigDecimal(150));
         assertThat(response.prixUnitaire()).isEqualByComparingTo("12.00");
     }
 
     @Test
     void updateLigne_should_throw_when_prix_below_floor() {
-        LigneCommandeVente ligne = sampleLigne(100, new BigDecimal("10.00"));
+        LigneCommandeVente ligne = sampleLigne(quantite, new BigDecimal("10.00"));
         commande.setLignes(List.of(ligne));
-        LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(150, new BigDecimal("5.00"));
+        LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(new BigDecimal(150), new BigDecimal("5.00"));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -454,13 +455,13 @@ class VenteServiceImplTest {
         assertThatThrownBy(() -> service.updateLigne(commandeId, ligneId, req))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneCommandeVenteDomainService, never()).update(any(), anyInt(), any());
+        verify(ligneCommandeVenteDomainService, never()).update(any(), any(), any());
     }
 
     @Test
     void updateLigne_should_throw_when_commande_not_draft() {
         commande.setStatut(CommandeVenteStatut.VALIDATE);
-        LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(150, new BigDecimal("12.00"));
+        LigneVenteUpdateRequest req = new LigneVenteUpdateRequest(new BigDecimal(150), new BigDecimal("12.00"));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -468,13 +469,13 @@ class VenteServiceImplTest {
         assertThatThrownBy(() -> service.updateLigne(commandeId, ligneId, req))
                 .isInstanceOf(BadArgumentException.class);
 
-        verify(ligneCommandeVenteDomainService, never()).update(any(), anyInt(), any());
+        verify(ligneCommandeVenteDomainService, never()).update(any(), any(), any());
     }
 
     @Test
     void deleteLigne_should_remove_ligne_when_draft_and_not_last() {
-        LigneCommandeVente ligne1 = sampleLigne(100, new BigDecimal("10.00"));
-        LigneCommandeVente ligne2 = sampleLigne(50, new BigDecimal("12.00"));
+        LigneCommandeVente ligne1 = sampleLigne(quantite, new BigDecimal("10.00"));
+        LigneCommandeVente ligne2 = sampleLigne(new BigDecimal(50), new BigDecimal("12.00"));
         ligne2.setId(UUID.randomUUID());
         commande.setLignes(List.of(ligne1, ligne2));
 
@@ -489,7 +490,7 @@ class VenteServiceImplTest {
 
     @Test
     void deleteLigne_should_throw_when_last_ligne() {
-        LigneCommandeVente ligne = sampleLigne(100, new BigDecimal("10.00"));
+        LigneCommandeVente ligne = sampleLigne(quantite, new BigDecimal("10.00"));
         commande.setLignes(List.of(ligne));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
@@ -588,30 +589,30 @@ class VenteServiceImplTest {
     @Test
     void cancel_should_reinject_stock_and_mark_cancelled() {
         CommandeVente delivered = deliveredCommandeWithOneLigne();
-        UUID localLigneId = delivered.getLignes().get(0).getId();
+        UUID localLigneId = delivered.getLignes().getFirst().getId();
 
         EntreeStock lot = new EntreeStock();
         lot.setId(UUID.randomUUID());
         lot.setMagasin(magasin);
         lot.setProduit(produit);
         lot.setProductFournisseur(productFournisseur);
-        lot.setQuantiteRestante(0);
+        lot.setQuantiteRestante(BigDecimal.ZERO);
 
         SortieStock sortie = new SortieStock();
         sortie.setEntreeStock(lot);
-        sortie.setQuantiteSortie(8);
+        sortie.setQuantiteSortie(new BigDecimal(8));
         sortie.setAnnulee(false);
 
         Stock stock = new Stock();
-        stock.setQuantiteDisponible(2);
+        stock.setQuantiteDisponible(new BigDecimal(2));
 
         when(commandeVenteDomainService.findById(delivered.getId())).thenReturn(delivered);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(saleProperties.cancelWindowHours()).thenReturn(24);
         when(sortieStockDomainService.findActiveByLigneVenteId(localLigneId)).thenReturn(List.of(sortie));
         when(stockDomainService.findByMagasinIdAndProductFournisseurId(magasinId, productFournisseurId)).thenReturn(Optional.of(stock));
-        when(stockDomainService.creditQuantite(eq(stock), eq(8))).thenAnswer(inv -> {
-            stock.setQuantiteDisponible(stock.getQuantiteDisponible() + 8);
+        when(stockDomainService.creditQuantite(eq(stock), eq(new BigDecimal(8)))).thenAnswer(inv -> {
+            stock.setQuantiteDisponible(stock.getQuantiteDisponible().add(new BigDecimal(8)));
             return stock;
         });
         when(commandeVenteDomainService.cancel(any(), any(), any())).thenAnswer(inv -> {
@@ -627,21 +628,21 @@ class VenteServiceImplTest {
         AnnulationVenteRequest req = new AnnulationVenteRequest("ERREUR_SAISIE", "Saisie incorrecte");
         AnnulationVenteResponse response = service.cancel(delivered.getId(), req);
 
-        assertThat(response.totalQuantiteReinjectee()).isEqualTo(8);
+        assertThat(response.totalQuantiteReinjectee()).isEqualTo(new BigDecimal(8));
         assertThat(response.nombreMouvementsCrees()).isEqualTo(1);
         assertThat(response.statut()).isEqualTo(CommandeVenteStatut.CANCEL);
         assertThat(response.motif()).isEqualTo(MotifAnnulationVente.ERREUR_SAISIE);
 
-        verify(entreeStockDomainService).creditQuantiteRestante(lot, 8);
+        verify(entreeStockDomainService).creditQuantiteRestante(lot, new BigDecimal(8));
         verify(sortieStockDomainService).markAsAnnulee(sortie);
-        verify(stockDomainService).creditQuantite(stock, 8);
+        verify(stockDomainService).creditQuantite(stock, new BigDecimal(8));
 
         ArgumentCaptor<MouvementJournalize> mouvementCaptor = ArgumentCaptor.forClass(MouvementJournalize.class);
         verify(mouvementStockDomainService).journalize(eq(stock), mouvementCaptor.capture());
         assertThat(mouvementCaptor.getValue().type()).isEqualTo(MouvementStockType.RETOUR_CLIENT);
-        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(8);
-        assertThat(mouvementCaptor.getValue().stockAvant()).isEqualTo(2);
-        assertThat(mouvementCaptor.getValue().stockApres()).isEqualTo(10);
+        assertThat(mouvementCaptor.getValue().quantite()).isEqualTo(new BigDecimal(8));
+        assertThat(mouvementCaptor.getValue().stockAvant()).isEqualTo(new BigDecimal(2));
+        assertThat(mouvementCaptor.getValue().stockApres()).isEqualTo(new BigDecimal(10));
 
         verify(factureClientDomainService).cancel(facture);
     }
@@ -662,7 +663,7 @@ class VenteServiceImplTest {
                 .isInstanceOf(BadArgumentException.class);
 
         verify(commandeVenteDomainService, never()).cancel(any(), any(), any());
-        verify(stockDomainService, never()).creditQuantite(any(), anyInt());
+        verify(stockDomainService, never()).creditQuantite(any(), any());
     }
 
     @Test

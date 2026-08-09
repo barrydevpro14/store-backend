@@ -20,6 +20,7 @@ import org.store.stock.domain.enums.MotifAjustement;
 import org.store.stock.domain.enums.MouvementStockType;
 import org.store.stock.domain.enums.TypeAjustement;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -58,19 +59,19 @@ class AjustementStockControllerTest {
     }
 
     private AjustementStockRequest validPositif() {
-        return new AjustementStockRequest(stockId, TypeAjustement.POSITIF, 20, MotifAjustement.RETROUVAILLE, "retrouvé");
+        return new AjustementStockRequest(stockId, TypeAjustement.POSITIF, new BigDecimal(20), MotifAjustement.RETROUVAILLE, "retrouvé");
     }
 
     private AjustementStockRequest validNegatif() {
-        return new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, 5, MotifAjustement.CASSE, "casse");
+        return new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, new BigDecimal(5), MotifAjustement.CASSE, "casse");
     }
 
     private MouvementStockResponse sample() {
         return new MouvementStockResponse(
                 UUID.randomUUID(), UUID.randomUUID(),
                 new MagasinSummaryResponse(magasinId, "Magasin Central"),
-                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null),
-                new MouvementDetailResponse(MouvementStockType.AJUSTEMENT, 20, 100, 120, "RETROUVAILLE", "retrouvé"),
+                new ProductSummaryResponse(productId, "Clou 10mm", "CL-10", null , "PIECE"),
+                new MouvementDetailResponse(MouvementStockType.AJUSTEMENT, new BigDecimal(20), new BigDecimal(100), new BigDecimal(120), "RETROUVAILLE", "retrouvé"),
                 "2026-05-14 10:00:00", UUID.randomUUID().toString()
         );
     }
@@ -110,7 +111,7 @@ class AjustementStockControllerTest {
 
     @Test
     void should_return_400_when_quantite_zero_or_negative() throws Exception {
-        AjustementStockRequest body = new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, 0, MotifAjustement.CASSE, null);
+        AjustementStockRequest body = new AjustementStockRequest(stockId, TypeAjustement.NEGATIF, BigDecimal.ZERO, MotifAjustement.CASSE, null);
 
         mockMvc.perform(post(AjustementStockController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)

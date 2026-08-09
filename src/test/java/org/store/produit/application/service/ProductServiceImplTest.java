@@ -24,9 +24,11 @@ import org.store.produit.application.dto.CategoryProductSummaryResponse;
 import org.store.produit.application.dto.ImageMetadataResponse;
 import org.store.produit.application.dto.ProductRequest;
 import org.store.produit.application.dto.ProductResponse;
+import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.application.service.impl.ProductServiceImpl;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
+import org.store.produit.domain.model.UniteMesure;
 import org.store.produit.domain.service.ProductDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -46,6 +48,7 @@ class ProductServiceImplTest {
 
     @Mock private ProductDomainService productDomainService;
     @Mock private ICategoryProductService categoryProductService;
+    @Mock private IUniteMesureService uniteMesureService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private IUploadFileService uploadFileService;
@@ -56,14 +59,17 @@ class ProductServiceImplTest {
     private UUID entrepriseId;
     private UUID productId;
     private UUID categoryId;
+    private UUID uniteMesureId;
     private Entreprise entreprise;
     private CategoryProduct category;
+    private UniteMesure uniteMesure;
 
     @BeforeEach
     void setUp() {
         entrepriseId = UUID.randomUUID();
         productId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
+        uniteMesureId = UUID.randomUUID();
 
         entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
@@ -72,6 +78,12 @@ class ProductServiceImplTest {
         category.setId(categoryId);
         category.setLibelle("Pneus");
         category.setEntreprise(entreprise);
+
+        uniteMesure = new UniteMesure();
+        uniteMesure.setId(uniteMesureId);
+        uniteMesure.setCode("PIECE");
+        uniteMesure.setLibelle("Pièce");
+        uniteMesure.setSymbole("pce");
     }
 
     private UserPrincipal proprietaire() {
@@ -87,19 +99,21 @@ class ProductServiceImplTest {
         p.setDescription("Pneu été");
         p.setCategoryProduct(category);
         p.setEntreprise(ent);
+        p.setUniteMesure(uniteMesure);
         return p;
     }
 
     @Test
     void create_should_persist_when_inputs_valid() {
-        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Pneu été", categoryId);
+        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Pneu été", categoryId, uniteMesureId);
         Product saved = sampleProduct(entreprise);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
+        when(uniteMesureService.findById(uniteMesureId)).thenReturn(uniteMesure);
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
-        when(productDomainService.create(request, category, entreprise)).thenReturn(saved);
+        when(productDomainService.create(any(org.store.produit.application.dto.ProductCreate.class))).thenReturn(saved);
 
         ProductResponse response = service.create(request);
 
@@ -112,7 +126,7 @@ class ProductServiceImplTest {
 
     @Test
     void create_should_throw_when_reference_and_nom_already_exist() {
-        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-DUP", null, categoryId);
+        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-DUP", null, categoryId, uniteMesureId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.existsByReferenceAndNomAndEntrepriseId("PN-DUP", "Pneu 195/65 R15", entrepriseId)).thenReturn(true);
@@ -120,12 +134,12 @@ class ProductServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UniqueResourceException.class);
 
-        verify(productDomainService, never()).create(any(), any(), any());
+        verify(productDomainService, never()).create(any(org.store.produit.application.dto.ProductCreate.class));
     }
 
     @Test
     void create_should_throw_when_category_belongs_to_other_entreprise() {
-        ProductRequest request = new ProductRequest("x", "PN-OK", null, categoryId);
+        ProductRequest request = new ProductRequest("x", "PN-OK", null, categoryId, uniteMesureId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(categoryProductService.findById(categoryId)).thenReturn(category);
@@ -135,7 +149,7 @@ class ProductServiceImplTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(productDomainService, never()).create(any(), any(), any());
+        verify(productDomainService, never()).create(any(org.store.produit.application.dto.ProductCreate.class));
     }
 
     @Test
@@ -168,7 +182,7 @@ class ProductServiceImplTest {
         ProductFilter filter = new ProductFilter(null, null, null, null, 0, 10);
         ProductResponse sample = new ProductResponse(productId, "Pneu", "PN-1", "desc",
                 new CategoryProductSummaryResponse(categoryId, "Pneus"),
-                entrepriseId, null);
+                null, entrepriseId, null);
         Page<ProductResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -182,12 +196,13 @@ class ProductServiceImplTest {
     @Test
     void update_should_change_fields() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("Nouveau nom", "PN-195-65-R15", "Nouvelle desc", categoryId);
+        ProductRequest request = new ProductRequest("Nouveau nom", "PN-195-65-R15", "Nouvelle desc", categoryId, uniteMesureId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
+        when(uniteMesureService.findById(uniteMesureId)).thenReturn(uniteMesure);
         when(productDomainService.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ProductResponse response = service.update(productId, request);
@@ -199,12 +214,13 @@ class ProductServiceImplTest {
     @Test
     void update_should_skip_unicity_check_when_reference_and_nom_unchanged() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Nouvelle desc", categoryId);
+        ProductRequest request = new ProductRequest("Pneu 195/65 R15", "PN-195-65-R15", "Nouvelle desc", categoryId, uniteMesureId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
         when(categoryProductService.findById(categoryId)).thenReturn(category);
         when(categoryProductService.ensureBelongsToCurrentEntreprise(category)).thenReturn(category);
+        when(uniteMesureService.findById(uniteMesureId)).thenReturn(uniteMesure);
         when(productDomainService.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.update(productId, request);
@@ -215,7 +231,7 @@ class ProductServiceImplTest {
     @Test
     void update_should_throw_when_new_reference_and_nom_taken() {
         Product product = sampleProduct(entreprise);
-        ProductRequest request = new ProductRequest("Autre nom", "PN-NEW", null, categoryId);
+        ProductRequest request = new ProductRequest("Autre nom", "PN-NEW", null, categoryId, uniteMesureId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(product);
@@ -236,7 +252,7 @@ class ProductServiceImplTest {
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(productDomainService.findById(productId)).thenReturn(foreign);
 
-        ProductRequest updateReq = new ProductRequest("x", "y", null, categoryId);
+        ProductRequest updateReq = new ProductRequest("x", "y", null, categoryId, uniteMesureId);
 
         assertThatThrownBy(() -> service.update(productId, updateReq))
                 .isInstanceOf(ForbiddenException.class);

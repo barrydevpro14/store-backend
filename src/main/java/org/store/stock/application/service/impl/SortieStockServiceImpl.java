@@ -29,6 +29,7 @@ import org.store.notification.application.event.StockBelowThresholdEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.stock.domain.service.SortieStockDomainService;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,8 +75,8 @@ public class SortieStockServiceImpl implements ISortieStockService {
 
         Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
-        int stockAvant = stock.getQuantiteDisponible();
-        if (stockAvant < sortieStockRequest.quantite()) {
+        BigDecimal stockAvant = stock.getQuantiteDisponible();
+        if (stockAvant.compareTo(sortieStockRequest.quantite()) < 0) {
             throw new BadArgumentException("stock.exit.insufficientQuantity", stockAvant, sortieStockRequest.quantite());
         }
 
@@ -85,7 +86,8 @@ public class SortieStockServiceImpl implements ISortieStockService {
 
         Stock updated = stockService.decrement(stock, sortieStockRequest.quantite());
 
-        if (updated.getSeuilApprovisionnement() > 0 && updated.getQuantiteDisponible() <= updated.getSeuilApprovisionnement()) {
+        if (updated.getSeuilApprovisionnement().compareTo(BigDecimal.ZERO) > 0
+                && updated.getQuantiteDisponible().compareTo(updated.getSeuilApprovisionnement()) <= 0) {
             notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
         }
 
@@ -111,11 +113,13 @@ public class SortieStockServiceImpl implements ISortieStockService {
 
         Stock stock = stockService.findByMagasinAndProductFournisseur(magasin.getId(), productFournisseur.getId())
                 .orElseThrow(() -> new EntityException("stock.notFound"));
-        int stockAvant = stock.getQuantiteDisponible();
+        BigDecimal stockAvant = stock.getQuantiteDisponible();
 
         List<EntreeStock> lots = entreeStockService.findAvailableLotsForFifo(magasin.getId(), productFournisseur.getId());
-        int totalDisponible = lots.stream().mapToInt(EntreeStock::getQuantiteRestante).sum();
-        if (totalDisponible < sortieStockForVente.quantite()) {
+        BigDecimal totalDisponible = lots.stream()
+                .map(EntreeStock::getQuantiteRestante)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalDisponible.compareTo(sortieStockForVente.quantite()) < 0) {
             throw new BadArgumentException("stock.exit.insufficientQuantity", totalDisponible, sortieStockForVente.quantite());
         }
 
@@ -125,7 +129,8 @@ public class SortieStockServiceImpl implements ISortieStockService {
 
         Stock updated = stockService.decrement(stock, sortieStockForVente.quantite());
 
-        if (updated.getSeuilApprovisionnement() > 0 && updated.getQuantiteDisponible() <= updated.getSeuilApprovisionnement()) {
+        if (updated.getSeuilApprovisionnement().compareTo(BigDecimal.ZERO) > 0
+                && updated.getQuantiteDisponible().compareTo(updated.getSeuilApprovisionnement()) <= 0) {
             notificationEventPublisher.publishStockBelowThreshold(new StockBelowThresholdEvent(updated));
         }
 
@@ -148,10 +153,10 @@ public class SortieStockServiceImpl implements ISortieStockService {
     /** Consomme les lots FIFO selon le contexte (qty cible, prix, ligneVente optionnelle) et retourne les sorties créées. */
     public List<SortieStockResponse> consumeFifo(List<EntreeStock> lots, LotConsumptionContext context) {
         List<SortieStockResponse> sorties = new ArrayList<>();
-        int[] restant = {context.totalAConsommer()};
+        BigDecimal[] restant = {context.totalAConsommer()};
 
         lots.stream()
-                .takeWhile(lot -> restant[0] > 0)
+                .takeWhile(lot -> restant[0].compareTo(BigDecimal.ZERO) > 0)
                 .forEach(lot -> {
                     LotConsumption consumption = consumeOneLot(lot, restant[0], context);
                     sorties.add(consumption.sortie());
@@ -162,15 +167,15 @@ public class SortieStockServiceImpl implements ISortieStockService {
     }
 
     /** Décrémente le lot, persiste, crée la SortieStock (avec ligneVente eventuelle) et retourne le nouveau restant. */
-    public LotConsumption consumeOneLot(EntreeStock lot, int restant, LotConsumptionContext context) {
-        int aConsommer = Math.min(lot.getQuantiteRestante(), restant);
+    public LotConsumption consumeOneLot(EntreeStock lot, BigDecimal restant, LotConsumptionContext context) {
+        BigDecimal aConsommer = lot.getQuantiteRestante().min(restant);
 
-        lot.setQuantiteRestante(lot.getQuantiteRestante() - aConsommer);
+        lot.setQuantiteRestante(lot.getQuantiteRestante().subtract(aConsommer));
         entreeStockService.saveLot(lot);
 
         SortieStock sortie = sortieStockDomainService.create(new SortieStockCreate(
                 lot, aConsommer, context.prixVente(), context.ligneVente()
         ));
-        return new LotConsumption(new SortieStockResponse(sortie), restant - aConsommer);
+        return new LotConsumption(new SortieStockResponse(sortie), restant.subtract(aConsommer));
     }
 }
