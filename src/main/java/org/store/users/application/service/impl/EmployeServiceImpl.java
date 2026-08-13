@@ -27,7 +27,7 @@ import org.store.users.application.dto.EmployeRequest;
 import org.store.users.application.dto.EmployeResponse;
 import org.store.users.application.dto.EmployeUpdateCommand;
 import org.store.users.application.dto.EmployeUpdateRequest;
-import org.store.abonnement.application.service.AbonnementQuotaService;
+import org.store.abonnement.application.service.IAbonnementQuotaService;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
@@ -73,7 +73,7 @@ public class EmployeServiceImpl implements IEmployeService {
     private final ValidatorService validatorService;
     private final IAuditEventPublisher auditEventPublisher;
     private final IEmailEventPublisher emailEventPublisher;
-    private final AbonnementQuotaService quotaService;
+    private final IAbonnementQuotaService quotaService;
     private final CommandeVenteDomainService commandeVenteDomainService;
     private final CommandeAchatDomainService commandeAchatDomainService;
     private final RefreshTokenDomainService refreshTokenDomainService;
@@ -89,7 +89,7 @@ public class EmployeServiceImpl implements IEmployeService {
                               ValidatorService validatorService,
                               IAuditEventPublisher auditEventPublisher,
                               IEmailEventPublisher emailEventPublisher,
-                              AbonnementQuotaService quotaService,
+                              IAbonnementQuotaService quotaService,
                               CommandeVenteDomainService commandeVenteDomainService,
                               CommandeAchatDomainService commandeAchatDomainService,
                               RefreshTokenDomainService refreshTokenDomainService) {

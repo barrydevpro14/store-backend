@@ -1,5 +1,6 @@
 package org.store.magasin.application.service.impl;
 
+import org.store.abonnement.application.service.IAbonnementQuotaService;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.magasin.application.service.IMagasinService;
 
@@ -24,7 +25,6 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.magasin.domain.service.MagasinDomainService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
-import org.store.abonnement.application.service.AbonnementQuotaService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.List;
@@ -39,14 +39,14 @@ public class MagasinServiceImpl implements IMagasinService {
     private final IUploadFileService uploadFileService;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
-    private final AbonnementQuotaService quotaService;
+    private final IAbonnementQuotaService quotaService;
 
     public MagasinServiceImpl(MagasinDomainService magasinDomainService,
                               IEntrepriseService entrepriseService,
                               IUploadFileService uploadFileService,
                               ICurrentUserService currentUserService,
                               ValidatorService validatorService,
-                              AbonnementQuotaService quotaService) {
+                              IAbonnementQuotaService quotaService) {
         this.magasinDomainService = magasinDomainService;
         this.entrepriseService = entrepriseService;
         this.uploadFileService = uploadFileService;

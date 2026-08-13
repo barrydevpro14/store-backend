@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.abonnement.application.service.impl.AbonnementQuotaServiceImpl;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
@@ -22,14 +23,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AbonnementQuotaServiceTest {
+class AbonnementQuotaServiceImplTest {
 
     @Mock private AbonnementDomainService abonnementDomainService;
     @Mock private MagasinDomainService magasinDomainService;
     @Mock private EmployeDomainService employeDomainService;
 
     @InjectMocks
-    private AbonnementQuotaService service;
+    private AbonnementQuotaServiceImpl service;
 
     private UUID entrepriseId;
     private UUID magasinId;

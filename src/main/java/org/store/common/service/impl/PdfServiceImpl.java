@@ -120,6 +120,8 @@ public class PdfServiceImpl implements IPdfService {
             cell.addElement(new Paragraph(msg("pdf.label.ninea") + " : " + entreprise.getNinea(), infoFont));
         if (isNotBlank(entreprise.getRccm()))
             cell.addElement(new Paragraph(msg("pdf.label.rccm") + " : " + entreprise.getRccm(), infoFont));
+        if (isNotBlank(entreprise.getTelephone()))
+            cell.addElement(new Paragraph(msg("pdf.label.phone") + " : " + entreprise.getTelephone(), infoFont));
         if (isNotBlank(entreprise.getAdresse()))
             cell.addElement(new Paragraph(msg("pdf.label.adresse") + " : " + entreprise.getAdresse(), infoFont));
 

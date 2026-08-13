@@ -1,6 +1,7 @@
-package org.store.abonnement.application.service;
+package org.store.abonnement.application.service.impl;
 
 import org.springframework.stereotype.Service;
+import org.store.abonnement.application.service.IAbonnementQuotaService;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
@@ -21,21 +22,22 @@ import java.util.UUID;
  * aucune vérification n'est effectuée ici.
  */
 @Service
-public class AbonnementQuotaService {
+public class AbonnementQuotaServiceImpl implements IAbonnementQuotaService {
 
     private final AbonnementDomainService abonnementDomainService;
     private final MagasinDomainService magasinDomainService;
     private final EmployeDomainService employeDomainService;
 
-    public AbonnementQuotaService(AbonnementDomainService abonnementDomainService,
-                                  MagasinDomainService magasinDomainService,
-                                  EmployeDomainService employeDomainService) {
+    public AbonnementQuotaServiceImpl(AbonnementDomainService abonnementDomainService,
+                                      MagasinDomainService magasinDomainService,
+                                      EmployeDomainService employeDomainService) {
         this.abonnementDomainService = abonnementDomainService;
         this.magasinDomainService = magasinDomainService;
         this.employeDomainService = employeDomainService;
     }
 
     /** Vérifie que l'entreprise peut créer un magasin supplémentaire. */
+    @Override
     public void ensureMagasinQuota(UUID entrepriseId) {
         Optional<Abonnement> abonnement = abonnementDomainService.findCurrent(entrepriseId);
         if (abonnement.isEmpty()) return;
@@ -50,6 +52,7 @@ public class AbonnementQuotaService {
     }
 
     /** Vérifie que le magasin peut accueillir un employé supplémentaire selon le plan actif. */
+    @Override
     public void ensureEmployeQuota(UUID entrepriseId, UUID magasinId) {
         Optional<Abonnement> abonnement = abonnementDomainService.findCurrent(entrepriseId);
         if (abonnement.isEmpty()) return;
