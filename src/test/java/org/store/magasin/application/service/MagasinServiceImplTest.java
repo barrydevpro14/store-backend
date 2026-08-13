@@ -1,5 +1,6 @@
 package org.store.magasin.application.service;
 
+import org.store.abonnement.application.service.IAbonnementQuotaService;
 import org.store.magasin.application.service.impl.MagasinServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +42,7 @@ class MagasinServiceImplTest {
     @Mock private org.store.common.service.IUploadFileService uploadFileService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
-    @Mock private org.store.abonnement.application.service.AbonnementQuotaService quotaService;
+    @Mock private IAbonnementQuotaService quotaService;
 
     @InjectMocks
     private MagasinServiceImpl service;

@@ -176,7 +176,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
             table.addCell(cell);
         }
 
-        Font lineFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
+        Font lineFont = new Font(Font.HELVETICA, 7, Font.NORMAL, Color.DARK_GRAY);
         boolean alt   = false;
 
         for (LigneCommandeAchat ligne : commande.getLignes()) {
@@ -188,7 +188,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
 
             table.addCell(pdf.textCell(buildProductLabel(product.getNom(), product.getReference()), lineFont, bg));
             table.addCell(pdf.textCell(buildCategoryQualityLabel(product.getCategoryProduct(), quality), lineFont, bg));
-            table.addCell(pdf.numCell(String.valueOf(ligne.getQuantite()), lineFont, bg));
+            table.addCell(pdf.numCell(ligne.getQuantite()+" "+product.getUniteMesure().getSymbole(), lineFont, bg));
             table.addCell(pdf.numCell(pdf.formatAmount(ligne.getPrixAchat()), lineFont, bg));
         }
 

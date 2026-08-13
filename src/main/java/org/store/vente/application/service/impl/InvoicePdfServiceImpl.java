@@ -186,7 +186,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             table.addCell(cell);
         }
 
-        Font lineFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
+        Font lineFont = new Font(Font.HELVETICA, 7, Font.NORMAL, Color.DARK_GRAY);
         boolean alt   = false;
 
         for (LigneCommandeVente ligne : facture.getCommande().getLignes()) {
@@ -198,8 +198,8 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
             table.addCell(pdf.textCell(buildProductLabel(product.getNom(), product.getReference()), lineFont, bg));
             table.addCell(pdf.textCell(buildCategoryQualityLabel(product.getCategoryProduct(), quality), lineFont, bg));
-            table.addCell(pdf.numCell(String.valueOf(ligne.getQuantite()), lineFont, bg));
-            table.addCell(pdf.numCell(String.valueOf(ligne.getQuantiteLivree()), lineFont, bg));
+            table.addCell(pdf.numCell(ligne.getQuantite()+" "+product.getUniteMesure().getSymbole(), lineFont, bg));
+            table.addCell(pdf.numCell(ligne.getQuantiteLivree()+" "+product.getUniteMesure().getSymbole(), lineFont, bg));
             table.addCell(buildLivraisonStatutCell(ligne.getLivraisonStatut(), lineFont));
             table.addCell(pdf.numCell(pdf.formatAmount(ligne.getPrixUnitaire()), lineFont, bg));
             table.addCell(pdf.numCell(pdf.formatAmount(ligne.getMontantTotal()), lineFont, bg));
