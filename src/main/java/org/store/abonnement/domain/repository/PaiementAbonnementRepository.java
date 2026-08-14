@@ -62,7 +62,7 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
               AND (:entrepriseId IS NULL OR abonnement.entreprise.id = :entrepriseId)
               AND (:startDate IS NULL OR :startDate = '' OR paiement.dateEcheance >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR paiement.dateEcheance <= CAST(:endDate AS date))
-            ORDER BY paiement.dateEcheance DESC
+            ORDER BY paiement.createdAt DESC
             """,
            countQuery = """
             SELECT COUNT(paiement)

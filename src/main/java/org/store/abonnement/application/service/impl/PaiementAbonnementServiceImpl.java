@@ -95,13 +95,16 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         ensurePaiementAccessibleByCaller(paiement);
         ensurePaiementIsFactureGeneree(paiement);
 
-        PieceJointe preuveImage = uploadFileService.buildImage(preuve);
+        if (preuve !=null && !preuve.isEmpty()){
+            PieceJointe preuveImage = uploadFileService.buildImage(preuve);
+            paiement.setPreuve(preuveImage);
+        }
 
         paiement.setDatePaiement(paiementAbonnementRequest.datePaiement());
         paiement.setMoyen(moyenPaiementService.findById(paiementAbonnementRequest.moyenPaiementId()));
         paiement.setReferenceTransaction(paiementAbonnementRequest.referenceTransaction());
         paiement.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        paiement.setPreuve(preuveImage);
+
         PaiementAbonnement saved = paiementAbonnementDomainService.save(paiement);
 
         String sigle = paiement.getAbonnement().getEntreprise() != null

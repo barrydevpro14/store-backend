@@ -45,7 +45,7 @@ public class PaiementAbonnementController {
     @PreAuthorize("hasAuthority('SUBSCRIPTION_PAY')")
     public ResponseEntity<PaiementAbonnementResponse> payer(@PathVariable UUID id,
                                                             @RequestPart("data") @Valid PaiementAbonnementRequest paiementAbonnementRequest,
-                                                            @RequestPart("file") MultipartFile file) {
+                                                            @RequestPart(value = "file" , required = false) MultipartFile file) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(paiementAbonnementService.payer(id, paiementAbonnementRequest, file));
     }
