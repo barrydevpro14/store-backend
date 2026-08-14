@@ -88,8 +88,8 @@ public class FactureClientController {
 
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAuthority('SALE_READ')")
-    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id) {
-        byte[] pdf = invoicePdfService.generate(id);
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id, @RequestParam UUID configId) {
+        byte[] pdf = invoicePdfService.generate(id, configId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"facture-" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
