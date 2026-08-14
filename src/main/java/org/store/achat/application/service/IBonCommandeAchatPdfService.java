@@ -4,5 +4,5 @@ import java.util.UUID;
 
 /** Generates the PDF bytes for a purchase order. Scoped to the current user's entreprise. */
 public interface IBonCommandeAchatPdfService {
-    byte[] generate(UUID id);
+    byte[] generate(UUID commandeId, UUID configId);
 }

@@ -64,8 +64,8 @@ public class CommandeAchatController {
 
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAuthority('PURCHASE_READ')")
-    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id) {
-        byte[] pdf = bonCommandeAchatPdfService.generate(id);
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id, @RequestParam UUID configId) {
+        byte[] pdf = bonCommandeAchatPdfService.generate(id, configId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"bon-commande-" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
