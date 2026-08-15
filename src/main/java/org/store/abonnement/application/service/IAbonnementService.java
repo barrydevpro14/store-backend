@@ -1,8 +1,10 @@
 package org.store.abonnement.application.service;
 
 import org.springframework.data.domain.Page;
+import org.store.abonnement.application.dto.AbonnementDetailsResponse;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.ChangerPlanRequest;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
@@ -29,8 +31,15 @@ public interface IAbonnementService {
     /** Internal lookup by id. */
     Abonnement findById(UUID id);
 
-    /** OWNER requests plan change for next cycle. */
-    AbonnementResponse changerPlan(UUID planId);
+    /**
+     * Returns the full details of an Abonnement by id. ADMIN callers (SUBSCRIPTION_READ) can access
+     * any row; OWNER callers (SUBSCRIPTION_OWNER_READ) are restricted to their own entreprise.
+     * Prix is resolved from the matching PlanAbonnementTarif; BigDecimal.ZERO for TRIAL rows.
+     */
+    AbonnementDetailsResponse findDetailsById(UUID id);
+
+    /** OWNER requests plan and/or periodicite change for the next billing cycle. */
+    AbonnementResponse changerPlan(ChangerPlanRequest request);
 
     /** ADMIN listing — all Abonnements filtered by entreprise / statut / plan. No scoping. */
     Page<AbonnementResponse> findAll(AbonnementFilter filter);

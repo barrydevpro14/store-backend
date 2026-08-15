@@ -17,6 +17,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.UniqueResourceException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,8 +47,8 @@ class CouponServiceImplTest {
     private CouponRequest validRequest() {
         return new CouponRequest(
                 "PROMO10", "Réduction 10%", "POURCENTAGE",
-                new BigDecimal("10"), 100,
-                true, null);
+                new BigDecimal("10"), 100, true,
+                null, LocalDate.now(), LocalDate.now().plusMonths(3), null);
     }
 
     private Coupon sampleCoupon() {
@@ -80,15 +81,14 @@ class CouponServiceImplTest {
         PlanAbonnement plan = new PlanAbonnement();
         plan.setId(planId);
         plan.setNom("Starter");
-        plan.setPrix(new BigDecimal("9900"));
 
         CouponRequest request = new CouponRequest(
                 "PROMO_STARTER", null, "POURCENTAGE",
-                new BigDecimal("10"), 10,
-                true, planId);
+                new BigDecimal("10"), 10, true,
+                null, LocalDate.now(), LocalDate.now().plusMonths(3), planId);
 
         Coupon created = sampleCoupon();
-        created.setPlan(plan);
+        created.setPlanAbonnement(plan);
 
         when(couponDomainService.existsByCode("PROMO_STARTER")).thenReturn(false);
         when(planAbonnementService.findByIdOrNull(planId)).thenReturn(plan);
@@ -116,7 +116,7 @@ class CouponServiceImplTest {
     void create_should_throw_when_reduction_inconsistent() {
         CouponRequest request = new CouponRequest(
                 "PROMO_X", null, "POURCENTAGE", new BigDecimal("150"), 10,
-                true, null);
+                true, null, LocalDate.now(), LocalDate.now().plusMonths(3), null);
         when(couponDomainService.existsByCode("PROMO_X")).thenReturn(false);
 
         assertThatThrownBy(() -> service.create(request))
@@ -137,8 +137,8 @@ class CouponServiceImplTest {
         Coupon coupon = sampleCoupon();
         CouponRequest request = new CouponRequest(
                 "PROMO20", "Réduction étendue", "POURCENTAGE",
-                new BigDecimal("20"), 200,
-                true, null);
+                new BigDecimal("20"), 200, true,
+                null, LocalDate.now(), LocalDate.now().plusMonths(3), null);
 
         when(couponDomainService.findById(couponId)).thenReturn(coupon);
         when(couponDomainService.existsByCode("PROMO20")).thenReturn(false);

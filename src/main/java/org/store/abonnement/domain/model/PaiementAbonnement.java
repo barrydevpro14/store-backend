@@ -21,6 +21,14 @@ public class PaiementAbonnement extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Abonnement abonnement;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plan_abonnement_tarif_id")
+    private PlanAbonnementTarif planAbonnementTarif;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;
+
     @Column(precision = 19, scale = 2)
     private BigDecimal montantAvantReduction;
 

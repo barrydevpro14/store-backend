@@ -14,8 +14,12 @@ import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
+import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.impl.PaiementAbonnementServiceImpl;
 import org.store.abonnement.application.service.impl.SubscriptionAmountCalculator;
+import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnementTarif;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
@@ -89,7 +93,6 @@ class PaiementAbonnementServiceImplTest {
 
         plan = new PlanAbonnement();
         plan.setId(UUID.randomUUID());
-        plan.setPrix(new BigDecimal("19900"));
 
         abonnement = new Abonnement();
         abonnement.setId(abonnementId);
@@ -206,6 +209,7 @@ class PaiementAbonnementServiceImplTest {
     @Test
     void validate_should_extend_dateFin_when_abonnement_actif() {
         abonnement.setStatut(AbonnementStatut.ACTIF);
+        abonnement.setPeriodicite(PeriodiciteAbonnement.MENSUEL);
         abonnement.setDateFin(LocalDate.of(2026, 12, 31));
         PaiementAbonnement paiement = pendingPaiement();
 
@@ -390,5 +394,51 @@ class PaiementAbonnementServiceImplTest {
         List<PaiementAbonnement> result = service.findFacturesAbonnementDues(dates);
 
         assertThat(result).hasSize(1).containsExactly(facture);
+    }
+
+    @Test
+    void findFactureNonPayeeByAbonnement_should_delegate_to_domain() {
+        PaiementAbonnement facture = factureGeneree();
+        when(paiementAbonnementDomainService.findFactureNonPayeeByAbonnement(abonnementId))
+                .thenReturn(Optional.of(facture));
+
+        Optional<PaiementAbonnement> result = service.findFactureNonPayeeByAbonnement(abonnementId);
+
+        assertThat(result).isPresent().contains(facture);
+    }
+
+    @Test
+    void recalculerFactureNonPayee_should_update_tarif_and_amounts() {
+        PaiementAbonnement facture = factureGeneree();
+
+        PlanAbonnementTarif tarif = new PlanAbonnementTarif();
+        tarif.setId(UUID.randomUUID());
+        tarif.setPrix(new BigDecimal("29900"));
+
+        SubscriptionAmountInputs inputs = new SubscriptionAmountInputs(tarif, null);
+        SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
+                new BigDecimal("29900"), BigDecimal.ZERO, new BigDecimal("29900"));
+
+        when(paiementAbonnementDomainService.recalculer(facture, inputs, breakdown)).thenReturn(facture);
+
+        service.recalculerFactureNonPayee(facture, inputs, breakdown);
+
+        verify(paiementAbonnementDomainService).recalculer(facture, inputs, breakdown);
+    }
+
+    @Test
+    void recalculerFactureNonPayee_should_throw_when_paiement_not_facture_generee() {
+        PaiementAbonnement paiement = pendingPaiement();
+
+        PlanAbonnementTarif tarif = new PlanAbonnementTarif();
+        tarif.setId(UUID.randomUUID());
+        tarif.setPrix(new BigDecimal("29900"));
+
+        SubscriptionAmountInputs inputs = new SubscriptionAmountInputs(tarif, null);
+        SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
+                new BigDecimal("29900"), BigDecimal.ZERO, new BigDecimal("29900"));
+
+        assertThatThrownBy(() -> service.recalculerFactureNonPayee(paiement, inputs, breakdown))
+                .isInstanceOf(org.store.common.exceptions.BadArgumentException.class);
     }
 }

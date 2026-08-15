@@ -10,7 +10,6 @@ import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.application.service.impl.PublicCatalogServiceImpl;
 import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,10 +28,10 @@ class PublicCatalogServiceImplTest {
 
     private PublicPlanResponse plan(UUID id, String nom, int ordre) {
         return new PublicPlanResponse(
-                id, nom, null, new BigDecimal("9900"),
+                id, nom, null,
                 1, 3,
                 true, true, true, false,
-                ordre);
+                ordre, List.of());
     }
 
     @Test

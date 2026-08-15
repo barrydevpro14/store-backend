@@ -67,7 +67,7 @@ class PaiementAbonnementControllerTest {
 
     private PaiementAbonnementResponse sample(StatutPaiementAbonnement statut) {
         PlanAbonnementSummaryResponse plan = new PlanAbonnementSummaryResponse(
-                UUID.randomUUID(), "Premium", new BigDecimal("19900"));
+                UUID.randomUUID(), "Premium");
         return new PaiementAbonnementResponse(
                 paiementId, abonnementId, "ACME", plan,
                 new BigDecimal("238800"), new BigDecimal("0"), new BigDecimal("238800"),

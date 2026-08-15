@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.store.abonnement.application.dto.CouponFilter;
 import org.store.abonnement.application.dto.CouponRequest;
 import org.store.abonnement.application.dto.CouponResponse;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.Coupon;
 
 import java.util.Optional;
@@ -56,8 +57,8 @@ public interface ICouponService {
      */
     void ensureCodeAvailable(String code);
 
-    /** Returns the first coupon applicable to the given enterprise and plan, or empty. */
-    Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId);
+    /** Returns the first coupon applicable for this billing cycle (plan + periodicite + date window), or empty. */
+    Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId, PeriodiciteAbonnement periodicite);
 
     /** Increments the coupon's usage counter and persists. */
     Coupon incrementUsage(Coupon coupon);

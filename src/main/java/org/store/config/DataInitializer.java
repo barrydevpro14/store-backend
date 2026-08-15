@@ -140,7 +140,6 @@ public class DataInitializer implements ApplicationRunner {
             trialPlan = planAbonnementDomainService.create(new PlanAbonnementRequest(
                     PLAN_TRIAL_NOM,
                     "Plan d'essai gratuit",
-                    BigDecimal.ZERO,
                     1,
                     2,
                     true,

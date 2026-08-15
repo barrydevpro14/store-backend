@@ -10,11 +10,14 @@ import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
+import org.store.abonnement.application.service.IPlanAbonnementTarifService;
 import org.store.abonnement.application.service.IUtilisationCouponService;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnementTarif;
 import org.store.notification.application.event.FactureAbonnementGenereeEvent;
 import org.store.property.SubscriptionProperties;
 
@@ -36,6 +39,7 @@ public class FacturationAbonnementScheduler {
     private final IPaiementAbonnementService paiementAbonnementService;
     private final ICouponService couponService;
     private final IUtilisationCouponService utilisationCouponService;
+    private final IPlanAbonnementTarifService tarifService;
     private final SubscriptionAmountCalculator amountCalculator;
     private final ApplicationEventPublisher eventPublisher;
     private final SubscriptionProperties subscriptionProperties;
@@ -44,6 +48,7 @@ public class FacturationAbonnementScheduler {
                                           IPaiementAbonnementService paiementAbonnementService,
                                           ICouponService couponService,
                                           IUtilisationCouponService utilisationCouponService,
+                                          IPlanAbonnementTarifService tarifService,
                                           SubscriptionAmountCalculator amountCalculator,
                                           ApplicationEventPublisher eventPublisher,
                                           SubscriptionProperties subscriptionProperties) {
@@ -51,6 +56,7 @@ public class FacturationAbonnementScheduler {
         this.paiementAbonnementService = paiementAbonnementService;
         this.couponService = couponService;
         this.utilisationCouponService = utilisationCouponService;
+        this.tarifService = tarifService;
         this.amountCalculator = amountCalculator;
         this.eventPublisher = eventPublisher;
         this.subscriptionProperties = subscriptionProperties;
@@ -67,22 +73,25 @@ public class FacturationAbonnementScheduler {
         aFacturer.forEach(abonnement -> genererFacture(abonnement, targetDate));
     }
 
-    /** Resolves effective plan, finds applicable coupon, creates the invoice, then publishes the event. */
+    /** Resolves tarif (plan + periodicite effectifs), finds applicable coupon, creates the invoice, then publishes the event. */
     private void genererFacture(Abonnement abonnement, LocalDate dateEcheance) {
         PlanAbonnement planEffectif = resolvePlanEffectif(abonnement);
+        PeriodiciteAbonnement periodiciteEffective = resolvePeriodiciteEffective(abonnement);
         UUID entrepriseId = abonnement.getEntreprise().getId();
 
+        PlanAbonnementTarif tarif = tarifService
+                .findByPlanAndPeriodicite(planEffectif, periodiciteEffective)
+                .orElseThrow(() -> new org.store.common.exceptions.EntityException("tarif.notFound"));
+
         Coupon coupon = couponService
-                .findApplicable(entrepriseId, planEffectif.getId())
+                .findApplicable(entrepriseId, planEffectif.getId(), periodiciteEffective)
                 .orElse(null);
 
         SubscriptionAmountBreakdown breakdown = amountCalculator.calculate(
-                new SubscriptionAmountInputs(planEffectif, coupon));
+                new SubscriptionAmountInputs(tarif, coupon));
 
         PaiementAbonnement facture = paiementAbonnementService.createFactureGeneree(
-                abonnement,
-                breakdown,
-                dateEcheance);
+                new FactureGenereeCommand(abonnement, tarif, coupon, breakdown, dateEcheance));
 
         if (coupon != null) {
             applyCoupon(coupon, abonnement, facture);
@@ -103,6 +112,13 @@ public class FacturationAbonnementScheduler {
         return abonnement.getProchainPlan() != null
                 ? abonnement.getProchainPlan()
                 : abonnement.getPlanAbonnement();
+    }
+
+    /** Returns prochainePeriodicite if a change was requested, otherwise the current periodicite. */
+    private PeriodiciteAbonnement resolvePeriodiciteEffective(Abonnement abonnement) {
+        return abonnement.getProchainePeriodicite() != null
+                ? abonnement.getProchainePeriodicite()
+                : abonnement.getPeriodicite();
     }
 
     /** Records coupon usage, increments counter, and deactivates coupon if quota exhausted. */

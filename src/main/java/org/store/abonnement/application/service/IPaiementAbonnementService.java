@@ -3,6 +3,9 @@ package org.store.abonnement.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.abonnement.application.dto.*;
+import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.service.impl.FactureGenereeCommand;
+import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
@@ -70,10 +73,9 @@ public interface IPaiementAbonnementService {
     java.util.Optional<PaiementAbonnementResponse> findMyPending();
 
     /**
-     * Creates a FACTURE_GENEREE invoice for an EN_ATTENTE Abonnement at subscription time.
-     * Delegates amount fields from the pre-computed breakdown.
+     * Creates a FACTURE_GENEREE invoice. Stores tarif + coupon snapshots on the payment row.
      */
-    PaiementAbonnement createFactureGeneree(Abonnement abonnement, SubscriptionAmountBreakdown breakdown, LocalDate dateEcheance);
+    PaiementAbonnement createFactureGeneree(FactureGenereeCommand command);
 
     /** Finds FACTURE_GENEREE invoices due on any of the given alert dates (daily scheduler use). */
     List<PaiementAbonnement> findFacturesAbonnementDues(List<LocalDate> dates);
@@ -83,6 +85,18 @@ public interface IPaiementAbonnementService {
 
     /** Marks the invoice EN_RETARD (suspension scheduler use). */
     PaiementAbonnement markAsEnRetard(PaiementAbonnement paiement);
+
+    /**
+     * Returns the most recent FACTURE_GENEREE or EN_RETARD invoice for the abonnement, or empty
+     * when the owner has already submitted proof (EN_ATTENTE_VALIDATION) or none exists.
+     */
+    java.util.Optional<PaiementAbonnement> findFactureNonPayeeByAbonnement(UUID abonnementId);
+
+    /**
+     * Recalculates tarif, coupon and amounts on an existing unpaid invoice after a plan/periodicite change.
+     * Only callable on FACTURE_GENEREE or EN_RETARD invoices.
+     */
+    void recalculerFactureNonPayee(PaiementAbonnement facture, SubscriptionAmountInputs inputs, SubscriptionAmountBreakdown breakdown);
 
     /** Throws ForbiddenException when the caller is not ADMIN and does not own the paiement's entreprise. */
     void ensurePaiementAccessibleByCaller(PaiementAbonnement paiement);

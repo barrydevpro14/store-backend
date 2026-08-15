@@ -1,10 +1,12 @@
 package org.store.abonnement.application.dto;
 
 import jakarta.validation.constraints.*;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.common.validation.EnumValue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record CouponRequest(
@@ -14,9 +16,16 @@ public record CouponRequest(
         @DecimalMin(value = "0.0", inclusive = true) BigDecimal valeurReduction,
         @PositiveOrZero int nombreUtilisationsMax,
         boolean actif,
-        @NotNull UUID planId
+        @EnumValue(enumClass = PeriodiciteAbonnement.class) String periodicite,
+        @NotNull LocalDate dateDebut,
+        @NotNull LocalDate dateFin,
+        UUID planId
 ) {
     public ReductionType reductionTypeAsEnum() {
         return reductionType == null || reductionType.isBlank() ? null : ReductionType.valueOf(reductionType);
+    }
+
+    public PeriodiciteAbonnement periodiciteAsEnum() {
+        return periodicite == null || periodicite.isBlank() ? null : PeriodiciteAbonnement.valueOf(periodicite);
     }
 }

@@ -11,8 +11,10 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.store.abonnement.application.dto.AbonnementDetailsResponse;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.ChangerPlanRequest;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
 import org.store.abonnement.application.dto.PlanFeaturesResponse;
@@ -21,6 +23,7 @@ import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 
@@ -69,7 +72,7 @@ class AbonnementControllerTest {
     private SubscribeResponse sampleResponse() {
         AbonnementResponse abonnement = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
-                new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
+                new PlanAbonnementSummaryResponse(planId, "Pro"),
                 null, null, AbonnementStatut.EN_ATTENTE);
         SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
                 new BigDecimal("19900.00"), new BigDecimal("0"), new BigDecimal("19900.00"));
@@ -78,7 +81,7 @@ class AbonnementControllerTest {
 
     @Test
     void should_return_201_when_subscribe_ok() throws Exception {
-        SubscribeRequest body = new SubscribeRequest(planId);
+        SubscribeRequest body = new SubscribeRequest(planId, "MENSUEL");
         when(abonnementService.subscribe(any(SubscribeRequest.class))).thenReturn(sampleResponse());
 
         mockMvc.perform(post(AbonnementController.BASE_PATH + "/subscribe")
@@ -106,7 +109,7 @@ class AbonnementControllerTest {
     void should_return_200_when_admin_lists_all() throws Exception {
         AbonnementResponse a = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
-                new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
+                new PlanAbonnementSummaryResponse(planId, "Pro"),
                 null, null, AbonnementStatut.EN_ATTENTE);
         Page<AbonnementResponse> page = new PageImpl<>(List.of(a), PageRequest.of(0, 10), 1);
         when(abonnementService.findAll(any(AbonnementFilter.class))).thenReturn(page);
@@ -131,7 +134,7 @@ class AbonnementControllerTest {
     void should_return_200_with_current_subscription() throws Exception {
         AbonnementResponse abonnement = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
-                new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
+                new PlanAbonnementSummaryResponse(planId, "Pro"),
                 null, null, AbonnementStatut.ACTIF);
         CurrentAbonnementResponse current = new CurrentAbonnementResponse(
                 abonnement, 25L,
@@ -158,7 +161,7 @@ class AbonnementControllerTest {
     void should_return_200_with_pending_subscription() throws Exception {
         AbonnementResponse pending = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
-                new PlanAbonnementSummaryResponse(planId, "Pro", new BigDecimal("19900")),
+                new PlanAbonnementSummaryResponse(planId, "Pro"),
                 null, null, AbonnementStatut.EN_ATTENTE);
 
         when(abonnementService.findMyPending()).thenReturn(pending);
@@ -178,15 +181,36 @@ class AbonnementControllerTest {
     }
 
     @Test
+    void should_return_200_with_details_when_found_by_id() throws Exception {
+        AbonnementResponse abonnement = new AbonnementResponse(
+                abonnementId, entrepriseId, "ACME",
+                new PlanAbonnementSummaryResponse(planId, "Pro"),
+                null, null, AbonnementStatut.ACTIF);
+        AbonnementDetailsResponse details = new AbonnementDetailsResponse(
+                abonnement, PeriodiciteAbonnement.MENSUEL, new java.math.BigDecimal("19900"));
+
+        when(abonnementService.findDetailsById(abonnementId)).thenReturn(details);
+
+        mockMvc.perform(get(AbonnementController.BASE_PATH + "/" + abonnementId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.abonnement.id").value(abonnementId.toString()))
+                .andExpect(jsonPath("$.abonnement.statut").value("ACTIF"))
+                .andExpect(jsonPath("$.periodicite").value("MENSUEL"))
+                .andExpect(jsonPath("$.prix").value(19900));
+    }
+
+    @Test
     void should_return_200_when_changer_plan() throws Exception {
         AbonnementResponse abonnement = new AbonnementResponse(
                 abonnementId, entrepriseId, "ACME",
-                new PlanAbonnementSummaryResponse(planId, "Enterprise", new BigDecimal("49900")),
+                new PlanAbonnementSummaryResponse(planId, "Enterprise"),
                 null, null, AbonnementStatut.ACTIF);
-        when(abonnementService.changerPlan(eq(planId))).thenReturn(abonnement);
+        when(abonnementService.changerPlan(any(ChangerPlanRequest.class))).thenReturn(abonnement);
 
+        ChangerPlanRequest body = new ChangerPlanRequest(planId, null);
         mockMvc.perform(patch(AbonnementController.BASE_PATH + "/current/plan")
-                        .param("planId", planId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan.nom").value("Enterprise"));
     }

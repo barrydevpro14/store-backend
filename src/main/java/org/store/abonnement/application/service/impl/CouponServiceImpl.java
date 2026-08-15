@@ -8,6 +8,7 @@ import org.store.abonnement.application.dto.CouponRequest;
 import org.store.abonnement.application.dto.CouponResponse;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPlanAbonnementService;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.service.CouponDomainService;
@@ -121,10 +122,10 @@ public class CouponServiceImpl implements ICouponService {
         }
     }
 
-    /** Returns the first coupon applicable to the given enterprise and plan, or empty. */
+    /** Returns the first coupon applicable for this billing cycle (plan + periodicite + date window), or empty. */
     @Override
-    public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId) {
-        return couponDomainService.findApplicable(entrepriseId, planId);
+    public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId, PeriodiciteAbonnement periodicite) {
+        return couponDomainService.findApplicable(entrepriseId, planId, periodicite);
     }
 
     /** Increments the coupon's usage counter and persists. */

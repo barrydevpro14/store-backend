@@ -1,13 +1,12 @@
 package org.store.abonnement.domain.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -20,9 +19,6 @@ public class PlanAbonnement extends AuditableEntity {
     private String nom;
 
     private String description;
-
-    @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal prix;
 
     private int nombreMagasinsMax;
 
@@ -43,4 +39,7 @@ public class PlanAbonnement extends AuditableEntity {
     private boolean trial = false;
 
     private int ordre;
+
+    @OneToMany(mappedBy = "plan", fetch = FetchType.LAZY)
+    private List<PlanAbonnementTarif> tarifs = new ArrayList<>();
 }

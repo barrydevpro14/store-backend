@@ -17,7 +17,6 @@ import org.store.abonnement.application.service.IPlanAbonnementService;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,13 +60,13 @@ class PlanAbonnementControllerTest {
     private PlanAbonnementRequest validBody() {
         return new PlanAbonnementRequest(
                 "Starter", "Plan d'entrée de gamme",
-                new BigDecimal("9900"), 1, 3,
+                1, 3,
                 true, true, true, false, true, true, false, 10);
     }
 
     private PlanAbonnementResponse sample() {
         return new PlanAbonnementResponse(planId, "Starter", "Plan d'entrée de gamme",
-                new BigDecimal("9900"), 1, 3,
+                1, 3,
                 true, true, true, false, true, true, 10);
     }
 
@@ -86,26 +85,12 @@ class PlanAbonnementControllerTest {
     @Test
     void should_return_400_when_nom_blank() throws Exception {
         PlanAbonnementRequest body = new PlanAbonnementRequest(
-                "", null, new BigDecimal("100"), 1, 1,
+                "", null, 1, 1,
                 true, true, true, false, true, true, false, 0);
 
         mockMvc.perform(post(PlanAbonnementController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void should_return_400_when_prix_null() throws Exception {
-        String json = """
-                { "nom":"X", "prix":null, "nombreMagasinsMax":1, "nombreEmployesMax":1,
-                  "gestionStock":true, "gestionVente":true, "gestionAchat":true, "gestionComptabilite":false,
-                  "actif":true, "visible":true, "trial":false, "ordre":0 }
-                """;
-
-        mockMvc.perform(post(PlanAbonnementController.BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
                 .andExpect(status().isBadRequest());
     }
 

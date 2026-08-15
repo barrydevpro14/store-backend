@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.abonnement.application.dto.PlanAbonnementResponse;
-import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.common.repository.BaseRepository;
 
@@ -47,31 +46,23 @@ public interface PlanAbonnementRepository extends BaseRepository<PlanAbonnement>
             Pageable pageable);
 
     @Query("""
-            SELECT new org.store.abonnement.application.dto.PublicPlanResponse(
-                    plan.id, plan.nom, plan.description, plan.prix,
-                    plan.nombreMagasinsMax, plan.nombreEmployesMax,
-                    plan.gestionStock, plan.gestionVente, plan.gestionAchat, plan.gestionComptabilite,
-                     plan.ordre)
-            FROM PlanAbonnement plan
-            WHERE plan.actif = true AND plan.visible = true
-            ORDER BY plan.ordre ASC, plan.nom ASC
+            SELECT DISTINCT p FROM PlanAbonnement p
+            LEFT JOIN FETCH p.tarifs
+            WHERE p.actif = true AND p.visible = true
+            ORDER BY p.ordre ASC, p.nom ASC
             """)
-    List<PublicPlanResponse> findPublicResponses();
+    List<PlanAbonnement> findPublicPlans();
 
     /**
      * Plans the OWNER can subscribe to: active, visible, and not a trial plan.
      */
     @Query("""
-            SELECT new org.store.abonnement.application.dto.PublicPlanResponse(
-                    plan.id, plan.nom, plan.description, plan.prix,
-                    plan.nombreMagasinsMax, plan.nombreEmployesMax,
-                    plan.gestionStock, plan.gestionVente, plan.gestionAchat, plan.gestionComptabilite,
-                     plan.ordre)
-            FROM PlanAbonnement plan
-            WHERE plan.actif = true AND plan.visible = true AND plan.trial = false
-            ORDER BY plan.ordre ASC, plan.nom ASC
+            SELECT DISTINCT p FROM PlanAbonnement p
+            LEFT JOIN FETCH p.tarifs
+            WHERE p.actif = true AND p.visible = true AND p.trial = false
+            ORDER BY p.ordre ASC, p.nom ASC
             """)
-    List<PublicPlanResponse> findSubscribableResponses();
+    List<PlanAbonnement> findSubscribablePlans();
 
     /** Returns the first active trial plan (ordered by createdAt ASC), or empty if none exists. */
     @Query("SELECT p FROM PlanAbonnement p WHERE p.trial = true AND p.actif = true ORDER BY p.createdAt ASC")

@@ -27,7 +27,7 @@ public record CouponResponse(
                 coupon.getNombreUtilisationsMax(),
                 coupon.getNombreUtilisations(),
                 coupon.isActif(),
-                coupon.getPlan() == null ? null : new PlanAbonnementSummaryResponse(coupon.getPlan())
+                coupon.getPlanAbonnement() == null ? null : new PlanAbonnementSummaryResponse(coupon.getPlanAbonnement())
         );
     }
 }

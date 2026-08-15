@@ -59,13 +59,14 @@ class AbonnementDomainServiceTest {
     void createPending_should_persist_abonnement_en_attente() {
         when(repository.save(any(Abonnement.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Abonnement result = service.createPending(entreprise, plan);
+        Abonnement result = service.createPending(entreprise, plan, org.store.abonnement.domain.enums.PeriodiciteAbonnement.MENSUEL);
 
         ArgumentCaptor<Abonnement> captor = ArgumentCaptor.forClass(Abonnement.class);
         verify(repository).save(captor.capture());
         Abonnement saved = captor.getValue();
         assertThat(saved.getEntreprise()).isSameAs(entreprise);
         assertThat(saved.getPlanAbonnement()).isSameAs(plan);
+        assertThat(saved.getPeriodicite()).isEqualTo(org.store.abonnement.domain.enums.PeriodiciteAbonnement.MENSUEL);
         assertThat(saved.getStatut()).isEqualTo(AbonnementStatut.EN_ATTENTE);
         assertThat(result).isSameAs(saved);
     }

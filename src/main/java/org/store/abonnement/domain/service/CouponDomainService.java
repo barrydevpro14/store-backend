@@ -5,12 +5,14 @@ import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.CouponFilter;
 import org.store.abonnement.application.dto.CouponRequest;
 import org.store.abonnement.application.dto.CouponResponse;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.CouponRepository;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,7 +37,10 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
         coupon.setValeurReduction(couponRequest.valeurReduction());
         coupon.setNombreUtilisationsMax(couponRequest.nombreUtilisationsMax());
         coupon.setActif(couponRequest.actif());
-        coupon.setPlan(plan);
+        coupon.setPeriodicite(couponRequest.periodiciteAsEnum());
+        coupon.setDateDebut(couponRequest.dateDebut());
+        coupon.setDateFin(couponRequest.dateFin());
+        coupon.setPlanAbonnement(plan);
         return coupon;
     }
 
@@ -69,9 +74,9 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
         return coupon;
     }
 
-    /** Returns the first applicable coupon for this billing cycle, or empty if none. */
-    public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId) {
-        List<Coupon> candidates = repository.findApplicableCoupons(entrepriseId, planId);
+    /** Returns the first coupon applicable to this billing cycle (plan, periodicite, date window), or empty. */
+    public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId, PeriodiciteAbonnement periodicite) {
+        List<Coupon> candidates = repository.findApplicableCoupons(entrepriseId, planId, periodicite, LocalDate.now());
         return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.get(0));
     }
 

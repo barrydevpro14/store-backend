@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Calcule le montant à payer pour une souscription : prix de base (plan.prix) puis réduction
+ * Calcule le montant à payer pour une souscription : prix de base (tarif.prix) puis réduction
  * du coupon. Aucun montant n'est jamais négatif (clamp à zéro).
  */
 @Component
@@ -18,10 +18,10 @@ public class SubscriptionAmountCalculator {
     private static final int SCALE = 2;
 
     /**
-     * Applique la réduction du coupon (si présent) sur le prix du plan et retourne le détail.
+     * Applique la réduction du coupon (si présent) sur le prix du tarif et retourne le détail.
      */
     public SubscriptionAmountBreakdown calculate(SubscriptionAmountInputs inputs) {
-        BigDecimal prixDeBase = inputs.plan().getPrix()
+        BigDecimal prixDeBase = inputs.tarif().getPrix()
                 .setScale(SCALE, RoundingMode.HALF_UP);
 
         BigDecimal reductionCoupon = inputs.coupon() == null ? BigDecimal.ZERO
