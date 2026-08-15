@@ -4,6 +4,7 @@ import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.dto.UserSummaryResponse;
 import org.store.common.tools.DateHelper;
 import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.enums.MotifAnnulationVente;
 import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 
@@ -22,7 +23,10 @@ public record CommandeVenteResponse(
         BigDecimal montantPaye,
         BigDecimal montantRestant,
         StatutFacture statutFacture,
-        String createdAt
+        String createdAt,
+        String dateAnnulation,
+        MotifAnnulationVente motifAnnulationVente,
+        String commentaireAnnulation
 ) {
     /** Constructeur applicatif : la facture porte montantPaye et le statut ; montantTotal vient de la commande. */
     public CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user, FactureClient facture) {
@@ -67,7 +71,10 @@ public record CommandeVenteResponse(
                         ? commande.getFacture().getMontantTotal().subtract(commande.getFacture().getMontantPaye())
                         : commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
                 statutFacture,
-                DateHelper.format(commande.getCreatedAt())
+                DateHelper.format(commande.getCreatedAt()),
+                DateHelper.format(commande.getDateAnnulation()),
+                commande.getMotifAnnulation(),
+                commande.getCommentaireAnnulation()
         );
     }
 
