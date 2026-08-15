@@ -96,7 +96,7 @@ class VenteControllerTest {
                 null,
                 LocalDate.of(2026, 5, 18),
                 BigDecimal.ZERO, BigDecimal.ZERO,BigDecimal.ZERO,
-                null, "2026-05-18 10:00:00"
+                null, "2026-05-18 10:00:00",null,null,null
         );
     }
 
@@ -107,7 +107,7 @@ class VenteControllerTest {
                 new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 18),
                 new BigDecimal("150.00"), BigDecimal.ZERO,BigDecimal.ZERO,
-                null, "2026-05-18 10:00:00"
+                null, "2026-05-18 10:00:00",null,null,null
         );
     }
 
