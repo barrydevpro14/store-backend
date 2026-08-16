@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.abonnement.application.dto.AbonnementDetailsResponse;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.ChangerPlanRequest;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
@@ -33,6 +35,12 @@ public class AbonnementController {
 
     public AbonnementController(IAbonnementService abonnementService) {
         this.abonnementService = abonnementService;
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ', 'SUBSCRIPTION_OWNER_READ')")
+    public ResponseEntity<AbonnementDetailsResponse> findDetailsById(@PathVariable UUID id) {
+        return ResponseEntity.ok(abonnementService.findDetailsById(id));
     }
 
     @PatchMapping("/{id}/cancel")
@@ -62,8 +70,8 @@ public class AbonnementController {
 
     @PatchMapping("/current/plan")
     @PreAuthorize("hasAuthority('SUBSCRIPTION_UPDATE')")
-    public ResponseEntity<AbonnementResponse> changerPlan(@RequestParam UUID planId) {
-        return ResponseEntity.ok(abonnementService.changerPlan(planId));
+    public ResponseEntity<AbonnementResponse> changerPlan(@Valid @RequestBody ChangerPlanRequest request) {
+        return ResponseEntity.ok(abonnementService.changerPlan(request));
     }
 
     @GetMapping

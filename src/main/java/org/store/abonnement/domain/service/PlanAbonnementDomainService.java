@@ -33,7 +33,6 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
     public PlanAbonnement applyRequest(PlanAbonnement plan, PlanAbonnementRequest planAbonnementRequest) {
         plan.setNom(planAbonnementRequest.nom());
         plan.setDescription(planAbonnementRequest.description());
-        plan.setPrix(planAbonnementRequest.prix());
         plan.setNombreMagasinsMax(planAbonnementRequest.nombreMagasinsMax());
         plan.setNombreEmployesMax(planAbonnementRequest.nombreEmployesMax());
         plan.setGestionStock(planAbonnementRequest.gestionStock());
@@ -51,12 +50,26 @@ public class PlanAbonnementDomainService extends GlobalService<PlanAbonnement, P
     }
 
     public List<PublicPlanResponse> findPublicResponses() {
-        return repository.findPublicResponses();
+        return repository.findPublicPlans().stream()
+                .map(PublicPlanResponse::new)
+                .toList();
+    }
+
+    /** Raw entities for the public catalog — used when the caller needs to enrich tarifs before mapping. */
+    public List<PlanAbonnement> findPublicPlans() {
+        return repository.findPublicPlans();
     }
 
     /** Plans the OWNER can subscribe to (≥ 1 active non-trial type) — used by the subscribable catalog. */
     public List<PublicPlanResponse> findSubscribableResponses() {
-        return repository.findSubscribableResponses();
+        return repository.findSubscribablePlans().stream()
+                .map(PublicPlanResponse::new)
+                .toList();
+    }
+
+    /** Raw entities for the subscribable catalog — used when the caller needs to enrich tarifs before mapping. */
+    public List<PlanAbonnement> findSubscribablePlans() {
+        return repository.findSubscribablePlans();
     }
 
     public boolean existsByNom(String nom) {

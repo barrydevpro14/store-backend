@@ -17,7 +17,6 @@ import org.store.abonnement.domain.service.PlanAbonnementDomainService;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.UniqueResourceException;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,7 +48,6 @@ class PlanAbonnementServiceImplTest {
         return new PlanAbonnementRequest(
                 "Starter",
                 "Plan d'entrée de gamme",
-                new BigDecimal("9900.00"),
                 1,
                 3,
                 true,
@@ -68,7 +66,6 @@ class PlanAbonnementServiceImplTest {
         plan.setId(planId);
         plan.setNom("Starter");
         plan.setDescription("Plan d'entrée de gamme");
-        plan.setPrix(new BigDecimal("9900.00"));
         plan.setNombreMagasinsMax(1);
         plan.setNombreEmployesMax(3);
         plan.setGestionStock(true);
@@ -93,7 +90,6 @@ class PlanAbonnementServiceImplTest {
 
         assertThat(response.id()).isEqualTo(planId);
         assertThat(response.nom()).isEqualTo("Starter");
-        assertThat(response.prix()).isEqualByComparingTo("9900.00");
         assertThat(response.actif()).isTrue();
     }
 
@@ -138,7 +134,7 @@ class PlanAbonnementServiceImplTest {
     void findAll_should_delegate_to_domain_service() {
         PlanAbonnementFilter filter = new PlanAbonnementFilter(null, null, null, null, null, 0, 10);
         PlanAbonnementResponse sample = new PlanAbonnementResponse(planId, "Starter", null,
-                new BigDecimal("9900"), 1, 3, true, true, true, false, true, true, 10);
+                1, 3, true, true, true, false, true, true, 10);
         Page<PlanAbonnementResponse> page = new PageImpl<>(List.of(sample));
 
         when(planAbonnementDomainService.findResponses(filter)).thenReturn(page);
@@ -152,7 +148,7 @@ class PlanAbonnementServiceImplTest {
     void update_should_apply_request_and_save() {
         PlanAbonnement plan = samplePlan();
         PlanAbonnementRequest request = new PlanAbonnementRequest(
-                "Premium", "Premium gamme", new BigDecimal("29900"),
+                "Premium", "Premium gamme",
                 5, 20, true, true, true, true, true, true, false, 20);
 
         when(planAbonnementDomainService.findById(planId)).thenReturn(plan);
@@ -184,7 +180,7 @@ class PlanAbonnementServiceImplTest {
     void update_should_throw_when_new_nom_taken() {
         PlanAbonnement plan = samplePlan();
         PlanAbonnementRequest request = new PlanAbonnementRequest(
-                "Premium", null, new BigDecimal("100"), 1, 1,
+                "Premium", null, 1, 1,
                 true, true, true, false, true, true, false, 0);
 
         when(planAbonnementDomainService.findById(planId)).thenReturn(plan);

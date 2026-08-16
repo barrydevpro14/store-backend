@@ -21,6 +21,7 @@ import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ class CouponControllerTest {
 
     private UUID couponId;
     private PlanAbonnementSummaryResponse planAbonnementSummaryResponse = new PlanAbonnementSummaryResponse(
-            UUID.randomUUID(), "ESSAI",new BigDecimal("0.0")
+            UUID.randomUUID(), "ESSAI"
     );
 
     @BeforeEach
@@ -68,14 +69,14 @@ class CouponControllerTest {
         return new CouponRequest(
                 "PROMO10", null, "POURCENTAGE",
                 new BigDecimal("10"), 100,
-                true,planAbonnementSummaryResponse.id() );
+                true, null, LocalDate.now(), LocalDate.now().plusMonths(3), planAbonnementSummaryResponse.id());
     }
 
     private CouponResponse sample() {
         return new CouponResponse(couponId, "PROMO10", null,
                 ReductionType.POURCENTAGE, new BigDecimal("10"),
                 100, 0,
-                true, planAbonnementSummaryResponse);
+                true, null, LocalDate.now(), LocalDate.now().plusMonths(3), planAbonnementSummaryResponse);
     }
 
     @Test
@@ -93,7 +94,7 @@ class CouponControllerTest {
     void should_return_400_when_code_blank() throws Exception {
         CouponRequest body = new CouponRequest(
                 "", null, "POURCENTAGE", new BigDecimal("10"), 10,
-                true, null);
+                true, null, LocalDate.now(), LocalDate.now().plusMonths(3), null);
 
         mockMvc.perform(post(CouponController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -9,6 +9,7 @@ import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IUtilisationCouponService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Coupon;
@@ -243,9 +244,9 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     /**
-     * First payment (EN_ATTENTE): expires any running TRIAL, then activates — dateDebut=today, dateFin=today+1month.
+     * First payment (EN_ATTENTE): expires any running TRIAL, then activates — dateDebut=today, dateFin=today+periodicite.
      * Reactivation (SUSPENDU): activate without touching the TRIAL (already expired at first activation).
-     * Renewal (ACTIF): extend dateFin +1 month; apply prochainPlan if set.
+     * Renewal (ACTIF): apply prochainPlan + prochainePeriodicite if set, then extend dateFin by periodicite.
      */
     public void activateOrExtend(Abonnement abonnement) {
         if (abonnement.getStatut() == AbonnementStatut.EN_ATTENTE || abonnement.getStatut() == AbonnementStatut.SUSPENDU) {
@@ -253,14 +254,19 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 abonnementDomainService.expireTrialIfAny(abonnement.getEntreprise().getId());
             }
             LocalDate dateDebut = LocalDate.now();
-            LocalDate dateFin = dateDebut.plusMonths(1);
-            abonnementDomainService.activate(abonnement, dateDebut, dateFin);
+            int mois = abonnement.getPeriodicite() != null ? abonnement.getPeriodicite().getNombreMois() : 1;
+            abonnementDomainService.activate(abonnement, dateDebut, dateDebut.plusMonths(mois));
         } else {
             if (abonnement.getProchainPlan() != null) {
                 abonnement.setPlanAbonnement(abonnement.getProchainPlan());
                 abonnement.setProchainPlan(null);
             }
-            abonnement.setDateFin(abonnement.getDateFin().plusMonths(1));
+            if (abonnement.getProchainePeriodicite() != null) {
+                abonnement.setPeriodicite(abonnement.getProchainePeriodicite());
+                abonnement.setProchainePeriodicite(null);
+            }
+            int mois = abonnement.getPeriodicite() != null ? abonnement.getPeriodicite().getNombreMois() : 1;
+            abonnement.setDateFin(abonnement.getDateFin().plusMonths(mois));
             abonnementDomainService.save(abonnement);
         }
     }
@@ -287,15 +293,21 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     @Override
     @Transactional
-    public PaiementAbonnement createFactureGeneree(Abonnement abonnement,
-                                                   SubscriptionAmountBreakdown breakdown,
-                                                   LocalDate dateEcheance) {
-        return paiementAbonnementDomainService.createFactureGeneree(
-                abonnement,
-                breakdown.prixDeBase(),
-                breakdown.reductionCoupon(),
-                breakdown.montantAPayer(),
-                dateEcheance);
+    public PaiementAbonnement createFactureGeneree(FactureGenereeCommand command) {
+        return paiementAbonnementDomainService.createFactureGeneree(command);
+    }
+
+    @Override
+    public java.util.Optional<PaiementAbonnement> findFactureNonPayeeByAbonnement(UUID abonnementId) {
+        return paiementAbonnementDomainService.findFactureNonPayeeByAbonnement(abonnementId);
+    }
+
+    /** Recalculates tarif, coupon and amounts on an unpaid invoice after a plan/periodicite change. */
+    @Override
+    @Transactional
+    public void recalculerFactureNonPayee(PaiementAbonnement facture, SubscriptionAmountInputs inputs, SubscriptionAmountBreakdown breakdown) {
+        ensurePaiementIsFactureGeneree(facture);
+        paiementAbonnementDomainService.recalculer(facture, inputs, breakdown);
     }
 
     /** Delegates to the domain service to fetch FACTURE_GENEREE invoices due on any of the given alert dates. */

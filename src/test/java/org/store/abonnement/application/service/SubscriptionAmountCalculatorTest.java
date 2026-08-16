@@ -6,7 +6,7 @@ import org.store.abonnement.application.service.impl.SubscriptionAmountCalculato
 import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.abonnement.domain.model.Coupon;
-import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnementTarif;
 
 import java.math.BigDecimal;
 
@@ -16,10 +16,10 @@ class SubscriptionAmountCalculatorTest {
 
     private final SubscriptionAmountCalculator calculator = new SubscriptionAmountCalculator();
 
-    private PlanAbonnement plan(String prix) {
-        PlanAbonnement p = new PlanAbonnement();
-        p.setPrix(new BigDecimal(prix));
-        return p;
+    private PlanAbonnementTarif tarif(String prix) {
+        PlanAbonnementTarif t = new PlanAbonnementTarif();
+        t.setPrix(new BigDecimal(prix));
+        return t;
     }
 
     private Coupon coupon(ReductionType reductionType, String valeur) {
@@ -32,7 +32,7 @@ class SubscriptionAmountCalculatorTest {
     @Test
     void should_compute_base_price_without_any_reduction() {
         SubscriptionAmountBreakdown breakdown = calculator.calculate(
-                new SubscriptionAmountInputs(plan("10000"), null));
+                new SubscriptionAmountInputs(tarif("10000"), null));
 
         assertThat(breakdown.prixDeBase()).isEqualByComparingTo("10000.00");
         assertThat(breakdown.reductionCoupon()).isEqualByComparingTo("0");
@@ -42,7 +42,7 @@ class SubscriptionAmountCalculatorTest {
     @Test
     void should_apply_pourcentage_coupon() {
         SubscriptionAmountBreakdown breakdown = calculator.calculate(
-                new SubscriptionAmountInputs(plan("10000"), coupon(ReductionType.POURCENTAGE, "15")));
+                new SubscriptionAmountInputs(tarif("10000"), coupon(ReductionType.POURCENTAGE, "15")));
 
         assertThat(breakdown.prixDeBase()).isEqualByComparingTo("10000.00");
         assertThat(breakdown.reductionCoupon()).isEqualByComparingTo("1500.00");
@@ -52,7 +52,7 @@ class SubscriptionAmountCalculatorTest {
     @Test
     void should_apply_montant_fixe_coupon() {
         SubscriptionAmountBreakdown breakdown = calculator.calculate(
-                new SubscriptionAmountInputs(plan("10000"), coupon(ReductionType.MONTANT_FIXE, "1000")));
+                new SubscriptionAmountInputs(tarif("10000"), coupon(ReductionType.MONTANT_FIXE, "1000")));
 
         assertThat(breakdown.prixDeBase()).isEqualByComparingTo("10000.00");
         assertThat(breakdown.reductionCoupon()).isEqualByComparingTo("1000.00");
@@ -62,7 +62,7 @@ class SubscriptionAmountCalculatorTest {
     @Test
     void should_clamp_montant_to_zero_when_reduction_exceeds_base() {
         SubscriptionAmountBreakdown breakdown = calculator.calculate(
-                new SubscriptionAmountInputs(plan("1000"), coupon(ReductionType.MONTANT_FIXE, "5000")));
+                new SubscriptionAmountInputs(tarif("1000"), coupon(ReductionType.MONTANT_FIXE, "5000")));
 
         assertThat(breakdown.prixDeBase()).isEqualByComparingTo("1000.00");
         assertThat(breakdown.reductionCoupon()).isEqualByComparingTo("5000.00");

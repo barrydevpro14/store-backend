@@ -164,4 +164,19 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
               AND paiement.dateEcheance IN :dates
             """)
     List<PaiementAbonnement> findFacturesAbonnementDues(@Param("dates") List<LocalDate> dates);
+
+    /**
+     * Returns the most recent FACTURE_GENEREE or EN_RETARD invoice for a given abonnement —
+     * i.e. invoices not yet submitted by the owner. Used to recalculate amounts on plan change.
+     */
+    @Query("""
+            SELECT paiement FROM PaiementAbonnement paiement
+            WHERE paiement.abonnement.id = :abonnementId
+              AND paiement.statut IN (
+                  org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
+                  org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_RETARD
+              )
+            ORDER BY paiement.createdAt DESC
+            """)
+    List<PaiementAbonnement> findFacturesNonPayeesByAbonnement(@Param("abonnementId") UUID abonnementId, Pageable pageable);
 }

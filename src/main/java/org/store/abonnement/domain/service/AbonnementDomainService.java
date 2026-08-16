@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
 import org.store.abonnement.domain.enums.AbonnementStatut;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.repository.AbonnementRepository;
@@ -45,10 +46,11 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
     /**
      * Paid subscription starts EN_ATTENTE and is activated by {@link #activate} after payment validation.
      */
-    public Abonnement createPending(Entreprise entreprise, PlanAbonnement planAbonnement) {
+    public Abonnement createPending(Entreprise entreprise, PlanAbonnement planAbonnement, PeriodiciteAbonnement periodicite) {
         Abonnement abonnement = new Abonnement();
         abonnement.setEntreprise(entreprise);
         abonnement.setPlanAbonnement(planAbonnement);
+        abonnement.setPeriodicite(periodicite);
         abonnement.setStatut(AbonnementStatut.EN_ATTENTE);
         return save(abonnement);
     }

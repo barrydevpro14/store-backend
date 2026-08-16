@@ -1,9 +1,11 @@
 package org.store.abonnement.application.dto;
 
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.enums.ReductionType;
 import org.store.abonnement.domain.model.Coupon;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record CouponResponse(
@@ -15,6 +17,9 @@ public record CouponResponse(
         int nombreUtilisationsMax,
         int nombreUtilisations,
         boolean actif,
+        PeriodiciteAbonnement periodicite,
+        LocalDate dateDebut,
+        LocalDate dateFin,
         PlanAbonnementSummaryResponse plan
 ) {
     public CouponResponse(Coupon coupon) {
@@ -27,7 +32,10 @@ public record CouponResponse(
                 coupon.getNombreUtilisationsMax(),
                 coupon.getNombreUtilisations(),
                 coupon.isActif(),
-                coupon.getPlan() == null ? null : new PlanAbonnementSummaryResponse(coupon.getPlan())
+                coupon.getPeriodicite(),
+                coupon.getDateDebut(),
+                coupon.getDateFin(),
+                coupon.getPlanAbonnement() == null ? null : new PlanAbonnementSummaryResponse(coupon.getPlanAbonnement())
         );
     }
 }

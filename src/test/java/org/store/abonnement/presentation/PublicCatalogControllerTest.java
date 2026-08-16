@@ -10,7 +10,6 @@ import org.store.abonnement.application.service.IPublicCatalogService;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,8 +36,8 @@ class PublicCatalogControllerTest {
 
     private PublicPlanResponse plan(UUID id, String nom, int ordre) {
         return new PublicPlanResponse(
-                id, nom, "Description", new BigDecimal("9900"),
-                1, 3, true, true, true, false, ordre);
+                id, nom, "Description",
+                1, 3, true, true, true, false, ordre, List.of());
     }
 
     @Test

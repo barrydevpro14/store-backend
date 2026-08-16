@@ -157,6 +157,12 @@ permissions:
   - PLAN_UPDATE
   - PLAN_DELETE
 
+  # TARIF (billing-cycle prices per plan — managed by ADMIN)
+  - TARIF_CREATE
+  - TARIF_READ
+  - TARIF_UPDATE
+  - TARIF_DELETE
+
   # TYPE_PLAN (per-plan durations + integrated discounts — managed by ADMIN)
   - TYPE_PLAN_CREATE
   - TYPE_PLAN_READ
@@ -313,6 +319,10 @@ roles:
       - PLAN_READ
       - PLAN_UPDATE
       - PLAN_DELETE
+      - TARIF_CREATE
+      - TARIF_READ
+      - TARIF_UPDATE
+      - TARIF_DELETE
       - TYPE_PLAN_CREATE
       - TYPE_PLAN_READ
       - TYPE_PLAN_UPDATE

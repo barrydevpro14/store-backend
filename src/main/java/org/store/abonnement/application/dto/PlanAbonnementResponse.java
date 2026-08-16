@@ -2,14 +2,12 @@ package org.store.abonnement.application.dto;
 
 import org.store.abonnement.domain.model.PlanAbonnement;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 public record PlanAbonnementResponse(
         UUID id,
         String nom,
         String description,
-        BigDecimal prix,
         int nombreMagasinsMax,
         int nombreEmployesMax,
         boolean gestionStock,
@@ -25,7 +23,6 @@ public record PlanAbonnementResponse(
                 plan.getId(),
                 plan.getNom(),
                 plan.getDescription(),
-                plan.getPrix(),
                 plan.getNombreMagasinsMax(),
                 plan.getNombreEmployesMax(),
                 plan.isGestionStock(),

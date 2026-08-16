@@ -4,7 +4,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.*;
+import org.store.abonnement.application.service.impl.FactureGenereeCommand;
 import org.store.abonnement.application.service.impl.PaiementAbonnementCreationContext;
+import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
@@ -80,18 +82,16 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         return repository.getStatistiquesPaiement(startDate, endDate);
     }
 
-    /** Creates a FACTURE_GENEREE payment for scheduled billing — no moyen, preuve or datePaiement yet. */
-    public PaiementAbonnement createFactureGeneree(Abonnement abonnement,
-                                                   BigDecimal montantAvantReduction,
-                                                   BigDecimal reduction,
-                                                   BigDecimal montantFinal,
-                                                   LocalDate dateEcheance) {
+    /** Creates a FACTURE_GENEREE payment — stores tarif + coupon snapshots, no moyen/preuve/datePaiement yet. */
+    public PaiementAbonnement createFactureGeneree(FactureGenereeCommand command) {
         PaiementAbonnement paiement = new PaiementAbonnement();
-        paiement.setAbonnement(abonnement);
-        paiement.setMontantAvantReduction(montantAvantReduction);
-        paiement.setReduction(reduction);
-        paiement.setMontantFinal(montantFinal);
-        paiement.setDateEcheance(dateEcheance);
+        paiement.setAbonnement(command.abonnement());
+        paiement.setPlanAbonnementTarif(command.tarif());
+        paiement.setCoupon(command.coupon());
+        paiement.setMontantAvantReduction(command.breakdown().prixDeBase());
+        paiement.setReduction(command.breakdown().reductionCoupon());
+        paiement.setMontantFinal(command.breakdown().montantAPayer());
+        paiement.setDateEcheance(command.dateEcheance());
         paiement.setStatut(StatutPaiementAbonnement.FACTURE_GENEREE);
         return save(paiement);
     }
@@ -110,5 +110,21 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
     /** Returns FACTURE_GENEREE invoices due on any of the given alert dates (for daily reminder scheduler). */
     public List<PaiementAbonnement> findFacturesAbonnementDues(List<LocalDate> dates) {
         return repository.findFacturesAbonnementDues(dates);
+    }
+
+    /** Returns the most recent FACTURE_GENEREE or EN_RETARD invoice for the abonnement, or empty. */
+    public Optional<PaiementAbonnement> findFactureNonPayeeByAbonnement(UUID abonnementId) {
+        List<PaiementAbonnement> results = repository.findFacturesNonPayeesByAbonnement(abonnementId, PageRequest.of(0, 1));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    /** Recalculates amounts on an existing unpaid invoice after a plan/periodicite change. */
+    public PaiementAbonnement recalculer(PaiementAbonnement paiement, SubscriptionAmountInputs inputs, SubscriptionAmountBreakdown breakdown) {
+        paiement.setPlanAbonnementTarif(inputs.tarif());
+        paiement.setCoupon(inputs.coupon());
+        paiement.setMontantAvantReduction(breakdown.prixDeBase());
+        paiement.setReduction(breakdown.reductionCoupon());
+        paiement.setMontantFinal(breakdown.montantAPayer());
+        return save(paiement);
     }
 }

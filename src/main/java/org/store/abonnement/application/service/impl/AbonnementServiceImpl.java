@@ -3,19 +3,26 @@ package org.store.abonnement.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.abonnement.application.dto.AbonnementDetailsResponse;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.ChangerPlanRequest;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.PlanFeaturesResponse;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
 import org.store.abonnement.application.service.IAbonnementService;
-import org.store.abonnement.domain.enums.AbonnementStatut;
-import org.store.abonnement.domain.model.Abonnement;
+import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IPlanAbonnementService;
+import org.store.abonnement.application.service.IPlanAbonnementTarifService;
+import org.store.abonnement.domain.enums.AbonnementStatut;
+import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
+import org.store.abonnement.domain.model.Abonnement;
+import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnementTarif;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.property.SubscriptionProperties;
 import org.store.common.exceptions.BadArgumentException;
@@ -28,6 +35,7 @@ import org.store.entreprise.domain.model.Entreprise;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -46,6 +54,8 @@ public class AbonnementServiceImpl implements IAbonnementService {
     private final AbonnementDomainService abonnementDomainService;
     private final IPaiementAbonnementService paiementAbonnementService;
     private final IPlanAbonnementService planAbonnementService;
+    private final IPlanAbonnementTarifService tarifService;
+    private final ICouponService couponService;
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
     private final SubscriptionAmountCalculator amountCalculator;
@@ -55,6 +65,8 @@ public class AbonnementServiceImpl implements IAbonnementService {
     public AbonnementServiceImpl(AbonnementDomainService abonnementDomainService,
                                  IPaiementAbonnementService paiementAbonnementService,
                                  IPlanAbonnementService planAbonnementService,
+                                 IPlanAbonnementTarifService tarifService,
+                                 ICouponService couponService,
                                  IEntrepriseService entrepriseService,
                                  ICurrentUserService currentUserService,
                                  SubscriptionAmountCalculator amountCalculator,
@@ -63,6 +75,8 @@ public class AbonnementServiceImpl implements IAbonnementService {
         this.abonnementDomainService = abonnementDomainService;
         this.paiementAbonnementService = paiementAbonnementService;
         this.planAbonnementService = planAbonnementService;
+        this.tarifService = tarifService;
+        this.couponService = couponService;
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
         this.amountCalculator = amountCalculator;
@@ -103,12 +117,22 @@ public class AbonnementServiceImpl implements IAbonnementService {
         PlanAbonnement plan = planAbonnementService.findById(subscribeRequest.planId());
         ensurePlanSubscribable(plan);
 
+        PeriodiciteAbonnement periodicite = subscribeRequest.periodiciteAsEnum();
+
+        PlanAbonnementTarif tarif = tarifService.findByPlanAndPeriodicite(plan, periodicite)
+                .orElseThrow(() -> new EntityException("tarif.notFound"));
+
+        Coupon coupon = couponService
+                .findApplicable(currentEntrepriseId, plan.getId(), periodicite)
+                .orElse(null);
+
         SubscriptionAmountBreakdown breakdown = amountCalculator.calculate(
-                new SubscriptionAmountInputs(plan, null));
+                new SubscriptionAmountInputs(tarif, coupon));
 
-        Abonnement abonnement = abonnementDomainService.createPending(entreprise, plan);
+        Abonnement abonnement = abonnementDomainService.createPending(entreprise, plan, periodicite);
 
-        paiementAbonnementService.createFactureGeneree(abonnement, breakdown, LocalDate.now());
+        paiementAbonnementService.createFactureGeneree(
+                new FactureGenereeCommand(abonnement, tarif, coupon, breakdown, LocalDate.now()));
 
         consumeTrialIfAny(entreprise);
 
@@ -116,25 +140,52 @@ public class AbonnementServiceImpl implements IAbonnementService {
     }
 
     /**
-     * OWNER requests plan change for the next billing cycle. The current plan stays active until
-     * the scheduler validates the next invoice; then validate() switches planAbonnement <- prochainPlan.
+     * OWNER requests plan and/or periodicite change for the next billing cycle. The current plan stays
+     * active until the scheduler validates the next invoice; validate() then applies prochainPlan and
+     * prochainePeriodicite. If an unpaid invoice (FACTURE_GENEREE/EN_RETARD) already exists, its
+     * tarif, coupon and amounts are recalculated immediately.
      */
     @Override
     @Transactional
-    public AbonnementResponse changerPlan(UUID planId) {
+    public AbonnementResponse changerPlan(ChangerPlanRequest request) {
         UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
         Abonnement abonnement = abonnementDomainService.findCurrent(currentEntrepriseId)
                 .orElseThrow(() -> new EntityException("abonnement.noActive"));
         ensureBelongsToCurrentEntreprise(abonnement);
 
-        if (abonnement.getPlanAbonnement().getId().equals(planId)) {
-            throw new BadArgumentException("abonnement.planUnchanged");
-        }
-        PlanAbonnement prochainPlan = planAbonnementService.findById(planId);
-        ensurePlanSubscribable(prochainPlan);
+        PlanAbonnement planEffectif = request.planId() != null
+                ? planAbonnementService.findById(request.planId())
+                : abonnement.getPlanAbonnement();
 
-        abonnement.setProchainPlan(prochainPlan);
+        PeriodiciteAbonnement periodiciteEffective = request.periodiciteAsEnum() != null
+                ? request.periodiciteAsEnum()
+                : abonnement.getPeriodicite();
+
+        boolean planChange = request.planId() != null
+                && !abonnement.getPlanAbonnement().getId().equals(request.planId());
+        boolean periodiciteChange = request.periodiciteAsEnum() != null
+                && request.periodiciteAsEnum() != abonnement.getPeriodicite();
+
+        if (!planChange && !periodiciteChange) {
+            throw new BadArgumentException("abonnement.changement.aucuneModification");
+        }
+
+        if (planChange) ensurePlanSubscribable(planEffectif);
+
+        PlanAbonnementTarif tarif = tarifService.findByPlanAndPeriodicite(planEffectif, periodiciteEffective)
+                .orElseThrow(() -> new EntityException("tarif.notFound"));
+
+        if (planChange) abonnement.setProchainPlan(planEffectif);
+        if (periodiciteChange) abonnement.setProchainePeriodicite(periodiciteEffective);
+
         abonnementDomainService.save(abonnement);
+
+        paiementAbonnementService.findFactureNonPayeeByAbonnement(abonnement.getId()).ifPresent(facture -> {
+            Coupon coupon = couponService.findApplicable(currentEntrepriseId, planEffectif.getId(), periodiciteEffective).orElse(null);
+            SubscriptionAmountInputs inputs = new SubscriptionAmountInputs(tarif, coupon);
+            paiementAbonnementService.recalculerFactureNonPayee(facture, inputs, amountCalculator.calculate(inputs));
+        });
+
         return new AbonnementResponse(abonnement);
     }
 
@@ -148,6 +199,25 @@ public class AbonnementServiceImpl implements IAbonnementService {
     @Override
     public Abonnement findById(UUID id) {
         return abonnementDomainService.findById(id);
+    }
+
+    @Override
+    public AbonnementDetailsResponse findDetailsById(UUID id) {
+        Abonnement abonnement = abonnementDomainService.findById(id);
+
+        PeriodiciteAbonnement periodicite = abonnement.getPeriodicite();
+
+        return new AbonnementDetailsResponse(new AbonnementResponse(abonnement), periodicite, resolvePrix(abonnement, periodicite));
+    }
+
+    private BigDecimal resolvePrix(Abonnement abonnement, PeriodiciteAbonnement periodicite) {
+        if (abonnement.getStatut() == AbonnementStatut.TRIAL) {
+            return BigDecimal.ZERO;
+        }
+
+        return tarifService.findByPlanAndPeriodicite(abonnement.getPlanAbonnement(), periodicite)
+                .map(PlanAbonnementTarif::getPrix)
+                .orElse(BigDecimal.ZERO);
     }
 
     @Override
