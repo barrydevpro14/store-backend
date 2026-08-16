@@ -81,6 +81,6 @@ alert:
 
 cron:
   facturation:
-    abonnement: ${CRON_FACTURATION_ABONNEMENT:0 17 9 * * *}
+    abonnement: ${CRON_FACTURATION_ABONNEMENT:0 0 1 * * *}
   suspension:
-    abonnement: ${CRON_SUSPENSION_ABONNEMENT:0 21 12 * * *}
+    abonnement: ${CRON_SUSPENSION_ABONNEMENT:0 0 2 * * *}

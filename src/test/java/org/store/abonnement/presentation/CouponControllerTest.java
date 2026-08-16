@@ -76,7 +76,7 @@ class CouponControllerTest {
         return new CouponResponse(couponId, "PROMO10", null,
                 ReductionType.POURCENTAGE, new BigDecimal("10"),
                 100, 0,
-                true, planAbonnementSummaryResponse);
+                true, null, LocalDate.now(), LocalDate.now().plusMonths(3), planAbonnementSummaryResponse);
     }
 
     @Test

@@ -128,6 +128,12 @@ public class CouponServiceImpl implements ICouponService {
         return couponDomainService.findApplicable(entrepriseId, planId, periodicite);
     }
 
+    /** Returns the first global coupon applicable for a given plan + periodicite, or empty. */
+    @Override
+    public Optional<Coupon> findApplicableGlobal(UUID planId, PeriodiciteAbonnement periodicite) {
+        return couponDomainService.findApplicableGlobal(planId, periodicite);
+    }
+
     /** Increments the coupon's usage counter and persists. */
     @Override
     @Transactional

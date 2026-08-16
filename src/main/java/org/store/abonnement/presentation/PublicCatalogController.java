@@ -26,7 +26,7 @@ public class PublicCatalogController {
     }
 
     @GetMapping("/subscribable")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_CREATE')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_OWNER_READ')")
     public ResponseEntity<PublicCatalogResponse> findSubscribableCatalog() {
         return ResponseEntity.ok(publicCatalogService.findSubscribableCatalog());
     }

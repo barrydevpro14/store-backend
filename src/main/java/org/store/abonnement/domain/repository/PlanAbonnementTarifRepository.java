@@ -12,5 +12,7 @@ public interface PlanAbonnementTarifRepository extends BaseRepository<PlanAbonne
 
     Optional<PlanAbonnementTarif> findByPlanAndPeriodicite(PlanAbonnement plan, PeriodiciteAbonnement periodicite);
 
+    boolean existsByPlanAndPeriodicite(PlanAbonnement plan, PeriodiciteAbonnement periodicite);
+
     List<PlanAbonnementTarif> findByPlan(PlanAbonnement plan);
 }

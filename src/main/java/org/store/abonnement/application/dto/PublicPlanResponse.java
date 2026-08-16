@@ -39,4 +39,20 @@ public record PublicPlanResponse(
                         .toList()
         );
     }
+
+    public PublicPlanResponse(PlanAbonnement plan, List<PlanAbonnementTarifResponse> tarifs) {
+        this(
+                plan.getId(),
+                plan.getNom(),
+                plan.getDescription(),
+                plan.getNombreMagasinsMax(),
+                plan.getNombreEmployesMax(),
+                plan.isGestionStock(),
+                plan.isGestionVente(),
+                plan.isGestionAchat(),
+                plan.isGestionComptabilite(),
+                plan.getOrdre(),
+                tarifs
+        );
+    }
 }

@@ -41,6 +41,22 @@ public interface CouponRepository extends BaseRepository<Coupon> {
                                        @Param("periodicite") PeriodiciteAbonnement periodicite,
                                        @Param("today") LocalDate today);
 
+    /** Finds global coupons (entreprise IS NULL) applicable for a given plan + periodicite, quota not exhausted. */
+    @Query("""
+            SELECT c FROM Coupon c
+            WHERE c.actif = true
+              AND c.entreprise IS NULL
+              AND (c.planAbonnement IS NULL OR c.planAbonnement.id = :planId)
+              AND (c.periodicite IS NULL OR c.periodicite = :periodicite)
+              AND :today BETWEEN c.dateDebut AND c.dateFin
+              AND (c.nombreUtilisationsMax = 0
+                   OR c.nombreUtilisations < c.nombreUtilisationsMax)
+            ORDER BY c.createdAt ASC
+            """)
+    List<Coupon> findApplicableGlobalCoupons(@Param("planId") UUID planId,
+                                             @Param("periodicite") PeriodiciteAbonnement periodicite,
+                                             @Param("today") LocalDate today);
+
     @Query(value = """
             SELECT new org.store.abonnement.application.dto.CouponResponse(coupon)
             FROM Coupon coupon

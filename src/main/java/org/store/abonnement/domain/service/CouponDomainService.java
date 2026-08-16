@@ -77,7 +77,13 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
     /** Returns the first coupon applicable to this billing cycle (plan, periodicite, date window), or empty. */
     public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId, PeriodiciteAbonnement periodicite) {
         List<Coupon> candidates = repository.findApplicableCoupons(entrepriseId, planId, periodicite, LocalDate.now());
-        return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.get(0));
+        return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.getFirst());
+    }
+
+    /** Returns the first global coupon (entreprise IS NULL) applicable for a given plan + periodicite, or empty. */
+    public Optional<Coupon> findApplicableGlobal(UUID planId, PeriodiciteAbonnement periodicite) {
+        List<Coupon> candidates = repository.findApplicableGlobalCoupons(planId, periodicite, LocalDate.now());
+        return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.getFirst());
     }
 
     /** Auto-deactivates a coupon when its quota is exhausted. */

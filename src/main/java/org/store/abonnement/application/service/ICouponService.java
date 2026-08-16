@@ -60,6 +60,9 @@ public interface ICouponService {
     /** Returns the first coupon applicable for this billing cycle (plan + periodicite + date window), or empty. */
     Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId, PeriodiciteAbonnement periodicite);
 
+    /** Returns the first global coupon (entreprise IS NULL) applicable for a given plan + periodicite, or empty. */
+    Optional<Coupon> findApplicableGlobal(UUID planId, PeriodiciteAbonnement periodicite);
+
     /** Increments the coupon's usage counter and persists. */
     Coupon incrementUsage(Coupon coupon);
 
