@@ -6,50 +6,48 @@ import org.store.abonnement.application.dto.PlanAbonnementTarifResponse;
 import org.store.abonnement.application.dto.PublicCatalogResponse;
 import org.store.abonnement.application.dto.PublicPlanResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
-import org.store.abonnement.application.service.ICouponService;
+import org.store.abonnement.application.service.IPlanAbonnementService;
+import org.store.abonnement.application.service.IPlanAbonnementTarifService;
 import org.store.abonnement.application.service.IPublicCatalogService;
-import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PlanAbonnement;
-import org.store.abonnement.domain.model.PlanAbonnementTarif;
-import org.store.abonnement.domain.service.PlanAbonnementDomainService;
+import org.store.abonnement.domain.model.TarifAvecCoupon;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Builds the public subscription catalog (plans only) for the public landing page and OWNER subscribe flow.
+ * Builds the public subscription catalog for the landing page and OWNER subscribe flow.
+ * Tarifs actifs + coupon global applicable sont résolus en une seule requête JPQL par plan.
  */
 @Service
 @Transactional(readOnly = true)
 public class PublicCatalogServiceImpl implements IPublicCatalogService {
 
-    private final PlanAbonnementDomainService planAbonnementDomainService;
-    private final ICouponService couponService;
+    private final IPlanAbonnementService planService;
+    private final IPlanAbonnementTarifService tarifService;
     private final SubscriptionAmountCalculator amountCalculator;
 
-    public PublicCatalogServiceImpl(PlanAbonnementDomainService planAbonnementDomainService,
-                                    ICouponService couponService,
+    public PublicCatalogServiceImpl(IPlanAbonnementService planService,
+                                    IPlanAbonnementTarifService tarifService,
                                     SubscriptionAmountCalculator amountCalculator) {
-        this.planAbonnementDomainService = planAbonnementDomainService;
-        this.couponService = couponService;
+        this.planService = planService;
+        this.tarifService = tarifService;
         this.amountCalculator = amountCalculator;
     }
 
-    /** Returns all active + visible plans (including trial) for the public landing, with global coupon info embedded per tarif. */
+    /** Tous les plans actifs + visibles (y compris trial) pour la landing publique. */
     @Override
     public PublicCatalogResponse findCatalog() {
-        List<PublicPlanResponse> plans = planAbonnementDomainService.findPublicPlans().stream()
+        List<PublicPlanResponse> plans = planService.findPublicPlans().stream()
                 .map(this::toEnrichedResponse)
                 .toList();
 
         return new PublicCatalogResponse(plans);
     }
 
-    /** Returns active + visible + non-trial plans for the OWNER subscribe screen, with global coupon info embedded per tarif. */
+    /** Plans actifs + visibles + non-trial pour l'écran OWNER de souscription. */
     @Override
     public PublicCatalogResponse findSubscribableCatalog() {
-        List<PublicPlanResponse> plans = planAbonnementDomainService.findSubscribablePlans().stream()
+        List<PublicPlanResponse> plans = planService.findSubscribablePlans().stream()
                 .map(this::toEnrichedResponse)
                 .toList();
 
@@ -57,27 +55,21 @@ public class PublicCatalogServiceImpl implements IPublicCatalogService {
     }
 
     private PublicPlanResponse toEnrichedResponse(PlanAbonnement plan) {
-        List<PlanAbonnementTarifResponse> enrichedTarifs = plan.getTarifs().stream()
-                .filter(PlanAbonnementTarif::isActif)
-                .sorted(Comparator.comparingInt(t -> t.getOrdre() != null ? t.getOrdre() : 0))
-                .map(tarif -> toEnrichedTarifResponse(plan, tarif))
+        List<PlanAbonnementTarifResponse> enrichedTarifs = tarifService.findActifWithCoupon(plan.getId()).stream()
+                .map(tac -> toTarifResponse(plan, tac))
                 .toList();
 
         return new PublicPlanResponse(plan, enrichedTarifs);
     }
 
-    private PlanAbonnementTarifResponse toEnrichedTarifResponse(PlanAbonnement plan, PlanAbonnementTarif tarif) {
-        if (plan.isTrial()) {
-            return new PlanAbonnementTarifResponse(tarif);
+    private PlanAbonnementTarifResponse toTarifResponse(PlanAbonnement plan, TarifAvecCoupon tac) {
+        if (plan.isTrial() || tac.coupon() == null) {
+            return new PlanAbonnementTarifResponse(tac.tarif());
         }
 
-        Optional<Coupon> coupon = couponService.findApplicableGlobal(plan.getId(), tarif.getPeriodicite());
+        SubscriptionAmountBreakdown breakdown = amountCalculator.calculate(
+                new SubscriptionAmountInputs(tac.tarif(), tac.coupon()));
 
-        if (coupon.isEmpty()) {
-            return new PlanAbonnementTarifResponse(tarif);
-        }
-
-        SubscriptionAmountBreakdown breakdown = amountCalculator.calculate(new SubscriptionAmountInputs(tarif, coupon.get()));
-        return new PlanAbonnementTarifResponse(tarif, breakdown, coupon.get());
+        return new PlanAbonnementTarifResponse(tac.tarif(), breakdown, tac.coupon());
     }
 }

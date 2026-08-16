@@ -13,6 +13,7 @@ import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.ValidatorService;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -36,6 +37,16 @@ public class PlanAbonnementServiceImpl implements IPlanAbonnementService {
     public PlanAbonnement findFirstTrialActif() {
         return planAbonnementDomainService.findFirstTrialActif()
                 .orElseThrow(() -> new EntityException("plan.trial.notFound"));
+    }
+
+    @Override
+    public List<PlanAbonnement> findPublicPlans() {
+        return planAbonnementDomainService.findPublicPlans();
+    }
+
+    @Override
+    public List<PlanAbonnement> findSubscribablePlans() {
+        return planAbonnementDomainService.findSubscribablePlans();
     }
 
     /** Crée un plan après contrôle d'unicité du nom. */

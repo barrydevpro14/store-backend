@@ -5,6 +5,7 @@ import org.store.abonnement.application.dto.PlanAbonnementTarifResponse;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnementTarif;
+import org.store.abonnement.domain.model.TarifAvecCoupon;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,9 @@ public interface IPlanAbonnementTarifService {
 
     /** Supprime un tarif. */
     void delete(UUID planId, UUID tarifId);
+
+    /** Retourne les tarifs actifs d'un plan avec leur coupon global applicable (null si aucun), triés par ordre. */
+    List<TarifAvecCoupon> findActifWithCoupon(UUID planId);
 
     /** Lève {@code UniqueResourceException("tarif.periodicite.alreadyExists")} si doublon. */
     void ensurePeriodiciteAvailable(PlanAbonnement plan, PeriodiciteAbonnement periodicite);

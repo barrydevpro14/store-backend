@@ -9,6 +9,7 @@ import org.store.abonnement.application.service.IPlanAbonnementTarifService;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnementTarif;
+import org.store.abonnement.domain.model.TarifAvecCoupon;
 import org.store.abonnement.domain.service.PlanAbonnementTarifDomainService;
 import org.store.common.exceptions.UniqueResourceException;
 
@@ -96,5 +97,10 @@ public class PlanAbonnementTarifServiceImpl implements IPlanAbonnementTarifServi
         if (tarifDomainService.existsByPlanAndPeriodicite(plan, periodicite)) {
             throw new UniqueResourceException("tarif.periodicite.alreadyExists", periodicite.name());
         }
+    }
+
+    @Override
+    public List<TarifAvecCoupon> findActifWithCoupon(UUID planId) {
+        return tarifDomainService.findActifWithCoupon(planId);
     }
 }

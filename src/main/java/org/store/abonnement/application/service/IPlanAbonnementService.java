@@ -6,6 +6,7 @@ import org.store.abonnement.application.dto.PlanAbonnementRequest;
 import org.store.abonnement.application.dto.PlanAbonnementResponse;
 import org.store.abonnement.domain.model.PlanAbonnement;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IPlanAbonnementService {
@@ -14,6 +15,12 @@ public interface IPlanAbonnementService {
      * Retourne le premier plan d'essai actif, sinon throw `EntityException("plan.trial.notFound")`.
      */
     PlanAbonnement findFirstTrialActif();
+
+    /** Tous les plans actifs + visibles pour le catalogue public (y compris trial). */
+    List<PlanAbonnement> findPublicPlans();
+
+    /** Plans actifs + visibles + non-trial pour le flux OWNER de souscription. */
+    List<PlanAbonnement> findSubscribablePlans();
 
     /**
      * Création d'un plan d'abonnement (ADMIN uniquement). Unicité du nom contrôlée.

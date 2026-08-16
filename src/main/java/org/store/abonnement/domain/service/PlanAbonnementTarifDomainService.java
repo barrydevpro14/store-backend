@@ -5,11 +5,14 @@ import org.store.abonnement.application.dto.PlanAbonnementTarifRequest;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnementTarif;
+import org.store.abonnement.domain.model.TarifAvecCoupon;
 import org.store.abonnement.domain.repository.PlanAbonnementTarifRepository;
 import org.store.common.service.GlobalService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Gère les tarifs (plan + périodicité + prix) du catalogue d'abonnements.
@@ -31,6 +34,10 @@ public class PlanAbonnementTarifDomainService extends GlobalService<PlanAbonneme
 
     public List<PlanAbonnementTarif> findByPlan(PlanAbonnement plan) {
         return repository.findByPlan(plan);
+    }
+
+    public List<TarifAvecCoupon> findActifWithCoupon(UUID planId) {
+        return repository.findActifWithCoupon(planId, LocalDate.now());
     }
 
     public PlanAbonnementTarif create(PlanAbonnementTarifRequest request, PlanAbonnement plan) {
