@@ -67,16 +67,16 @@ class AbonnementQuotaServiceImplTest {
     @Test
     void ensureMagasinQuota_should_pass_when_below_limit() {
         when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(abonnement));
-        when(magasinDomainService.countByEntrepriseId(entrepriseId)).thenReturn(2L);
+        when(magasinDomainService.countActifByEntrepriseId(entrepriseId)).thenReturn(2L);
 
         assertThatNoException().isThrownBy(() -> service.ensureMagasinQuota(entrepriseId));
-        verify(magasinDomainService).countByEntrepriseId(entrepriseId);
+        verify(magasinDomainService).countActifByEntrepriseId(entrepriseId);
     }
 
     @Test
     void ensureMagasinQuota_should_throw_when_limit_reached() {
         when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(abonnement));
-        when(magasinDomainService.countByEntrepriseId(entrepriseId)).thenReturn(3L);
+        when(magasinDomainService.countActifByEntrepriseId(entrepriseId)).thenReturn(3L);
 
         assertThatThrownBy(() -> service.ensureMagasinQuota(entrepriseId))
                 .isInstanceOf(BadArgumentException.class);
@@ -112,6 +112,25 @@ class AbonnementQuotaServiceImplTest {
         when(employeDomainService.countByMagasinId(magasinId)).thenReturn(5L);
 
         assertThatThrownBy(() -> service.ensureEmployeQuota(entrepriseId, magasinId))
+                .isInstanceOf(BadArgumentException.class);
+    }
+
+    @Test
+    void ensureMagasinQuotaForPlan_should_pass_when_actif_count_at_limit() {
+        PlanAbonnement plan = new PlanAbonnement();
+        plan.setNombreMagasinsMax(2);
+        when(magasinDomainService.countActifByEntrepriseId(entrepriseId)).thenReturn(2L);
+
+        assertThatNoException().isThrownBy(() -> service.ensureMagasinQuotaForPlan(entrepriseId, plan));
+    }
+
+    @Test
+    void ensureMagasinQuotaForPlan_should_throw_when_actif_count_exceeds_new_plan() {
+        PlanAbonnement plan = new PlanAbonnement();
+        plan.setNombreMagasinsMax(1);
+        when(magasinDomainService.countActifByEntrepriseId(entrepriseId)).thenReturn(2L);
+
+        assertThatThrownBy(() -> service.ensureMagasinQuotaForPlan(entrepriseId, plan))
                 .isInstanceOf(BadArgumentException.class);
     }
 }

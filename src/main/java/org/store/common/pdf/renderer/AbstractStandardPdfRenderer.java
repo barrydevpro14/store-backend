@@ -108,7 +108,7 @@ public abstract class AbstractStandardPdfRenderer extends AbstractPdfRenderer {
         if (e.getLogo() != null && e.getLogo().getDocument() != null) {
             try {
                 Image img = Image.getInstance(e.getLogo().getDocument());
-                img.scaleToFit(70, 60);
+                img.scaleToFit(90, 75);
                 cell.addElement(img);
             } catch (Exception ignored) {
             }
