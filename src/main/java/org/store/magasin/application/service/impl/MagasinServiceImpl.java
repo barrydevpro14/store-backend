@@ -117,6 +117,8 @@ public class MagasinServiceImpl implements IMagasinService {
     @Override
     @Transactional
     public MagasinResponse activate(UUID id) {
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        quotaService.ensureMagasinQuota(currentUser.entrepriseId());
         Magasin magasin = ensureBelongsToCurrentEntreprise(magasinDomainService.findById(id));
         magasin.setActif(true);
         return new MagasinResponse(magasinDomainService.save(magasin));

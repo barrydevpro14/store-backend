@@ -12,6 +12,7 @@ import org.store.abonnement.application.dto.PlanFeaturesResponse;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.service.IAbonnementQuotaService;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
@@ -58,6 +59,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
     private final ICouponService couponService;
     private final IEntrepriseService entrepriseService;
     private final ICurrentUserService currentUserService;
+    private final IAbonnementQuotaService quotaService;
     private final SubscriptionAmountCalculator amountCalculator;
     private final SubscriptionProperties subscriptionProperties;
     private final ValidatorService validatorService;
@@ -69,6 +71,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
                                  ICouponService couponService,
                                  IEntrepriseService entrepriseService,
                                  ICurrentUserService currentUserService,
+                                 IAbonnementQuotaService quotaService,
                                  SubscriptionAmountCalculator amountCalculator,
                                  SubscriptionProperties subscriptionProperties,
                                  ValidatorService validatorService) {
@@ -79,6 +82,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
         this.couponService = couponService;
         this.entrepriseService = entrepriseService;
         this.currentUserService = currentUserService;
+        this.quotaService = quotaService;
         this.amountCalculator = amountCalculator;
         this.subscriptionProperties = subscriptionProperties;
         this.validatorService = validatorService;
@@ -171,6 +175,7 @@ public class AbonnementServiceImpl implements IAbonnementService {
         }
 
         if (planChange) ensurePlanSubscribable(planEffectif);
+        if (planChange) quotaService.ensureMagasinQuotaForPlan(currentEntrepriseId, planEffectif);
 
         PlanAbonnementTarif tarif = tarifService.findByPlanAndPeriodicite(planEffectif, periodiciteEffective)
                 .orElseThrow(() -> new EntityException("tarif.notFound"));

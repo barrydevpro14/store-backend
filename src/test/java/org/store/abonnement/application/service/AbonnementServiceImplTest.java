@@ -16,6 +16,7 @@ import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.SubscribeRequest;
 import org.store.abonnement.application.dto.SubscribeResponse;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.service.IAbonnementQuotaService;
 import org.store.abonnement.application.service.impl.AbonnementServiceImpl;
 import org.store.abonnement.application.service.impl.SubscriptionAmountCalculator;
 import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
@@ -57,6 +58,7 @@ class AbonnementServiceImplTest {
     @Mock private ICouponService couponService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private ICurrentUserService currentUserService;
+    @Mock private IAbonnementQuotaService quotaService;
     @Mock private SubscriptionAmountCalculator amountCalculator;
     @Mock private SubscriptionProperties subscriptionProperties;
     @Mock private ValidatorService validatorService;

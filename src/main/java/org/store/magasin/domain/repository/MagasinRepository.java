@@ -25,6 +25,9 @@ public interface MagasinRepository extends BaseRepository<Magasin> {
     @Query("SELECT COUNT(magasin) FROM Magasin magasin WHERE magasin.entreprise.id = :entrepriseId")
     long countByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
 
+    @Query("SELECT COUNT(m) FROM Magasin m WHERE m.entreprise.id = :entrepriseId AND m.actif = true")
+    long countActifByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
+
     @Query(value = """
             SELECT new org.store.magasin.application.dto.MagasinResponse(magasin)
             FROM Magasin magasin

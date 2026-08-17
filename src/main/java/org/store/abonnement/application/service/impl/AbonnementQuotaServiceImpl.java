@@ -45,7 +45,7 @@ public class AbonnementQuotaServiceImpl implements IAbonnementQuotaService {
         int max = planOf(abonnement.get()).getNombreMagasinsMax();
         if (max <= 0) return;
 
-        long count = magasinDomainService.countByEntrepriseId(entrepriseId);
+        long count = magasinDomainService.countActifByEntrepriseId(entrepriseId);
         if (count >= max) {
             throw new BadArgumentException("abonnement.quota.magasins.exceeded", max, count);
         }
@@ -63,6 +63,25 @@ public class AbonnementQuotaServiceImpl implements IAbonnementQuotaService {
         long count = employeDomainService.countByMagasinId(magasinId);
         if (count >= max) {
             throw new BadArgumentException("abonnement.quota.employes.exceeded", max, count);
+        }
+    }
+
+    /**
+     * Vérifie que le nombre de magasins actifs est compatible avec le plafond du nouveau plan.
+     * Contrairement à {@link #ensureMagasinQuota}, ne cherche pas l'abonnement courant :
+     * le plan cible est passé directement, ce qui permet de valider un downgrade avant qu'il
+     * ne soit appliqué.
+     */
+    @Override
+    public void ensureMagasinQuotaForPlan(UUID entrepriseId, PlanAbonnement plan) {
+        int max = plan.getNombreMagasinsMax();
+        if (max <= 0) return;
+
+        long countActif = magasinDomainService.countActifByEntrepriseId(entrepriseId);
+        long exces = countActif - max;
+
+        if (exces > 0) {
+            throw new BadArgumentException("abonnement.quota.magasins.downgrade", max, countActif, exces);
         }
     }
 

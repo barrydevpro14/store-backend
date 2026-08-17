@@ -140,7 +140,7 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         if (e.getLogo() != null && e.getLogo().getDocument() != null) {
             try {
                 Image img = Image.getInstance(e.getLogo().getDocument());
-                img.scaleToFit(50, 40);
+                img.scaleToFit(65, 52);
                 cell.addElement(img);
             } catch (Exception ignored) {
             }
