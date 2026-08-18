@@ -2,6 +2,7 @@ package org.store.abonnement.domain.repository;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.store.abonnement.application.dto.PlanAbonnementTarifResponse;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnementTarif;
@@ -19,7 +20,8 @@ public interface PlanAbonnementTarifRepository extends BaseRepository<PlanAbonne
 
     boolean existsByPlanAndPeriodicite(PlanAbonnement plan, PeriodiciteAbonnement periodicite);
 
-    List<PlanAbonnementTarif> findByPlan(PlanAbonnement plan);
+    @Query("SELECT new org.store.abonnement.application.dto.PlanAbonnementTarifResponse(t) FROM PlanAbonnementTarif t WHERE t.plan.id = :plan ORDER BY COALESCE(t.ordre, 0) ASC")
+    List<PlanAbonnementTarifResponse> findByPlan(@Param("plan") UUID planId);
 
     @Query("""
             SELECT new org.store.abonnement.domain.model.TarifAvecCoupon(t, c)

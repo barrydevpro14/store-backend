@@ -39,19 +39,10 @@ public class PlanAbonnementTarifServiceImpl implements IPlanAbonnementTarifServi
         return tarifDomainService.findByPlanAndPeriodicite(plan, periodicite);
     }
 
-    /** Retourne tous les tarifs d'un plan. */
-    @Override
-    public List<PlanAbonnementTarif> findByPlan(PlanAbonnement plan) {
-        return tarifDomainService.findByPlan(plan);
-    }
-
     /** Retourne tous les tarifs d'un plan sous forme de réponses. */
     @Override
     public List<PlanAbonnementTarifResponse> findResponsesByPlan(UUID planId) {
-        PlanAbonnement plan = planAbonnementService.findById(planId);
-        return tarifDomainService.findByPlan(plan).stream()
-                .map(PlanAbonnementTarifResponse::new)
-                .toList();
+        return tarifDomainService.findByPlan(planId);
     }
 
     /** Lecture interne par id. */

@@ -16,9 +16,6 @@ public interface IPlanAbonnementTarifService {
     /** Retourne le tarif actif pour un plan et une périodicité donnés, ou vide si aucun. */
     Optional<PlanAbonnementTarif> findByPlanAndPeriodicite(PlanAbonnement plan, PeriodiciteAbonnement periodicite);
 
-    /** Retourne tous les tarifs d'un plan (actifs ou non). */
-    List<PlanAbonnementTarif> findByPlan(PlanAbonnement plan);
-
     /** Retourne tous les tarifs d'un plan sous forme de réponses (actifs ou non). */
     List<PlanAbonnementTarifResponse> findResponsesByPlan(UUID planId);
 
