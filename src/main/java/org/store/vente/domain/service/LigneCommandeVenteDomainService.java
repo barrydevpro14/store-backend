@@ -22,7 +22,7 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         super(repository);
     }
 
-    /** Crée et persiste une ligne de commande vente avec montantTotal = quantite * prixUnitaire. */
+    /** Crée et persiste une ligne de commande vente avec montantTotal = quantite * prixUnitaire. Livraison initialisée à NON_LIVREE. */
     public LigneCommandeVente create(LigneCommandeVenteCreate ligneCommandeVenteCreate) {
         ProductFournisseur productFournisseur = ligneCommandeVenteCreate.productFournisseur();
         BigDecimal quantite = ligneCommandeVenteCreate.quantite();
@@ -33,8 +33,8 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
         ligne.setProductFournisseur(productFournisseur);
         ligne.setProduct(productFournisseur.getProduct());
         ligne.setQuantite(quantite);
-        ligne.setQuantiteLivree(quantite);
-        ligne.setLivraisonStatut(LivraisonStatut.LIVREE);
+        ligne.setQuantiteLivree(BigDecimal.ZERO);
+        ligne.setLivraisonStatut(LivraisonStatut.NON_LIVREE);
         ligne.setPrixUnitaire(prixUnitaire);
         ligne.setMontantTotal(prixUnitaire.multiply(quantite).setScale(2, java.math.RoundingMode.HALF_UP));
         ligne.setDateAjout(LocalDate.now());
@@ -52,11 +52,9 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
                 filter.startOfDay(), filter.endOfDay(), filter.toPageable());
     }
 
-    /** Met à jour quantité et prix unitaire d'une ligne en DRAFT (recalcule montantTotal, réinitialise la livraison au défaut LIVREE). */
+    /** Met à jour quantité et prix unitaire d'une ligne en DRAFT (recalcule montantTotal, livraison inchangée). */
     public LigneCommandeVente update(LigneCommandeVente ligne, BigDecimal quantite, BigDecimal prixUnitaire) {
         ligne.setQuantite(quantite);
-        ligne.setQuantiteLivree(quantite);
-        ligne.setLivraisonStatut(LivraisonStatut.LIVREE);
         ligne.setPrixUnitaire(prixUnitaire);
         ligne.setMontantTotal(prixUnitaire.multiply(quantite).setScale(2, java.math.RoundingMode.HALF_UP));
         return save(ligne);

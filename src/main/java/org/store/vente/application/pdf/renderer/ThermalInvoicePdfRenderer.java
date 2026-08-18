@@ -15,6 +15,7 @@ import org.store.magasin.domain.model.Magasin;
 import org.store.pdf.domain.model.PdfFormatConfig;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.service.IPaiementVenteService;
+import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
 
@@ -66,10 +67,43 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
         });
     }
 
+    public byte[] renderDevis(CommandeVente commande, Magasin magasin, PdfFormatConfig config) {
+        PdfColors colors = pdf.resolveColors(entrepriseSettingService.getMySettings().couleurPrimaire());
+        LocalDateTime now = LocalDateTime.now();
+
+        PdfHeaderContext ctx = new PdfHeaderContext(
+                magasin,
+                commande.getReference(),
+                now.toLocalDate(),
+                now.toLocalTime(),
+                null,
+                buildClientLabel(commande),
+                pdf.msg("pdf.vente.devis.title"),
+                colors,
+                config
+        );
+
+        return buildDocument(config, magasin, doc -> {
+            addHeader(doc, ctx);
+            doc.add(Chunk.NEWLINE);
+            addSeparator(doc, ctx);
+            addDevisLignesCompact(doc, commande, ctx);
+            addSeparator(doc, ctx);
+            addDevisTotalsCompact(doc, commande, ctx);
+        });
+    }
+
     /* ── Client label ──────────────────────────────────────────────────── */
 
     private String buildClientLabel(FactureClient facture) {
         var client = facture.getCommande().getClient();
+        if (client == null) return pdf.msg("pdf.vente.client.anonyme");
+        String identity = joinNonBlank(" ", client.getNom(), client.getPrenom());
+        return joinNonBlank(" / ", identity, client.getTelephone());
+    }
+
+    private String buildClientLabel(CommandeVente commande) {
+        var client = commande.getClient();
         if (client == null) return pdf.msg("pdf.vente.client.anonyme");
         String identity = joinNonBlank(" ", client.getNom(), client.getPrenom());
         return joinNonBlank(" / ", identity, client.getTelephone());
@@ -142,6 +176,40 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
 
         BigDecimal reste = facture.getMontantTotal().subtract(facture.getMontantPaye());
         addCompactRow(totals, pdf.msg("pdf.vente.totals.soldeRestant"), pdf.formatAmount(reste), boldFont);
+
+        doc.add(totals);
+    }
+
+    /* ── Devis compact lines ───────────────────────────────────────────── */
+
+    private void addDevisLignesCompact(Document doc, CommandeVente commande, PdfHeaderContext ctx) throws DocumentException {
+        float smallSize = ctx.config().getFontSizeSmall().floatValue();
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{70, 30});
+
+        for (LigneCommandeVente ligne : commande.getLignes()) {
+            addLigneCompactRow(table, ligne, smallSize);
+        }
+
+        doc.add(table);
+    }
+
+    /* ── Devis compact totals (total HT only) ─────────────────────────── */
+
+    private void addDevisTotalsCompact(Document doc, CommandeVente commande, PdfHeaderContext ctx) throws DocumentException {
+        float normalSize = ctx.config().getFontSizeNormal().floatValue();
+        PdfColors colors = ctx.colors();
+
+        PdfPTable totals = new PdfPTable(2);
+        totals.setWidthPercentage(100);
+        totals.setWidths(new float[]{60, 40});
+
+        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, colors.primary());
+
+        BigDecimal montant = commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO;
+        addCompactRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(montant), boldFont);
 
         doc.add(totals);
     }

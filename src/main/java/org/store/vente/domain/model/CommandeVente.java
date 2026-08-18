@@ -51,4 +51,7 @@ public class CommandeVente extends AuditableEntity {
 
     @Column(name = "montant_total", precision = 19, scale = 2, nullable = false)
     private BigDecimal montantTotal = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private boolean editable = true;
 }

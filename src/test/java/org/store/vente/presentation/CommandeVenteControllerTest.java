@@ -13,10 +13,10 @@ import org.store.common.dto.UserSummaryResponse;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
-import org.store.magasin.application.dto.MagasinSummaryResponse;
 import org.store.vente.application.dto.CommandeVenteFilter;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.service.ICommandeVenteService;
+import org.store.vente.application.service.IInvoicePdfService;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 
 import java.math.BigDecimal;
@@ -44,9 +44,10 @@ class CommandeVenteControllerTest {
     @BeforeEach
     void setUp() {
         commandeVenteService = mock(ICommandeVenteService.class);
+        IInvoicePdfService invoicePdfService = mock(IInvoicePdfService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new CommandeVenteController(commandeVenteService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new CommandeVenteController(commandeVenteService, invoicePdfService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .build();
 
@@ -55,21 +56,20 @@ class CommandeVenteControllerTest {
 
     private CommandeVenteResponse sampleListItem() {
         return new CommandeVenteResponse(
-                UUID.randomUUID(), "VTE-AUTO-001", CommandeVenteStatut.VALIDATE,
+                UUID.randomUUID(), "VTE-AUTO-001", null, CommandeVenteStatut.VALIDATE, false,
                 null, null, LocalDate.of(2026, 5, 16),
-                new BigDecimal("150.00"), BigDecimal.ZERO,new BigDecimal("1300.00"),
-                null, "2026-05-16 10:00:00" , null,null,null
+                new BigDecimal("150.00"), BigDecimal.ZERO, new BigDecimal("1300.00"),
+                null, "2026-05-16 10:00:00", null, null, null
         );
     }
 
     private CommandeVenteResponse sampleDetailWithUser(UUID id) {
         return new CommandeVenteResponse(
-                id, "VTE-AUTO-002", CommandeVenteStatut.VALIDATE,
-                null,
-                new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
+                id, "VTE-AUTO-002", null, CommandeVenteStatut.VALIDATE, false,
+                null, new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 16),
-                new BigDecimal("150.00"), BigDecimal.ZERO,new BigDecimal("1300.00"),
-                null, "2026-05-16 10:00:00",null,null,null
+                new BigDecimal("150.00"), BigDecimal.ZERO, new BigDecimal("1300.00"),
+                null, "2026-05-16 10:00:00", null, null, null
         );
     }
 
@@ -88,18 +88,14 @@ class CommandeVenteControllerTest {
     @Test
     void list_should_forward_all_filter_params_to_service() throws Exception {
         UUID clientId = UUID.randomUUID();
-        UUID vendeurId = UUID.randomUUID();
         Page<CommandeVenteResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 25), 0);
         when(commandeVenteService.findAllByCurrentEntreprise(any())).thenReturn(page);
 
         mockMvc.perform(get(CommandeVenteController.BASE_PATH)
                         .param("magasinId", magasinId.toString())
                         .param("clientId", clientId.toString())
-                        .param("vendeurId", vendeurId.toString())
                         .param("statut", "VALIDATE")
                         .param("reference", "VTE-2026")
-                        .param("montantMin", "100.00")
-                        .param("montantMax", "5000.00")
                         .param("startDate", "2026-05-01")
                         .param("endDate", "2026-05-31")
                         .param("page", "1")
@@ -111,11 +107,8 @@ class CommandeVenteControllerTest {
         CommandeVenteFilter captured = captor.getValue();
         assertThat(captured.magasinId()).isEqualTo(magasinId);
         assertThat(captured.clientId()).isEqualTo(clientId);
-        assertThat(captured.vendeurId()).isEqualTo(vendeurId);
         assertThat(captured.statut()).isEqualTo("VALIDATE");
         assertThat(captured.reference()).isEqualTo("VTE-2026");
-        assertThat(captured.montantMin()).isEqualByComparingTo(new BigDecimal("100.00"));
-        assertThat(captured.montantMax()).isEqualByComparingTo(new BigDecimal("5000.00"));
         assertThat(captured.startDate()).isEqualTo("2026-05-01");
         assertThat(captured.endDate()).isEqualTo("2026-05-31");
         assertThat(captured.page()).isEqualTo(1);

@@ -223,7 +223,7 @@ public class VenteServiceImpl implements IVenteService {
         return new LigneCommandeVenteResponse(ligne);
     }
 
-    /** Matérialise une commande DRAFT : consomme le stock FIFO par ligne, crée facture + paiement initial, bascule DELIVERED. */
+    /** Matérialise une commande DRAFT : consomme le stock FIFO par ligne, crée facture + paiement initial, bascule VALIDATE. */
     @Override
     @Transactional
     public VenteResponse validate(UUID commandeId, VenteValidateRequest venteValidateRequest) {
@@ -235,7 +235,10 @@ public class VenteServiceImpl implements IVenteService {
         List<LigneCommandeVente> lignes = commande.getLignes();
         Magasin magasin = commande.getMagasin();
 
-        lignes.forEach(ligne -> consumeStockForLigne(magasin, ligne));
+        lignes.forEach(ligne -> {
+            consumeStockForLigne(magasin, ligne);
+            ligneCommandeVenteDomainService.applyLivraison(ligne, ligne.getQuantite());
+        });
 
         BigDecimal montantTotal = lignes.stream()
                 .map(LigneCommandeVente::getMontantTotal)
@@ -455,8 +458,11 @@ public class VenteServiceImpl implements IVenteService {
         }
     }
 
-    /** Lève BadArgument si la commande n'est ni DRAFT ni VALIDATE non entièrement payée. */
+/** Lève BadArgument si la commande est verrouillée (editable=false) ou n'est ni DRAFT ni VALIDATE non entièrement payée. */
     public void ensureCommandeIsEditable(CommandeVente commande) {
+        if (!commande.isEditable()) {
+            throw new BadArgumentException("commandeVente.alreadyCloture");
+        }
         if (commande.getStatut() == CommandeVenteStatut.DRAFT) return;
         if (commande.getStatut() == CommandeVenteStatut.VALIDATE) {
             FactureClient facture = commande.getFacture();
@@ -556,13 +562,13 @@ public class VenteServiceImpl implements IVenteService {
         return factureClientDomainService.applyPaiement(facture, premierPaiement.montant());
     }
 
-    /** Vérifie que la commande est dans un statut annulable (VALIDATE ou CLOTURE) — throw BadArgument sinon. */
+    /** Vérifie que la commande est annulable (statut VALIDATE) — throw BadArgument sinon. */
     public void ensureCancellable(CommandeVente commande) {
         CommandeVenteStatut statut = commande.getStatut();
         if (statut == CommandeVenteStatut.CANCEL) {
             throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
         }
-        if (statut != CommandeVenteStatut.VALIDATE && statut != CommandeVenteStatut.CLOTURE) {
+        if (statut != CommandeVenteStatut.VALIDATE) {
             throw new BadArgumentException("commandeVente.cancel.notValidated", statut.name());
         }
     }

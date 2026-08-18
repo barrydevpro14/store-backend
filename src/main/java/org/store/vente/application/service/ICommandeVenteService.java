@@ -18,8 +18,8 @@ public interface ICommandeVenteService {
     long countByEntrepriseAndDay(UUID entrepriseId, LocalDateTime startOfDay, LocalDateTime endOfDay);
 
     /**
-     * Bascule une commande VALIDATE en statut CLOTURE (verrouillage : plus d'ajout de ligne possible).
-     * Vérifie que la commande est accessible par le caller et qu'elle est bien en VALIDATE.
+     * Verrouille une commande (editable=false) — bloque l'ajout de lignes, indépendant du statut.
+     * Vérifie que la commande est accessible par le caller et qu'elle n'est pas déjà verrouillée.
      */
     void cloturerCommande(UUID commandeId);
     void cloturerCommande(CommandeVente commande);

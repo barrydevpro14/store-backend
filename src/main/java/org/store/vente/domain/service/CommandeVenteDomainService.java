@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 
+import org.store.vente.application.criteria.CommandeVenteSpecification;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CommandeVenteCreate;
 import org.store.vente.application.dto.CommandeVenteFilter;
@@ -36,21 +37,12 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         return save(commande);
     }
 
-    /** Listing paginé filtré scopé entreprise (projection JPQL, user toujours null). */
+    /** Listing paginé filtré scopé entreprise (Specification + EntityGraph, user toujours null). */
     public Page<CommandeVenteResponse> findResponsesByFilter(CommandeVenteFilter filter, UUID entrepriseId) {
-        return repository.findResponsesByFilter(
-                entrepriseId,
-                filter.magasinId(),
-                filter.clientId(),
-                filter.vendeurId(),
-                filter.statutAsEnum(),
-                filter.statutFactureAsEnum(),
-                filter.reference(),
-                filter.montantMin(),
-                filter.montantMax(),
-                filter.startDate(),
-                filter.endDate(),
-                filter.toPageable());
+        return repository.findAll(
+                        CommandeVenteSpecification.search(filter, entrepriseId),
+                        filter.toPageable())
+                .map(CommandeVenteResponse::new);
     }
 
     /** Détails projetés JPQL avec user résolu (Account.createdBy -> Utilisateur via CAST + JOIN), scopé entreprise. */
@@ -93,9 +85,9 @@ public class CommandeVenteDomainService extends GlobalService<CommandeVente, Com
         return save(commande);
     }
 
-    /** Bascule la commande en statut CLOTURE (verrouillage définitif — plus d'ajout de ligne possible). */
+    /** Verrouille la commande (editable=false) sans changer le statut — plus d'ajout de ligne possible. */
     public CommandeVente cloturer(CommandeVente commande) {
-        commande.setStatut(CommandeVenteStatut.CLOTURE);
+        commande.setEditable(false);
         return save(commande);
     }
 

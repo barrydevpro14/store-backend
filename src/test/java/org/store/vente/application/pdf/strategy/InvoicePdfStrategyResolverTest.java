@@ -5,6 +5,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.pdf.domain.enums.PdfFormat;
 import org.store.pdf.domain.model.PdfFormatConfig;
 import org.store.magasin.domain.model.Magasin;
+import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 
 import java.util.List;
@@ -18,6 +19,7 @@ class InvoicePdfStrategyResolverTest {
         return new InvoicePdfStrategy() {
             @Override public PdfFormat supports() { return format; }
             @Override public byte[] generate(FactureClient f, Magasin m, PdfFormatConfig c) { return new byte[0]; }
+            @Override public byte[] generateDevis(CommandeVente c, Magasin m, PdfFormatConfig cfg) { return new byte[0]; }
         };
     }
 

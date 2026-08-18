@@ -15,7 +15,9 @@ import java.util.UUID;
 public record CommandeVenteResponse(
         UUID id,
         String reference,
+        String numeroFacture,
         CommandeVenteStatut statut,
+        boolean editable,
         ClientSummaryResponse client,
         UserSummaryResponse user,
         LocalDate dateVente,
@@ -28,6 +30,15 @@ public record CommandeVenteResponse(
         MotifAnnulationVente motifAnnulationVente,
         String commentaireAnnulation
 ) {
+    /** Constructeur Specification : entité complète chargée via EntityGraph, user toujours null. */
+    public CommandeVenteResponse(CommandeVente commande) {
+        this(commande, null,
+                commande.getFacture() != null ? commande.getFacture().getStatut() : null,
+                commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO,
+                commande.getFacture() != null && commande.getFacture().getMontantPaye() != null
+                        ? commande.getFacture().getMontantPaye() : BigDecimal.ZERO);
+    }
+
     /** Constructeur applicatif : la facture porte montantPaye et le statut ; montantTotal vient de la commande. */
     public CommandeVenteResponse(CommandeVente commande, UserSummaryResponse user, FactureClient facture) {
         this(commande, user,
@@ -60,8 +71,10 @@ public record CommandeVenteResponse(
                                   BigDecimal montantTotal, BigDecimal montantPaye) {
         this(
                 commande.getId(),
-                commande.getFacture() == null ? commande.getReference() : commande.getFacture().getNumero(),
+                commande.getReference(),
+                commande.getFacture() != null ? commande.getFacture().getNumero() : null,
                 commande.getStatut(),
+                commande.isEditable(),
                 commande.getClient() != null ? new ClientSummaryResponse(commande.getClient()) : null,
                 user,
                 commande.getDate(),
