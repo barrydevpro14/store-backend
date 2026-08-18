@@ -2,15 +2,19 @@ package org.store.vente.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.tools.OwnershipHelper;
 import org.store.pdf.application.service.IPdfFormatConfigService;
 import org.store.pdf.domain.model.PdfFormatConfig;
 import org.store.security.application.service.ICurrentUserService;
-import org.store.vente.application.service.IFactureClientService;
-import org.store.vente.application.service.IInvoicePdfService;
 import org.store.vente.application.pdf.strategy.InvoicePdfStrategy;
 import org.store.vente.application.pdf.strategy.InvoicePdfStrategyResolver;
+import org.store.vente.application.service.IFactureClientService;
+import org.store.vente.application.service.IInvoicePdfService;
+import org.store.vente.domain.enums.CommandeVenteStatut;
+import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
+import org.store.vente.domain.service.CommandeVenteDomainService;
 
 import java.util.UUID;
 
@@ -23,15 +27,18 @@ import java.util.UUID;
 public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     private final IFactureClientService factureClientService;
+    private final CommandeVenteDomainService commandeVenteDomainService;
     private final IPdfFormatConfigService pdfFormatConfigService;
     private final InvoicePdfStrategyResolver strategyResolver;
     private final ICurrentUserService currentUserService;
 
     public InvoicePdfServiceImpl(IFactureClientService factureClientService,
+                                  CommandeVenteDomainService commandeVenteDomainService,
                                   IPdfFormatConfigService pdfFormatConfigService,
                                   InvoicePdfStrategyResolver strategyResolver,
                                   ICurrentUserService currentUserService) {
         this.factureClientService = factureClientService;
+        this.commandeVenteDomainService = commandeVenteDomainService;
         this.pdfFormatConfigService = pdfFormatConfigService;
         this.strategyResolver = strategyResolver;
         this.currentUserService = currentUserService;
@@ -53,5 +60,31 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
         InvoicePdfStrategy strategy = strategyResolver.resolve(config.getFormat());
 
         return strategy.generate(facture, facture.getCommande().getMagasin(), config);
+    }
+
+    /** Génère les bytes PDF d'une commande : facture si elle en a une, devis sinon. */
+    @Override
+    public byte[] generateForCommande(UUID commandeId, UUID configId) {
+        CommandeVente commande = commandeVenteDomainService.findById(commandeId);
+
+        OwnershipHelper.ensureOwnership(
+                commande,
+                commande.getMagasin().getEntreprise().getId(),
+                currentUserService.getCurrent().entrepriseId(),
+                "commandeVente.notOwned"
+        );
+
+        if (commande.getStatut() == CommandeVenteStatut.CANCEL) {
+            throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
+        }
+
+        PdfFormatConfig config = pdfFormatConfigService.findById(configId);
+        InvoicePdfStrategy strategy = strategyResolver.resolve(config.getFormat());
+
+        if (commande.getFacture() != null) {
+            return strategy.generate(commande.getFacture(), commande.getMagasin(), config);
+        }
+
+        return strategy.generateDevis(commande, commande.getMagasin(), config);
     }
 }

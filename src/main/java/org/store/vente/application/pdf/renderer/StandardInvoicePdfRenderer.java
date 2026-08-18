@@ -18,6 +18,7 @@ import org.store.pdf.domain.model.PdfFormatConfig;
 import org.store.vente.application.dto.PaiementVenteResponse;
 import org.store.vente.application.service.IPaiementVenteService;
 import org.store.vente.domain.enums.LivraisonStatut;
+import org.store.vente.domain.model.CommandeVente;
 import org.store.vente.domain.model.FactureClient;
 import org.store.vente.domain.model.LigneCommandeVente;
 
@@ -68,10 +69,42 @@ public class StandardInvoicePdfRenderer extends AbstractStandardPdfRenderer {
         });
     }
 
+    public byte[] renderDevis(CommandeVente commande, Magasin magasin, PdfFormatConfig config) {
+        PdfColors colors = pdf.resolveColors(entrepriseSettingService.getMySettings().couleurPrimaire());
+        LocalDateTime now = LocalDateTime.now();
+
+        PdfHeaderContext ctx = new PdfHeaderContext(
+                magasin,
+                commande.getReference(),
+                now.toLocalDate(),
+                now.toLocalTime(),
+                null,
+                buildClientLabel(commande),
+                pdf.msg("pdf.vente.devis.title"),
+                colors,
+                config
+        );
+
+        return buildDocument(config, magasin, doc -> {
+            addHeader(doc, ctx);
+            doc.add(Chunk.NEWLINE);
+            addDevisLinesTable(doc, commande, ctx);
+            doc.add(Chunk.NEWLINE);
+            addDevisTotals(doc, commande, ctx);
+        });
+    }
+
     /* ── Client label ──────────────────────────────────────────────────── */
 
     private String buildClientLabel(FactureClient facture) {
         var client = facture.getCommande().getClient();
+        if (client == null) return pdf.msg("pdf.vente.client.anonyme");
+        String identity = joinNonBlank(" ", client.getNom(), client.getPrenom());
+        return joinNonBlank(" / ", identity, client.getTelephone());
+    }
+
+    private String buildClientLabel(CommandeVente commande) {
+        var client = commande.getClient();
         if (client == null) return pdf.msg("pdf.vente.client.anonyme");
         String identity = joinNonBlank(" ", client.getNom(), client.getPrenom());
         return joinNonBlank(" / ", identity, client.getTelephone());
@@ -142,6 +175,76 @@ public class StandardInvoicePdfRenderer extends AbstractStandardPdfRenderer {
         cell.setBorder(Rectangle.NO_BORDER);
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         return cell;
+    }
+
+    /* ── Devis lines table (5 cols — no delivery info) ────────────────── */
+
+    private void addDevisLinesTable(Document doc, CommandeVente commande, PdfHeaderContext ctx) throws DocumentException {
+        float smallSize = ctx.config().getFontSizeSmall().floatValue();
+        PdfColors colors = ctx.colors();
+
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{30, 22, 8, 20, 20});
+
+        Font headFont = new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.WHITE);
+        String[] headers = {
+            pdf.msg("pdf.vente.table.produit"),
+            pdf.msg("pdf.table.categorieQualite"),
+            pdf.msg("pdf.vente.table.quantite"),
+            pdf.msg("pdf.vente.table.prixUnitaire"),
+            pdf.msg("pdf.vente.table.totalHt")
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            PdfPCell cell = new PdfPCell(new Phrase(headers[i], headFont));
+            cell.setBackgroundColor(colors.primary());
+            cell.setPadding(7);
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setHorizontalAlignment(i <= 1 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
+            table.addCell(cell);
+        }
+
+        Font lineFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.DARK_GRAY);
+        boolean alt = false;
+
+        for (LigneCommandeVente ligne : commande.getLignes()) {
+            Color bg = alt ? new Color(249, 250, 251) : Color.WHITE;
+            alt = !alt;
+            addDevisLigneRow(table, ligne, lineFont, bg);
+        }
+
+        doc.add(table);
+    }
+
+    private void addDevisLigneRow(PdfPTable table, LigneCommandeVente ligne, Font lineFont, Color bg) {
+        var product = ligne.getProductFournisseur().getProduct();
+        var quality = ligne.getProductFournisseur().getQuality();
+        String symbole = product.getUniteMesure().getSymbole();
+
+        table.addCell(pdf.textCell(buildProductLabel(product.getNom(), product.getReference()), lineFont, bg));
+        table.addCell(pdf.textCell(buildCategoryQualityLabel(product.getCategoryProduct(), quality), lineFont, bg));
+        table.addCell(pdf.numCell(ligne.getQuantite() + " " + symbole, lineFont, bg));
+        table.addCell(pdf.numCell(pdf.formatAmount(ligne.getPrixUnitaire()), lineFont, bg));
+        table.addCell(pdf.numCell(pdf.formatAmount(ligne.getMontantTotal()), lineFont, bg));
+    }
+
+    /* ── Devis totals (total HT only) ─────────────────────────────────── */
+
+    private void addDevisTotals(Document doc, CommandeVente commande, PdfHeaderContext ctx) throws DocumentException {
+        float normalSize = ctx.config().getFontSizeNormal().floatValue();
+        PdfColors colors = ctx.colors();
+
+        PdfPTable totals = new PdfPTable(2);
+        totals.setWidths(new float[]{65, 35});
+        totals.setWidthPercentage(100);
+
+        Font boldFont = new Font(Font.HELVETICA, normalSize + 2, Font.BOLD, colors.primary());
+
+        BigDecimal montant = commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO;
+        pdf.addTotalRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(montant), boldFont, boldFont, new Color(236, 253, 245));
+
+        doc.add(totals);
     }
 
     private Color livraisonStatutBackground(LivraisonStatut statut) {

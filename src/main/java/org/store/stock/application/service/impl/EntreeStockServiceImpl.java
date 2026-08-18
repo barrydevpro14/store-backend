@@ -196,8 +196,12 @@ public class EntreeStockServiceImpl implements IEntreeStockService {
         lot.setQuantiteRestante(request.quantite());
         lot.setPrixAchat(request.prixAchat());
         entreeStockDomainService.save(lot);
+        if(request.prixAchat().compareTo(pf.getPrixAchat())> 0 ){
+            productFournisseurService.applyPrixFromPurchase(pf, request.prixAchat(),  request.prixVente());
+        }else {
+            productFournisseurService.updatePrixVente(pf.getId(),  request.prixVente());
 
-        productFournisseurService.updatePrixVente(pf.getId(), request.prixVente());
+        }
 
         List<EntreeStock> activeLots = entreeStockDomainService
                 .findAvailableLotsForFifoByProductFournisseur(magasin.getId(), pf.getId());

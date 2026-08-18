@@ -2,65 +2,26 @@ package org.store.vente.domain.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.store.achat.domain.enums.StatutFacture;
 import org.store.common.repository.BaseRepository;
 import org.store.vente.application.dto.CommandeVenteResponse;
 import org.store.vente.application.dto.VenteParVendeurResponse;
-import org.store.vente.domain.enums.CommandeVenteStatut;
 import org.store.vente.domain.model.CommandeVente;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface CommandeVenteRepository extends BaseRepository<CommandeVente> {
+public interface CommandeVenteRepository extends BaseRepository<CommandeVente>, JpaSpecificationExecutor<CommandeVente> {
 
-    /**
-     * LEFT JOIN on facture is mandatory so that DRAFT orders (no facture yet) are included.
-     * LEFT JOIN on account resolves createdBy (String) → user for vendeur filtering.
-     */
-    @Query("""
-            SELECT new org.store.vente.application.dto.CommandeVenteResponse(commande, facture.statut, facture.montantPaye)
-            FROM CommandeVente commande
-            LEFT JOIN commande.facture facture
-            LEFT JOIN commande.client client
-            LEFT JOIN org.store.security.domain.model.Account account ON CAST(account.id AS string) = commande.createdBy
-            WHERE commande.magasin.entreprise.id = :entrepriseId
-              AND commande.magasin.id = :magasinId
-              AND (:clientId IS NULL OR client.id = :clientId)
-              AND (:vendeurId IS NULL OR account.user.id = :vendeurId)
-              AND (:statut IS NULL OR commande.statut = :statut)
-              AND (:statutFacture IS NULL OR facture.statut = :statutFacture)
-              AND (:reference IS NULL OR :reference = '' OR LOWER(facture.numero) LIKE LOWER(CONCAT('%', :reference, '%'))
-              OR LOWER(
-                     CONCAT(
-                         COALESCE(client.nom, ''),' ',
-                         COALESCE(client.prenom, '')
-                     )
-                 ) LIKE LOWER(CONCAT('%', :reference, '%')))
-              AND (:montantMin IS NULL OR commande.montantTotal >= :montantMin)
-              AND (:montantMax IS NULL OR commande.montantTotal <= :montantMax)
-              AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', commande.createdAt) >= CAST(:startDate AS date))
-              AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', commande.createdAt) <= CAST(:endDate AS date))
-            ORDER BY commande.createdAt DESC
-            """)
-    Page<CommandeVenteResponse> findResponsesByFilter(
-            @Param("entrepriseId") UUID entrepriseId,
-            @Param("magasinId") UUID magasinId,
-            @Param("clientId") UUID clientId,
-            @Param("vendeurId") UUID vendeurId,
-            @Param("statut") CommandeVenteStatut statut,
-            @Param("statutFacture") StatutFacture statutFacture,
-            @Param("reference") String reference,
-            @Param("montantMin") BigDecimal montantMin,
-            @Param("montantMax") BigDecimal montantMax,
-            @Param("startDate") String startDate,
-            @Param("endDate") String endDate,
-            Pageable pageable);
+    @Override
+    @EntityGraph(attributePaths = {"facture", "client"})
+    Page<CommandeVente> findAll(Specification<CommandeVente> spec, Pageable pageable);
 
     @Query("""
             SELECT new org.store.vente.application.dto.CommandeVenteResponse(

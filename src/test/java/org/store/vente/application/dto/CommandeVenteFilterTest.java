@@ -1,11 +1,9 @@
 package org.store.vente.application.dto;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.store.vente.domain.enums.CommandeVenteStatut;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,12 +51,10 @@ class CommandeVenteFilterTest {
     @Test
     void toPageable_should_return_pageable_with_correct_page_and_size() {
         CommandeVenteFilter filter = new CommandeVenteFilter(
-                MAGASIN_ID, null, null,
-                null, null, null, null, null, null, null, 3, 25);
+                MAGASIN_ID, null, null, null, null, null, null, 3, 25);
 
         Pageable pageable = filter.toPageable();
 
-        assertThat(pageable).isEqualTo(PageRequest.of(3, 25));
         assertThat(pageable.getPageNumber()).isEqualTo(3);
         assertThat(pageable.getPageSize()).isEqualTo(25);
     }
@@ -66,8 +62,7 @@ class CommandeVenteFilterTest {
     @Test
     void toPageable_should_return_first_page_at_page_zero() {
         CommandeVenteFilter filter = new CommandeVenteFilter(
-                MAGASIN_ID, null, null,
-                null, null, null, null, null, null, null, 0, 10);
+                MAGASIN_ID, null, null, null, null, null, null, 0, 10);
 
         Pageable pageable = filter.toPageable();
 
@@ -76,14 +71,10 @@ class CommandeVenteFilterTest {
     }
 
     private static CommandeVenteFilter buildFilter(String statut) {
-        return new CommandeVenteFilter(
-                MAGASIN_ID, null, null, statut, null, null,
-                null, null, null, null, 0, 10);
+        return new CommandeVenteFilter(MAGASIN_ID, null, statut, null, null, null, null, 0, 10);
     }
 
     private static CommandeVenteFilter filterWithDates(String startDate, String endDate) {
-        return new CommandeVenteFilter(
-                MAGASIN_ID, null, null,
-                null, null, null, BigDecimal.ZERO, new BigDecimal("99999"), startDate, endDate, 0, 10);
+        return new CommandeVenteFilter(MAGASIN_ID, null, null, null, null, startDate, endDate, 0, 10);
     }
 }

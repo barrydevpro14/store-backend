@@ -66,19 +66,21 @@ public class CommandeVenteServiceImpl implements ICommandeVenteService {
         return commandeVenteDomainService.countByEntrepriseAndDay(entrepriseId, startOfDay, endOfDay);
     }
 
-    /** Bascule une commande VALIDATE en CLOTURE après vérification d'accès et de statut. */
+    /** Verrouille une commande (editable=false) après vérification d'accès — indépendant du statut. */
     @Override
     @Transactional
     public void cloturerCommande(UUID commandeId) {
         CommandeVente commande = commandeVenteDomainService.findById(commandeId);
         magasinService.ensureAccessibleByCurrentUser(commande.getMagasin());
 
-        if (commande.getStatut() != CommandeVenteStatut.VALIDATE) {
-            throw new BadArgumentException("commandeVente.cloturer.notValidated", commande.getStatut().name());
+        if (!commande.isEditable()) {
+            throw new BadArgumentException("commandeVente.alreadyCloture");
+        }
+        if (commande.getStatut() == CommandeVenteStatut.CANCEL) {
+            throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
         }
 
-      commandeVenteDomainService.cloturer(commande);
-
+        commandeVenteDomainService.cloturer(commande);
     }
 
     @Override

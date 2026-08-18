@@ -91,23 +91,21 @@ class VenteControllerTest {
 
     private CommandeVenteResponse draftCommandeResponse() {
         return new CommandeVenteResponse(
-                commandeId, "VTE-AUTO", CommandeVenteStatut.DRAFT,
-                null,
-                null,
+                commandeId, "VTE-AUTO", null, CommandeVenteStatut.DRAFT, false,
+                null, null,
                 LocalDate.of(2026, 5, 18),
-                BigDecimal.ZERO, BigDecimal.ZERO,BigDecimal.ZERO,
-                null, "2026-05-18 10:00:00",null,null,null
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                null, "2026-05-18 10:00:00", null, null, null
         );
     }
 
     private CommandeVenteResponse deliveredCommandeResponse() {
         return new CommandeVenteResponse(
-                commandeId, "VTE-AUTO", CommandeVenteStatut.VALIDATE,
-                null,
-                new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
+                commandeId, "VTE-AUTO", null, CommandeVenteStatut.VALIDATE, false,
+                null, new UserSummaryResponse(UUID.randomUUID(), "Diop Awa"),
                 LocalDate.of(2026, 5, 18),
-                new BigDecimal("150.00"), BigDecimal.ZERO,BigDecimal.ZERO,
-                null, "2026-05-18 10:00:00",null,null,null
+                new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO,
+                null, "2026-05-18 10:00:00", null, null, null
         );
     }
 
