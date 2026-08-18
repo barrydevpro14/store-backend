@@ -34,7 +34,7 @@ public record PublicPlanResponse(
                 plan.getOrdre(),
                 plan.getTarifs().stream()
                         .filter(PlanAbonnementTarif::isActif)
-                        .sorted(Comparator.comparingInt(t -> t.getOrdre() != null ? t.getOrdre() : 0))
+                        .sorted(Comparator.comparingInt((PlanAbonnementTarif t) -> t.getOrdre() != null ? t.getOrdre() : 0))
                         .map(PlanAbonnementTarifResponse::new)
                         .toList()
         );

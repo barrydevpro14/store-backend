@@ -2,6 +2,7 @@ package org.store.abonnement.domain.service;
 
 import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.PlanAbonnementTarifRequest;
+import org.store.abonnement.application.dto.PlanAbonnementTarifResponse;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnementTarif;
@@ -32,8 +33,8 @@ public class PlanAbonnementTarifDomainService extends GlobalService<PlanAbonneme
         return repository.existsByPlanAndPeriodicite(plan, periodicite);
     }
 
-    public List<PlanAbonnementTarif> findByPlan(PlanAbonnement plan) {
-        return repository.findByPlan(plan);
+    public List<PlanAbonnementTarifResponse> findByPlan(UUID planId) {
+        return repository.findByPlan(planId);
     }
 
     public List<TarifAvecCoupon> findActifWithCoupon(UUID planId) {
