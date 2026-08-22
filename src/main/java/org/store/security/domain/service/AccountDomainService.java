@@ -32,6 +32,10 @@ public class AccountDomainService extends GlobalService<Account, AccountReposito
         return repository.findByUsername(username);
     }
 
+    public Optional<Account> findByUsernameOrEmail(String identifier) {
+        return repository.findByUsernameOrEmail(identifier);
+    }
+
     public boolean existsByUsername(String username) {
         return repository.existsByUsername(username);
     }

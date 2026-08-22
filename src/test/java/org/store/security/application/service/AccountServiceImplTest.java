@@ -83,4 +83,23 @@ class AccountServiceImplTest {
         assertThatThrownBy(() -> service.findByUsername("ghost"))
                 .isInstanceOf(EntityException.class);
     }
+
+    @Test
+    void findByUsernameOrEmail_should_return_account_when_found() {
+        Account account = new Account();
+        when(accountDomainService.findByUsernameOrEmail("john@example.com")).thenReturn(Optional.of(account));
+
+        Optional<Account> result = service.findByUsernameOrEmail("john@example.com");
+
+        assertThat(result).contains(account);
+    }
+
+    @Test
+    void findByUsernameOrEmail_should_return_empty_when_not_found() {
+        when(accountDomainService.findByUsernameOrEmail("ghost")).thenReturn(Optional.empty());
+
+        Optional<Account> result = service.findByUsernameOrEmail("ghost");
+
+        assertThat(result).isEmpty();
+    }
 }

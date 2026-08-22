@@ -1,15 +1,20 @@
 package org.store.security.application.service;
 
+import org.store.security.domain.model.Account;
 import org.store.security.application.dto.ForgotPasswordRequest;
 import org.store.security.application.dto.ResetPasswordConfirmRequest;
 
 public interface IPasswordResetService {
 
-    /** Génère un token, le persiste et envoie le lien par e-mail.
-     *  Toujours silencieux (204) — ne révèle pas l'existence du compte. */
-    void requestReset(ForgotPasswordRequest request);
+    /** Generates a token, persists it, and sends the reset link by email — always silent (204). */
+    void requestReset(ForgotPasswordRequest forgotPasswordRequest);
 
-    /** Valide le token, réinitialise le mot de passe, marque le token consommé.
-     *  Lève BadArgumentException si token invalide, expiré ou déjà utilisé. */
-    void confirmReset(ResetPasswordConfirmRequest request);
+    /** Validates the token, resets the password, and marks the token as consumed. */
+    void confirmReset(ResetPasswordConfirmRequest resetPasswordConfirmRequest);
+
+    /** Returns the email address linked to the account, or null if none. */
+    String resolveEmail(Account account);
+
+    /** Returns a display name for the account (prenom + nom, or username as fallback). */
+    String resolveRecipientName(Account account);
 }

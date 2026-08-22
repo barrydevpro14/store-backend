@@ -428,6 +428,28 @@ class EmployeServiceImplTest {
     }
 
     @Test
+    void create_should_succeed_when_employe_has_no_email_and_no_telephone() {
+        UtilisateurRequest withoutContacts = new UtilisateurRequest("Doe", "John", null, null, null);
+        EmployeRequest req = new EmployeRequest(VALID_USERNAME, withoutContacts, ROLE_ID, magasinId);
+        Role vendeurRole = roleWithId();
+        Account account = new Account();
+        account.setId(UUID.randomUUID());
+        EmployeResponse expected = sampleResponse("SELLER");
+
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
+        when(roleService.findById(ROLE_ID)).thenReturn(vendeurRole);
+        when(permissionsService.findAllByRoleId(vendeurRole.getId())).thenReturn(List.of("EMPLOYE_ACCESS"));
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(accountService.create(any(AccountRequest.class), eq(vendeurRole))).thenReturn(account);
+        when(employeDomainService.create(eq(withoutContacts), eq(account), eq(magasin))).thenReturn(expected);
+
+        EmployeResponse response = service.create(req);
+
+        assertThat(response).isSameAs(expected);
+    }
+
+    @Test
     void countByMagasinId_should_delegate_to_domain_service() {
         UUID targetMagasinId = UUID.randomUUID();
         when(employeDomainService.countByMagasinId(targetMagasinId)).thenReturn(7L);

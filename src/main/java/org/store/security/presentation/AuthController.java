@@ -2,6 +2,8 @@ package org.store.security.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.store.common.validation.OwnerValidation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,7 +42,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterPropertyRequest request) {
+    public ResponseEntity<AuthResponse> register(@Validated(OwnerValidation.class) @RequestBody RegisterPropertyRequest request) {
         AuthResponse response = registerPropertyService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

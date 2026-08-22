@@ -1,6 +1,7 @@
 package org.store.users.domain.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
@@ -70,6 +71,33 @@ public class UtilisateurDomainService extends GlobalService<Utilisateur, Utilisa
             throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
         }
         if (repository.existsByTelephoneAndIdNot(telephone, currentUserId)) {
+            throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
+        }
+    }
+
+    /**
+     * Variante de {@link #ensureContactsAvailable} pour les contextes ou email et
+     * telephone sont optionnels (ex : creation d'employe). Le check d'unicite n'est
+     * effectue que si la valeur est non nulle et non vide.
+     */
+    public void ensureOptionalContactsAvailable(String email, String telephone) {
+        if (StringUtils.hasText(email) && repository.existsByEmail(email)) {
+            throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
+        }
+        if (StringUtils.hasText(telephone) && repository.existsByTelephone(telephone)) {
+            throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
+        }
+    }
+
+    /**
+     * Variante de {@link #ensureContactsAvailableForUpdate} pour les contextes ou
+     * email et telephone sont optionnels (ex : mise a jour d'employe).
+     */
+    public void ensureOptionalContactsAvailableForUpdate(String email, String telephone, UUID currentUserId) {
+        if (StringUtils.hasText(email) && repository.existsByEmailAndIdNot(email, currentUserId)) {
+            throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
+        }
+        if (StringUtils.hasText(telephone) && repository.existsByTelephoneAndIdNot(telephone, currentUserId)) {
             throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
         }
     }
