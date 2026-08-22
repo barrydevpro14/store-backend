@@ -62,4 +62,10 @@ public interface IUniteMesureService {
      * Vérifie que le code n'est pas déjà utilisé. Throw {@code UniqueResourceException("uniteMesure.code.alreadyExists")} sinon.
      */
     void ensureCodeAvailable(String code);
+
+    /**
+     * Résout l'UUID de l'unité de mesure correspondant à {@code code} si présent et connu,
+     * ou retourne l'UUID de PIECE (résolu au plus une fois par import via {@code pieceRef}).
+     */
+    UUID resolveIdOrPiece(String code, UUID[] pieceRef);
 }

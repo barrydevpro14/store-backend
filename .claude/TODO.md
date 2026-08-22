@@ -164,6 +164,8 @@
 - [ ] **Top sellers (by revenue)** — `GET /api/v1/ventes/caisse/top-vendeurs?magasinId=&from=&to=&nombre=N`: ranks sellers by cumulative revenue over the period. Complement to the already shipped top-products.
 - [ ] **Inventory line deletion in BILAN** — Today lines are frozen at BILAN (product report). Allow deleting a BILAN line if a mistake is detected before closure, with report regeneration. Refines post-BILAN correction.
 - [x] **Inventaire scindé en 2 pages** (2026-06-14) — `/dashboard/inventaires` : page active (Continuer/Commencer). `/dashboard/inventaires/historique` : liste complète. `GET /inventaires/active`. Fix guard `existsByMagasinIdAndStatutIn` via @Query explicite.
+- [x] **Catalogue — filtre uniteMesure** (2026-08-22) — `CatalogueProduitFilter` : ajout du champ `uniteMesure` + helper `uniteMesurePattern()`. `CatalogueProduitRepository.findByFilter` : nouveau prédicat JPQL `LOWER(c.uniteMesure) LIKE :uniteMesurePattern` sur les deux queries (SELECT + count). `CatalogueProduitDomainService.findByFilter` et `CatalogueProduitController` (`uniteMesure` query param) mis à jour.
+- [x] **Catalogue — contrôle uniteMesure à l'import** (2026-08-22) — `CatalogueProduitServiceImpl.importFromFile` : injection de `IUniteMesureService`, résolution du code via `findByCodeOptional` avec fallback `"PIECE"` si code absent ou inconnu (au lieu de stocker le code brut de l'Excel sans validation).
 
 #### Subscription module (10 points — entity-rich skeleton, no exposed REST)
 

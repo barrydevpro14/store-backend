@@ -13,6 +13,7 @@ public record CatalogueProduitFilter(
         String reference,
         String libelle,
         String categorie,
+        String uniteMesure,
         @DatePattern String createdStartDate,
         @DatePattern String createdEndDate,
         @Min(0) int page,
@@ -32,5 +33,9 @@ public record CatalogueProduitFilter(
 
     public String categoriePattern() {
         return (categorie == null || categorie.isBlank()) ? null : "%" + categorie.toLowerCase() + "%";
+    }
+
+    public String uniteMesurePattern() {
+        return (uniteMesure == null || uniteMesure.isBlank()) ? null : "%" + uniteMesure.toLowerCase() + "%";
     }
 }

@@ -42,6 +42,7 @@ public class CatalogueProduitController {
             @RequestParam(required = false) String reference,
             @RequestParam(required = false) String libelle,
             @RequestParam(required = false) String categorie,
+            @RequestParam(required = false) String uniteMesure,
             @RequestParam(required = false) String createdStartDate,
             @RequestParam(required = false) String createdEndDate,
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -49,7 +50,7 @@ public class CatalogueProduitController {
     ) {
         return ResponseEntity.ok(catalogueProduitService.findByFilter(
                 new CatalogueProduitFilter(activiteEconomiqueId, reference, libelle, categorie,
-                        createdStartDate, createdEndDate, page, size)));
+                        uniteMesure, createdStartDate, createdEndDate, page, size)));
     }
 
     @PostMapping("/import")

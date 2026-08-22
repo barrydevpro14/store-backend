@@ -83,7 +83,7 @@ public class ProductImportServiceImpl implements IProductImportService {
 
     @Override
     public ProductImportResult importProducts(ProductImportRequest productImportRequest) {
-        UUID pieceUnitId = uniteMesureService.findByCode("PIECE").getId();
+        UUID[] pieceUnitRef = {null};
 
         int imported = 0;
         int ignored = 0;
@@ -107,11 +107,7 @@ public class ProductImportServiceImpl implements IProductImportService {
                 CategoryProduct category = categoryProductService.findOrCreateByLibelle(item.categorie());
                 categoriesCreated += categoryExisted ? 0 : 1;
 
-                UUID uniteMesureId = StringUtils.hasText(item.uniteMesure())
-                        ? uniteMesureService.findByCodeOptional(item.uniteMesure())
-                                .map(u -> u.getId())
-                                .orElse(pieceUnitId)
-                        : pieceUnitId;
+                UUID uniteMesureId = uniteMesureService.resolveIdOrPiece(item.uniteMesure(), pieceUnitRef);
 
                 productService.create(new ProductRequest(item.libelle(), item.reference(), item.description(), category.getId(), uniteMesureId));
                 imported++;

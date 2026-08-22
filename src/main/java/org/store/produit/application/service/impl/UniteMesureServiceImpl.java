@@ -3,7 +3,9 @@ package org.store.produit.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.produit.domain.enums.UniteMesureEnum;
 import org.store.produit.application.dto.UniteMesureFilter;
 import org.store.produit.application.dto.UniteMesureRequest;
 import org.store.produit.application.dto.UniteMesureResponse;
@@ -102,5 +104,23 @@ public class UniteMesureServiceImpl implements IUniteMesureService {
         if (uniteMesureDomainService.existsByCode(code)) {
             throw new UniqueResourceException("uniteMesure.code.alreadyExists", code);
         }
+    }
+
+    /** Résout l'UUID du code fourni si connu, sinon retourne l'UUID de PIECE (résolu au plus une fois via pieceRef). */
+    @Override
+    public UUID resolveIdOrPiece(String code, UUID[] pieceRef) {
+        if (StringUtils.hasText(code)) {
+            return findByCodeOptional(code)
+                    .map(UniteMesure::getId)
+                    .orElseGet(() -> resolvePieceUnit(pieceRef));
+        }
+        return resolvePieceUnit(pieceRef);
+    }
+
+    private UUID resolvePieceUnit(UUID[] ref) {
+        if (ref[0] == null) {
+            ref[0] = uniteMesureDomainService.findByCode(UniteMesureEnum.PIECE.code()).getId();
+        }
+        return ref[0];
     }
 }

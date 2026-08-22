@@ -35,6 +35,8 @@ public class CatalogueProduitDomainService extends GlobalService<CatalogueProdui
                 filter.libellePattern(),
                 filter.categorie(),
                 filter.categoriePattern(),
+                filter.uniteMesure(),
+                filter.uniteMesurePattern(),
                 filter.createdStartDate(),
                 filter.createdEndDate(),
                 filter.toPageable()
