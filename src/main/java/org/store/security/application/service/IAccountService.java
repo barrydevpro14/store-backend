@@ -15,6 +15,9 @@ public interface IAccountService {
 
     Account findByUsername(String username);
 
+    /** Finds an account by username or email — silent (empty) if not found. */
+    Optional<Account> findByUsernameOrEmail(String identifier);
+
     /** Lecture safe d'un Account par id (retourne empty si introuvable, sans throw). */
     Optional<Account> findOptionalById(UUID accountId);
 

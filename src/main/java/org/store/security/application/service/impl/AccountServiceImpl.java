@@ -46,6 +46,11 @@ public class AccountServiceImpl implements IAccountService {
                 .orElseThrow(() -> new EntityException("account.notFound", username));
     }
 
+    @Override
+    public Optional<Account> findByUsernameOrEmail(String identifier) {
+        return accountDomainService.findByUsernameOrEmail(identifier);
+    }
+
     /** Lecture safe d'un Account par id (retourne empty si introuvable, sans throw). */
     @Override
     public Optional<Account> findOptionalById(UUID accountId) {

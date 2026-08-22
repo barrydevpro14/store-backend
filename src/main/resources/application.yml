@@ -45,6 +45,8 @@ logging:
     max-payload-length: ${LOG_HTTP_MAX_PAYLOAD_LENGTH:2048}
 
 security:
+  password-reset:
+    expiry-hours: ${PASSWORD_RESET_EXPIRY_HOURS:1}
   jwt:
     secret: ${JWT_SECRET}
     header: Authorization
