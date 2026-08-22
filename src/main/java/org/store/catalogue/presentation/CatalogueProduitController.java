@@ -77,4 +77,11 @@ public class CatalogueProduitController {
         catalogueProduitService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/bulk")
+    @PreAuthorize("hasAuthority('CATALOGUE_PRODUIT_DELETE')")
+    public ResponseEntity<Void> deleteAll(@RequestBody List<UUID> ids) {
+        catalogueProduitService.deleteAll(ids);
+        return ResponseEntity.noContent().build();
+    }
 }

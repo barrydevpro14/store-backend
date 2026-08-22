@@ -22,4 +22,6 @@ public interface ICatalogueProduitService {
     CatalogueProduitResponse update(UUID id, CatalogueProduitUpdateRequest request);
 
     void delete(UUID id);
+
+    void deleteAll(List<UUID> ids);
 }

@@ -15,9 +15,11 @@ public interface CatalogueProduitRepository extends BaseRepository<CatalogueProd
 
     boolean existsByReferenceAndLibelleAndActiviteEconomiqueId(String reference, String libelle, UUID activiteEconomiqueId);
 
+    void deleteAllByIdInBatch(Iterable<UUID> ids);
+
     @Query("""
             SELECT new org.store.catalogue.application.dto.CatalogueProduitSummaryResponse(
-                c.id, c.reference, c.libelle, c.categorie, c.description
+                c.id, c.reference, c.libelle, c.categorie, c.description, c.uniteMesure
             )
             FROM CatalogueProduit c
             WHERE c.activiteEconomique.id = :activiteEconomiqueId
@@ -27,7 +29,7 @@ public interface CatalogueProduitRepository extends BaseRepository<CatalogueProd
 
     @Query(value = """
             SELECT new org.store.catalogue.application.dto.CatalogueProduitSummaryResponse(
-                c.id, c.reference, c.libelle, c.categorie, c.description
+                c.id, c.reference, c.libelle, c.categorie, c.description,c.uniteMesure
             )
             FROM CatalogueProduit c
             WHERE c.activiteEconomique.id = :activiteEconomiqueId

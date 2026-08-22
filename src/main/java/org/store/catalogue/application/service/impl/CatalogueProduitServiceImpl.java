@@ -21,6 +21,7 @@ import org.store.common.service.IExcelProductRowService;
 import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.domain.enums.UniteMesureEnum;
+import org.store.produit.domain.model.UniteMesure;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.ArrayList;
@@ -96,7 +97,7 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
                 entry.setCategorie(excelRow.categorie());
                 String resolvedUniteMesure = StringUtils.hasText(excelRow.uniteMesure())
                         ? uniteMesureService.findByCodeOptional(excelRow.uniteMesure())
-                                .map(u -> u.getCode())
+                                .map(UniteMesure::getCode)
                                 .orElse(UniteMesureEnum.PIECE.code())
                         : UniteMesureEnum.PIECE.code();
                 entry.setUniteMesure(resolvedUniteMesure);
@@ -129,6 +130,13 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
     @Transactional
     public void delete(UUID id) {
         catalogueProduitDomainService.deleteById(id);
+    }
+
+    /** Supprime en une seule requête batch tous les produits catalogue dont les ids sont fournis. */
+    @Override
+    @Transactional
+    public void deleteAll(List<UUID> ids) {
+        catalogueProduitDomainService.deleteAllByIds(ids);
     }
 
 }

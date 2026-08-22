@@ -26,6 +26,10 @@ public class CatalogueProduitDomainService extends GlobalService<CatalogueProdui
         return repository.findSummariesByActiviteEconomiqueId(activiteEconomiqueId);
     }
 
+    public void deleteAllByIds(List<UUID> ids) {
+        repository.deleteAllByIdInBatch(ids);
+    }
+
     public Page<CatalogueProduitSummaryResponse> findByFilter(CatalogueProduitFilter filter) {
         return repository.findByFilter(
                 filter.activiteEconomiqueId(),
