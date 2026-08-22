@@ -13,6 +13,7 @@ import org.store.produit.domain.model.UniteMesure;
 import org.store.produit.domain.service.UniteMesureDomainService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -87,6 +88,12 @@ public class UniteMesureServiceImpl implements IUniteMesureService {
     @Override
     public UniteMesure findByCode(String code) {
         return uniteMesureDomainService.findByCode(code);
+    }
+
+    /** Retourne l'unité correspondant au code technique, ou {@code Optional.empty()} si absente. */
+    @Override
+    public Optional<UniteMesure> findByCodeOptional(String code) {
+        return uniteMesureDomainService.findByCodeOptional(code);
     }
 
     /** Lève {@code UniqueResourceException} si le code est déjà utilisé. */

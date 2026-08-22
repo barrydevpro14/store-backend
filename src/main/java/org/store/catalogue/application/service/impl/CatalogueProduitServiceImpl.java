@@ -88,6 +88,7 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
                 entry.setLibelle(excelRow.libelle());
                 entry.setDescription(excelRow.description());
                 entry.setCategorie(excelRow.categorie());
+                entry.setUniteMesure(excelRow.uniteMesure());
 
                 catalogueProduitDomainService.save(entry);
                 imported++;
@@ -108,6 +109,7 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
         catalogue.setLibelle(request.libelle());
         catalogue.setCategorie(request.categorie());
         catalogue.setDescription(request.description());
+        catalogue.setUniteMesure(request.uniteMesure());
 
         return new CatalogueProduitResponse(catalogueProduitDomainService.save(catalogue));
     }

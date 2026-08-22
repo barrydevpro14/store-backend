@@ -10,6 +10,7 @@ public record CatalogueProduitResponse(
         String libelle,
         String categorie,
         String description,
+        String uniteMesure,
         UUID activiteEconomiqueId,
         String activiteEconomiqueLibelle
 ) {
@@ -20,6 +21,7 @@ public record CatalogueProduitResponse(
                 c.getLibelle(),
                 c.getCategorie(),
                 c.getDescription(),
+                c.getUniteMesure(),
                 c.getActiviteEconomique().getId(),
                 c.getActiviteEconomique().getLibelle()
         );

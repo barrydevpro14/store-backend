@@ -8,6 +8,7 @@ import org.store.produit.application.dto.UniteMesureSummaryResponse;
 import org.store.produit.domain.model.UniteMesure;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IUniteMesureService {
@@ -51,6 +52,11 @@ public interface IUniteMesureService {
      * Recherche une unité de mesure par son code technique (ex: "PIECE", "KG").
      */
     UniteMesure findByCode(String code);
+
+    /**
+     * Recherche une unité de mesure par son code technique sans lever d'exception si absente.
+     */
+    Optional<UniteMesure> findByCodeOptional(String code);
 
     /**
      * Vérifie que le code n'est pas déjà utilisé. Throw {@code UniqueResourceException("uniteMesure.code.alreadyExists")} sinon.

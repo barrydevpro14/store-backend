@@ -48,6 +48,10 @@ public class UniteMesureDomainService extends GlobalService<UniteMesure, UniteMe
                 .orElseThrow(() -> new org.store.common.exceptions.EntityException("uniteMesure.notFound"));
     }
 
+    public java.util.Optional<UniteMesure> findByCodeOptional(String code) {
+        return repository.findByCode(code);
+    }
+
     public boolean existsByCode(String code) {
         return repository.existsByCode(code);
     }

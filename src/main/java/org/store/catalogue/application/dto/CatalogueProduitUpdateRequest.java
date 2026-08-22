@@ -6,6 +6,7 @@ public record CatalogueProduitUpdateRequest(
         @NotBlank String reference,
         @NotBlank String libelle,
         String categorie,
-        String description
+        String description,
+        String uniteMesure
 ) {
 }
