@@ -60,7 +60,7 @@ public class AbonnementQuotaServiceImpl implements IAbonnementQuotaService {
         int max = planOf(abonnement.get()).getNombreEmployesMax();
         if (max <= 0) return;
 
-        long count = employeDomainService.countByMagasinId(magasinId);
+        long count = employeDomainService.countActifByMagasin(magasinId);
         if (count >= max) {
             throw new BadArgumentException("abonnement.quota.employes.exceeded", max, count);
         }

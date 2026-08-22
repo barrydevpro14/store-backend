@@ -31,6 +31,11 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
         return repository.countByMagasinId(magasinId);
     }
 
+    /** Retourne le nombre d'employés actifs (account.enabled) d'un magasin — utilisé pour le contrôle de quota. */
+    public long countActifByMagasin(UUID magasinId) {
+        return repository.countActifByMagasin(magasinId);
+    }
+
     /** Retourne les comptes actifs des employés d'un magasin avec un rôle donné. */
     public List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(UUID magasinId, String roleLibelle) {
         return repository.findActiveAccountsByMagasinIdAndRoleLibelle(magasinId, roleLibelle);
