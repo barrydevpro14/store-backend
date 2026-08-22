@@ -9,6 +9,86 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-22 — Optional employee contacts + PasswordResetServiceImpl conventions refactor
+
+### Subject
+
+Two streams: (1) make email and telephone optional for employees while keeping them mandatory for owner registration, (2) full conventions audit and refactor of `PasswordResetServiceImpl`.
+
+### Backend
+
+**Optional email/telephone for employees (validation groups)**
+- New `OwnerValidation extends Default` interface in `common/validation/`
+- `UtilisateurRequest`: `@NotBlank` on email/telephone scoped to `OwnerValidation.class`; format validators (`@Email`, `@Phone`) remain ungrouped
+- `AuthController.register`: `@Valid` → `@Validated(OwnerValidation.class)` — only owner registration enforces the constraint
+
+**Normalize blank contacts to null + conditional welcome email**
+- `EmployeDomainService`: `toNullIfBlank()` helper; `setEmail`/`setTelephone` call it on create and update
+- `UtilisateurDomainService`: two new methods `ensureOptionalContactsAvailable` / `ensureOptionalContactsAvailableForUpdate` — skip uniqueness checks when value is null/blank (avoids false collision on multiple employees with no email)
+- `EmployeServiceImpl`: delegates to the new optional-check methods; `publishEmployeWelcome` gated on `StringUtils.hasText(email)`
+
+**PasswordResetToken domain layer**
+- `PasswordResetTokenRepository`: now extends `BaseRepository<PasswordResetToken>` (domain port, no more `JpaRepository`)
+- `PasswordResetTokenJpaRepository` (new in `infrastructure/repository/`): Spring Data adapter
+- `PasswordResetTokenDomainService` (new): wraps the port with `findByToken` + `deleteByAccountId`
+
+**IPasswordResetTokenService + PasswordResetTokenServiceImpl** (new application layer)
+- Delegates `findByToken`, `deleteByAccountId`, `save` to the domain service
+- Allows `PasswordResetServiceImpl` to call application-layer interfaces only (service-to-service rule)
+
+**PasswordResetServiceImpl — full conventions refactor**
+- `TOKEN_EXPIRY_HOURS = 1` → `PasswordResetProperties.expiryHours()` (`@ConfigurationProperties(prefix = "security.password-reset")`)
+- `application.yml`: `security.password-reset.expiry-hours: ${PASSWORD_RESET_EXPIRY_HOURS:1}`
+- Repository injections (`AccountRepository`, `PasswordResetTokenRepository`) replaced by `IAccountService` + `IPasswordResetTokenService`
+- `AccountDomainService.findByUsernameOrEmail` added; `IAccountService.findByUsernameOrEmail` added + implemented in `AccountServiceImpl`
+- Private methods `resolveEmail` / `resolveRecipientName` → public on `IPasswordResetService` + `@Override` in impl
+- Class Javadoc rewritten in English (1 sentence); method Javadocs added on all 4 methods
+- `account.getId()` extracted (×3 uses → 1 local `accountId`); `account.getUser()` extracted in `resolveRecipientName` (×3 → 1 local `user`)
+- `toEmail` → `recipientEmail`
+
+**Tests (23/23 green)**
+- `PasswordResetServiceImplTest` (new — 13 tests): `requestReset` (3), `confirmReset` (4), `resolveEmail` (3), `resolveRecipientName` (3)
+- `PasswordResetTokenServiceImplTest` (new — 4 tests): `findByToken` (2), `deleteByAccountId` (1), `save` (1)
+- `AccountServiceImplTest`: +2 tests for `findByUsernameOrEmail`
+- `UtilisateurDomainServiceTest`: +9 tests for `ensureOptionalContactsAvailable*`
+- `EmployeServiceImplTest`: +1 test for create with no email/telephone
+
+### Frontend
+
+- `EmployeForm.tsx`: email/telephone fields use `z.string().refine(val => !val || ...)` instead of `min(1)` — empty strings pass validation and are sent as `undefined` to the API
+- `utilisateur-request.ts` + `employe-update-request.ts`: `email?`, `telephone?`, `adresse?` made optional
+- `ForgotPasswordForm.tsx`: hint paragraph added below the back-to-login link (`noEmailHint` key)
+- `fr.json` + `en.json`: `auth.forgotPassword.noEmailHint` key added (FR + EN)
+
+### Commits pushed to `dev-barry` (7 atomic commits)
+
+| Hash | Theme |
+|------|-------|
+| `88178a3` | Validation groups — OwnerValidation |
+| `b5ba24b` | Normalize blank contacts + conditional welcome email |
+| `aae2c99` | Tests — optional contacts |
+| `8f745d6` | PasswordResetToken domain port/adapter/service |
+| `14bfd45` | IPasswordResetTokenService application layer |
+| `0ca1fe3` | PasswordResetServiceImpl conventions refactor |
+| `afcf8af` | Tests — password reset |
+
+### Security note
+
+`requestReset` intentionally returns silently (HTTP 204) for both unknown identifiers and accounts with no email — anti-enumeration pattern. The ForgotPasswordForm hint covers the UX gap for no-email employees without the backend leaking account existence.
+
+### Open follow-ups (carried over)
+
+- Commit + push backend changes: `Page<TopProduitResponse>` return type, countQuery, controller `nombre` default 10 — awaiting authorization
+- Commit + push frontend changes: `useTopProduits`, `TopProduitsTable`, `VentesReportingPage` pagination — awaiting authorization
+- Also pending from 2026-08-01: backend vente-only KPI endpoint + reporting page + tab icons commits
+- Run `./mvnw test` full suite
+- Run `npx vitest run` full suite
+- Manual UI check: Top N selector vs table pagination independent, pagination appears only when > 10 items
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-03 — GitLab CI frontend fix + Vercel deploy gate
 
 ### Subject

@@ -140,8 +140,9 @@ class EmployeControllerTest {
     void should_return_200_when_update_employee() throws Exception {
         UUID id = UUID.randomUUID();
         UUID magasinId = UUID.randomUUID();
-        EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "+221770000001", "Dakar", ROLE_ID, magasinId);
+        EmployeUpdateRequest body = new EmployeUpdateRequest(
+                new UtilisateurRequest("Doe", "Jane", "jane@example.com", "+221770000001", "Dakar"),
+                ROLE_ID, magasinId);
         when(employeService.update(eq(id), any(EmployeUpdateRequest.class)))
                 .thenReturn(sampleResponse(id, magasinId));
 
@@ -156,15 +157,17 @@ class EmployeControllerTest {
         UUID id = UUID.randomUUID();
         String invalidBody = """
                 {
-                  "nom": "Doe",
-                  "prenom": "Jane",
-                  "email": "not-an-email",
-                  "telephone": "+221770000001",
-                  "adresse": "Dakar",
-                  "role": "SELLER",
+                  "utilisateur": {
+                    "nom": "Doe",
+                    "prenom": "Jane",
+                    "email": "not-an-email",
+                    "telephone": "+221770000001",
+                    "adresse": "Dakar"
+                  },
+                  "roleId": "%s",
                   "magasinId": "%s"
                 }
-                """.formatted(UUID.randomUUID());
+                """.formatted(ROLE_ID, UUID.randomUUID());
 
         mockMvc.perform(put(EmployeController.BASE_PATH + "/" + id)
                         .contentType(MediaType.APPLICATION_JSON)
