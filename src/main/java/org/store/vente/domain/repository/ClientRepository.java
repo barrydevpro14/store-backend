@@ -76,6 +76,18 @@ public interface ClientRepository extends BaseRepository<Client> {
     @Query("SELECT COUNT(c) FROM Client c WHERE c.magasin.entreprise.id = :entrepriseId")
     long countByEntrepriseId(@Param("entrepriseId") UUID entrepriseId);
 
+    @Query("SELECT COUNT(c) > 0 FROM Client c WHERE c.email = :email AND c.magasin.entreprise.id = :entrepriseId")
+    boolean existsByEmailAndMagasinEntrepriseId(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(c) > 0 FROM Client c WHERE c.telephone = :telephone AND c.magasin.entreprise.id = :entrepriseId")
+    boolean existsByTelephoneAndMagasinEntrepriseId(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(c) > 0 FROM Client c WHERE c.email = :email AND c.magasin.entreprise.id = :entrepriseId AND c.id <> :excludeId")
+    boolean existsByEmailAndMagasinEntrepriseIdAndIdNot(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
+
+    @Query("SELECT COUNT(c) > 0 FROM Client c WHERE c.telephone = :telephone AND c.magasin.entreprise.id = :entrepriseId AND c.id <> :excludeId")
+    boolean existsByTelephoneAndMagasinEntrepriseIdAndIdNot(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
+
     /**
      * Recherche paginée pour les sélecteurs. Un seul des deux scopes est actif à la fois :
      * {@code magasinId} pour un employé ou un propriétaire avec filtre magasin,

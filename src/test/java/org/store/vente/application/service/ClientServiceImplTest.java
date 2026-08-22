@@ -21,7 +21,6 @@ import org.store.vente.application.dto.ClientRequest;
 import org.store.vente.application.dto.ClientResponse;
 import org.store.vente.application.service.impl.ClientServiceImpl;
 import org.store.vente.domain.model.Client;
-import org.store.users.domain.service.UtilisateurDomainService;
 import org.store.vente.domain.service.ClientDomainService;
 
 import java.util.List;
@@ -39,7 +38,6 @@ import static org.mockito.Mockito.when;
 class ClientServiceImplTest {
 
     @Mock private ClientDomainService clientDomainService;
-    @Mock private UtilisateurDomainService utilisateurDomainService;
     @Mock private IMagasinService magasinService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private ValidatorService validatorService;
@@ -95,6 +93,7 @@ class ClientServiceImplTest {
                 "+221770000001", "Dakar", magasinId);
         Client created = sample(magasin);
 
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(clientDomainService.create(request, magasin)).thenReturn(created);
@@ -110,6 +109,7 @@ class ClientServiceImplTest {
     void create_should_propagate_forbidden_when_magasin_not_accessible() {
         ClientRequest request = new ClientRequest("Diallo", null, null, null, null, magasinId);
 
+        when(currentUserService.getCurrent()).thenReturn(vendeur());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));

@@ -84,4 +84,16 @@ public interface FournisseurRepository extends BaseRepository<Fournisseur> {
     /** Finds the unique global system supplier by reference (entreprise = null). */
     @Query("SELECT f FROM Fournisseur f WHERE f.reference = :reference AND f.entreprise IS NULL")
     Optional<Fournisseur> findGlobalByReference(@Param("reference") String reference);
+
+    @Query("SELECT COUNT(f) > 0 FROM Fournisseur f WHERE f.email = :email AND f.entreprise.id = :entrepriseId")
+    boolean existsByEmailAndEntrepriseId(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(f) > 0 FROM Fournisseur f WHERE f.telephone = :telephone AND f.entreprise.id = :entrepriseId")
+    boolean existsByTelephoneAndEntrepriseId(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(f) > 0 FROM Fournisseur f WHERE f.email = :email AND f.entreprise.id = :entrepriseId AND f.id <> :excludeId")
+    boolean existsByEmailAndEntrepriseIdAndIdNot(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
+
+    @Query("SELECT COUNT(f) > 0 FROM Fournisseur f WHERE f.telephone = :telephone AND f.entreprise.id = :entrepriseId AND f.id <> :excludeId")
+    boolean existsByTelephoneAndEntrepriseIdAndIdNot(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
 }
