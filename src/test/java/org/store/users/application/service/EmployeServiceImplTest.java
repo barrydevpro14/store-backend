@@ -387,8 +387,9 @@ class EmployeServiceImplTest {
         account.setRole(currentRole);
         employe.setAccount(account);
         Role newRole = roleWithId();
-        EmployeUpdateRequest body = new EmployeUpdateRequest("Doe", "Jane", "jane@example.com",
-                "+221770000001", "Dakar", ROLE_ID, magasinId);
+        EmployeUpdateRequest body = new EmployeUpdateRequest(
+                new UtilisateurRequest("Doe", "Jane", "jane@example.com", "+221770000001", "Dakar"),
+                ROLE_ID, magasinId);
 
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(employeDomainService.findOptionalById(employeId)).thenReturn(Optional.of(employe));

@@ -209,10 +209,10 @@ public class EmployeServiceImpl implements IEmployeService {
 
         Magasin newMagasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(request.magasinId()));
 
-        utilisateurDomainService.ensureOptionalContactsAvailableForUpdate(request.email(), request.telephone(), employe.getId());
+        utilisateurDomainService.ensureOptionalContactsAvailableForUpdate(request.utilisateur().email(), request.utilisateur().telephone(), employe.getId());
 
         employeDomainService.update(employe, new EmployeUpdateCommand(
-                request.nom(), request.prenom(), request.email(), request.telephone(), request.adresse()
+                request.utilisateur().nom(), request.utilisateur().prenom(), request.utilisateur().email(), request.utilisateur().telephone(), request.utilisateur().adresse()
         ));
         employeDomainService.changeRole(employe, newRole);
         employeDomainService.changeMagasin(employe, newMagasin);
