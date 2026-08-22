@@ -81,4 +81,16 @@ public interface EmployeRepository extends BaseRepository<Employe> {
             """)
     Optional<EmployeResponse> findResponseById(@Param("id") UUID id,
                                                @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.email = :email AND e.magasin.entreprise.id = :entrepriseId")
+    boolean existsByEmailAndMagasinEntrepriseId(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.telephone = :telephone AND e.magasin.entreprise.id = :entrepriseId")
+    boolean existsByTelephoneAndMagasinEntrepriseId(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.email = :email AND e.magasin.entreprise.id = :entrepriseId AND e.id <> :excludeId")
+    boolean existsByEmailAndMagasinEntrepriseIdAndIdNot(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.telephone = :telephone AND e.magasin.entreprise.id = :entrepriseId AND e.id <> :excludeId")
+    boolean existsByTelephoneAndMagasinEntrepriseIdAndIdNot(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
 }

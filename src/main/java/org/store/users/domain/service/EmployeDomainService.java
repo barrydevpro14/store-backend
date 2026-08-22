@@ -2,6 +2,8 @@ package org.store.users.domain.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 import org.store.magasin.domain.model.Magasin;
@@ -34,6 +36,26 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
     /** Retourne le nombre d'employés actifs (account.enabled) d'un magasin — utilisé pour le contrôle de quota. */
     public long countActifByMagasin(UUID magasinId) {
         return repository.countActifByMagasin(magasinId);
+    }
+
+    /** Vérifie que email/telephone (si renseignés) ne sont pas déjà utilisés par un autre employé de la même entreprise. */
+    public void ensureOptionalContactsInEntreprise(String email, String telephone, UUID entrepriseId) {
+        if (StringUtils.hasText(email) && repository.existsByEmailAndMagasinEntrepriseId(email, entrepriseId)) {
+            throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
+        }
+        if (StringUtils.hasText(telephone) && repository.existsByTelephoneAndMagasinEntrepriseId(telephone, entrepriseId)) {
+            throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
+        }
+    }
+
+    /** Variante update : exclut l'employé courant de la vérification. */
+    public void ensureOptionalContactsForUpdateInEntreprise(String email, String telephone, UUID entrepriseId, UUID excludeId) {
+        if (StringUtils.hasText(email) && repository.existsByEmailAndMagasinEntrepriseIdAndIdNot(email, entrepriseId, excludeId)) {
+            throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
+        }
+        if (StringUtils.hasText(telephone) && repository.existsByTelephoneAndMagasinEntrepriseIdAndIdNot(telephone, entrepriseId, excludeId)) {
+            throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
+        }
     }
 
     /** Retourne les comptes actifs des employés d'un magasin avec un rôle donné. */

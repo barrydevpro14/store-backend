@@ -3,6 +3,8 @@ package org.store.vente.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.store.common.exceptions.UniqueResourceException;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.DateHelper;
 import org.store.common.tools.LikePatternHelper;
@@ -47,6 +49,26 @@ public class ClientDomainService extends GlobalService<Client, ClientRepository>
 
     public long countByEntrepriseId(UUID entrepriseId) {
         return repository.countByEntrepriseId(entrepriseId);
+    }
+
+    /** Vérifie que email/telephone (si renseignés) ne sont pas déjà utilisés par un autre client de la même entreprise. */
+    public void ensureOptionalContactsInEntreprise(String email, String telephone, UUID entrepriseId) {
+        if (StringUtils.hasText(email) && repository.existsByEmailAndMagasinEntrepriseId(email, entrepriseId)) {
+            throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
+        }
+        if (StringUtils.hasText(telephone) && repository.existsByTelephoneAndMagasinEntrepriseId(telephone, entrepriseId)) {
+            throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
+        }
+    }
+
+    /** Variante update : exclut le client courant de la vérification. */
+    public void ensureOptionalContactsForUpdateInEntreprise(String email, String telephone, UUID entrepriseId, UUID excludeId) {
+        if (StringUtils.hasText(email) && repository.existsByEmailAndMagasinEntrepriseIdAndIdNot(email, entrepriseId, excludeId)) {
+            throw new UniqueResourceException("utilisateur.email.alreadyExists", email);
+        }
+        if (StringUtils.hasText(telephone) && repository.existsByTelephoneAndMagasinEntrepriseIdAndIdNot(telephone, entrepriseId, excludeId)) {
+            throw new UniqueResourceException("utilisateur.telephone.alreadyExists", telephone);
+        }
     }
 
     /** Recherche paginée pour sélecteur, scopée magasin. */

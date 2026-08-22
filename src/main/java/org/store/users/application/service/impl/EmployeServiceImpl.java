@@ -39,7 +39,6 @@ import org.store.achat.domain.service.CommandeAchatDomainService;
 import org.store.security.domain.service.AccountDomainService;
 import org.store.security.domain.service.RefreshTokenDomainService;
 import org.store.users.domain.service.EmployeDomainService;
-import org.store.users.domain.service.UtilisateurDomainService;
 import org.store.vente.domain.service.CommandeVenteDomainService;
 
 import java.util.List;
@@ -64,7 +63,6 @@ public class EmployeServiceImpl implements IEmployeService {
     private static final Random RANDOM = new Random();
 
     private final EmployeDomainService employeDomainService;
-    private final UtilisateurDomainService utilisateurDomainService;
     private final IAccountService accountService;
     private final AccountDomainService accountDomainService;
     private final IRoleService roleService;
@@ -80,7 +78,6 @@ public class EmployeServiceImpl implements IEmployeService {
     private final RefreshTokenDomainService refreshTokenDomainService;
 
     public EmployeServiceImpl(EmployeDomainService employeDomainService,
-                              UtilisateurDomainService utilisateurDomainService,
                               IAccountService accountService,
                               AccountDomainService accountDomainService,
                               IRoleService roleService,
@@ -95,7 +92,6 @@ public class EmployeServiceImpl implements IEmployeService {
                               CommandeAchatDomainService commandeAchatDomainService,
                               RefreshTokenDomainService refreshTokenDomainService) {
         this.employeDomainService = employeDomainService;
-        this.utilisateurDomainService = utilisateurDomainService;
         this.accountService = accountService;
         this.accountDomainService = accountDomainService;
         this.roleService = roleService;
@@ -141,9 +137,10 @@ public class EmployeServiceImpl implements IEmployeService {
 
         quotaService.ensureEmployeQuota(currentUser.entrepriseId(), magasin.getId());
 
-        utilisateurDomainService.ensureOptionalContactsAvailable(
+        employeDomainService.ensureOptionalContactsInEntreprise(
                 employeRequest.utilisateur().email(),
-                employeRequest.utilisateur().telephone()
+                employeRequest.utilisateur().telephone(),
+                currentUser.entrepriseId()
         );
 
         String generatedPassword = "APP" + String.format("%05d", RANDOM.nextInt(100_000));
@@ -209,7 +206,10 @@ public class EmployeServiceImpl implements IEmployeService {
 
         Magasin newMagasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(request.magasinId()));
 
-        utilisateurDomainService.ensureOptionalContactsAvailableForUpdate(request.utilisateur().email(), request.utilisateur().telephone(), employe.getId());
+        employeDomainService.ensureOptionalContactsForUpdateInEntreprise(
+                request.utilisateur().email(), request.utilisateur().telephone(),
+                currentUser.entrepriseId(), employe.getId()
+        );
 
         employeDomainService.update(employe, new EmployeUpdateCommand(
                 request.utilisateur().nom(), request.utilisateur().prenom(), request.utilisateur().email(), request.utilisateur().telephone(), request.utilisateur().adresse()
