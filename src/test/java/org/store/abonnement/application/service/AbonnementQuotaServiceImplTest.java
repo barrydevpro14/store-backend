@@ -100,16 +100,16 @@ class AbonnementQuotaServiceImplTest {
     @Test
     void ensureEmployeQuota_should_pass_when_below_limit() {
         when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(abonnement));
-        when(employeDomainService.countByMagasinId(magasinId)).thenReturn(4L);
+        when(employeDomainService.countActifByMagasin(magasinId)).thenReturn(4L);
 
         assertThatNoException().isThrownBy(() -> service.ensureEmployeQuota(entrepriseId, magasinId));
-        verify(employeDomainService).countByMagasinId(magasinId);
+        verify(employeDomainService).countActifByMagasin(magasinId);
     }
 
     @Test
     void ensureEmployeQuota_should_throw_when_limit_reached() {
         when(abonnementDomainService.findCurrent(entrepriseId)).thenReturn(Optional.of(abonnement));
-        when(employeDomainService.countByMagasinId(magasinId)).thenReturn(5L);
+        when(employeDomainService.countActifByMagasin(magasinId)).thenReturn(5L);
 
         assertThatThrownBy(() -> service.ensureEmployeQuota(entrepriseId, magasinId))
                 .isInstanceOf(BadArgumentException.class);

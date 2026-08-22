@@ -66,6 +66,9 @@ public interface EmployeRepository extends BaseRepository<Employe> {
     @Query("SELECT COUNT(e) FROM Employe e WHERE e.magasin.id = :magasinId")
     long countByMagasinId(@Param("magasinId") UUID magasinId);
 
+    @Query("SELECT COUNT(e) FROM Employe e WHERE e.magasin.id = :magasinId AND e.account.enabled = true")
+    long countActifByMagasin(@Param("magasinId") UUID magasinId);
+
     @Query("SELECT e.account FROM Employe e WHERE e.magasin.id = :magasinId AND e.account.role.libelle = :roleLibelle AND e.account.enabled = true")
     List<Account> findActiveAccountsByMagasinIdAndRoleLibelle(@Param("magasinId") UUID magasinId,
                                                               @Param("roleLibelle") String roleLibelle);
@@ -78,4 +81,16 @@ public interface EmployeRepository extends BaseRepository<Employe> {
             """)
     Optional<EmployeResponse> findResponseById(@Param("id") UUID id,
                                                @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.email = :email AND e.magasin.entreprise.id = :entrepriseId")
+    boolean existsByEmailAndMagasinEntrepriseId(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.telephone = :telephone AND e.magasin.entreprise.id = :entrepriseId")
+    boolean existsByTelephoneAndMagasinEntrepriseId(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.email = :email AND e.magasin.entreprise.id = :entrepriseId AND e.id <> :excludeId")
+    boolean existsByEmailAndMagasinEntrepriseIdAndIdNot(@Param("email") String email, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Employe e WHERE e.telephone = :telephone AND e.magasin.entreprise.id = :entrepriseId AND e.id <> :excludeId")
+    boolean existsByTelephoneAndMagasinEntrepriseIdAndIdNot(@Param("telephone") String telephone, @Param("entrepriseId") UUID entrepriseId, @Param("excludeId") UUID excludeId);
 }
