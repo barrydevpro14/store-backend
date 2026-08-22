@@ -78,8 +78,8 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
         employe.setAccount(account);
         employe.setNom(utilisateurRequest.nom());
         employe.setPrenom(utilisateurRequest.prenom());
-        employe.setEmail(utilisateurRequest.email());
-        employe.setTelephone(utilisateurRequest.telephone());
+        employe.setEmail(toNullIfBlank(utilisateurRequest.email()));
+        employe.setTelephone(toNullIfBlank(utilisateurRequest.telephone()));
         employe.setAdresse(utilisateurRequest.adresse());
         employe.setMagasin(magasin);
 
@@ -93,10 +93,14 @@ public class EmployeDomainService extends GlobalService<Employe, EmployeReposito
     public Employe update(Employe employe, EmployeUpdateCommand command) {
         employe.setNom(command.nom());
         employe.setPrenom(command.prenom());
-        employe.setEmail(command.email());
-        employe.setTelephone(command.telephone());
+        employe.setEmail(toNullIfBlank(command.email()));
+        employe.setTelephone(toNullIfBlank(command.telephone()));
         employe.setAdresse(command.adresse());
         return save(employe);
+    }
+
+    private static String toNullIfBlank(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     /** Change le role de l'employe (impact permissions au prochain login JWT). */

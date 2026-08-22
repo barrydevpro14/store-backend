@@ -3,6 +3,7 @@ package org.store.users.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
@@ -140,7 +141,7 @@ public class EmployeServiceImpl implements IEmployeService {
 
         quotaService.ensureEmployeQuota(currentUser.entrepriseId(), magasin.getId());
 
-        utilisateurDomainService.ensureContactsAvailable(
+        utilisateurDomainService.ensureOptionalContactsAvailable(
                 employeRequest.utilisateur().email(),
                 employeRequest.utilisateur().telephone()
         );
@@ -153,12 +154,15 @@ public class EmployeServiceImpl implements IEmployeService {
 
         EmployeResponse created = employeDomainService.create(employeRequest.utilisateur(), account, magasin);
 
-        emailEventPublisher.publishEmployeWelcome(new EmployeWelcomeEvent(
-                employeRequest.utilisateur().email(),
-                employeRequest.utilisateur().prenom() + " " + employeRequest.utilisateur().nom(),
-                employeRequest.username(),
-                generatedPassword
-        ));
+        String email = employeRequest.utilisateur().email();
+        if (StringUtils.hasText(email)) {
+            emailEventPublisher.publishEmployeWelcome(new EmployeWelcomeEvent(
+                    email,
+                    employeRequest.utilisateur().prenom() + " " + employeRequest.utilisateur().nom(),
+                    employeRequest.username(),
+                    generatedPassword
+            ));
+        }
 
         auditWithMagasin(AuditAction.EMPLOYE_CREATED, created.id(), employeRequest.username(), magasin.getId());
         return created;
@@ -205,7 +209,7 @@ public class EmployeServiceImpl implements IEmployeService {
 
         Magasin newMagasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(request.magasinId()));
 
-        utilisateurDomainService.ensureContactsAvailableForUpdate(request.email(), request.telephone(), employe.getId());
+        utilisateurDomainService.ensureOptionalContactsAvailableForUpdate(request.email(), request.telephone(), employe.getId());
 
         employeDomainService.update(employe, new EmployeUpdateCommand(
                 request.nom(), request.prenom(), request.email(), request.telephone(), request.adresse()
