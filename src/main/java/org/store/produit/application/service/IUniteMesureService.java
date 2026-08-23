@@ -8,6 +8,7 @@ import org.store.produit.application.dto.UniteMesureSummaryResponse;
 import org.store.produit.domain.model.UniteMesure;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IUniteMesureService {
@@ -53,7 +54,18 @@ public interface IUniteMesureService {
     UniteMesure findByCode(String code);
 
     /**
+     * Recherche une unité de mesure par son code technique sans lever d'exception si absente.
+     */
+    Optional<UniteMesure> findByCodeOptional(String code);
+
+    /**
      * Vérifie que le code n'est pas déjà utilisé. Throw {@code UniqueResourceException("uniteMesure.code.alreadyExists")} sinon.
      */
     void ensureCodeAvailable(String code);
+
+    /**
+     * Résout l'UUID de l'unité de mesure correspondant à {@code code} si présent et connu,
+     * ou retourne l'UUID de PIECE (résolu au plus une fois par import via {@code pieceRef}).
+     */
+    UUID resolveIdOrPiece(String code, UUID[] pieceRef);
 }

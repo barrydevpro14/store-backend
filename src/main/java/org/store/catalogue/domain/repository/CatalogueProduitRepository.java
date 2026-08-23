@@ -15,9 +15,11 @@ public interface CatalogueProduitRepository extends BaseRepository<CatalogueProd
 
     boolean existsByReferenceAndLibelleAndActiviteEconomiqueId(String reference, String libelle, UUID activiteEconomiqueId);
 
+    void deleteAllByIdInBatch(Iterable<UUID> ids);
+
     @Query("""
             SELECT new org.store.catalogue.application.dto.CatalogueProduitSummaryResponse(
-                c.id, c.reference, c.libelle, c.categorie, c.description
+                c.id, c.reference, c.libelle, c.categorie, c.description, c.uniteMesure
             )
             FROM CatalogueProduit c
             WHERE c.activiteEconomique.id = :activiteEconomiqueId
@@ -27,13 +29,14 @@ public interface CatalogueProduitRepository extends BaseRepository<CatalogueProd
 
     @Query(value = """
             SELECT new org.store.catalogue.application.dto.CatalogueProduitSummaryResponse(
-                c.id, c.reference, c.libelle, c.categorie, c.description
+                c.id, c.reference, c.libelle, c.categorie, c.description,c.uniteMesure
             )
             FROM CatalogueProduit c
             WHERE c.activiteEconomique.id = :activiteEconomiqueId
-              AND (:reference IS NULL OR LOWER(c.reference) LIKE :referencePattern)
-              AND (:libelle   IS NULL OR LOWER(c.libelle)   LIKE :libellePattern)
-              AND (:categorie IS NULL OR LOWER(c.categorie) LIKE :categoriePattern)
+              AND (:reference   IS NULL OR LOWER(c.reference)   LIKE :referencePattern)
+              AND (:libelle     IS NULL OR LOWER(c.libelle)     LIKE :libellePattern)
+              AND (:categorie   IS NULL OR LOWER(c.categorie)   LIKE :categoriePattern)
+              AND (:uniteMesure IS NULL OR LOWER(c.uniteMesure) LIKE :uniteMesurePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', c.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', c.createdAt) <= CAST(:endDate   AS date))
             ORDER BY c.libelle ASC
@@ -42,9 +45,10 @@ public interface CatalogueProduitRepository extends BaseRepository<CatalogueProd
             SELECT COUNT(c)
             FROM CatalogueProduit c
             WHERE c.activiteEconomique.id = :activiteEconomiqueId
-              AND (:reference IS NULL OR LOWER(c.reference) LIKE :referencePattern)
-              AND (:libelle   IS NULL OR LOWER(c.libelle)   LIKE :libellePattern)
-              AND (:categorie IS NULL OR LOWER(c.categorie) LIKE :categoriePattern)
+              AND (:reference   IS NULL OR LOWER(c.reference)   LIKE :referencePattern)
+              AND (:libelle     IS NULL OR LOWER(c.libelle)     LIKE :libellePattern)
+              AND (:categorie   IS NULL OR LOWER(c.categorie)   LIKE :categoriePattern)
+              AND (:uniteMesure IS NULL OR LOWER(c.uniteMesure) LIKE :uniteMesurePattern)
               AND (:startDate IS NULL OR :startDate = '' OR FUNCTION('DATE', c.createdAt) >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR FUNCTION('DATE', c.createdAt) <= CAST(:endDate   AS date))
             """)
@@ -56,6 +60,8 @@ public interface CatalogueProduitRepository extends BaseRepository<CatalogueProd
             @Param("libellePattern") String libellePattern,
             @Param("categorie") String categorie,
             @Param("categoriePattern") String categoriePattern,
+            @Param("uniteMesure") String uniteMesure,
+            @Param("uniteMesurePattern") String uniteMesurePattern,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             Pageable pageable

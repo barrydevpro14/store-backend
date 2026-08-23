@@ -7,6 +7,7 @@ public record CatalogueProduitSummaryResponse(
         String reference,
         String libelle,
         String categorie,
-        String description
+        String description,
+        String uniteMesure
 ) {
 }

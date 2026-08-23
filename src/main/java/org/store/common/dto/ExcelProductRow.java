@@ -4,6 +4,7 @@ public record ExcelProductRow(
         String reference,
         String libelle,
         String description,
-        String categorie
+        String categorie,
+        String uniteMesure
 ) {
 }

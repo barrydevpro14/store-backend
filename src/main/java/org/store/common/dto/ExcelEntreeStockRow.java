@@ -4,13 +4,15 @@ package org.store.common.dto;
  * Ligne brute extraite d'un fichier Excel d'import stock.
  * Tous les champs sont des String (la conversion typée se fait dans le service d'import).
  * {@code lineNumber} correspond au numéro de ligne dans le fichier (1 = entête, 2 = première donnée).
- * Ordre des colonnes : referenceProduit | nomProduit | categorie | qualite | quantite | prixAchat | prixVente | numeroLot | dateExpiration.
+ * Ordre des colonnes : referenceProduit | nomProduit | categorie | uniteMesure | qualite | quantite | prixAchat | prixVente | numeroLot | dateExpiration.
+ * Les 7 premières colonnes sont obligatoires ; uniteMesure, numeroLot et dateExpiration sont optionnelles.
  */
 public record ExcelEntreeStockRow(
         int lineNumber,
         String referenceProduit,
         String nomProduit,
         String categorie,
+        String uniteMesure,
         String qualite,
         String quantite,
         String prixAchat,

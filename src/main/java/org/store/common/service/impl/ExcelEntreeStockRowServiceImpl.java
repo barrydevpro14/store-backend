@@ -23,8 +23,8 @@ import java.util.stream.IntStream;
 
 /**
  * Parse un fichier Excel dont les colonnes suivent l'ordre :
- * referenceProduit | nomProduit | categorie | qualite | quantite | prixAchat | prixVente | numeroLot | dateExpiration.
- * Les 7 premières colonnes sont obligatoires ; les 2 dernières sont optionnelles.
+ * referenceProduit | nomProduit | categorie | uniteMesure | qualite | quantite | prixAchat | prixVente | numeroLot | dateExpiration.
+ * Les 7 premières colonnes (hors uniteMesure) sont obligatoires ; uniteMesure, numeroLot et dateExpiration sont optionnelles.
  * Les lignes invalides sont collectées dans {@link ExcelStockParseResult#errors()} sans interrompre le traitement.
  */
 @Service
@@ -65,12 +65,18 @@ public class ExcelEntreeStockRowServiceImpl implements IExcelEntreeStockRowServi
         String referenceProduit  = extractCellValue(formatter, row, 0);
         String nomProduit        = extractCellValue(formatter, row, 1);
         String categorie         = extractCellValue(formatter, row, 2);
-        String qualite           = extractCellValue(formatter, row, 3);
-        String quantiteRaw       = extractCellValue(formatter, row, 4);
-        String prixAchatRaw      = extractCellValue(formatter, row, 5);
-        String prixVenteRaw      = extractCellValue(formatter, row, 6);
-        String numeroLot         = extractCellValue(formatter, row, 7);
-        String dateExpirationRaw = extractCellValue(formatter, row, 8);
+        String uniteMesure       = extractCellValue(formatter, row, 3);
+        String qualite           = extractCellValue(formatter, row, 4);
+        String quantiteRaw       = extractCellValue(formatter, row, 5);
+        String prixAchatRaw      = extractCellValue(formatter, row, 6);
+        String prixVenteRaw      = extractCellValue(formatter, row, 7);
+        String numeroLot         = extractCellValue(formatter, row, 8);
+        String dateExpirationRaw = extractCellValue(formatter, row, 9);
+
+        if (referenceProduit.isBlank() && nomProduit.isBlank() && categorie.isBlank()
+                && qualite.isBlank() && quantiteRaw.isBlank() && prixAchatRaw.isBlank()) {
+            return;
+        }
 
         if (referenceProduit.isBlank()) {
             context.errors().add(msg("excel.stock.import.row.referenceProduit.required", lineNumber));
@@ -122,6 +128,7 @@ public class ExcelEntreeStockRowServiceImpl implements IExcelEntreeStockRowServi
                 referenceProduit,
                 nomProduit,
                 categorie,
+                uniteMesure.isBlank() ? null : uniteMesure,
                 qualite,
                 quantiteRaw,
                 normalizeDecimal(prixAchatRaw),

@@ -73,6 +73,11 @@ public class ExcelProductRowServiceImpl implements IExcelProductRowService {
         String libelle     = extractCellValue(formatter, row, 1);
         String description = extractCellValue(formatter, row, 2);
         String categorie   = extractCellValue(formatter, row, 3);
+        String uniteMesure = extractCellValue(formatter, row, 4);
+
+        if (reference.isBlank() && libelle.isBlank() && categorie.isBlank()) {
+            return;
+        }
 
         if (reference.isBlank()) {
             context.errors().add(messageSourceService.getMessage(
@@ -96,7 +101,8 @@ public class ExcelProductRowServiceImpl implements IExcelProductRowService {
                 reference,
                 libelle,
                 description.isBlank() ? null : description,
-                categorie
+                categorie,
+                uniteMesure.isBlank() ? null : uniteMesure
         ));
     }
 

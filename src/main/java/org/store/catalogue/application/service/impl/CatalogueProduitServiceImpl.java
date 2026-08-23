@@ -3,6 +3,7 @@ package org.store.catalogue.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.activite.domain.model.ActiviteEconomique;
 import org.store.activite.domain.service.ActiviteEconomiqueDomainService;
@@ -18,6 +19,9 @@ import org.store.common.dto.ExcelParseResult;
 import org.store.common.dto.ExcelProductRow;
 import org.store.common.service.IExcelProductRowService;
 import org.store.entreprise.application.service.IEntrepriseService;
+import org.store.produit.application.service.IUniteMesureService;
+import org.store.produit.domain.enums.UniteMesureEnum;
+import org.store.produit.domain.model.UniteMesure;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.util.ArrayList;
@@ -36,19 +40,22 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
     private final ICurrentUserService currentUserService;
     private final IEntrepriseService entrepriseService;
     private final IExcelProductRowService excelProductRowService;
+    private final IUniteMesureService uniteMesureService;
 
     public CatalogueProduitServiceImpl(
             CatalogueProduitDomainService catalogueProduitDomainService,
             ActiviteEconomiqueDomainService activiteEconomiqueDomainService,
             ICurrentUserService currentUserService,
             IEntrepriseService entrepriseService,
-            IExcelProductRowService excelProductRowService
+            IExcelProductRowService excelProductRowService,
+            IUniteMesureService uniteMesureService
     ) {
         this.catalogueProduitDomainService = catalogueProduitDomainService;
         this.activiteEconomiqueDomainService = activiteEconomiqueDomainService;
         this.currentUserService = currentUserService;
         this.entrepriseService = entrepriseService;
         this.excelProductRowService = excelProductRowService;
+        this.uniteMesureService = uniteMesureService;
     }
 
     @Override
@@ -88,6 +95,12 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
                 entry.setLibelle(excelRow.libelle());
                 entry.setDescription(excelRow.description());
                 entry.setCategorie(excelRow.categorie());
+                String resolvedUniteMesure = StringUtils.hasText(excelRow.uniteMesure())
+                        ? uniteMesureService.findByCodeOptional(excelRow.uniteMesure())
+                                .map(UniteMesure::getCode)
+                                .orElse(UniteMesureEnum.PIECE.code())
+                        : UniteMesureEnum.PIECE.code();
+                entry.setUniteMesure(resolvedUniteMesure);
 
                 catalogueProduitDomainService.save(entry);
                 imported++;
@@ -108,6 +121,7 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
         catalogue.setLibelle(request.libelle());
         catalogue.setCategorie(request.categorie());
         catalogue.setDescription(request.description());
+        catalogue.setUniteMesure(request.uniteMesure());
 
         return new CatalogueProduitResponse(catalogueProduitDomainService.save(catalogue));
     }
@@ -116,6 +130,13 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
     @Transactional
     public void delete(UUID id) {
         catalogueProduitDomainService.deleteById(id);
+    }
+
+    /** Supprime en une seule requête batch tous les produits catalogue dont les ids sont fournis. */
+    @Override
+    @Transactional
+    public void deleteAll(List<UUID> ids) {
+        catalogueProduitDomainService.deleteAllByIds(ids);
     }
 
 }

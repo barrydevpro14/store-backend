@@ -1,6 +1,7 @@
 package org.store.produit.application.service.impl;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ExcelParseResult;
 import org.store.common.i18n.IMessageSourceService;
@@ -61,7 +62,8 @@ public class ProductImportServiceImpl implements IProductImportService {
                         excelRow.reference(),
                         excelRow.libelle(),
                         excelRow.description(),
-                        excelRow.categorie()))
+                        excelRow.categorie(),
+                        excelRow.uniteMesure()))
                 .collect(Collectors.toList());
 
         ProductImportResult importResult = importProducts(new ProductImportRequest(importItems));
@@ -81,7 +83,7 @@ public class ProductImportServiceImpl implements IProductImportService {
 
     @Override
     public ProductImportResult importProducts(ProductImportRequest productImportRequest) {
-        UUID pieceUnitId = uniteMesureService.findByCode("PIECE").getId();
+        UUID[] pieceUnitRef = {null};
 
         int imported = 0;
         int ignored = 0;
@@ -105,7 +107,9 @@ public class ProductImportServiceImpl implements IProductImportService {
                 CategoryProduct category = categoryProductService.findOrCreateByLibelle(item.categorie());
                 categoriesCreated += categoryExisted ? 0 : 1;
 
-                productService.create(new ProductRequest(item.libelle(), item.reference(), item.description(), category.getId(), pieceUnitId));
+                UUID uniteMesureId = uniteMesureService.resolveIdOrPiece(item.uniteMesure(), pieceUnitRef);
+
+                productService.create(new ProductRequest(item.libelle(), item.reference(), item.description(), category.getId(), uniteMesureId));
                 imported++;
 
             } catch (Exception e) {

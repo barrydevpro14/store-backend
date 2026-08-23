@@ -3,7 +3,9 @@ package org.store.produit.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.store.common.exceptions.UniqueResourceException;
+import org.store.produit.domain.enums.UniteMesureEnum;
 import org.store.produit.application.dto.UniteMesureFilter;
 import org.store.produit.application.dto.UniteMesureRequest;
 import org.store.produit.application.dto.UniteMesureResponse;
@@ -13,6 +15,7 @@ import org.store.produit.domain.model.UniteMesure;
 import org.store.produit.domain.service.UniteMesureDomainService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -89,11 +92,35 @@ public class UniteMesureServiceImpl implements IUniteMesureService {
         return uniteMesureDomainService.findByCode(code);
     }
 
+    /** Retourne l'unité correspondant au code technique, ou {@code Optional.empty()} si absente. */
+    @Override
+    public Optional<UniteMesure> findByCodeOptional(String code) {
+        return uniteMesureDomainService.findByCodeOptional(code);
+    }
+
     /** Lève {@code UniqueResourceException} si le code est déjà utilisé. */
     @Override
     public void ensureCodeAvailable(String code) {
         if (uniteMesureDomainService.existsByCode(code)) {
             throw new UniqueResourceException("uniteMesure.code.alreadyExists", code);
         }
+    }
+
+    /** Résout l'UUID du code fourni si connu, sinon retourne l'UUID de PIECE (résolu au plus une fois via pieceRef). */
+    @Override
+    public UUID resolveIdOrPiece(String code, UUID[] pieceRef) {
+        if (StringUtils.hasText(code)) {
+            return findByCodeOptional(code)
+                    .map(UniteMesure::getId)
+                    .orElseGet(() -> resolvePieceUnit(pieceRef));
+        }
+        return resolvePieceUnit(pieceRef);
+    }
+
+    private UUID resolvePieceUnit(UUID[] ref) {
+        if (ref[0] == null) {
+            ref[0] = uniteMesureDomainService.findByCode(UniteMesureEnum.PIECE.code()).getId();
+        }
+        return ref[0];
     }
 }

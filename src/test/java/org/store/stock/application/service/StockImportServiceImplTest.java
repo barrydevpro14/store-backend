@@ -24,7 +24,6 @@ import org.store.produit.application.service.IUniteMesureService;
 import org.store.produit.domain.model.CategoryProduct;
 import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.Quality;
-import org.store.produit.domain.model.UniteMesure;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.StockImportResult;
 import org.store.stock.application.service.impl.StockImportServiceImpl;
@@ -70,16 +69,13 @@ class StockImportServiceImplTest {
         pieceUnitId   = UUID.randomUUID();
         dummyFile     = new MockMultipartFile("file", "stock.xlsx", "application/vnd.ms-excel", new byte[0]);
 
-        UniteMesure pieceUnit = new UniteMesure();
-        pieceUnit.setId(pieceUnitId);
-        pieceUnit.setCode("PIECE");
-        pieceUnit.setLibelle("Pièce");
-        pieceUnit.setSymbole("pce");
-        org.mockito.Mockito.lenient().when(uniteMesureService.findByCode("PIECE")).thenReturn(pieceUnit);
+        org.mockito.Mockito.lenient()
+                .when(uniteMesureService.resolveIdOrPiece(any(), any()))
+                .thenReturn(pieceUnitId);
     }
 
     private ExcelEntreeStockRow validRow(int lineNumber) {
-        return new ExcelEntreeStockRow(lineNumber, "REF-01", "Produit A", "Electronique", "Neuf", "10", "5.00", "8.00", null, null);
+        return new ExcelEntreeStockRow(lineNumber, "REF-01", "Produit A", "Electronique", null, "Neuf", "10", "5.00", "8.00", null, null);
     }
 
     private Product stubProduct() {
@@ -141,11 +137,43 @@ class StockImportServiceImplTest {
         assertThat(result.lignesImportees()).isEqualTo(1);
         assertThat(result.lignesIgnorees()).isZero();
         verify(categoryProductService).findOrCreateByLibelle("Electronique");
-        verify(productService).create(any(ProductRequest.class));
 
-        ArgumentCaptor<EntreeStockRequest> captor = ArgumentCaptor.forClass(EntreeStockRequest.class);
-        verify(entreeStockService).create(captor.capture());
-        assertThat(captor.getValue().lignes().get(0).productId()).isEqualTo(newProductId);
+        ArgumentCaptor<ProductRequest> productCaptor = ArgumentCaptor.forClass(ProductRequest.class);
+        verify(productService).create(productCaptor.capture());
+        assertThat(productCaptor.getValue().uniteMesureId()).isEqualTo(pieceUnitId);
+
+        ArgumentCaptor<EntreeStockRequest> entreeCaptor = ArgumentCaptor.forClass(EntreeStockRequest.class);
+        verify(entreeStockService).create(entreeCaptor.capture());
+        assertThat(entreeCaptor.getValue().lignes().get(0).productId()).isEqualTo(newProductId);
+    }
+
+    @Test
+    void should_use_provided_unite_mesure_when_product_is_new() {
+        UUID kgUnitId     = UUID.randomUUID();
+        UUID newProductId = UUID.randomUUID();
+        UUID categoryId   = UUID.randomUUID();
+
+        ExcelEntreeStockRow rowWithUnit = new ExcelEntreeStockRow(
+                2, "REF-02", "Produit B", "Electronique", "KG", "Neuf", "5", "3.00", "6.00", null, null);
+
+        CategoryProduct stubCategory = new CategoryProduct();
+        stubCategory.setId(categoryId);
+
+        ProductResponse createdProduct = new ProductResponse(newProductId, "Produit B", "REF-02", null, null, null, null, null);
+
+        when(excelParser.parseRows(any())).thenReturn(new ExcelStockParseResult(List.of(rowWithUnit), List.of()));
+        when(productService.findByReferenceAndNom(any(), any())).thenReturn(Optional.empty());
+        when(categoryProductService.findOrCreateByLibelle(any())).thenReturn(stubCategory);
+        when(uniteMesureService.resolveIdOrPiece(eq("KG"), any())).thenReturn(kgUnitId);
+        when(productService.create(any(ProductRequest.class))).thenReturn(createdProduct);
+        when(qualityService.findByLibelle(any())).thenReturn(Optional.of(stubQuality()));
+        when(entreeStockService.create(any())).thenReturn(List.of());
+
+        service.importFromFile(dummyFile, magasinId, fournisseurId);
+
+        ArgumentCaptor<ProductRequest> captor = ArgumentCaptor.forClass(ProductRequest.class);
+        verify(productService).create(captor.capture());
+        assertThat(captor.getValue().uniteMesureId()).isEqualTo(kgUnitId);
     }
 
     @Test
@@ -172,7 +200,7 @@ class StockImportServiceImplTest {
 
     @Test
     void should_report_error_when_margin_invalid() {
-        ExcelEntreeStockRow row = new ExcelEntreeStockRow(2, "REF-01", "Produit A", "Electronique", "Neuf", "10", "10.00", "8.00", null, null);
+        ExcelEntreeStockRow row = new ExcelEntreeStockRow(2, "REF-01", "Produit A", "Electronique", null, "Neuf", "10", "10.00", "8.00", null, null);
         when(excelParser.parseRows(any())).thenReturn(new ExcelStockParseResult(List.of(row), List.of()));
         when(productService.findByReferenceAndNom(any(), any())).thenReturn(Optional.of(stubProduct()));
         when(qualityService.findByLibelle(any())).thenReturn(Optional.of(stubQuality()));
@@ -187,7 +215,7 @@ class StockImportServiceImplTest {
     @Test
     void should_handle_partial_success() {
         ExcelEntreeStockRow goodRow = validRow(2);
-        ExcelEntreeStockRow badRow  = new ExcelEntreeStockRow(3, "REF-01", "Produit A", "Electronique", "Neuf", "10", "10.00", "8.00", null, null);
+        ExcelEntreeStockRow badRow  = new ExcelEntreeStockRow(3, "REF-01", "Produit A", "Electronique", null, "Neuf", "10", "10.00", "8.00", null, null);
 
         when(excelParser.parseRows(any())).thenReturn(new ExcelStockParseResult(List.of(goodRow, badRow), List.of()));
         when(productService.findByReferenceAndNom(any(), any())).thenReturn(Optional.of(stubProduct()));
@@ -235,7 +263,7 @@ class StockImportServiceImplTest {
     @Test
     void should_parse_optional_date_when_present() {
         ExcelEntreeStockRow rowWithDate = new ExcelEntreeStockRow(
-                2, "REF-01", "Produit A", "Electronique", "Neuf", "10", "5.00", "8.00", "LOT-1", "2027-12-31");
+                2, "REF-01", "Produit A", "Electronique", null, "Neuf", "10", "5.00", "8.00", "LOT-1", "2027-12-31");
         when(excelParser.parseRows(any())).thenReturn(new ExcelStockParseResult(List.of(rowWithDate), List.of()));
         when(productService.findByReferenceAndNom(any(), any())).thenReturn(Optional.of(stubProduct()));
         when(qualityService.findByLibelle(any())).thenReturn(Optional.of(stubQuality()));

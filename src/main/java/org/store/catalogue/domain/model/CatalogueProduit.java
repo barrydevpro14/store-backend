@@ -35,4 +35,7 @@ public class CatalogueProduit extends AuditableEntity {
 
     @Column(length = 500)
     private String description;
+
+    @Column(name = "unite_mesure", length = 20)
+    private String uniteMesure;
 }

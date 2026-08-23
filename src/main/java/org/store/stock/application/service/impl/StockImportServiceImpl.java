@@ -16,6 +16,7 @@ import org.store.produit.domain.model.Product;
 import org.store.produit.domain.model.Quality;
 import org.store.stock.application.dto.EntreeStockRequest;
 import org.store.stock.application.dto.LigneEntreeStockRequest;
+import org.store.stock.application.dto.StockImportContext;
 import org.store.stock.application.dto.StockImportError;
 import org.store.stock.application.dto.StockImportResult;
 import org.store.stock.application.service.IEntreeStockService;
@@ -37,8 +38,6 @@ import java.util.UUID;
  */
 @Service
 public class StockImportServiceImpl implements IStockImportService {
-
-    private record ImportContext(List<LigneEntreeStockRequest> validLignes, List<StockImportError> errors) {}
 
     private final IExcelEntreeStockRowService excelParser;
     private final IEntreeStockService entreeStockService;
@@ -70,7 +69,7 @@ public class StockImportServiceImpl implements IStockImportService {
 
         List<StockImportError> errors = new ArrayList<>(toImportErrors(parseResult.errors()));
         List<LigneEntreeStockRequest> validLignes = new ArrayList<>();
-        ImportContext context = new ImportContext(validLignes, errors);
+        StockImportContext context = new StockImportContext(validLignes, errors, new UUID[]{null});
 
         parseResult.rows().forEach(row -> processRow(row, context));
 
@@ -85,8 +84,8 @@ public class StockImportServiceImpl implements IStockImportService {
      * Résout ou crée le produit et la qualité d'une ligne parsée, valide la marge,
      * puis ajoute une {@link LigneEntreeStockRequest} au contexte ou enregistre une erreur.
      */
-    private void processRow(ExcelEntreeStockRow row, ImportContext context) {
-        UUID productId = resolveOrCreateProduct(row);
+    private void processRow(ExcelEntreeStockRow row, StockImportContext context) {
+        UUID productId = resolveOrCreateProduct(row, context.pieceUnitRef());
 
         Optional<Quality> qualityOpt = qualityService.findByLibelle(row.qualite());
         UUID qualityId = qualityOpt.isPresent()
@@ -117,7 +116,7 @@ public class StockImportServiceImpl implements IStockImportService {
         ));
     }
 
-    private UUID resolveOrCreateProduct(ExcelEntreeStockRow row) {
+    private UUID resolveOrCreateProduct(ExcelEntreeStockRow row, UUID[] pieceUnitRef) {
         Optional<Product> productOpt = productService.findByReferenceAndNom(row.referenceProduit(), row.nomProduit());
 
         if (productOpt.isPresent()) {
@@ -125,10 +124,10 @@ public class StockImportServiceImpl implements IStockImportService {
         }
 
         UUID categoryId = categoryProductService.findOrCreateByLibelle(row.categorie()).getId();
-        UUID pieceUnitId = uniteMesureService.findByCode("PIECE").getId();
+        UUID uniteMesureId = uniteMesureService.resolveIdOrPiece(row.uniteMesure(), pieceUnitRef);
 
         return productService.create(new ProductRequest(
-                row.nomProduit(), row.referenceProduit(), null, categoryId, pieceUnitId)).id();
+                row.nomProduit(), row.referenceProduit(), null, categoryId, uniteMesureId)).id();
     }
 
     private List<StockImportError> toImportErrors(List<String> parseErrors) {
