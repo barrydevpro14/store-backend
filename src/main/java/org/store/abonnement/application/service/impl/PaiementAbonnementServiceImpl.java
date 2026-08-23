@@ -26,6 +26,7 @@ import org.store.common.service.ValidatorService;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
 import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
+import org.store.notification.application.event.RevenuRecordedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
@@ -136,6 +137,12 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
         notificationEventPublisher.publishPaiementValidated(
                 new PaiementAbonnementValidatedEvent(validatedPaiement.getId(), entrepriseId, validatedPaiement.getMontantFinal()));
+
+        notificationEventPublisher.publishEvent(new RevenuRecordedEvent(
+                entrepriseId,
+                abonnement.getEntreprise().getCountry().getId(),
+                validatedPaiement.getDatePaiement(),
+                validatedPaiement.getMontantFinal()));
 
         UserPrincipal caller = currentUserService.getCurrent();
         auditEventPublisher.publish(new AuditEvent(

@@ -36,7 +36,9 @@ import org.store.common.exceptions.ForbiddenException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
+import org.store.country.domain.model.Country;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.notification.application.event.RevenuRecordedEvent;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
@@ -90,6 +92,9 @@ class PaiementAbonnementServiceImplTest {
 
         entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
+        Country country = new Country();
+        country.setId(UUID.randomUUID());
+        entreprise.setCountry(country);
 
         plan = new PlanAbonnement();
         plan.setId(UUID.randomUUID());
@@ -204,6 +209,7 @@ class PaiementAbonnementServiceImplTest {
         assertThat(abonnement.getDateDebut()).isEqualTo(LocalDate.now());
         assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.now().plusMonths(1));
         assertThat(response.statut()).isEqualTo(StatutPaiementAbonnement.VALIDE);
+        verify(notificationEventPublisher).publishEvent(any(RevenuRecordedEvent.class));
     }
 
     @Test
@@ -224,6 +230,7 @@ class PaiementAbonnementServiceImplTest {
         service.validate(paiementId);
 
         assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.of(2027, 1, 31));
+        verify(notificationEventPublisher).publishEvent(any(RevenuRecordedEvent.class));
     }
 
     @Test
