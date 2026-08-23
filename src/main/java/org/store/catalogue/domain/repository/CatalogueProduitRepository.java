@@ -13,7 +13,16 @@ import java.util.UUID;
 
 public interface CatalogueProduitRepository extends BaseRepository<CatalogueProduit> {
 
-    boolean existsByReferenceAndLibelleAndActiviteEconomiqueId(String reference, String libelle, UUID activiteEconomiqueId);
+    @Query("""
+            SELECT COUNT(c) > 0 FROM CatalogueProduit c
+            WHERE LOWER(c.reference) = LOWER(:reference)
+              AND LOWER(c.libelle) = LOWER(:libelle)
+              AND c.activiteEconomique.id = :activiteEconomiqueId
+            """)
+    boolean existsByReferenceAndLibelleAndActiviteEconomiqueId(
+            @Param("reference") String reference,
+            @Param("libelle") String libelle,
+            @Param("activiteEconomiqueId") UUID activiteEconomiqueId);
 
     void deleteAllByIdInBatch(Iterable<UUID> ids);
 

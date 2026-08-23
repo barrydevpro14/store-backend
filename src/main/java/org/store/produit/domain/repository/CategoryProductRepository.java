@@ -38,7 +38,8 @@ public interface CategoryProductRepository extends BaseRepository<CategoryProduc
             @Param("endDate") String endDate,
             Pageable pageable);
 
-    Optional<CategoryProduct> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
+    @Query("SELECT c FROM CategoryProduct c WHERE LOWER(c.libelle) = LOWER(:libelle) AND c.entreprise.id = :entrepriseId")
+    Optional<CategoryProduct> findByLibelleAndEntrepriseId(@Param("libelle") String libelle, @Param("entrepriseId") UUID entrepriseId);
 
     @Query("SELECT COUNT(p) > 0 FROM CategoryProduct p WHERE LOWER(p.libelle) = LOWER(:libelle) AND p.entreprise.id = :entrepriseId")
     boolean existsByLibelleAndEntrepriseId(@Param("libelle") String libelle, @Param("entrepriseId") UUID entrepriseId);

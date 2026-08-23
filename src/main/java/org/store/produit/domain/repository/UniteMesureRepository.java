@@ -38,6 +38,9 @@ public interface UniteMesureRepository extends BaseRepository<UniteMesure> {
 
     Optional<UniteMesure> findByCode(String code);
 
+    @Query("SELECT u FROM UniteMesure u WHERE LOWER(u.code) = LOWER(:value) OR LOWER(u.symbole) = LOWER(:value)")
+    Optional<UniteMesure> findByCodeOrSymbole(@Param("value") String value);
+
     @Query("SELECT COUNT(u) > 0 FROM UniteMesure u WHERE LOWER(u.code) = LOWER(:code)")
     boolean existsByCode(@Param("code") String code);
 }

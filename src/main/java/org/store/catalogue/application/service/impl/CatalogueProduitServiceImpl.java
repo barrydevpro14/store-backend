@@ -96,7 +96,7 @@ public class CatalogueProduitServiceImpl implements ICatalogueProduitService {
                 entry.setDescription(excelRow.description());
                 entry.setCategorie(excelRow.categorie());
                 String resolvedUniteMesure = StringUtils.hasText(excelRow.uniteMesure())
-                        ? uniteMesureService.findByCodeOptional(excelRow.uniteMesure())
+                        ? uniteMesureService.findByCodeOrSymboleOptional(excelRow.uniteMesure())
                                 .map(UniteMesure::getCode)
                                 .orElse(UniteMesureEnum.PIECE.code())
                         : UniteMesureEnum.PIECE.code();
