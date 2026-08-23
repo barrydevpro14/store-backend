@@ -37,7 +37,7 @@ class ExcelEntreeStockRowServiceImplTest {
         lenient().when(messageSourceService.getMessage(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    /** Colonnes : referenceProduit(0) nomProduit(1) categorie(2) qualite(3) quantite(4) prixAchat(5) prixVente(6) numeroLot(7) dateExpiration(8) */
+    /** Colonnes : referenceProduit(0) nomProduit(1) categorie(2) uniteMesure(3) qualite(4) quantite(5) prixAchat(6) prixVente(7) numeroLot(8) dateExpiration(9) */
     private MockMultipartFile buildFile(Object... colValues) throws IOException {
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet();
@@ -58,7 +58,7 @@ class ExcelEntreeStockRowServiceImplTest {
     }
 
     private MockMultipartFile validFile() throws IOException {
-        return buildFile("REF-01", "Produit A", "Electronique", "Neuf", "10", "5.00", "8.00", "LOT-1", "2027-12-31");
+        return buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "10", "5.00", "8.00", "LOT-1", "2027-12-31");
     }
 
     @Test
@@ -82,7 +82,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_parse_row_with_optional_fields_absent() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", "Neuf", "10", "5.00", "8.00");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "10", "5.00", "8.00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -94,7 +94,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_normalize_comma_decimal_separator() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", "Neuf", "10", "5,50", "9,00");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "10", "5,50", "9,00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -105,7 +105,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_report_error_when_referenceProduit_blank() throws IOException {
-        MockMultipartFile file = buildFile("", "Produit A", "Electronique", "Neuf", "10", "5.00", "8.00");
+        MockMultipartFile file = buildFile("", "Produit A", "Electronique", null, "Neuf", "10", "5.00", "8.00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -116,7 +116,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_report_error_when_categorie_blank() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "", "Neuf", "10", "5.00", "8.00");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "", null, "Neuf", "10", "5.00", "8.00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -127,7 +127,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_report_error_when_quantite_not_integer() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", "Neuf", "abc", "5.00", "8.00");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "abc", "5.00", "8.00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -137,7 +137,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_report_error_when_quantite_zero() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", "Neuf", "0", "5.00", "8.00");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "0", "5.00", "8.00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -147,7 +147,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_report_error_when_prixAchat_not_numeric() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", "Neuf", "5", "abc", "8.00");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "5", "abc", "8.00");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -157,7 +157,7 @@ class ExcelEntreeStockRowServiceImplTest {
 
     @Test
     void should_report_error_when_date_expiration_invalid_format() throws IOException {
-        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", "Neuf", "10", "5.00", "8.00", null, "31/12/2027");
+        MockMultipartFile file = buildFile("REF-01", "Produit A", "Electronique", null, "Neuf", "10", "5.00", "8.00", null, "31/12/2027");
 
         ExcelStockParseResult result = service.parseRows(file);
 
@@ -182,16 +182,18 @@ class ExcelEntreeStockRowServiceImplTest {
             sheet.createRow(0).createCell(0).setCellValue("header");
 
             Row row1 = sheet.createRow(1);
-            row1.createCell(0).setCellValue("");
+            row1.createCell(0).setCellValue("");         // blank reference → error
+            row1.createCell(1).setCellValue("Produit B"); // other fields present
 
             Row row2 = sheet.createRow(2);
             row2.createCell(0).setCellValue("REF-01");
             row2.createCell(1).setCellValue("Produit A");
             row2.createCell(2).setCellValue("Electronique");
-            row2.createCell(3).setCellValue("Neuf");
-            row2.createCell(4).setCellValue("10");
-            row2.createCell(5).setCellValue("5.00");
-            row2.createCell(6).setCellValue("8.00");
+            // col 3 = uniteMesure (optionnel, omis)
+            row2.createCell(4).setCellValue("Neuf");
+            row2.createCell(5).setCellValue("10");
+            row2.createCell(6).setCellValue("5.00");
+            row2.createCell(7).setCellValue("8.00");
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             wb.write(out);

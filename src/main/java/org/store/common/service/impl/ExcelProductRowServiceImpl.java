@@ -75,6 +75,10 @@ public class ExcelProductRowServiceImpl implements IExcelProductRowService {
         String categorie   = extractCellValue(formatter, row, 3);
         String uniteMesure = extractCellValue(formatter, row, 4);
 
+        if (reference.isBlank() && libelle.isBlank() && categorie.isBlank()) {
+            return;
+        }
+
         if (reference.isBlank()) {
             context.errors().add(messageSourceService.getMessage(
                     "excel.import.row.reference.required", new Object[]{lineNumber}));

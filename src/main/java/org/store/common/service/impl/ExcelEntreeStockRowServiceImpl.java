@@ -73,6 +73,11 @@ public class ExcelEntreeStockRowServiceImpl implements IExcelEntreeStockRowServi
         String numeroLot         = extractCellValue(formatter, row, 8);
         String dateExpirationRaw = extractCellValue(formatter, row, 9);
 
+        if (referenceProduit.isBlank() && nomProduit.isBlank() && categorie.isBlank()
+                && qualite.isBlank() && quantiteRaw.isBlank() && prixAchatRaw.isBlank()) {
+            return;
+        }
+
         if (referenceProduit.isBlank()) {
             context.errors().add(msg("excel.stock.import.row.referenceProduit.required", lineNumber));
             return;

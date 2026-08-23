@@ -9,6 +9,61 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-22 — Catalogue bulk delete (backend + frontend) + i18n import dialogs + useEffect fix
+
+### Subject
+
+Three streams on the `refonte-catalogue` branch: (1) i18n update for stock/catalogue import dialogs to surface the `uniteMesure` column, (2) `DELETE /api/v1/catalogue/bulk` backend endpoint + full frontend integration with checkbox selection, (3) fix of an infinite re-render loop in `CataloguePage`.
+
+### Backend
+
+**Bulk delete — `DELETE /api/v1/catalogue/bulk`**
+- `CatalogueProduitRepository` (domain port): `void deleteAllByIdInBatch(Iterable<UUID> ids)`
+- `CatalogueProduitDomainService`: `deleteAllByIds(List<UUID>)` delegates to the port
+- `ICatalogueProduitService` + `CatalogueProduitServiceImpl`: `void deleteAll(List<UUID>)` — `@Transactional`, single SQL `DELETE ... WHERE id IN (...)` via Spring Data batch
+- `CatalogueProduitController`: `@DeleteMapping("/bulk")` gated `CATALOGUE_PRODUIT_DELETE`; returns 204
+
+### Frontend
+
+**i18n updates (`fr.json` + `en.json`)**
+- `importEntree.description` / `importEntree.formatHint` / `excelImport.formatHint`: colonne `unité de mesure (optionnel)` ajoutée après `catégorie` (position 4)
+- Namespace `dashboard.administration.catalogue`: ajout `table.selectAll`, `table.selectRow`, `confirmDeleteAll.{title,description,confirm}`, `toasts.deletedAll`
+
+**New hook `useCatalogueDeleteAll.ts`** (rule 52) — `useMutation` calling `catalogueApi.removeAll(ids)`, invalidates `catalogueKeys.all` on success.
+
+**`catalogue-repository.ts`**: `removeAll(ids: string[]): Promise<void>` added to the port interface.
+
+**`catalogue-api.ts`**: `removeAll` implemented via `apiClient.delete(BASE_PATH + '/bulk', { data: ids })`.
+
+**`CatalogueTable.tsx` rewrite**
+- New props: `selectedIds: string[]`, `onSelectedIdsChange: (ids: string[]) => void`
+- `toggleRow(id)` / `toggleAll()` functions
+- First column `select`: header = select-all `Checkbox`, cell = per-row `Checkbox`; `checked` is always `boolean` (no `'indeterminate'` — Base UI Checkbox in this version only accepts `boolean | undefined`)
+- `useMemo` deps include `rows` and `selectedIds`
+
+**`CataloguePage.tsx`**
+- State `selectedIds: string[]` + `deleteAllPending: string[] | null`
+- Destructive button shown when `selectedIds.length > 0`; sets `deleteAllPending`
+- Second `<ConfirmDialog>` for bulk delete confirmation
+- `handleDeleteAllConfirmed` + `handleDeleteAllOpenChange`
+
+**Fix — infinite re-render loop**
+- Root cause: `rows = catalogueQuery.data?.content ?? []` — `?? []` creates a new array reference every render → `useEffect([rows])` fires → `setSelectedIds([])` → re-render → new `[]` → ∞
+- Fix: `useEffect(() => { setSelectedIds([]) }, [catalogueQuery.dataUpdatedAt])` — React Query's `dataUpdatedAt` is a stable timestamp updated only when fresh data arrives from the server
+
+### Open follow-ups (carried over)
+
+- Commit + push backend changes: `Page<TopProduitResponse>` return type, countQuery, controller `nombre` default 10 — awaiting authorization
+- Commit + push frontend changes: `useTopProduits`, `TopProduitsTable`, `VentesReportingPage` pagination — awaiting authorization
+- Also pending from 2026-08-01: backend vente-only KPI endpoint + reporting page + tab icons commits
+- Run `./mvnw test` full suite
+- Run `npx vitest run` full suite
+- Manual UI check: catalogue page — checkbox selection, bulk delete confirmation dialog, single delete still works, selection resets on page change
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-22 — Optional employee contacts + PasswordResetServiceImpl conventions refactor
 
 ### Subject
