@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.abonnement.application.dto.RevenuRecordCommand;
 import org.store.abonnement.application.service.IRevenuService;
 import org.store.notification.application.event.RevenuRecordedEvent;
 
@@ -29,6 +30,6 @@ class RevenuEventListenerTest {
 
         listener.onRevenuRecorded(new RevenuRecordedEvent(entrepriseId, countryId, datePaiement, montant));
 
-        verify(revenuService).record(entrepriseId, countryId, datePaiement, montant);
+        verify(revenuService).record(new RevenuRecordCommand(entrepriseId, countryId, datePaiement, montant));
     }
 }

@@ -1,13 +1,14 @@
 package org.store.abonnement.application.service;
 
+import org.store.abonnement.application.dto.RevenuPeriodFilter;
+import org.store.abonnement.application.dto.RevenuRecordCommand;
+
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
 
 public interface IRevenuService {
 
     /** Persists one Revenu row. Called only from RevenuEventListener, on a validated payment. */
-    void record(UUID entrepriseId, UUID countryId, LocalDate datePaiement, BigDecimal montant);
+    void record(RevenuRecordCommand command);
 
-    BigDecimal getTotalForPeriod(String startDate, String endDate, UUID countryId, UUID abonnementId);
+    BigDecimal getTotalForPeriod(RevenuPeriodFilter filter);
 }

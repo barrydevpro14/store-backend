@@ -6,6 +6,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.abonnement.application.dto.RevenuPeriodFilter;
+import org.store.abonnement.application.dto.RevenuRecordCommand;
 import org.store.abonnement.application.service.impl.RevenuServiceImpl;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Revenu;
@@ -44,7 +46,7 @@ class RevenuServiceImplTest {
         when(entrepriseService.findById(entrepriseId)).thenReturn(entreprise);
         when(countryDomainService.findById(countryId)).thenReturn(country);
 
-        service.record(entrepriseId, countryId, LocalDate.of(2026, 8, 15), new BigDecimal("15000.00"));
+        service.record(new RevenuRecordCommand(entrepriseId, countryId, LocalDate.of(2026, 8, 15), new BigDecimal("15000.00")));
 
         ArgumentCaptor<Revenu> captor = ArgumentCaptor.forClass(Revenu.class);
         verify(revenuDomainService).save(captor.capture());
@@ -63,20 +65,20 @@ class RevenuServiceImplTest {
         abonnement.setEntreprise(entreprise);
 
         when(abonnementService.findById(abonnementId)).thenReturn(abonnement);
-        when(revenuDomainService.sumByPeriod("2026-08-01", "2026-08-31", null, entrepriseId))
+        when(revenuDomainService.sumByPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, abonnementId), entrepriseId))
                 .thenReturn(new BigDecimal("300000.00"));
 
-        BigDecimal total = service.getTotalForPeriod("2026-08-01", "2026-08-31", null, abonnementId);
+        BigDecimal total = service.getTotalForPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, abonnementId));
 
         assertThat(total).isEqualByComparingTo("300000.00");
     }
 
     @Test
     void getTotalForPeriod_should_pass_null_entrepriseId_when_abonnementId_absent() {
-        when(revenuDomainService.sumByPeriod("2026-08-01", "2026-08-31", null, null))
+        when(revenuDomainService.sumByPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, null), null))
                 .thenReturn(new BigDecimal("450000.00"));
 
-        BigDecimal total = service.getTotalForPeriod("2026-08-01", "2026-08-31", null, null);
+        BigDecimal total = service.getTotalForPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, null));
 
         assertThat(total).isEqualByComparingTo("450000.00");
         verifyNoInteractions(abonnementService);
