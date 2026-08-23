@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 
 public interface IRevenuService {
 
-    /** Persists one Revenu row. Called only from RevenuEventListener, on a validated payment. */
+    /** Persists one Revenu row. Called synchronously from PaiementAbonnementServiceImpl.validate(), within the same transaction. */
     void record(RevenuRecordCommand command);
 
     BigDecimal getTotalForPeriod(RevenuPeriodFilter filter);

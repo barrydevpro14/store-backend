@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.store.abonnement.application.dto.*;
 import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
+import org.store.abonnement.application.service.IRevenuService;
 import org.store.abonnement.application.service.IUtilisationCouponService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
@@ -26,7 +27,6 @@ import org.store.common.service.ValidatorService;
 import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
 import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
-import org.store.notification.application.event.RevenuRecordedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
@@ -60,6 +60,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     private final INotificationEventPublisher notificationEventPublisher;
     private final IAuditEventPublisher auditEventPublisher;
     private final IMoyenPaiementService moyenPaiementService;
+    private final IRevenuService revenuService;
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
@@ -71,7 +72,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                                          ValidatorService validatorService,
                                          INotificationEventPublisher notificationEventPublisher,
                                          IAuditEventPublisher auditEventPublisher,
-                                         IMoyenPaiementService moyenPaiementService) {
+                                         IMoyenPaiementService moyenPaiementService,
+                                         IRevenuService revenuService) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
         this.couponService = couponService;
@@ -83,6 +85,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         this.notificationEventPublisher = notificationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
         this.moyenPaiementService = moyenPaiementService;
+        this.revenuService = revenuService;
     }
 
     /**
@@ -138,7 +141,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         notificationEventPublisher.publishPaiementValidated(
                 new PaiementAbonnementValidatedEvent(validatedPaiement.getId(), entrepriseId, validatedPaiement.getMontantFinal()));
 
-        notificationEventPublisher.publishEvent(new RevenuRecordedEvent(
+        revenuService.record(new RevenuRecordCommand(
                 entrepriseId,
                 abonnement.getEntreprise().getCountry().getId(),
                 validatedPaiement.getDatePaiement(),

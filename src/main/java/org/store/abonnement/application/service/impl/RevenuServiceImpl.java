@@ -4,9 +4,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.RevenuPeriodFilter;
 import org.store.abonnement.application.dto.RevenuRecordCommand;
-import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.IRevenuService;
 import org.store.abonnement.domain.model.Revenu;
+import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.RevenuDomainService;
 import org.store.country.domain.service.CountryDomainService;
 import org.store.entreprise.application.service.IEntrepriseService;
@@ -22,16 +22,16 @@ public class RevenuServiceImpl implements IRevenuService {
     private final RevenuDomainService revenuDomainService;
     private final IEntrepriseService entrepriseService;
     private final CountryDomainService countryDomainService;
-    private final IAbonnementService abonnementService;
+    private final AbonnementDomainService abonnementDomainService;
 
     public RevenuServiceImpl(RevenuDomainService revenuDomainService,
                              IEntrepriseService entrepriseService,
                              CountryDomainService countryDomainService,
-                             IAbonnementService abonnementService) {
+                             AbonnementDomainService abonnementDomainService) {
         this.revenuDomainService = revenuDomainService;
         this.entrepriseService = entrepriseService;
         this.countryDomainService = countryDomainService;
-        this.abonnementService = abonnementService;
+        this.abonnementDomainService = abonnementDomainService;
     }
 
     /** Builds the Revenu row from ids only — both FKs resolved via cheap, fresh PK lookups (not stale proxies). */
@@ -50,7 +50,7 @@ public class RevenuServiceImpl implements IRevenuService {
     @Override
     public BigDecimal getTotalForPeriod(RevenuPeriodFilter filter) {
         UUID entrepriseId = filter.abonnementId() != null
-                ? abonnementService.findById(filter.abonnementId()).getEntreprise().getId()
+                ? abonnementDomainService.findById(filter.abonnementId()).getEntreprise().getId()
                 : null;
         return revenuDomainService.sumByPeriod(filter, entrepriseId);
     }

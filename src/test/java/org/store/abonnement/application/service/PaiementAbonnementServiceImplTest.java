@@ -14,7 +14,9 @@ import org.store.abonnement.application.dto.PaiementAbonnementFilter;
 import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
+import org.store.abonnement.application.dto.RevenuRecordCommand;
 import org.store.abonnement.application.dto.SubscriptionAmountBreakdown;
+import org.store.abonnement.application.service.IRevenuService;
 import org.store.abonnement.application.service.impl.PaiementAbonnementServiceImpl;
 import org.store.abonnement.application.service.impl.SubscriptionAmountCalculator;
 import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
@@ -38,7 +40,6 @@ import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.notification.application.event.RevenuRecordedEvent;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
@@ -71,6 +72,7 @@ class PaiementAbonnementServiceImplTest {
     @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private org.store.paiement.application.service.IMoyenPaiementService moyenPaiementService;
+    @Mock private IRevenuService revenuService;
 
     @InjectMocks
     private PaiementAbonnementServiceImpl service;
@@ -209,7 +211,7 @@ class PaiementAbonnementServiceImplTest {
         assertThat(abonnement.getDateDebut()).isEqualTo(LocalDate.now());
         assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.now().plusMonths(1));
         assertThat(response.statut()).isEqualTo(StatutPaiementAbonnement.VALIDE);
-        verify(notificationEventPublisher).publishEvent(any(RevenuRecordedEvent.class));
+        verify(revenuService).record(any(RevenuRecordCommand.class));
     }
 
     @Test
@@ -230,7 +232,7 @@ class PaiementAbonnementServiceImplTest {
         service.validate(paiementId);
 
         assertThat(abonnement.getDateFin()).isEqualTo(LocalDate.of(2027, 1, 31));
-        verify(notificationEventPublisher).publishEvent(any(RevenuRecordedEvent.class));
+        verify(revenuService).record(any(RevenuRecordCommand.class));
     }
 
     @Test

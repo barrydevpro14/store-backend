@@ -17,4 +17,6 @@ SELECT gen_random_uuid(), a.entreprise_id, e.country_id, pa.montant_final, pa.da
 FROM paiement_abonnement pa
 JOIN abonnement a  ON pa.abonnement_id = a.id
 JOIN entreprise e  ON a.entreprise_id  = e.id
-WHERE pa.statut = 'VALIDE';
+WHERE pa.statut = 'VALIDE'
+  AND pa.date_paiement IS NOT NULL
+  AND pa.montant_final IS NOT NULL;

@@ -11,6 +11,7 @@ import org.store.abonnement.application.dto.RevenuRecordCommand;
 import org.store.abonnement.application.service.impl.RevenuServiceImpl;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.Revenu;
+import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.RevenuDomainService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
@@ -31,7 +32,7 @@ class RevenuServiceImplTest {
     @Mock private RevenuDomainService revenuDomainService;
     @Mock private IEntrepriseService entrepriseService;
     @Mock private CountryDomainService countryDomainService;
-    @Mock private IAbonnementService abonnementService;
+    @Mock private AbonnementDomainService abonnementDomainService;
     @InjectMocks private RevenuServiceImpl service;
 
     @Test
@@ -64,7 +65,7 @@ class RevenuServiceImplTest {
         Abonnement abonnement = new Abonnement();
         abonnement.setEntreprise(entreprise);
 
-        when(abonnementService.findById(abonnementId)).thenReturn(abonnement);
+        when(abonnementDomainService.findById(abonnementId)).thenReturn(abonnement);
         when(revenuDomainService.sumByPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, abonnementId), entrepriseId))
                 .thenReturn(new BigDecimal("300000.00"));
 
@@ -81,6 +82,6 @@ class RevenuServiceImplTest {
         BigDecimal total = service.getTotalForPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, null));
 
         assertThat(total).isEqualByComparingTo("450000.00");
-        verifyNoInteractions(abonnementService);
+        verifyNoInteractions(abonnementDomainService);
     }
 }
