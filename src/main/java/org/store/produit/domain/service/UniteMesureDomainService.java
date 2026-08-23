@@ -52,6 +52,10 @@ public class UniteMesureDomainService extends GlobalService<UniteMesure, UniteMe
         return repository.findByCode(code);
     }
 
+    public java.util.Optional<UniteMesure> findByCodeOrSymboleOptional(String value) {
+        return repository.findByCodeOrSymbole(value);
+    }
+
     public boolean existsByCode(String code) {
         return repository.existsByCode(code);
     }

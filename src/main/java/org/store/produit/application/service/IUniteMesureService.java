@@ -59,6 +59,12 @@ public interface IUniteMesureService {
     Optional<UniteMesure> findByCodeOptional(String code);
 
     /**
+     * Recherche une unité de mesure par code ou symbole, insensible à la casse.
+     * Utilisée lors des imports Excel pour accepter "kg", "KG", "Kg", etc.
+     */
+    Optional<UniteMesure> findByCodeOrSymboleOptional(String value);
+
+    /**
      * Vérifie que le code n'est pas déjà utilisé. Throw {@code UniqueResourceException("uniteMesure.code.alreadyExists")} sinon.
      */
     void ensureCodeAvailable(String code);

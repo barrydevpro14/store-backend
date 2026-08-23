@@ -56,7 +56,8 @@ public interface QualityRepository extends BaseRepository<Quality> {
                                                  @Param("searchPattern") String searchPattern,
                                                  Pageable pageable);
 
-    Optional<Quality> findByLibelleAndEntrepriseId(String libelle, UUID entrepriseId);
+    @Query("SELECT q FROM Quality q WHERE LOWER(q.libelle) = LOWER(:libelle) AND q.entreprise.id = :entrepriseId")
+    Optional<Quality> findByLibelleAndEntrepriseId(@Param("libelle") String libelle, @Param("entrepriseId") UUID entrepriseId);
 
     @Query("SELECT COUNT(p) > 0 FROM Quality p WHERE LOWER(p.libelle) = LOWER(:libelle) AND p.entreprise.id = :entrepriseId")
     boolean existsByLibelleAndEntrepriseId(@Param("libelle") String libelle, @Param("entrepriseId") UUID entrepriseId);

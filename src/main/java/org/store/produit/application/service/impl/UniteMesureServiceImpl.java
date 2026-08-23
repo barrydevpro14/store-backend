@@ -98,6 +98,12 @@ public class UniteMesureServiceImpl implements IUniteMesureService {
         return uniteMesureDomainService.findByCodeOptional(code);
     }
 
+    /** Retourne l'unité correspondant au code ou au symbole (insensible à la casse), ou {@code Optional.empty()} si absente. */
+    @Override
+    public Optional<UniteMesure> findByCodeOrSymboleOptional(String value) {
+        return uniteMesureDomainService.findByCodeOrSymboleOptional(value);
+    }
+
     /** Lève {@code UniqueResourceException} si le code est déjà utilisé. */
     @Override
     public void ensureCodeAvailable(String code) {
@@ -106,11 +112,11 @@ public class UniteMesureServiceImpl implements IUniteMesureService {
         }
     }
 
-    /** Résout l'UUID du code fourni si connu, sinon retourne l'UUID de PIECE (résolu au plus une fois via pieceRef). */
+    /** Résout l'UUID de la valeur fournie en cherchant par code ou symbole (insensible à la casse), sinon retourne l'UUID de PIECE. */
     @Override
     public UUID resolveIdOrPiece(String code, UUID[] pieceRef) {
         if (StringUtils.hasText(code)) {
-            return findByCodeOptional(code)
+            return uniteMesureDomainService.findByCodeOrSymboleOptional(code)
                     .map(UniteMesure::getId)
                     .orElseGet(() -> resolvePieceUnit(pieceRef));
         }
