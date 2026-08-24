@@ -50,10 +50,10 @@ class PlateformeReportingServiceImplTest {
     }
 
     @Test
-    void getPeriodReport_with_abonnementId_should_leave_depenses_unaffected() {
-        UUID abonnementId = UUID.randomUUID();
-        PlateformePeriodFilter filter = new PlateformePeriodFilter("2026-08-01", "2026-08-31", null, abonnementId);
-        when(revenuService.getTotalForPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, abonnementId))).thenReturn(new BigDecimal("50000.00"));
+    void getPeriodReport_with_entrepriseId_should_leave_depenses_unaffected() {
+        UUID entrepriseId = UUID.randomUUID();
+        PlateformePeriodFilter filter = new PlateformePeriodFilter("2026-08-01", "2026-08-31", null, entrepriseId);
+        when(revenuService.getTotalForPeriod(new RevenuPeriodFilter("2026-08-01", "2026-08-31", null, entrepriseId))).thenReturn(new BigDecimal("50000.00"));
         when(depensePlateformeService.computeTotal("2026-08-01", "2026-08-31", null)).thenReturn(new BigDecimal("300000.00"));
 
         PlateformePeriodReportResponse response = service.getPeriodReport(filter);

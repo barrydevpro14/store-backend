@@ -29,7 +29,7 @@ public class PlateformeReportingController {
     public ResponseEntity<PlateformePeriodReportResponse> period(@RequestParam(required = false) String startDate,
                                                                   @RequestParam(required = false) String endDate,
                                                                   @RequestParam(required = false) UUID countryId,
-                                                                  @RequestParam(required = false) UUID abonnementId) {
-        return ResponseEntity.ok(service.getPeriodReport(new PlateformePeriodFilter(startDate, endDate, countryId, abonnementId)));
+                                                                  @RequestParam(required = false) UUID entrepriseId) {
+        return ResponseEntity.ok(service.getPeriodReport(new PlateformePeriodFilter(startDate, endDate, countryId, entrepriseId)));
     }
 }

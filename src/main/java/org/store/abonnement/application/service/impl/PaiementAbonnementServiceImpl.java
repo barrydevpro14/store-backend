@@ -142,8 +142,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                 new PaiementAbonnementValidatedEvent(validatedPaiement.getId(), entrepriseId, validatedPaiement.getMontantFinal()));
 
         revenuService.record(new RevenuRecordCommand(
-                entrepriseId,
-                abonnement.getEntreprise().getCountry().getId(),
+                abonnement.getEntreprise(),
                 validatedPaiement.getDatePaiement(),
                 validatedPaiement.getMontantFinal()));
 

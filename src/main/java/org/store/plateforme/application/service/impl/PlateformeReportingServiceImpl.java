@@ -12,7 +12,7 @@ import org.store.plateforme.application.service.IPlateformeReportingService;
 import java.math.BigDecimal;
 
 /**
- * Computes the platform P&L for a period: revenu (Revenu table, scoped by country + abonnement),
+ * Computes the platform P&L for a period: revenu (Revenu table, scoped by country + entreprise),
  * dépenses plateforme (scoped by country only), bénéfice = revenu − dépenses, mirroring whatever
  * country scoping the two operands share.
  */
@@ -30,7 +30,7 @@ public class PlateformeReportingServiceImpl implements IPlateformeReportingServi
 
     @Override
     public PlateformePeriodReportResponse getPeriodReport(PlateformePeriodFilter filter) {
-        RevenuPeriodFilter revenuFilter = new RevenuPeriodFilter(filter.startDate(), filter.endDate(), filter.countryId(), filter.abonnementId());
+        RevenuPeriodFilter revenuFilter = new RevenuPeriodFilter(filter.startDate(), filter.endDate(), filter.countryId(), filter.entrepriseId());
         BigDecimal revenu = revenuService.getTotalForPeriod(revenuFilter);
         BigDecimal depensesPlateforme = depensePlateformeService.computeTotal(filter.startDate(), filter.endDate(), filter.countryId());
         return new PlateformePeriodReportResponse(revenu, depensesPlateforme, revenu.subtract(depensesPlateforme));

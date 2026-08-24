@@ -7,7 +7,6 @@ import org.store.abonnement.domain.repository.RevenuRepository;
 import org.store.common.service.GlobalService;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Service
 public class RevenuDomainService extends GlobalService<Revenu, RevenuRepository> {
@@ -15,7 +14,7 @@ public class RevenuDomainService extends GlobalService<Revenu, RevenuRepository>
         super(repository);
     }
 
-    public BigDecimal sumByPeriod(RevenuPeriodFilter filter, UUID resolvedEntrepriseId) {
-        return repository.sumByPeriod(filter.startDate(), filter.endDate(), filter.countryId(), resolvedEntrepriseId);
+    public BigDecimal sumByPeriod(RevenuPeriodFilter filter) {
+        return repository.sumByPeriod(filter.startDate(), filter.endDate(), filter.countryId(), filter.entrepriseId());
     }
 }
