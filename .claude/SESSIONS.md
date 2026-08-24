@@ -9,6 +9,92 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-24 — SaaS platform P&L sidebar restructuring completed + filter UI parity rebuild + CouponTable test fix (frontend only)
+
+### Subject
+
+Picked up the 2026-08-23 session's open item ("sidebar restructuring — IN PROGRESS, not finished") and finished it, then did a follow-up UI-consistency pass on the same modules per live feedback during manual QA.
+
+### 1. Sidebar restructuring (frontend, `store-frontend/`)
+
+- **"Dépenses plateforme"** promoted from an Administration sub-tab to its own top-level sidebar module at `/dashboard/depenses-plateforme` (`PLATFORM_EXPENSE_ACCESS`), 2 tabs: **Listing** + **Category** (category CRUD extracted from the old `CategoryDepensePlateformeManagerDialog` into a real tab page — dialog + its props file deleted).
+- New **"Revenu"** top-level sidebar module at `/dashboard/revenu` (`PLATFORM_REPORT_ACCESS`), single page (mirrors the existing top-level `dashboard/reporting/` pattern — no extra layout guard, sidebar visibility does the gating), showing the P&L reporting page moved out of `depenses/reporting/` and renamed `RevenuReportingPage`.
+- Removed the "Dépenses plateforme" tab from `administration/_tabs.ts` + its icon from `administration/layout.tsx`.
+- `DashboardShell.tsx`: new `NavKey`s (`depensesPlateforme`, `revenu`), `NAV_ITEMS` entries (icons `Landmark`/`TrendingUp`), grouped with Administration/Audit under the "admin" `NAV_GROUPS` section.
+- i18n: namespace `dashboard.administration.depensesPlateforme` renamed to top-level `dashboard.depensesPlateforme`; new `dashboard.revenu` namespace extracted for the reporting page's strings; new sidebar labels; `nav.reporting` dropped, `nav.category` added.
+- **Bug found + fixed during manual QA**: `CategoryDepensePlateformeFormDialog.tsx` (scaffolded the prior session but never fully wired) called `t('createTitle')`/`t('editTitle')` — keys that never existed under `categoryManager`. Added both (FR + EN).
+- All file moves done via `git mv` (tracked as renames in `git status`).
+
+### 2. Filter UI parity with tenant `depenses` (frontend)
+
+User asked to read the tenant `depenses` module to understand its page organization, then align "Dépense plateforme" + "Category": add button, filter button, filter input.
+
+- **`DepensePlateformeFilters.tsx`** rewritten from an always-expanded filter card to the Input + filter-Popover pattern (mirrors `DepenseFilters.tsx`): inline libellé search input + "Filtres" button (badge = active-filter count) opening a popover with Category/Moyen/Country combos + date range + Reset. Props interface unchanged — `DepensesPlateformePage.tsx` needed no edit.
+- **Category page rebuilt as a full paginated CRUD table** (was a flat unpaginated `<ul>`, no filters at all) — mirrors `settings/categories-depense/CategoriesDepensePage.tsx` 1:1. Backend (`CategoryDepensePlateformeController`/`Filter`) already supported `nom`/`actif`/`startDate`/`endDate`/pagination — only the frontend page was behind. New: `useCategoryDepensePlateformePage` hook, `CategoryDepensePlateformeFilters` (search + popover), `CategoryDepensePlateformeTable` (DataTable + actif Badge), `CategoryDepensePlateformeRowActions` (edit/delete dropdown). `CategoryDepensePlateformePage.tsx` rewritten with search-prompt (rule 47) + pagination + empty/no-results states.
+- New i18n keys under `categoryManager.{filters,table,rowActions,noResults}` + `depensesPlateforme.filters.{filterBtn,dateLabel}`.
+
+### 3. `CouponTable.test.tsx` fix
+
+Removed a stray `entreprise: null` from the test's `buildCoupon` factory — the frontend `Coupon` type and backend `CouponResponse` never had that field (confirmed by reading both). `tsc --noEmit` is now **fully clean project-wide** (this was the one pre-existing unrelated error carried since the 2026-08-23 session).
+
+### Verification
+
+`tsc --noEmit` clean (zero errors, including the previously-carried `CouponTable` one). `vitest run` **342/342 green** throughout all three streams. No manual browser check beyond the category-dialog i18n bug the user caught live.
+
+### Open follow-ups
+
+- **Nothing committed this session** — awaiting explicit commit authorization (many-small-atomic-commits preference: sidebar restructuring, filter/category rebuild, and the CouponTable fix are each their own logical theme).
+- **Backend still has the 2026-08-23 uncommitted changes** (`entrepriseId` rename on `RevenuPeriodFilter`/`PlateformePeriodFilter`, `RevenuRecordCommand` simplification, new `PLATFORM_EXPENSE_ACCESS`/`PLATFORM_REPORT_ACCESS` permissions in `roles-permissions.yml`) — not touched this session, still pending commit.
+- **Next task (not started, scoped but not implemented)**: integrate `IAuditEventPublisher`/`AuditEvent` into `DepensePlateformeServiceImpl.create/update/delete` and `CategoryDepensePlateformeServiceImpl.create/update/delete` (mirrors the existing `PaiementAbonnementServiceImpl` pattern — async, `entrepriseId`/`magasinId` will be `null` since both entities are global/non-tenant). New `AuditAction` values needed (`DEPENSE_PLATEFORME_{CREATED,UPDATED,DELETED}`, `CATEGORY_DEPENSE_PLATEFORME_{CREATED,UPDATED,DELETED}`) + 2 new `AuditEntityType` values. **Deletion must become soft** for both entities: `DepensePlateforme` currently hard-deletes (`domainService.delete(entity)`) and has no deleted/actif flag at all — needs one added + a Flyway migration + repository queries updated to exclude soft-deleted rows. `CategoryDepensePlateforme` already has an `actif` field (distinct business flag, not currently a delete marker) — **open design question**: reuse `actif` for soft-delete semantics, or add a dedicated flag? Must ask the user before implementing (rule 44) — do not assume. See `.claude/TODO.md`'s new pending entry for the full scope note.
+
+---
+
+## 🗂 Previous session
+
+**Date:** 2026-08-23 — SaaS platform P&L (dépenses/revenus/bénéfice) feature — brainstorm → spec → plan → subagent-driven build, both repos
+
+### Subject
+
+Full feature built end-to-end on `dev-barry`: a period-scoped P&L view (revenu / dépenses plateforme / bénéfice) for the SaaS ADMIN, entirely additive to the existing admin reporting surface. Built via `superpowers:brainstorming` → design spec → `superpowers:writing-plans` (12-task plan) → `superpowers:subagent-driven-development` (fresh implementer + reviewer per task, two final whole-branch reviews, two fix waves), then several live architecture corrections directed mid-session, then an in-progress sidebar restructuring. Spec: `.claude/2026-08-23-depenses-revenus-saas-design.md`. Plan: `.claude/2026-08-23-depenses-revenus-saas-plan.md`.
+
+### Backend — committed (`7654bff..7f1eb9e`, 8 commits)
+
+- **V85/V86 migrations**: `category_depense_plateforme` + `depense_plateforme` (global, admin-only reference/expense tables, no tenant FK) + `revenu` (one row per validated subscription payment, backfilled from existing `VALIDE` `paiement_abonnement` rows).
+- **New `org.store.plateforme` module**: `CategoryDepensePlateforme` CRUD + `DepensePlateforme` CRUD (mirrors the existing tenant-scoped `depense` module minus `Entreprise`/`Magasin` scoping, plus an optional `country` attribution on `DepensePlateforme`). New ADMIN-only permissions `PLATFORM_EXPENSE_*`, `PLATFORM_EXPENSE_CATEGORY_*`.
+- **`Revenu` entity + `PlateformeReportingController`**: new `GET /api/v1/admin/plateforme/reporting/period` (`benefice = revenu − depensesPlateforme`), gated by a **new dedicated** `PLATFORM_REPORT_READ` — deliberately **not** `REPORT_FINANCIAL` (discovered mid-plan that permission is over-granted to OWNER/MANAGER in `roles-permissions.yml` for an unrelated future page).
+- **Nothing existing touched** beyond one line (+one import) in `PaiementAbonnementServiceImpl.validate()`.
+- **Final whole-branch review (opus)** found 1 Critical + 3 Important, fixed in one wave: originally `Revenu` was written via `@Async @EventListener`, which the review caught as a phantom-revenue race (event fires mid-transaction, before `validate()`'s own commit). **Then corrected further by direct user instruction mid-fix**: removed the event/listener entirely (`RevenuRecordedEvent`, `RevenuEventListener` deleted) — `PaiementAbonnementServiceImpl.validate()` now calls `revenuService.record(...)` **directly and synchronously**, same transaction, no race possible at all. Also fixed: V86 backfill null-guard (legacy rows with null `date_paiement`/`montant_final` no longer abort the migration), new `PlatformPermissionsScopeTest` asserting all `PLATFORM_*` strings stay ADMIN-only. Hit and resolved a real circular Spring bean cycle from the direct-call wiring (`RevenuServiceImpl` swapped its `IAbonnementService` dependency for `AbonnementDomainService`, then that dependency was removed entirely by the next change below). **1041 → 1040 tests, BUILD SUCCESS.**
+
+### Backend — uncommitted (live in working tree, not yet committed)
+
+Two further architecture corrections directed live by the user, both verified green (**1040/1040**, full suite):
+- **`RevenuPeriodFilter`/`PlateformePeriodFilter`: `abonnementId` → `entrepriseId`** — the public reporting filter now takes the entreprise id directly (no more `Abonnement`-1:1-resolution step). `RevenuServiceImpl.getTotalForPeriod` simplified to a straight pass-through; `RevenuDomainService.sumByPeriod` collapsed to a single-param method.
+- **`RevenuRecordCommand`: `entrepriseId`/`countryId` → the `Entreprise` entity directly** — since `record()` is now called synchronously in the same Hibernate session as `validate()`, passing the already-loaded `Entreprise` (with `.getCountry()` reachable) is safe and skips two `findById` round-trips. `RevenuServiceImpl` now depends on nothing but `RevenuDomainService`.
+- **New `PLATFORM_EXPENSE_ACCESS` / `PLATFORM_REPORT_ACCESS`** added to `roles-permissions.yml` (ADMIN only) — module-level "access ticket" permissions (mirrors the existing `EXPENSES_ACCESS`/`ADMIN_ACCESS` pattern) for the sidebar restructuring below, not yet wired into any controller (frontend-shell-only gating).
+
+### Frontend — committed (`bf4431f..4de893e`, 5 commits)
+
+- **Shared `dateHelpers.ts`**: added `quarter`/`year` period presets (purely additive — 4 existing pages pick them up automatically).
+- **`features/plateforme-depense/` DDD slice** (~30 files: DTOs, repository ports, api adapters, TanStack hooks) — reuses existing `Country`/`useCountries()`, `MoyenPaiementResponse`/`useMoyenPaiementList()`.
+- **Admin CRUD page** `/dashboard/administration/depenses` (table/form/filters, category manager dialog) + **reporting page** `/dashboard/administration/depenses/reporting` (period + country/abonnement filters, 3 KPI cards).
+- **Final whole-branch review (opus)** found 4 Important, fixed in one wave: `DepensePlateformeForm` computed but never rendered 2 validation errors (silent no-op submit); abonnement combobox fell back to a raw UUID; row-actions kebab fired edit directly instead of opening a menu; reporting tab's declared permission (`PLATFORM_REPORT_READ`) didn't match its actual route guard (`PLATFORM_EXPENSE_READ`) — added a dedicated nested layout. **342/342 tests, tsc clean** (one pre-existing unrelated `CouponTable.test.tsx` error, untouched throughout).
+
+### Frontend — uncommitted (live in working tree, not yet committed)
+
+- **`abonnementId` → `entrepriseId` rename** matching the backend, throughout `PlateformePeriodFilter` type + api adapter. The reporting page's abonnement combobox (`useAbonnementAdminList`) replaced with the existing `useEntrepriseSelectList` hook (already used by `EntreprisesTab.tsx`, hits the existing `GET /api/v1/entreprises/select?q=` endpoint) — live search-driven, not a bulk 100-row fetch.
+- **Sidebar restructuring — IN PROGRESS, not finished.** User wants: "Dépenses plateforme" as its own top-level sidebar module (`PLATFORM_EXPENSE_ACCESS`) with 2 tabs — **Listing** (existing table) and **Category** (category CRUD promoted out of the "Gérer les catégories" dialog into a real tab/page) — and a separate new **"Revenu"** top-level sidebar module (`PLATFORM_REPORT_ACCESS`) showing the P&L reporting page, moved out from under `depenses/`. Done so far: new `CategoryDepensePlateformeFormDialog` + `CategoryDepensePlateformePage` (the new Category tab's page). **Still open**: move the reporting page/component to a new `administration/revenu/` route, delete the now-superseded `CategoryDepensePlateformeManagerDialog`, update `depenses/_tabs.ts`/`depenses/layout.tsx` (liste+category, `PLATFORM_EXPENSE_ACCESS`), add both new modules to `DashboardShell.tsx`'s `NAV_ITEMS`/`NAV_GROUPS` + sidebar i18n labels, update the `depensesPlateforme`/new `revenu` i18n namespaces, re-run `tsc`/`vitest`.
+
+### Open follow-ups
+
+- **Finish the sidebar restructuring** (see above) — biggest open item.
+- **Nothing has been committed since `7f1eb9e` (backend) / `4de893e` (frontend)** — the entrepriseId rename, the `RevenuRecordCommand` simplification, the two new `_ACCESS` permissions, and all sidebar-restructuring work are uncommitted. Awaiting authorization to commit (local only, per project rule — no push without separate authorization).
+- Manual UI check once the sidebar restructuring lands: both new sidebar entries visible/gated correctly, category tab CRUD, revenu module reporting page, entreprise search-select combobox.
+- The `.claude/2026-08-23-depenses-revenus-saas-plan.md`'s Task 5/6 code blocks still describe the original event-based `Revenu` design (superseded) — left as historical record with an inline correction note rather than fully rewritten (same treatment as the earlier rule-30/32 fix).
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-22 — Catalogue bulk delete (backend + frontend) + i18n import dialogs + useEffect fix
 
 ### Subject
@@ -1585,3 +1671,26 @@ For the morning session of the same day, see the earlier journal entry below ("2
   Titre à gauche, barre de recherche au centre, boutons Filtre + Add new à droite.
   À appliquer sur tous les listings (achats, ventes, employés, produits, stock…).
 - Ne pas toucher à Pagination.tsx sans autorisation explicite.
+
+---
+
+## Session 2026-08-23 — Branch `refonte-catalogue`
+
+### Ce qui a été fait
+
+**Backend (`store/`) :**
+
+- **Test fix `ExcelEntreeStockRowServiceImplTest`** : colonne `uniteMesure` insérée à l'index 3 dans tous les `buildFile()`. `should_collect_errors_across_multiple_rows` corrigé : row1 reçoit `nomProduit = "Produit B"` pour ne pas être traitée comme une ligne de padding par le blank-row check. 11/11 tests verts, suite complète 1014/1014.
+- **Excel parsers — ignorer lignes vides** : `ExcelEntreeStockRowServiceImpl` + `ExcelProductRowServiceImpl` : check multi-champs après extraction, skip silencieux si tous les champs obligatoires sont vides. Élimine les faux positifs "référence obligatoire" sur fichiers Excel avec lignes de padding.
+- **UniteMesure — résolution par code ou symbole** : `UniteMesureRepository.findByCodeOrSymbole` (JPQL, `LOWER(code) = LOWER(:v) OR LOWER(symbole) = LOWER(:v)`). Chaîne complète DomainService → IService → ServiceImpl. `resolveIdOrPiece` + `CatalogueProduitServiceImpl` migrent vers la nouvelle méthode. Les 3 imports acceptent "KG", "kg", "Kg", etc.
+- **Queries anti-doublon insensibles à la casse** : `CatalogueProduitRepository.existsByReferenceAndLibelleAndActiviteEconomiqueId`, `QualityRepository.findByLibelleAndEntrepriseId`, `CategoryProductRepository.findByLibelleAndEntrepriseId` → `@Query` avec `LOWER()`. Audit complet : aucun doublon en base confirmé par 4 requêtes SQL.
+
+**Frontend (`store-frontend/`) :**
+
+- **Import dialogs — guide colonnes Excel** : `CatalogueImportDialog`, `ProductExcelImportDialog`, `StockImportDialog` : bloc visuel numéroté (nom colonne + badge obligatoire rouge / optionnel muted). Titre "Votre fichier Excel doit contenir ces colonnes (dans l'ordre)". i18n FR + EN.
+- **GitLab CI fix** : job `test` sauté sur les MRs car `CI_COMMIT_BRANCH` non défini dans un pipeline MR. Ajout de `if: CI_PIPELINE_SOURCE == "merge_request_event"`. Lint + build + tests tournent désormais sur les MRs et sur `main`. Vercel gère le déploiement automatiquement.
+
+### À faire à la prochaine session
+
+- Commits en attente (branch `refonte-catalogue`) : backend (parsers Excel, uniteMesure résolution, queries LOWER) + frontend (import dialogs column guide, gitlab-ci fix).
+- Vérifier l'UX catalogue (checkbox, bulk delete, sélection reset) après les changements de cette session.
