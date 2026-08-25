@@ -37,7 +37,7 @@ public class DepensePlateformeDomainService extends GlobalService<DepensePlatefo
 
     public Page<DepensePlateformeResponse> findResponsesByFilter(DepensePlateformeFilter filter) {
         return repository.findResponsesByFilter(
-                filter.categoryId(), filter.moyenPaiementId(), filter.countryId(),
+                filter.categoryId(), filter.moyenPaiementId(), filter.countryId(), filter.actif(),
                 filter.libelle(), LikePatternHelper.toLikePattern(filter.libelle()),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());

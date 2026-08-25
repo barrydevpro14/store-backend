@@ -11,6 +11,7 @@ public record DepensePlateformeFilter(
         UUID categoryId,
         UUID moyenPaiementId,
         UUID countryId,
+        Boolean actif,
         String libelle,
         @DatePattern String startDate,
         @DatePattern String endDate,

@@ -5,6 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.audit.application.event.AuditEvent;
+import org.store.audit.application.service.IAuditEventPublisher;
+import org.store.audit.domain.enums.AuditAction;
+import org.store.audit.domain.enums.AuditEntityType;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
@@ -17,14 +21,20 @@ import org.store.plateforme.application.service.impl.DepensePlateformeServiceImp
 import org.store.plateforme.domain.model.CategoryDepensePlateforme;
 import org.store.plateforme.domain.model.DepensePlateforme;
 import org.store.plateforme.domain.service.DepensePlateformeDomainService;
+import org.store.security.application.dto.UserPrincipal;
+import org.store.security.application.service.ICurrentUserService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,11 +46,17 @@ class DepensePlateformeServiceImplTest {
     @Mock private IMoyenPaiementService moyenPaiementService;
     @Mock private CountryDomainService countryDomainService;
     @Mock private ValidatorService validatorService;
+    @Mock private IAuditEventPublisher auditEventPublisher;
+    @Mock private ICurrentUserService currentUserService;
     @InjectMocks private DepensePlateformeServiceImpl service;
 
     private static final UUID CATEGORY_ID = UUID.randomUUID();
     private static final UUID MOYEN_ID = UUID.randomUUID();
     private static final UUID COUNTRY_ID = UUID.randomUUID();
+
+    private static UserPrincipal callerFixture() {
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), null, null, "admin", null, null, "ADMIN", List.of());
+    }
 
     private CategoryDepensePlateforme category() {
         CategoryDepensePlateforme c = new CategoryDepensePlateforme();
@@ -83,6 +99,7 @@ class DepensePlateformeServiceImplTest {
         when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
         when(countryDomainService.findById(COUNTRY_ID)).thenReturn(country());
         when(domainService.create(eq(request), any(), any(), any())).thenReturn(saved);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
 
         DepensePlateformeResponse response = service.create(request);
 
@@ -107,10 +124,115 @@ class DepensePlateformeServiceImplTest {
         when(categoryService.findById(CATEGORY_ID)).thenReturn(category());
         when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
         when(domainService.create(eq(request), any(), any(), eq(null))).thenReturn(saved);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
 
         DepensePlateformeResponse response = service.create(request);
 
         assertThat(response.country()).isNull();
+    }
+
+    @Test
+    void create_should_publish_audit_event_on_success() {
+        DepensePlateformeRequest request = new DepensePlateformeRequest(
+                CATEGORY_ID, "Serveur AWS", null, LocalDate.of(2026, 8, 1),
+                new BigDecimal("500000.00"), MOYEN_ID, null);
+
+        DepensePlateforme saved = new DepensePlateforme();
+        saved.setId(UUID.randomUUID());
+        saved.setCategory(category());
+        saved.setLibelle("Serveur AWS");
+        saved.setMontant(new BigDecimal("500000.00"));
+        saved.setModePaiement(moyen());
+
+        when(categoryService.findById(CATEGORY_ID)).thenReturn(category());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
+        when(domainService.create(eq(request), any(), any(), eq(null))).thenReturn(saved);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        service.create(request);
+
+        verify(auditEventPublisher, times(1)).publish(argThat(event ->
+                event.action() == AuditAction.DEPENSE_PLATEFORME_CREATED
+                        && event.entityType() == AuditEntityType.DEPENSE_PLATEFORME
+                        && event.entrepriseId() == null
+                        && event.magasinId() == null));
+    }
+
+    @Test
+    void update_should_publish_audit_event_on_success() {
+        UUID id = UUID.randomUUID();
+        DepensePlateformeRequest request = new DepensePlateformeRequest(
+                CATEGORY_ID, "Serveur AWS renommé", null, LocalDate.of(2026, 8, 1),
+                new BigDecimal("600000.00"), MOYEN_ID, null);
+
+        DepensePlateforme existing = new DepensePlateforme();
+        existing.setId(id);
+        existing.setCategory(category());
+        existing.setLibelle("Serveur AWS");
+        existing.setMontant(new BigDecimal("500000.00"));
+        existing.setModePaiement(moyen());
+
+        when(domainService.findById(id)).thenReturn(existing);
+        when(categoryService.findById(CATEGORY_ID)).thenReturn(category());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
+        when(domainService.save(existing)).thenReturn(existing);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        DepensePlateformeResponse response = service.update(id, request);
+
+        assertThat(response.libelle()).isEqualTo("Serveur AWS renommé");
+        verify(auditEventPublisher, times(1)).publish(argThat(event ->
+                event.action() == AuditAction.DEPENSE_PLATEFORME_UPDATED
+                        && event.entityType() == AuditEntityType.DEPENSE_PLATEFORME
+                        && event.entrepriseId() == null
+                        && event.magasinId() == null));
+    }
+
+    @Test
+    void delete_should_deactivate_instead_of_hard_delete() {
+        UUID id = UUID.randomUUID();
+        DepensePlateforme existing = new DepensePlateforme();
+        existing.setId(id);
+        existing.setLibelle("Serveur AWS");
+        existing.setActif(true);
+
+        when(domainService.findById(id)).thenReturn(existing);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        service.delete(id);
+
+        verify(domainService).save(argThat(d -> !d.isActif()));
+        verify(domainService, never()).delete(any());
+    }
+
+    @Test
+    void delete_should_publish_audit_event() {
+        UUID id = UUID.randomUUID();
+        DepensePlateforme existing = new DepensePlateforme();
+        existing.setId(id);
+        existing.setLibelle("Serveur AWS");
+        existing.setActif(true);
+
+        when(domainService.findById(id)).thenReturn(existing);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        service.delete(id);
+
+        verify(auditEventPublisher, times(1)).publish(argThat(event ->
+                event.action() == AuditAction.DEPENSE_PLATEFORME_DELETED
+                        && event.entityType() == AuditEntityType.DEPENSE_PLATEFORME
+                        && event.entrepriseId() == null
+                        && event.magasinId() == null));
+    }
+
+    @Test
+    void findAll_should_pass_actif_filter_through() {
+        DepensePlateformeFilter filter = new DepensePlateformeFilter(null, null, null, false, null, null, null, 0, 10);
+        when(domainService.findResponsesByFilter(filter)).thenReturn(org.springframework.data.domain.Page.empty());
+
+        service.findAll(filter);
+
+        verify(domainService).findResponsesByFilter(argThat(f -> f.actif() == Boolean.FALSE));
     }
 
     @Test
@@ -126,7 +248,7 @@ class DepensePlateformeServiceImplTest {
 
     @Test
     void findAll_should_validate_filter_before_delegating() {
-        DepensePlateformeFilter filter = new DepensePlateformeFilter(null, null, null, null, null, null, 0, 10);
+        DepensePlateformeFilter filter = new DepensePlateformeFilter(null, null, null, null, null, null, null, 0, 10);
         when(domainService.findResponsesByFilter(filter)).thenReturn(org.springframework.data.domain.Page.empty());
 
         service.findAll(filter);

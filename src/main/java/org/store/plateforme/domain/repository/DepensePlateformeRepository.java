@@ -20,6 +20,7 @@ public interface DepensePlateformeRepository extends BaseRepository<DepensePlate
             WHERE (:categoryId IS NULL OR depense.category.id = :categoryId)
               AND (:moyenPaiementId IS NULL OR depense.modePaiement.id = :moyenPaiementId)
               AND (:countryId IS NULL OR depense.country.id = :countryId)
+              AND (:actif IS NULL OR depense.actif = :actif)
               AND (:libelle IS NULL OR :libelle = '' OR LOWER(depense.libelle) LIKE :libellePattern)
               AND (:startDate IS NULL OR :startDate = '' OR depense.dateDepense >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR depense.dateDepense <= CAST(:endDate AS date))
@@ -29,6 +30,7 @@ public interface DepensePlateformeRepository extends BaseRepository<DepensePlate
             @Param("categoryId") UUID categoryId,
             @Param("moyenPaiementId") UUID moyenPaiementId,
             @Param("countryId") UUID countryId,
+            @Param("actif") Boolean actif,
             @Param("libelle") String libelle,
             @Param("libellePattern") String libellePattern,
             @Param("startDate") String startDate,
@@ -44,6 +46,7 @@ public interface DepensePlateformeRepository extends BaseRepository<DepensePlate
             WHERE (:categoryId IS NULL OR depense.category.id = :categoryId)
               AND (:moyenPaiementId IS NULL OR depense.modePaiement.id = :moyenPaiementId)
               AND (:countryId IS NULL OR depense.country.id = :countryId)
+              AND depense.actif = true
               AND (:libelle IS NULL OR :libelle = '' OR LOWER(depense.libelle) LIKE :libellePattern)
               AND (:startDate IS NULL OR :startDate = '' OR depense.dateDepense >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR depense.dateDepense <= CAST(:endDate AS date))
@@ -64,6 +67,7 @@ public interface DepensePlateformeRepository extends BaseRepository<DepensePlate
             WHERE (:startDate IS NULL OR :startDate = '' OR depense.dateDepense >= CAST(:startDate AS date))
               AND (:endDate   IS NULL OR :endDate   = '' OR depense.dateDepense <= CAST(:endDate AS date))
               AND (:countryId IS NULL OR depense.country.id = :countryId)
+              AND depense.actif = true
             """)
     BigDecimal sumByPeriod(@Param("startDate") String startDate,
                            @Param("endDate") String endDate,

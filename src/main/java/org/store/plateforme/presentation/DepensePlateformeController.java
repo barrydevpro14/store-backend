@@ -37,13 +37,14 @@ public class DepensePlateformeController {
     public ResponseEntity<Page<DepensePlateformeResponse>> list(@RequestParam(required = false) UUID categoryId,
                                                                 @RequestParam(required = false) UUID moyenPaiementId,
                                                                 @RequestParam(required = false) UUID countryId,
+                                                                @RequestParam(required = false) Boolean actif,
                                                                 @RequestParam(required = false) String libelle,
                                                                 @RequestParam(required = false) String startDate,
                                                                 @RequestParam(required = false) String endDate,
                                                                 @RequestParam(defaultValue = "0") int page,
                                                                 @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(service.findAll(
-                new DepensePlateformeFilter(categoryId, moyenPaiementId, countryId, libelle, startDate, endDate, page, size)));
+                new DepensePlateformeFilter(categoryId, moyenPaiementId, countryId, actif, libelle, startDate, endDate, page, size)));
     }
 
     @GetMapping("/total")
@@ -55,7 +56,7 @@ public class DepensePlateformeController {
                                                                        @RequestParam(required = false) String startDate,
                                                                        @RequestParam(required = false) String endDate) {
         return ResponseEntity.ok(service.computeTotal(
-                new DepensePlateformeFilter(categoryId, moyenPaiementId, countryId, libelle, startDate, endDate, 0, 1)));
+                new DepensePlateformeFilter(categoryId, moyenPaiementId, countryId, null, libelle, startDate, endDate, 0, 1)));
     }
 
     @GetMapping("/{id}")

@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -13,6 +17,7 @@ import org.store.common.i18n.IMessageSourceService;
 import org.store.country.application.dto.CountryResponse;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeSummaryResponse;
+import org.store.plateforme.application.dto.DepensePlateformeFilter;
 import org.store.plateforme.application.dto.DepensePlateformeRequest;
 import org.store.plateforme.application.dto.DepensePlateformeResponse;
 import org.store.plateforme.application.dto.DepensePlateformeTotalResponse;
@@ -20,8 +25,10 @@ import org.store.plateforme.application.service.IDepensePlateformeService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -83,5 +90,18 @@ class DepensePlateformeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.montantTotal").value(750000.00))
                 .andExpect(jsonPath("$.nombreDepenses").value(3));
+    }
+
+    @Test
+    void list_should_accept_actif_query_param() throws Exception {
+        Page<DepensePlateformeResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+        ArgumentCaptor<DepensePlateformeFilter> captor = ArgumentCaptor.forClass(DepensePlateformeFilter.class);
+        when(service.findAll(captor.capture())).thenReturn(page);
+
+        mockMvc.perform(get(DepensePlateformeController.BASE_PATH)
+                        .param("actif", "false"))
+                .andExpect(status().isOk());
+
+        assertThat(captor.getValue().actif()).isFalse();
     }
 }
