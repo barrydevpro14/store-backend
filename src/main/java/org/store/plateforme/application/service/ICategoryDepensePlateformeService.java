@@ -1,6 +1,7 @@
 package org.store.plateforme.application.service;
 
 import org.springframework.data.domain.Page;
+import org.store.common.dto.DataSelect;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeFilter;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeRequest;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeResponse;
@@ -17,6 +18,8 @@ public interface ICategoryDepensePlateformeService {
     CategoryDepensePlateformeResponse findResponseById(UUID id);
 
     Page<CategoryDepensePlateformeResponse> findAll(CategoryDepensePlateformeFilter filter);
+
+    Page<DataSelect> findSelectItems(String q, int page, int size);
 
     CategoryDepensePlateformeResponse update(UUID id, CategoryDepensePlateformeRequest request);
 

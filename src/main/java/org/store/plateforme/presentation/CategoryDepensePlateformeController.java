@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.store.common.dto.DataSelect;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeFilter;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeRequest;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeResponse;
@@ -40,6 +41,14 @@ public class CategoryDepensePlateformeController {
                                                                         @RequestParam(defaultValue = "0") int page,
                                                                         @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(service.findAll(new CategoryDepensePlateformeFilter(nom, actif, startDate, endDate, page, size)));
+    }
+
+    @GetMapping("/select")
+    @PreAuthorize("hasAuthority('PLATFORM_EXPENSE_CATEGORY_READ')")
+    public ResponseEntity<Page<DataSelect>> select(@RequestParam(required = false) String q,
+                                                                             @RequestParam(defaultValue = "0") int page,
+                                                                             @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(service.findSelectItems(q, page, size));
     }
 
     @GetMapping("/{id}")

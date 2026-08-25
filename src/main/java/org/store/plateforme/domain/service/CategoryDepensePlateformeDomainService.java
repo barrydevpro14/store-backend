@@ -1,7 +1,9 @@
 package org.store.plateforme.domain.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.store.common.dto.DataSelect;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeFilter;
@@ -34,5 +36,9 @@ public class CategoryDepensePlateformeDomainService extends GlobalService<Catego
                 filter.actif(),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());
+    }
+
+    public Page<DataSelect> findSelectItems(String q, Pageable pageable) {
+        return repository.findSelectItems(q, LikePatternHelper.toLikePattern(q), pageable);
     }
 }

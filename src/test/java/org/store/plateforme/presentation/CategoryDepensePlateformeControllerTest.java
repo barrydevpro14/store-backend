@@ -3,19 +3,28 @@ package org.store.plateforme.presentation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.store.common.dto.DataSelect;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeRequest;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeResponse;
 import org.store.plateforme.application.service.ICategoryDepensePlateformeService;
 
+import java.util.List;
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,6 +58,17 @@ class CategoryDepensePlateformeControllerTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.nom").value("Hébergement"));
+    }
+
+    @Test
+    void should_return_200_with_active_select_items() throws Exception {
+        DataSelect item = new DataSelect(UUID.randomUUID().toString(), "Hébergement");
+        when(service.findSelectItems(isNull(), eq(0), eq(10)))
+                .thenReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1));
+
+        mockMvc.perform(get(CategoryDepensePlateformeController.BASE_PATH + "/select"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].label").value("Hébergement"));
     }
 
     @Test

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.store.common.dto.DataSelect;
 import org.store.common.repository.BaseRepository;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeResponse;
 import org.store.plateforme.domain.model.CategoryDepensePlateforme;
@@ -40,5 +41,23 @@ public interface CategoryDepensePlateformeRepository extends BaseRepository<Cate
             @Param("actif") Boolean actif,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
+            Pageable pageable);
+
+    @Query(value = """
+            SELECT new org.store.common.dto.DataSelect(CAST(c.id AS string), c.nom)
+            FROM CategoryDepensePlateforme c
+            WHERE c.actif = true
+              AND (:q IS NULL OR :q = '' OR LOWER(c.nom) LIKE :qPattern)
+            ORDER BY c.nom ASC
+            """,
+           countQuery = """
+            SELECT COUNT(c)
+            FROM CategoryDepensePlateforme c
+            WHERE c.actif = true
+              AND (:q IS NULL OR :q = '' OR LOWER(c.nom) LIKE :qPattern)
+            """)
+    Page<DataSelect> findSelectItems(
+            @Param("q") String q,
+            @Param("qPattern") String qPattern,
             Pageable pageable);
 }

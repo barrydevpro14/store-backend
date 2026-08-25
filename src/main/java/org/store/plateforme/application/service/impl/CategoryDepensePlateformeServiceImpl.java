@@ -1,12 +1,14 @@
 package org.store.plateforme.application.service.impl;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
+import org.store.common.dto.DataSelect;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeFilter;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeRequest;
@@ -66,6 +68,11 @@ public class CategoryDepensePlateformeServiceImpl implements ICategoryDepensePla
     @Override
     public Page<CategoryDepensePlateformeResponse> findAll(CategoryDepensePlateformeFilter filter) {
         return domainService.findResponses(filter);
+    }
+
+    @Override
+    public Page<DataSelect> findSelectItems(String q, int page, int size) {
+        return domainService.findSelectItems(q, PageRequest.of(page, size));
     }
 
     /** Met à jour la catégorie après contrôle d'unicité du nom (si changé) et publie l'événement d'audit associé. */

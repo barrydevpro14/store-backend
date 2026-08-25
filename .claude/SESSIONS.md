@@ -9,6 +9,47 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-25 — Audit integration + soft delete for platform expenses/categories (backend, via subagent-driven-development)
+
+### Subject
+
+Picked up the 2026-08-24 session's top TODO item. Two design questions were resolved live with the user before/during implementation (rule 44), then the whole feature was executed via `superpowers:subagent-driven-development` in an isolated git worktree (`feature/plateforme-audit-softdelete`, forked from `dev-barry`), merged back at the end.
+
+### Design decisions (confirmed live, not assumed)
+
+1. **Soft-delete reuses the existing `actif` boolean** on both `CategoryDepensePlateforme` and `DepensePlateforme` — no dedicated `deleted` field, matching the only pattern used elsewhere in the codebase (`Magasin`, `Entreprise`, `Country`, `Role`, `PlanAbonnement`, `Coupon`, `CategoryDepense` all reuse `actif` the same way). Accepted trade-off: an admin manually deactivating a row and one who "deletes" it are indistinguishable in the data.
+2. **`DepensePlateforme.actif=false` rows are excluded from `computeTotal`/`sumByPeriod`** (the P&L `benefice` reporting path) but **stay visible in the plain paginated listing** — same asymmetry `CategoryDepensePlateforme` already had via its `actif` filter param.
+3. Both entities are global/non-tenant-scoped — every published `AuditEvent` hardcodes `entrepriseId=null`/`magasinId=null`.
+
+### Backend — built via subagent-driven-development, merged to `dev-barry` (commit `39c4c5c`)
+
+Plan doc: `.claude/2026-08-25-plateforme-depense-audit-softdelete-plan.md`. 3 tasks, each implemented + task-reviewed clean, then one final whole-branch review + one fix wave:
+
+- **Task 1 (foundation)**: `DepensePlateforme.actif` field, V87 migration, 6 new `AuditAction` + 2 new `AuditEntityType` constants.
+- **Task 2**: `CategoryDepensePlateformeServiceImpl` — audit-event publishing on create/update/delete; `delete()` converted from hard delete to soft delete (`setActif(false)` + save).
+- **Task 3**: same for `DepensePlateformeServiceImpl`, plus an optional `actif` filter on the paginated listing, plus the P&L aggregate queries (`computeTotal`, `sumByPeriod`) hardcoded to `AND depense.actif = true` unconditionally (no way for a caller to include soft-deleted rows in a total).
+
+**Final whole-branch review (opus)** found 3 Important items — all judged plan/design gaps, not implementer defects — resolved via 3 more explicit user decisions rather than controller rulings:
+- `DepensePlateformeResponse` had no `actif` field (a soft-deleted row was filterable but unreadable) → **fixed**, field added.
+- `DepensePlateforme` had no reactivation path once soft-deleted → **fixed**, `actif` added to `DepensePlateformeRequest`, honored in `create`/`update` (mirrors `CategoryDepensePlateforme`'s existing capability exactly).
+- Soft-deleting a `CategoryDepensePlateforme` permanently reserves its `nom` (`existsByNom` ignores `actif`) → **decided to stay as-is**, no code change — an admin must reactivate the old category instead of creating a new one with the same name.
+
+One scoped re-review confirmed both fixes addressed with no new breakage. **1053/1053 tests green.**
+
+### Merge
+
+Isolated worktree (`.worktrees/plateforme-audit-softdelete`) merged locally into `dev-barry` (`git merge --no-edit`, commit `39c4c5c`). Along the way, fixed a `.gitignore` bug from this session's own worktree setup: an earlier `>>` append had no trailing newline on the prior line, merging `.superpowers/` and a new `.worktrees/` entry into one broken pattern `.superpowers/.worktrees/` — split back into two correct lines (commit `b493dc6`). Full suite re-verified on the merged result with `./mvnw clean test` (an initial non-clean run showed 1109 tests from stale `target/surefire-reports/` leftovers — 145 report files vs 137 actual test source files — clean run confirmed the true count is 1053). **Not pushed** — local merge only, per project rule (push needs separate authorization).
+
+### Open follow-ups
+
+- **Frontend**: `depenses-plateforme` (Listing + Category tabs) needs updating to match — `actif`/inactive badge on `DepensePlateforme` rows, a reactivate action for both entities now that the backend supports it, and a decision on whether "delete" UI copy should change now that it's a soft delete. See `.claude/TODO.md`.
+- **Not pushed to remote** — `dev-barry` is 7 commits ahead of `origin/dev-barry` locally (this session's work only — the merge commit, the `.gitignore` fix, and the 5 branch commits it brought in). Awaiting explicit push authorization.
+- Deferred Minor findings from the task/final reviews (cosmetic only, not blocking): no doc-comment on `DepensePlateforme.actif`; some audit-publish tests assert `action()`/`entityType()` but not full event payload (`entityId`/`entityLabel`/`performedBy`); two `delete`-path tests in `DepensePlateformeServiceImplTest` duplicate setup instead of merging into one.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-24 — SaaS platform P&L sidebar restructuring completed + filter UI parity rebuild + CouponTable test fix (frontend only)
 
 ### Subject

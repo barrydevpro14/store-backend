@@ -5,10 +5,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
+import org.store.common.dto.DataSelect;
 import org.store.common.exceptions.UniqueResourceException;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeRequest;
 import org.store.plateforme.application.dto.CategoryDepensePlateformeResponse;
@@ -25,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -107,6 +113,18 @@ class CategoryDepensePlateformeServiceImplTest {
         verify(auditEventPublisher, times(1)).publish(argThat(event ->
                 event.action() == AuditAction.CATEGORY_DEPENSE_PLATEFORME_UPDATED
                         && event.entityType() == AuditEntityType.CATEGORY_DEPENSE_PLATEFORME));
+    }
+
+    @Test
+    void findSelectItems_should_delegate_to_domainService_with_pageable() {
+        DataSelect item = new DataSelect(UUID.randomUUID().toString(), "Hébergement");
+        Page<DataSelect> page = new PageImpl<>(List.of(item));
+        when(domainService.findSelectItems(eq("héb"), any(Pageable.class))).thenReturn(page);
+
+        Page<DataSelect> result = service.findSelectItems("héb", 0, 10);
+
+        assertThat(result.getContent()).containsExactly(item);
+        verify(domainService).findSelectItems("héb", PageRequest.of(0, 10));
     }
 
     @Test
