@@ -39,3 +39,6 @@ build/
 ### Environment ###
 .env
 .env.*
+
+.superpowers/
+.worktrees/

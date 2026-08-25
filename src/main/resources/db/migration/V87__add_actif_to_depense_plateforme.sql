@@ -1,0 +1,1 @@
+ALTER TABLE depense_plateforme ADD COLUMN actif BOOLEAN NOT NULL DEFAULT true;
