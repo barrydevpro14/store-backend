@@ -16,6 +16,7 @@ public record DepensePlateformeRequest(
         @NotNull LocalDate dateDepense,
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal montant,
         @NotNull UUID moyenPaiementId,
-        UUID countryId
+        UUID countryId,
+        Boolean actif
 ) {
 }

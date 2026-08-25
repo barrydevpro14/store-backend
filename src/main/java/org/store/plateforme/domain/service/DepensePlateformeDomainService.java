@@ -32,12 +32,13 @@ public class DepensePlateformeDomainService extends GlobalService<DepensePlatefo
         depense.setMontant(request.montant());
         depense.setModePaiement(moyen);
         depense.setCountry(country);
+        depense.setActif(request.actif() == null || request.actif());
         return save(depense);
     }
 
     public Page<DepensePlateformeResponse> findResponsesByFilter(DepensePlateformeFilter filter) {
         return repository.findResponsesByFilter(
-                filter.categoryId(), filter.moyenPaiementId(), filter.countryId(),
+                filter.categoryId(), filter.moyenPaiementId(), filter.countryId(), filter.actif(),
                 filter.libelle(), LikePatternHelper.toLikePattern(filter.libelle()),
                 filter.startDate(), filter.endDate(),
                 filter.toPageable());

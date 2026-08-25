@@ -37,4 +37,6 @@ public class DepensePlateforme extends AuditableEntity {
     /** Nullable — null = global/shared cost, not attributable to one market. */
     @ManyToOne(fetch = FetchType.LAZY)
     private Country country;
+
+    private boolean actif = true;
 }
