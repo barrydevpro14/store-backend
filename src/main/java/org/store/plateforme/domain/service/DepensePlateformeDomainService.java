@@ -32,6 +32,7 @@ public class DepensePlateformeDomainService extends GlobalService<DepensePlatefo
         depense.setMontant(request.montant());
         depense.setModePaiement(moyen);
         depense.setCountry(country);
+        depense.setActif(request.actif() == null || request.actif());
         return save(depense);
     }
 

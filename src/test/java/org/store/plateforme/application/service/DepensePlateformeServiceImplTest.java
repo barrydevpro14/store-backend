@@ -85,7 +85,7 @@ class DepensePlateformeServiceImplTest {
     void create_should_resolve_country_when_countryId_present() {
         DepensePlateformeRequest request = new DepensePlateformeRequest(
                 CATEGORY_ID, "Serveur AWS", null, LocalDate.of(2026, 8, 1),
-                new BigDecimal("500000.00"), MOYEN_ID, COUNTRY_ID);
+                new BigDecimal("500000.00"), MOYEN_ID, COUNTRY_ID, null);
 
         DepensePlateforme saved = new DepensePlateforme();
         saved.setId(UUID.randomUUID());
@@ -112,7 +112,7 @@ class DepensePlateformeServiceImplTest {
     void create_should_pass_null_country_when_countryId_absent() {
         DepensePlateformeRequest request = new DepensePlateformeRequest(
                 CATEGORY_ID, "Outil SaaS global", null, LocalDate.of(2026, 8, 1),
-                new BigDecimal("50000.00"), MOYEN_ID, null);
+                new BigDecimal("50000.00"), MOYEN_ID, null, null);
 
         DepensePlateforme saved = new DepensePlateforme();
         saved.setId(UUID.randomUUID());
@@ -135,7 +135,7 @@ class DepensePlateformeServiceImplTest {
     void create_should_publish_audit_event_on_success() {
         DepensePlateformeRequest request = new DepensePlateformeRequest(
                 CATEGORY_ID, "Serveur AWS", null, LocalDate.of(2026, 8, 1),
-                new BigDecimal("500000.00"), MOYEN_ID, null);
+                new BigDecimal("500000.00"), MOYEN_ID, null, null);
 
         DepensePlateforme saved = new DepensePlateforme();
         saved.setId(UUID.randomUUID());
@@ -159,11 +159,35 @@ class DepensePlateformeServiceImplTest {
     }
 
     @Test
+    void create_with_actif_false_should_produce_inactive_depense() {
+        DepensePlateformeRequest request = new DepensePlateformeRequest(
+                CATEGORY_ID, "Serveur AWS", null, LocalDate.of(2026, 8, 1),
+                new BigDecimal("500000.00"), MOYEN_ID, null, false);
+
+        DepensePlateforme saved = new DepensePlateforme();
+        saved.setId(UUID.randomUUID());
+        saved.setCategory(category());
+        saved.setLibelle("Serveur AWS");
+        saved.setMontant(new BigDecimal("500000.00"));
+        saved.setModePaiement(moyen());
+        saved.setActif(false);
+
+        when(categoryService.findById(CATEGORY_ID)).thenReturn(category());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
+        when(domainService.create(eq(request), any(), any(), eq(null))).thenReturn(saved);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        DepensePlateformeResponse response = service.create(request);
+
+        assertThat(response.actif()).isFalse();
+    }
+
+    @Test
     void update_should_publish_audit_event_on_success() {
         UUID id = UUID.randomUUID();
         DepensePlateformeRequest request = new DepensePlateformeRequest(
                 CATEGORY_ID, "Serveur AWS renommé", null, LocalDate.of(2026, 8, 1),
-                new BigDecimal("600000.00"), MOYEN_ID, null);
+                new BigDecimal("600000.00"), MOYEN_ID, null, null);
 
         DepensePlateforme existing = new DepensePlateforme();
         existing.setId(id);
@@ -186,6 +210,60 @@ class DepensePlateformeServiceImplTest {
                         && event.entityType() == AuditEntityType.DEPENSE_PLATEFORME
                         && event.entrepriseId() == null
                         && event.magasinId() == null));
+    }
+
+    @Test
+    void update_with_actif_true_should_reactivate_previously_deactivated_depense() {
+        UUID id = UUID.randomUUID();
+        DepensePlateformeRequest request = new DepensePlateformeRequest(
+                CATEGORY_ID, "Serveur AWS", null, LocalDate.of(2026, 8, 1),
+                new BigDecimal("500000.00"), MOYEN_ID, null, true);
+
+        DepensePlateforme existing = new DepensePlateforme();
+        existing.setId(id);
+        existing.setCategory(category());
+        existing.setLibelle("Serveur AWS");
+        existing.setMontant(new BigDecimal("500000.00"));
+        existing.setModePaiement(moyen());
+        existing.setActif(false);
+
+        when(domainService.findById(id)).thenReturn(existing);
+        when(categoryService.findById(CATEGORY_ID)).thenReturn(category());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
+        when(domainService.save(existing)).thenReturn(existing);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        DepensePlateformeResponse response = service.update(id, request);
+
+        assertThat(response.actif()).isTrue();
+        verify(domainService).save(argThat(DepensePlateforme::isActif));
+    }
+
+    @Test
+    void update_with_actif_null_should_leave_existing_actif_value_untouched() {
+        UUID id = UUID.randomUUID();
+        DepensePlateformeRequest request = new DepensePlateformeRequest(
+                CATEGORY_ID, "Serveur AWS renommé", null, LocalDate.of(2026, 8, 1),
+                new BigDecimal("600000.00"), MOYEN_ID, null, null);
+
+        DepensePlateforme existing = new DepensePlateforme();
+        existing.setId(id);
+        existing.setCategory(category());
+        existing.setLibelle("Serveur AWS");
+        existing.setMontant(new BigDecimal("500000.00"));
+        existing.setModePaiement(moyen());
+        existing.setActif(false);
+
+        when(domainService.findById(id)).thenReturn(existing);
+        when(categoryService.findById(CATEGORY_ID)).thenReturn(category());
+        when(moyenPaiementService.findById(MOYEN_ID)).thenReturn(moyen());
+        when(domainService.save(existing)).thenReturn(existing);
+        when(currentUserService.getCurrent()).thenReturn(callerFixture());
+
+        DepensePlateformeResponse response = service.update(id, request);
+
+        assertThat(response.actif()).isFalse();
+        verify(domainService).save(argThat(d -> !d.isActif()));
     }
 
     @Test

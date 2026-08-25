@@ -117,6 +117,9 @@ public class DepensePlateformeServiceImpl implements IDepensePlateformeService {
         depense.setMontant(request.montant());
         depense.setModePaiement(moyen);
         depense.setCountry(country);
+        if (request.actif() != null) {
+            depense.setActif(request.actif());
+        }
 
         DepensePlateforme saved = domainService.save(depense);
         audit(AuditAction.DEPENSE_PLATEFORME_UPDATED, saved.getId(), saved.getLibelle());

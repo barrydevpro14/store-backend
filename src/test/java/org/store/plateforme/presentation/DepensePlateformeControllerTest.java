@@ -62,7 +62,7 @@ class DepensePlateformeControllerTest {
     @Test
     void should_return_201_when_depense_created() throws Exception {
         DepensePlateformeRequest body = new DepensePlateformeRequest(categoryId, "Serveur AWS", "desc",
-                LocalDate.of(2026, 8, 1), new BigDecimal("500000.00"), moyenId, null);
+                LocalDate.of(2026, 8, 1), new BigDecimal("500000.00"), moyenId, null, null);
         DepensePlateformeResponse sample = new DepensePlateformeResponse(
                 UUID.randomUUID(),
                 new CategoryDepensePlateformeSummaryResponse(categoryId, "Hébergement"),
@@ -70,14 +70,16 @@ class DepensePlateformeControllerTest {
                 new BigDecimal("500000.00"),
                 new MoyenPaiementResponse(moyenId, "Virement", true),
                 null,
-                "2026-08-01 10:00:00");
+                "2026-08-01 10:00:00",
+                true);
         when(service.create(any(DepensePlateformeRequest.class))).thenReturn(sample);
 
         mockMvc.perform(post(DepensePlateformeController.BASE_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.libelle").value("Serveur AWS"));
+                .andExpect(jsonPath("$.libelle").value("Serveur AWS"))
+                .andExpect(jsonPath("$.actif").value(true));
     }
 
     @Test

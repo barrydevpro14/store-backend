@@ -17,7 +17,8 @@ public record DepensePlateformeResponse(
         BigDecimal montant,
         MoyenPaiementResponse modePaiement,
         CountryResponse country,
-        String createdAt
+        String createdAt,
+        boolean actif
 ) {
     public DepensePlateformeResponse(DepensePlateforme depense) {
         this(
@@ -29,7 +30,8 @@ public record DepensePlateformeResponse(
                 depense.getMontant(),
                 depense.getModePaiement() != null ? new MoyenPaiementResponse(depense.getModePaiement()) : null,
                 depense.getCountry() != null ? new CountryResponse(depense.getCountry()) : null,
-                DateHelper.format(depense.getCreatedAt())
+                DateHelper.format(depense.getCreatedAt()),
+                depense.isActif()
         );
     }
 }
