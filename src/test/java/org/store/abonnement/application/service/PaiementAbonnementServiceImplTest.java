@@ -259,14 +259,12 @@ class PaiementAbonnementServiceImplTest {
         when(couponService.findById(couponId)).thenReturn(coupon);
         when(paiementAbonnementDomainService.markAsRejete(paiement, "Preuve illisible")).thenAnswer(inv -> {
             paiement.setStatut(StatutPaiementAbonnement.REJETE);
-            paiement.setMotifRejet("Preuve illisible");
             return paiement;
         });
 
         service.reject(paiementId, new RejectPaiementRequest("Preuve illisible"));
 
         assertThat(paiement.getStatut()).isEqualTo(StatutPaiementAbonnement.REJETE);
-        assertThat(paiement.getMotifRejet()).isEqualTo("Preuve illisible");
         verify(couponService).decrementUsage(coupon);
         verify(utilisationCouponService).deleteByAbonnementId(abonnementId);
     }
@@ -278,7 +276,6 @@ class PaiementAbonnementServiceImplTest {
         when(utilisationCouponService.findCouponIdByAbonnementId(abonnementId)).thenReturn(Optional.empty());
         when(paiementAbonnementDomainService.markAsRejete(paiement, "Montant incorrect")).thenAnswer(inv -> {
             paiement.setStatut(StatutPaiementAbonnement.REJETE);
-            paiement.setMotifRejet("Montant incorrect");
             return paiement;
         });
 

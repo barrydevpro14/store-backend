@@ -90,6 +90,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     /**
      * OWNER submits proof against an existing FACTURE_GENEREE invoice. Transitions it to EN_ATTENTE_VALIDATION.
+     * Note: Proof and payment means are now stored in the preuve_paiement table; this method is deprecated.
      */
     @Override
     @Transactional
@@ -100,14 +101,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         ensurePaiementAccessibleByCaller(paiement);
         ensurePaiementIsFactureGeneree(paiement);
 
-        if (preuve !=null && !preuve.isEmpty()){
-            PieceJointe preuveImage = uploadFileService.buildImage(preuve);
-            paiement.setPreuve(preuveImage);
-        }
-
         paiement.setDatePaiement(paiementAbonnementRequest.datePaiement());
-        paiement.setMoyen(moyenPaiementService.findById(paiementAbonnementRequest.moyenPaiementId()));
-        paiement.setReferenceTransaction(paiementAbonnementRequest.referenceTransaction());
         paiement.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
 
         PaiementAbonnement saved = paiementAbonnementDomainService.save(paiement);
@@ -229,11 +223,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
         ensurePaiementAccessibleByCaller(paiement);
 
-        PieceJointe preuve = paiement.getPreuve();
-        if (preuve == null) {
-            throw new EntityException("paiementAbonnement.preuve.notFound");
-        }
-        return new ImageDownloadResponse(preuve.getDocument(), preuve.getContentType());
+        // Proof is now stored in the preuve_paiement table; this method is deprecated.
+        throw new EntityException("paiementAbonnement.preuve.notFound");
     }
 
     /** Throws BadArgumentException when the paiement cannot accept a proof (not FACTURE_GENEREE or EN_RETARD). */

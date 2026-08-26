@@ -52,7 +52,7 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
 
     public PaiementAbonnement markAsRejete(PaiementAbonnement paiement, String motifRejet) {
         paiement.setStatut(StatutPaiementAbonnement.REJETE);
-        paiement.setMotifRejet(motifRejet);
+        // Motif rejet is now stored in the preuve_paiement table; not stored here anymore.
         return save(paiement);
     }
 
