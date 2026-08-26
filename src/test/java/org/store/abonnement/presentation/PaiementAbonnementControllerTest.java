@@ -19,6 +19,7 @@ import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
 import org.store.abonnement.application.dto.RejectPaiementRequest;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
+import org.store.paiement.application.dto.MoyenPaiementResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 
@@ -72,7 +73,9 @@ class PaiementAbonnementControllerTest {
                 new BigDecimal("238800"), new BigDecimal("0"), new BigDecimal("238800"),
                 LocalDate.now(),
                 LocalDate.now(),
-                statut, LocalDateTime.now());
+                new MoyenPaiementResponse(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), "Wave", true),
+                "TXN-001",
+                statut, null, UUID.randomUUID(), LocalDateTime.now());
     }
 
     @Test
