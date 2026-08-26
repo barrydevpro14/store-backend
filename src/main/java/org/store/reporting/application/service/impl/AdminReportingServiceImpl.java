@@ -66,8 +66,6 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
         long abonnementsTrial          = abonnementService.countByStatut(AbonnementStatut.TRIAL);
         long abonnementsExpires        = abonnementService.countByStatut(AbonnementStatut.EXPIRE);
         long abonnementsSuspend        = abonnementService.countByStatut(AbonnementStatut.SUSPENDU);
-        long paiementsEnAttente        = paiementAbonnementService.countByStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        long paiementsRejetes          = paiementAbonnementService.countByStatut(StatutPaiementAbonnement.REJETE);
         long contactMessagesNouveaux   = contactMessageService.countByStatut(ContactStatut.NOUVEAU);
         BigDecimal revenueYtd          = paiementAbonnementService.sumValidatedRevenueForYear(currentYear);
 
@@ -83,8 +81,6 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
                 abonnementsTrial,
                 abonnementsExpires,
                 abonnementsSuspend,
-                paiementsEnAttente,
-                paiementsRejetes,
                 contactMessagesNouveaux,
                 revenueYtd != null ? revenueYtd : BigDecimal.ZERO
         );
@@ -103,7 +99,6 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
         return new PeriodReportResponse(
                 nouveauxAbonnements,
                 paiementAbonnementStats.valides(),
-                paiementAbonnementStats.rejetes(),
                 paiementAbonnementStats.revenu()
         );
     }

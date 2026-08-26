@@ -15,8 +15,6 @@ public record AdminOverviewStatsResponse(
         long abonnementsTrial,
         long abonnementsExpires,
         long abonnementsSuspendus,
-        long paiementsEnAttente,
-        long paiementsRejetes,
         long contactMessagesNouveaux,
         BigDecimal revenueYtd
 ) {

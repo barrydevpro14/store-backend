@@ -150,7 +150,7 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
             """)
     long countByCreatedBetween(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
-    /** Finds ACTIF abonnements whose dateFin = targetDate with no FACTURE_GENEREE/EN_ATTENTE_VALIDATION payment at that deadline (anti-duplicate guard). */
+    /** Finds ACTIF abonnements whose dateFin = targetDate with no FACTURE_GENEREE payment at that deadline (anti-duplicate guard). */
     @Query("""
             SELECT a FROM Abonnement a
             LEFT JOIN FETCH a.planAbonnement
@@ -161,10 +161,7 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
                   SELECT 1 FROM PaiementAbonnement p
                   WHERE p.abonnement = a
                     AND p.dateEcheance = a.dateFin
-                    AND p.statut IN (
-                        org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
-                        org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
-                    )
+                    AND p.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE
               )
             """)
     List<Abonnement> findAbonnementsToFacture(@Param("targetDate") LocalDate targetDate);
