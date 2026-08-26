@@ -19,15 +19,18 @@ import java.util.UUID;
 public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbonnement> {
 
     /**
-     * Loads the entreprise's current unpaid factures (FACTURE_GENEREE or EN_RETARD) with their
-     * full preuve history fetch-joined, most recent first — used by the OWNER dashboard
-     * regardless of the abonnement's own statut (EN_ATTENTE, ACTIF, or SUSPENDU can all have an
-     * unpaid facture). Built directly via PaiementAbonnementDetailsResponse(PaiementAbonnement).
+     * Loads the entreprise's current unpaid factures (FACTURE_GENEREE or EN_RETARD), most recent
+     * first — used by the OWNER dashboard regardless of the abonnement's own statut (EN_ATTENTE,
+     * ACTIF, or SUSPENDU can all have an unpaid facture). Built directly via
+     * PaiementAbonnementDetailsResponse(PaiementAbonnement), which lazy-loads paiement.getPreuves()
+     * within the caller's open read-only transaction — no fetch-join on the preuves collection:
+     * Hibernate 6 instantiates SELECT NEW results per row, before a join-fetched collection is
+     * injected into its owning entity, so a fetch-join here would risk an uninitialized/truncated
+     * collection inside the DTO constructor (same pattern as findDetailsById).
      */
     @Query("""
             SELECT new org.store.abonnement.application.dto.PaiementAbonnementDetailsResponse(paiement)
             FROM PaiementAbonnement paiement
-            LEFT JOIN FETCH paiement.preuves
             LEFT JOIN FETCH paiement.abonnement abonnement
             LEFT JOIN FETCH abonnement.entreprise
             LEFT JOIN FETCH abonnement.planAbonnement
@@ -40,9 +43,6 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             """)
     List<PaiementAbonnementDetailsResponse> findCurrentUnpaidFacturesByEntreprise(@Param("entrepriseId") UUID entrepriseId,
                                                                                    Pageable pageable);
-
-    @Query("SELECT COUNT(paiement) FROM PaiementAbonnement paiement WHERE paiement.statut = :statut")
-    long countByStatut(@Param("statut") StatutPaiementAbonnement statut);
 
     @Query("""
             SELECT COALESCE(SUM(paiement.montantFinal), 0)

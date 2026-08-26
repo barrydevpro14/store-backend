@@ -47,5 +47,6 @@ public class PaiementAbonnement extends AuditableEntity {
     private StatutPaiementAbonnement statut = StatutPaiementAbonnement.FACTURE_GENEREE;
 
     @OneToMany(mappedBy = "paiementAbonnement", fetch = FetchType.LAZY)
+    @OrderBy("createdAt DESC")
     private List<PreuvePaiement> preuves = new ArrayList<>();
 }
