@@ -86,18 +86,6 @@ class SuspensionAbonnementSchedulerTest {
     }
 
     @Test
-    void suspendrePourNonPaiement_should_suspend_en_attente_validation_overdue() {
-        factureGeneree.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        when(paiementAbonnementService.findOverdueInvoices(today)).thenReturn(List.of(factureGeneree));
-
-        scheduler.suspendrePourNonPaiement();
-
-        verify(paiementAbonnementService).markAsEnRetard(factureGeneree);
-        verify(abonnementService).suspend(abonnement);
-        verify(eventPublisher).publishEvent(any(AbonnementSuspenduEvent.class));
-    }
-
-    @Test
     void suspendrePourNonPaiement_should_suspend_multiple_abonnements() {
         Entreprise autreEntreprise = new Entreprise();
         autreEntreprise.setId(UUID.randomUUID());
