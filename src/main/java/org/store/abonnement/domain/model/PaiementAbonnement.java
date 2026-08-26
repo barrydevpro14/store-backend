@@ -8,6 +8,8 @@ import org.store.common.base.AuditableEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -43,4 +45,7 @@ public class PaiementAbonnement extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private StatutPaiementAbonnement statut = StatutPaiementAbonnement.FACTURE_GENEREE;
+
+    @OneToMany(mappedBy = "paiementAbonnement", fetch = FetchType.LAZY)
+    private List<PreuvePaiement> preuves = new ArrayList<>();
 }
