@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.store.abonnement.application.dto.PaiementAbonnementDetailsResponse;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.PaiementAbonnementStatsResponse;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
@@ -17,26 +18,28 @@ import java.util.UUID;
 
 public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbonnement> {
 
-    boolean existsByAbonnementIdAndStatut(UUID abonnementId, StatutPaiementAbonnement statut);
-
     /**
-     * Loads the entreprise's latest EN_ATTENTE_VALIDATION Paiement attached to its pending
-     * (EN_ATTENTE) Abonnement, projected as a response. Returns empty when the OWNER hasn't
-     * submitted a paiement yet — used by the frontend to toggle the "soumettre" CTA.
+     * Loads the entreprise's current unpaid factures (FACTURE_GENEREE or EN_RETARD) with their
+     * full preuve history fetch-joined, most recent first — used by the OWNER dashboard
+     * regardless of the abonnement's own statut (EN_ATTENTE, ACTIF, or SUSPENDU can all have an
+     * unpaid facture). Built directly via PaiementAbonnementDetailsResponse(PaiementAbonnement).
      */
     @Query("""
-            SELECT new org.store.abonnement.application.dto.PaiementAbonnementResponse(paiement)
+            SELECT new org.store.abonnement.application.dto.PaiementAbonnementDetailsResponse(paiement)
             FROM PaiementAbonnement paiement
+            LEFT JOIN FETCH paiement.preuves
             LEFT JOIN FETCH paiement.abonnement abonnement
             LEFT JOIN FETCH abonnement.entreprise
             LEFT JOIN FETCH abonnement.planAbonnement
             WHERE abonnement.entreprise.id = :entrepriseId
-              AND abonnement.statut        = org.store.abonnement.domain.enums.AbonnementStatut.EN_ATTENTE
-              AND paiement.statut          = org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
+              AND paiement.statut IN (
+                  org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
+                  org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_RETARD
+              )
             ORDER BY paiement.createdAt DESC
             """)
-    List<PaiementAbonnementResponse> findPendingResponsesByEntreprise(@Param("entrepriseId") UUID entrepriseId,
-                                                                      Pageable pageable);
+    List<PaiementAbonnementDetailsResponse> findCurrentUnpaidFacturesByEntreprise(@Param("entrepriseId") UUID entrepriseId,
+                                                                                   Pageable pageable);
 
     @Query("SELECT COUNT(paiement) FROM PaiementAbonnement paiement WHERE paiement.statut = :statut")
     long countByStatut(@Param("statut") StatutPaiementAbonnement statut);
@@ -82,7 +85,6 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
             @Param("endDate") String endDate,
             Pageable pageable);
 
-    /** Counts payments matching an optional statut and optional dateEcheance range. */
     @Query("""
             SELECT COUNT(paiement)
             FROM PaiementAbonnement paiement
@@ -94,20 +96,16 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
                                         @Param("startDate") LocalDate startDate,
                                         @Param("endDate") LocalDate endDate);
 
-    /** Finds invoices that are overdue: FACTURE_GENEREE or EN_ATTENTE_VALIDATION with dateEcheance < today. */
+    /** Finds invoices that are overdue: FACTURE_GENEREE with dateEcheance < today. */
     @Query("""
             SELECT paiement FROM PaiementAbonnement paiement
             LEFT JOIN FETCH paiement.abonnement abonnement
             LEFT JOIN FETCH abonnement.entreprise
-            WHERE paiement.statut IN (
-                org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
-                org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
-            )
-            AND paiement.dateEcheance < :today
+            WHERE paiement.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE
+              AND paiement.dateEcheance < :today
             """)
     List<PaiementAbonnement> findOverdueInvoices(@Param("today") LocalDate today);
 
-    /** Sums montantFinal of VALIDE payments whose dateEcheance falls within the given period. */
     @Query("""
             SELECT COALESCE(SUM(paiement.montantFinal), 0)
             FROM PaiementAbonnement paiement
@@ -125,13 +123,6 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
                 org.store.abonnement.domain.enums.StatutPaiementAbonnement.VALIDE
             THEN paiement.id
         END) AS long),
-
-        CAST(COUNT(CASE
-            WHEN paiement.statut =
-                org.store.abonnement.domain.enums.StatutPaiementAbonnement.REJETE
-            THEN paiement.id
-        END) AS long),
-
         COALESCE(
             SUM(
                 CASE
