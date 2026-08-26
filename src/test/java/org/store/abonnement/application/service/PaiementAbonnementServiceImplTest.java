@@ -17,6 +17,7 @@ import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PlanAbonnement;
+import org.store.abonnement.domain.model.PlanAbonnementTarif;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.common.exceptions.BadArgumentException;
@@ -206,20 +207,119 @@ class PaiementAbonnementServiceImplTest {
 
     @Test
     void findMyPending_should_return_empty_when_no_current_entreprise() {
-        when(currentUserService.getCurrent()).thenReturn(admin());
+        UserPrincipal noEntreprise = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "admin", null, null, "ADMIN", List.of("ADMIN_ACCESS"));
+        when(currentUserService.getCurrent()).thenReturn(noEntreprise);
 
         Optional<PaiementAbonnementDetailsResponse> result = service.findMyPending();
 
         assertThat(result).isEmpty();
+        verify(paiementAbonnementDomainService, never()).findCurrentUnpaidFactureByEntreprise(any());
     }
 
     @Test
-    void findAll_should_scope_filter_for_non_admin() {
+    void findAll_should_force_entrepriseId_for_non_admin() {
+        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         PaiementAbonnementFilter filter = new PaiementAbonnementFilter(null, null, null, null, null, 0, 10);
-        when(paiementAbonnementDomainService.findResponses(any())).thenReturn(new PageImpl<>(List.of()));
+        Page<PaiementAbonnementResponse> page = new PageImpl<>(List.of());
+        when(paiementAbonnementDomainService.findResponses(any(PaiementAbonnementFilter.class))).thenReturn(page);
 
         service.findAll(filter);
 
         verify(validatorService).validate(filter);
+        verify(paiementAbonnementDomainService).findResponses(
+                org.mockito.ArgumentMatchers.argThat(f -> entrepriseId.equals(f.entrepriseId())));
+    }
+
+    @Test
+    void findAll_should_keep_filter_for_admin() {
+        when(currentUserService.getCurrent()).thenReturn(admin());
+        PaiementAbonnementFilter filter = new PaiementAbonnementFilter(null, null, null, null, null, 0, 10);
+        Page<PaiementAbonnementResponse> page = new PageImpl<>(List.of());
+        when(paiementAbonnementDomainService.findResponses(filter)).thenReturn(page);
+
+        service.findAll(filter);
+
+        verify(validatorService).validate(filter);
+        verify(paiementAbonnementDomainService).findResponses(filter);
+    }
+
+    @Test
+    void countByStatutAndCreatedBetween_should_parse_statut_and_delegate() {
+        LocalDate debut = LocalDate.of(2026, 1, 1);
+        LocalDate fin = LocalDate.of(2026, 12, 31);
+        when(paiementAbonnementDomainService.countByStatutAndCreatedBetween(
+                StatutPaiementAbonnement.VALIDE, debut, fin)).thenReturn(7L);
+
+        long result = service.countByStatutAndCreatedBetween("VALIDE", debut, fin);
+
+        assertThat(result).isEqualTo(7L);
+    }
+
+    @Test
+    void countByStatutAndCreatedBetween_should_pass_null_statut_when_blank() {
+        when(paiementAbonnementDomainService.countByStatutAndCreatedBetween(null, null, null)).thenReturn(3L);
+
+        long result = service.countByStatutAndCreatedBetween(null, null, null);
+
+        assertThat(result).isEqualTo(3L);
+    }
+
+    @Test
+    void findFacturesAbonnementDues_should_delegate_to_domain() {
+        List<LocalDate> dates = List.of(LocalDate.now(), LocalDate.now().plusDays(1));
+        PaiementAbonnement facture = factureGeneree();
+        when(paiementAbonnementDomainService.findFacturesAbonnementDues(dates)).thenReturn(List.of(facture));
+
+        List<PaiementAbonnement> result = service.findFacturesAbonnementDues(dates);
+
+        assertThat(result).hasSize(1).containsExactly(facture);
+    }
+
+    @Test
+    void findFactureNonPayeeByAbonnement_should_delegate_to_domain() {
+        PaiementAbonnement facture = factureGeneree();
+        when(paiementAbonnementDomainService.findFactureNonPayeeByAbonnement(abonnementId))
+                .thenReturn(Optional.of(facture));
+
+        Optional<PaiementAbonnement> result = service.findFactureNonPayeeByAbonnement(abonnementId);
+
+        assertThat(result).isPresent().contains(facture);
+    }
+
+    @Test
+    void recalculerFactureNonPayee_should_update_tarif_and_amounts() {
+        PaiementAbonnement facture = factureGeneree();
+
+        PlanAbonnementTarif tarif = new PlanAbonnementTarif();
+        tarif.setId(UUID.randomUUID());
+        tarif.setPrix(new BigDecimal("29900"));
+
+        SubscriptionAmountInputs inputs = new SubscriptionAmountInputs(tarif, null);
+        SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
+                new BigDecimal("29900"), BigDecimal.ZERO, new BigDecimal("29900"));
+
+        when(paiementAbonnementDomainService.recalculer(facture, inputs, breakdown)).thenReturn(facture);
+
+        service.recalculerFactureNonPayee(facture, inputs, breakdown);
+
+        verify(paiementAbonnementDomainService).recalculer(facture, inputs, breakdown);
+    }
+
+    @Test
+    void recalculerFactureNonPayee_should_throw_when_paiement_not_facture_generee() {
+        PaiementAbonnement paiement = factureGeneree();
+        paiement.setStatut(StatutPaiementAbonnement.VALIDE);
+
+        PlanAbonnementTarif tarif = new PlanAbonnementTarif();
+        tarif.setId(UUID.randomUUID());
+        tarif.setPrix(new BigDecimal("29900"));
+
+        SubscriptionAmountInputs inputs = new SubscriptionAmountInputs(tarif, null);
+        SubscriptionAmountBreakdown breakdown = new SubscriptionAmountBreakdown(
+                new BigDecimal("29900"), BigDecimal.ZERO, new BigDecimal("29900"));
+
+        assertThatThrownBy(() -> service.recalculerFactureNonPayee(paiement, inputs, breakdown))
+                .isInstanceOf(BadArgumentException.class);
     }
 }
