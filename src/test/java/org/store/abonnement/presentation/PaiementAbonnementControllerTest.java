@@ -12,13 +12,16 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.store.abonnement.application.dto.PaiementAbonnementDetailsResponse;
 import org.store.abonnement.application.dto.PaiementAbonnementFilter;
-import org.store.abonnement.application.dto.PaiementAbonnementRequest;
 import org.store.abonnement.application.dto.PaiementAbonnementResponse;
 import org.store.abonnement.application.dto.PlanAbonnementSummaryResponse;
-import org.store.abonnement.application.dto.RejectPaiementRequest;
+import org.store.abonnement.application.dto.PreuvePaiementRequest;
+import org.store.abonnement.application.dto.PreuvePaiementResponse;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
+import org.store.abonnement.application.service.IPreuvePaiementService;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
+import org.store.abonnement.domain.enums.StatutPreuvePaiement;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
@@ -35,7 +38,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,26 +45,30 @@ class PaiementAbonnementControllerTest {
 
     private MockMvc mockMvc;
     private IPaiementAbonnementService paiementAbonnementService;
+    private IPreuvePaiementService preuvePaiementService;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID paiementId;
     private UUID abonnementId;
+    private UUID moyenPaiementId;
 
     @BeforeEach
     void setUp() {
         paiementAbonnementService = mock(IPaiementAbonnementService.class);
+        preuvePaiementService = mock(IPreuvePaiementService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new PaiementAbonnementController(paiementAbonnementService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new PaiementAbonnementController(paiementAbonnementService, preuvePaiementService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();
 
         paiementId = UUID.randomUUID();
         abonnementId = UUID.randomUUID();
+        moyenPaiementId = UUID.randomUUID();
     }
 
     private PaiementAbonnementResponse sample(StatutPaiementAbonnement statut) {
@@ -73,22 +79,24 @@ class PaiementAbonnementControllerTest {
                 new BigDecimal("238800"), new BigDecimal("0"), new BigDecimal("238800"),
                 LocalDate.now(),
                 LocalDate.now(),
-                new MoyenPaiementResponse(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), "Wave", true),
-                "TXN-001",
-                statut, null, UUID.randomUUID(), LocalDateTime.now());
+                statut, LocalDateTime.now());
+    }
+
+    private PreuvePaiementResponse samplePreuve(StatutPreuvePaiement statut) {
+        return new PreuvePaiementResponse(
+                UUID.randomUUID(), paiementId, LocalDate.now(),
+                new MoyenPaiementResponse(moyenPaiementId, "Wave", true),
+                "TXN-001", UUID.randomUUID(), statut, null, LocalDateTime.now());
     }
 
     @Test
     void should_return_201_when_payer_ok() throws Exception {
-        when(paiementAbonnementService.payer(eq(paiementId), any(PaiementAbonnementRequest.class), any()))
-                .thenReturn(sample(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION));
+        when(preuvePaiementService.create(eq(paiementId), any(PreuvePaiementRequest.class), any()))
+                .thenReturn(samplePreuve(StatutPreuvePaiement.EN_ATTENTE_VALIDATION));
 
         MockMultipartFile dataFile = new MockMultipartFile(
                 "data", "data.json", MediaType.APPLICATION_JSON_VALUE,
-                objectMapper.writeValueAsBytes(new PaiementAbonnementRequest(
-                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"),
-                        "TXN-001",
-                        LocalDate.now())));
+                objectMapper.writeValueAsBytes(new PreuvePaiementRequest(moyenPaiementId, "TXN-001")));
         MockMultipartFile preuve = new MockMultipartFile(
                 "file", "preuve.png", MediaType.IMAGE_PNG_VALUE, new byte[]{1, 2, 3});
 
@@ -96,64 +104,38 @@ class PaiementAbonnementControllerTest {
                         .file(dataFile)
                         .file(preuve))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.statut").value("EN_ATTENTE_VALIDATION"));
+                .andExpect(jsonPath("$.statut").value("EN_ATTENTE_VALIDATION"))
+                .andExpect(jsonPath("$.paiementAbonnementId").value(paiementId.toString()))
+                .andExpect(jsonPath("$.referenceTransaction").value("TXN-001"));
     }
 
     @Test
     void should_return_200_with_page_when_list() throws Exception {
         Page<PaiementAbonnementResponse> page = new PageImpl<>(
-                List.of(sample(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION)),
+                List.of(sample(StatutPaiementAbonnement.FACTURE_GENEREE)),
                 PageRequest.of(0, 10), 1);
         when(paiementAbonnementService.findAll(any(PaiementAbonnementFilter.class))).thenReturn(page);
 
         mockMvc.perform(get(PaiementAbonnementController.BASE_PATH))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].statut").value("EN_ATTENTE_VALIDATION"))
+                .andExpect(jsonPath("$.content[0].statut").value("FACTURE_GENEREE"))
                 .andExpect(jsonPath("$.content[0].entrepriseSigle").value("ACME"))
                 .andExpect(jsonPath("$.content[0].plan.nom").value("Premium"));
     }
 
     @Test
     void should_return_200_when_get_by_id() throws Exception {
-        when(paiementAbonnementService.findResponseById(eq(paiementId)))
-                .thenReturn(sample(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION));
+        PaiementAbonnementDetailsResponse details = new PaiementAbonnementDetailsResponse(
+                sample(StatutPaiementAbonnement.FACTURE_GENEREE),
+                List.of(samplePreuve(StatutPreuvePaiement.EN_ATTENTE_VALIDATION)));
+        when(paiementAbonnementService.findDetailsById(eq(paiementId)))
+                .thenReturn(details);
 
         mockMvc.perform(get(PaiementAbonnementController.BASE_PATH + "/" + paiementId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(paiementId.toString()));
-    }
-
-    @Test
-    void should_return_200_when_admin_validates() throws Exception {
-        when(paiementAbonnementService.validate(eq(paiementId)))
-                .thenReturn(sample(StatutPaiementAbonnement.VALIDE));
-
-        mockMvc.perform(patch(PaiementAbonnementController.BASE_PATH + "/" + paiementId + "/validate"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.statut").value("VALIDE"));
-    }
-
-    @Test
-    void should_return_200_when_admin_rejects() throws Exception {
-        when(paiementAbonnementService.reject(eq(paiementId), any(RejectPaiementRequest.class)))
-                .thenReturn(sample(StatutPaiementAbonnement.REJETE));
-
-        mockMvc.perform(patch(PaiementAbonnementController.BASE_PATH + "/" + paiementId + "/reject")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new RejectPaiementRequest("Preuve illisible"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.statut").value("REJETE"));
-    }
-
-    @Test
-    void should_return_400_when_reject_without_motif() throws Exception {
-        mockMvc.perform(patch(PaiementAbonnementController.BASE_PATH + "/" + paiementId + "/reject")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "motifRejet": "" }
-                                """))
-                .andExpect(status().isBadRequest());
+                .andExpect(jsonPath("$.facture.id").value(paiementId.toString()))
+                .andExpect(jsonPath("$.preuves").isArray())
+                .andExpect(jsonPath("$.preuves[0].referenceTransaction").value("TXN-001"));
     }
 }
