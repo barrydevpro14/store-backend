@@ -19,7 +19,9 @@ import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.PreuvePaiement;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
 import org.store.abonnement.domain.service.PreuvePaiementDomainService;
+import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.BadArgumentException;
+import org.store.common.exceptions.EntityException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.domain.model.Entreprise;
@@ -107,6 +109,8 @@ class PreuvePaiementServiceImplTest {
 
         assertThat(response.statut()).isEqualTo(StatutPreuvePaiement.EN_ATTENTE_VALIDATION);
         assertThat(response.referenceTransaction()).isEqualTo("TXN-123");
+        assertThat(response.date()).isEqualTo(LocalDate.now());
+        assertThat(facture.getStatut()).isEqualTo(StatutPaiementAbonnement.FACTURE_GENEREE);
         verify(paiementAbonnementService).ensurePaiementAccessibleByCaller(facture);
         verify(paiementAbonnementService).ensurePaiementIsFactureGeneree(facture);
     }
@@ -174,5 +178,39 @@ class PreuvePaiementServiceImplTest {
         assertThat(response.motifRejet()).isEqualTo("Preuve illisible");
         assertThat(facture.getStatut()).isEqualTo(StatutPaiementAbonnement.FACTURE_GENEREE);
         verify(paiementAbonnementService, never()).confirmPaiement(any(), any());
+    }
+
+    @Test
+    void getImage_should_return_image_and_check_access_via_parent_facture() {
+        PieceJointe image = new PieceJointe();
+        image.setDocument(new byte[]{1, 2, 3});
+        image.setContentType("image/png");
+
+        PreuvePaiement preuve = new PreuvePaiement();
+        preuve.setId(preuveId);
+        preuve.setPaiementAbonnement(facture);
+        preuve.setPreuve(image);
+
+        when(preuvePaiementDomainService.findById(preuveId)).thenReturn(preuve);
+
+        ImageDownloadResponse response = service.getImage(preuveId);
+
+        assertThat(response).isEqualTo(new ImageDownloadResponse(image.getDocument(), image.getContentType()));
+        verify(paiementAbonnementService).ensurePaiementAccessibleByCaller(facture);
+    }
+
+    @Test
+    void getImage_should_throw_when_preuve_has_no_image() {
+        PreuvePaiement preuve = new PreuvePaiement();
+        preuve.setId(preuveId);
+        preuve.setPaiementAbonnement(facture);
+        preuve.setPreuve(null);
+
+        when(preuvePaiementDomainService.findById(preuveId)).thenReturn(preuve);
+
+        assertThatThrownBy(() -> service.getImage(preuveId))
+                .isInstanceOf(EntityException.class);
+
+        verify(paiementAbonnementService).ensurePaiementAccessibleByCaller(facture);
     }
 }
