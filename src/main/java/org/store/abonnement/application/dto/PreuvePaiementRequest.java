@@ -2,15 +2,12 @@ package org.store.abonnement.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
-public record PaiementAbonnementRequest(
+public record PreuvePaiementRequest(
         @NotNull UUID moyenPaiementId,
-        @NotBlank @Size(max = 255) String referenceTransaction,
-        @NotNull @PastOrPresent LocalDate datePaiement
+        @NotBlank @Size(max = 255) String referenceTransaction
 ) {
 }

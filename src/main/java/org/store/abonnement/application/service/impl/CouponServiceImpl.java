@@ -141,13 +141,6 @@ public class CouponServiceImpl implements ICouponService {
         return couponDomainService.incrementUsage(coupon);
     }
 
-    /** Decrements the coupon's usage counter and persists. */
-    @Override
-    @Transactional
-    public Coupon decrementUsage(Coupon coupon) {
-        return couponDomainService.decrementUsage(coupon);
-    }
-
     /** Deactivates the coupon when its usage quota is exhausted. */
     @Override
     @Transactional

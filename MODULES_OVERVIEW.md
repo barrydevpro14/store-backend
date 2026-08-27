@@ -353,8 +353,8 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 - Public catalog (no auth, aggregated: plans + types + promotions with per-plan nested promotions)
 - Owner subscription (create EN_ATTENTE + sequential discount-calc breakdown type → promotion → coupon)
 - Auto-renewal toggle
-- Manual payment (OWNER uploads mandatory proof image)
-- Admin validation/rejection (activates the subscription with "replacement at dateFin" strategy, coupon rollback on rejection)
+- Facture auto-generated (billing scheduler), OWNER submits a proof of payment (optional image) against it
+- Admin validates/rejects the proof: validate activates/extends the subscription; reject keeps the facture open for resubmission (coupon reservation is not released)
 - ADMIN listing of all subscriptions + OWNER history + current status (days left, trial, features)
 
 > **Step 9 DEFERRED**: automatic renewal. Depends on integrating an automatic payment provider (Wave / Orange Money / Stripe / PayPal). Today the payment is manual, so the concept "auto-debit at `dateFin`" has no technical support. The flag `Abonnement.renouvellementAuto`, permission `SUBSCRIPTION_RENEW` and endpoint `PATCH /{id}/renouvellement-auto` remain in place (reusable as-is).
@@ -401,13 +401,14 @@ Authorization changed from class-level coarse to per-method granular (2026-05-20
 | GET | `/api/v1/abonnements?entrepriseId=&statut=&planId=&page=&size=` | `ADMIN_ACCESS` | ADMIN |
 | GET | `/api/v1/abonnements/me?statut=&planId=&page=&size=` | `SUBSCRIPTION_READ` | OWNER |
 | GET | `/api/v1/abonnements/me/current` | `SUBSCRIPTION_READ` | OWNER |
-| **Subscription payments** | | | |
-| POST (multipart) | `/api/v1/paiements-abonnement/abonnements/{abonnementId}` | `SUBSCRIPTION_PAY` | OWNER |
+| **Subscription payments (factures)** | | | |
+| POST (multipart) | `/api/v1/paiements-abonnement/{id}/payer` | `SUBSCRIPTION_PAY` | OWNER |
 | GET | `/api/v1/paiements-abonnement?statut=&abonnementId=&entrepriseId=&page=&size=` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
 | GET | `/api/v1/paiements-abonnement/{id}` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
-| GET | `/api/v1/paiements-abonnement/{id}/preuve` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
-| PATCH | `/api/v1/paiements-abonnement/{id}/validate` | `SUBSCRIPTION_VALIDATE` | ADMIN |
-| PATCH | `/api/v1/paiements-abonnement/{id}/reject` | `SUBSCRIPTION_VALIDATE` | ADMIN |
+| **Proofs of payment (preuves)** | | | |
+| GET | `/api/v1/preuves-paiement/{id}/preuve` | `SUBSCRIPTION_READ` | ADMIN/OWNER |
+| PATCH | `/api/v1/preuves-paiement/{id}/validate` | `SUBSCRIPTION_VALIDATE` | ADMIN |
+| PATCH | `/api/v1/preuves-paiement/{id}/reject` | `SUBSCRIPTION_VALIDATE` | ADMIN |
 
 **Total endpoints**: 40
 

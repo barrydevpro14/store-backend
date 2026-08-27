@@ -5,6 +5,5 @@ import java.math.BigDecimal;
 public record PeriodReportResponse(
         long nouveauxAbonnements,
         long paiementsValides,
-        long paiementsRejetes,
         BigDecimal revenu
 ) {}
