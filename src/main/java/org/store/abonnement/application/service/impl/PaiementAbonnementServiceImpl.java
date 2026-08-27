@@ -229,11 +229,6 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     @Override
-    public long countByStatut(StatutPaiementAbonnement statut) {
-        return paiementAbonnementDomainService.countByStatut(statut);
-    }
-
-    @Override
     public java.math.BigDecimal sumValidatedRevenueForYear(int year) {
         return paiementAbonnementDomainService.sumValidatedRevenueForYear(year);
     }

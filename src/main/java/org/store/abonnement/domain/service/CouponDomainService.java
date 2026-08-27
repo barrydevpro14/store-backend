@@ -66,14 +66,6 @@ public class CouponDomainService extends GlobalService<Coupon, CouponRepository>
         return save(coupon);
     }
 
-    public Coupon decrementUsage(Coupon coupon) {
-        if (coupon.getNombreUtilisations() > 0) {
-            coupon.setNombreUtilisations(coupon.getNombreUtilisations() - 1);
-            return save(coupon);
-        }
-        return coupon;
-    }
-
     /** Returns the first coupon applicable to this billing cycle (plan, periodicite, date window), or empty. */
     public Optional<Coupon> findApplicable(UUID entrepriseId, UUID planId, PeriodiciteAbonnement periodicite) {
         List<Coupon> candidates = repository.findApplicableCoupons(entrepriseId, planId, periodicite, LocalDate.now());

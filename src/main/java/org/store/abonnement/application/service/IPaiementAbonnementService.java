@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.store.abonnement.application.dto.*;
 import org.store.abonnement.application.service.impl.FactureGenereeCommand;
 import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
-import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 
@@ -29,8 +28,6 @@ public interface IPaiementAbonnementService {
     PaiementAbonnementDetailsResponse findDetailsById(UUID paiementId);
 
     long countByStatutAndCreatedBetween(String statut, LocalDate startDate, LocalDate endDate);
-
-    long countByStatut(StatutPaiementAbonnement statut);
 
     java.math.BigDecimal sumValidatedRevenueForYear(int year);
 

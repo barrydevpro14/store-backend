@@ -44,10 +44,6 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         return save(paiement);
     }
 
-    public long countByStatut(StatutPaiementAbonnement statut) {
-        return repository.countByStatut(statut);
-    }
-
     public long countByStatutAndCreatedBetween(StatutPaiementAbonnement statut, LocalDate startDate, LocalDate endDate) {
         return repository.countByStatutAndCreatedBetween(statut, startDate, endDate);
     }

@@ -9,9 +9,6 @@ import org.store.abonnement.domain.repository.UtilisationCouponRepository;
 import org.store.common.service.GlobalService;
 import org.store.entreprise.domain.model.Entreprise;
 
-import java.util.Optional;
-import java.util.UUID;
-
 @Service
 public class UtilisationCouponDomainService extends GlobalService<UtilisationCoupon, UtilisationCouponRepository> {
     public UtilisationCouponDomainService(UtilisationCouponRepository repository) {
@@ -34,13 +31,5 @@ public class UtilisationCouponDomainService extends GlobalService<UtilisationCou
         utilisation.setAbonnement(abonnement);
         utilisation.setPaiementAbonnement(paiement);
         return save(utilisation);
-    }
-
-    public Optional<UUID> findCouponIdByAbonnementId(UUID abonnementId) {
-        return repository.findCouponIdByAbonnementId(abonnementId);
-    }
-
-    public void deleteByAbonnementId(UUID abonnementId) {
-        repository.deleteByAbonnementId(abonnementId);
     }
 }
