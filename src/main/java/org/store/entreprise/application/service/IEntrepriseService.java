@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import org.store.common.dto.ImageDownloadResponse;
+import org.store.entreprise.application.dto.EntrepriseCountResponse;
 import org.store.entreprise.application.dto.EntrepriseDetailResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
@@ -85,8 +86,8 @@ public interface IEntrepriseService {
     /** Statistiques par entreprise pour le reporting ADMIN : magasinCount + employeCount, paginées. */
     Page<EntrepriseStatsResponse> findStats(Pageable pageable);
 
-    /** Returns the count of companies matching the given actif flag. */
-    long countByActif(boolean actif);
+    /** Total / actifs / inactifs, toutes entreprises confondues, en une seule requête — admin overview KPI. */
+    EntrepriseCountResponse countAllStats();
 
     /** Lightweight search on sigle / raisonSociale for combobox use cases. */
     Page<EntrepriseSelectItem> findSelectItems(String q, int page, int size);

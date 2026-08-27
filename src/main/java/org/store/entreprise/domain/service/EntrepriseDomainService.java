@@ -7,6 +7,7 @@ import org.store.common.model.PieceJointe;
 import org.store.common.service.GlobalService;
 import org.store.common.tools.LikePatternHelper;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.entreprise.application.dto.EntrepriseCountResponse;
 import org.store.entreprise.application.dto.EntrepriseFilter;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
@@ -86,8 +87,8 @@ public class EntrepriseDomainService extends GlobalService<Entreprise, Entrepris
         return save(entreprise);
     }
 
-    public long countByActif(boolean actif) {
-        return repository.countByActif(actif);
+    public EntrepriseCountResponse countAllStats() {
+        return repository.countAllStats();
     }
 
     /** Recherche légère sigle/raisonSociale pour les combobox ADMIN. */

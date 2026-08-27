@@ -186,8 +186,8 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     }
 
     @Override
-    public long countByActif(boolean actif) {
-        return entrepriseDomainService.countByActif(actif);
+    public org.store.entreprise.application.dto.EntrepriseCountResponse countAllStats() {
+        return entrepriseDomainService.countAllStats();
     }
 
     @Override

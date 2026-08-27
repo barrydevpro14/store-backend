@@ -211,4 +211,13 @@ class EntrepriseServiceImplTest {
         assertThatThrownBy(() -> service.ensureBelongsToCurrentUser(entreprise))
                 .isInstanceOf(ForbiddenException.class);
     }
+
+    @Test
+    void countAllStats_should_delegate_to_domain() {
+        org.store.entreprise.application.dto.EntrepriseCountResponse stats =
+                new org.store.entreprise.application.dto.EntrepriseCountResponse(5L, 3L, 2L);
+        when(entrepriseDomainService.countAllStats()).thenReturn(stats);
+
+        assertThat(service.countAllStats()).isEqualTo(stats);
+    }
 }
