@@ -9,6 +9,61 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-27 — Manual QA follow-up on preuve-paiement-refonte + admin overview KPI fixes (both repos)
+
+### Subject
+
+Manual testing of the previous session's `preuve-paiement-refonte` merge surfaced four separate issues, each fixed and reviewed live with the user before implementation (rule 44 — no assumed design decisions).
+
+### 1. Submit-payment form — proof file wrongly required
+
+Backend contract was already correct (`PreuvePaiementRequest.referenceTransaction` `@NotBlank`, `@RequestPart("file", required = false)` on the controller, `PreuvePaiementServiceImpl.create` handles `file == null` gracefully) — the frontend was the one out of sync. `SubmitPaiementForm.tsx` blocked submit + showed a red asterisk when no file was staged; `useSubmitPaiement.ts`'s `mutationFn` independently `throw`'d on a null file *before* even calling the API (a second, hidden blocker found only after the first fix); `paiement-abonnement-api.ts`'s `submit()` typed `file` as non-nullable and unconditionally appended it to the FormData. All three fixed; `referenceHint` i18n text's incorrect "Facultatif/Optional —" prefix removed (the reference *is* mandatory) at the same time, per live instruction.
+
+### 2. OWNER "Voir la preuve" → "Voir détails" (parity with ADMIN)
+
+User asked for the OWNER payments table to have the same "détails paiement" experience as ADMIN's `PaiementDetailsDialog`. Built `OwnerPaiementDetailsDialog` (facture summary + full `PreuveHistoryTable`), explicitly **read-only** — no validate/reject (admin-only actions) — confirmed live: *"il n y'aura plus voir preuve"* (the old single-preuve quick-view action is gone, replaced entirely by the details dialog). `PreuveHistoryTable`'s `onValidate`/`onReject` made optional so the same table renders read-only for OWNER. `MyPaiementsPage.tsx`'s ad-hoc row-details wiring (`preuveFactureId` + a second details fetch just to resolve the latest preuve id) replaced by the same `detailsTarget`-state pattern already used in `PaiementsAdminPage.tsx`.
+
+### 3. Admin overview KPI "paiements en attente" always showing 0
+
+Root-caused live: `AdminOverviewStatsResponse.paiementsEnAttente` (and `paiementsRejetes`) were silently dropped from the DTO during the prior session's model-split redesign — the field simply didn't exist in the JSON anymore, so the frontend's `?? 0` fallback always fired despite real unpaid factures existing (confirmed via a direct DB query: 1 `EN_ATTENTE_VALIDATION` / 2 `REJETEE` preuves at the time). First fix attempt sourced `paiementsEnAttente` from `PreuvePaiement.countPending()` — **corrected live**: *"on doit se baser sur paiement abonnement... mais sur preuve"* — the stat must reflect unpaid **factures** (`PaiementAbonnement` statut `FACTURE_GENEREE`/`EN_RETARD`), not submitted-proof status; the two are intentionally distinct signals in this domain. Reverted the `PreuvePaiement`-based counting code entirely and added `PaiementAbonnementRepository.countPendingFactures()` instead.
+
+### 4. "Paiements rejetés" KPI — removed, not re-plumbed
+
+Explicit decision: rather than re-source this stat from `PreuvePaiement.REJETEE`, remove it entirely — front (`DashboardWelcome`, `OverviewTab`, `PeriodTab`, both KPI types, i18n) and back (`AdminOverviewStatsResponse`, `PeriodReportResponse`, `AdminReportingServiceImpl`).
+
+### 5. Query consolidation (user-requested cleanup)
+
+User flagged the `countByActif(true)`/`countByActif(false)` duplicate-query pattern in `AdminReportingServiceImpl.getOverviewStats()` and asked for a single JPQL query per entity, then asked to "redo the whole method" grouping everything similar. Found and consolidated 3 groups (each confirmed used nowhere else in the codebase, so the old methods were removed end-to-end rather than left as dead code):
+- **Entreprise**: new `EntrepriseCountResponse(total, actifs, inactifs)`, mirroring the existing `MagasinCountResponse` convention.
+- **Magasin**: new unscoped `countAllStats()` alongside the existing entreprise-scoped `countStatsByEntrepriseId`, reusing `MagasinCountResponse`.
+- **Abonnement**: new `AbonnementStatsResponse(actifs, trial, expires, suspendus)`, replacing 4 separate `countByStatut(...)` calls.
+
+`getOverviewStats()` went from 10 queries down to 6.
+
+### 6. Unrelated small fix — entreprise logo icon+tooltip
+
+Along the way: `MyEntrepriseLogoSection.tsx` (OWNER's "Mon entreprise" page) converted from text+icon upload/delete buttons to the same icon-only + `Tooltip` pattern already used by `ProfilePhotoSection.tsx`, per direct request ("comme on a fait sur profile section photo").
+
+### Verification & commits
+
+Backend: clean `./mvnw clean test` **1064/1064 green** (an initial non-clean incremental-compile run showed a false pass — a genuinely broken test in `AdminReportingServiceImplTest` only surfaced after `mvn clean`, a reminder to always verify with a clean build when repeatedly editing the same test file). Frontend: `tsc --noEmit` clean, `vitest run` **342/342 green**.
+
+**9 atomic commits total**, split by logical theme per project convention (JSON i18n hunks in `fr.json`/`en.json` manually isolated per commit via temporary reverts, since 3 unrelated themes touched the same files):
+- Backend (`store`): `bcd93dd` (countPendingFactures), `845b92a` (entreprise countAllStats), `e643d4f` (magasin countAllStats), `fa821e5` (abonnement countAllStats), `1d38b84` (wire into AdminOverviewStatsResponse + fix paiementsEnAttente source).
+- Frontend (`store-frontend`): `9860b51` (entreprise logo tooltip), `61824eb` (optional proof file), `361587e` (OWNER payment details dialog), `fbe1b8d` (remove paiements rejetés KPI).
+
+Not pushed. `src/main/resources/application.yml` (backend) has an unrelated pre-existing uncommitted change (a cron schedule tweak, `CRON_FACTURATION_ABONNEMENT` default `0 0 1 * * *` → `0 22 18 * * *`) that predates this session — deliberately left uncommitted and unflagged for the user to handle.
+
+### Open follow-ups
+
+- **Backend process still needs a restart** — the running dev instance (IntelliJ debug session, started before today's backend edits) was serving stale bytecode throughout manual QA; a restart is required to actually see today's fixes live.
+- **Not pushed** on either repo — awaiting explicit push authorization.
+- No further manual QA done after the final round of fixes — worth re-testing: submit-payment dialog with/without a proof file, OWNER "Voir détails" dialog, and the admin overview "paiements en attente" tile once the backend is restarted.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-26/27 — PaiementAbonnement/PreuvePaiement model split (facture vs rejectable proof)
 
 ### Subject
