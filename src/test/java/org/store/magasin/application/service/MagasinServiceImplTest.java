@@ -305,4 +305,13 @@ class MagasinServiceImplTest {
 
         assertThat(response.actif()).isFalse();
     }
+
+    @Test
+    void countAllStats_should_delegate_to_domain() {
+        org.store.magasin.application.dto.MagasinCountResponse stats =
+                new org.store.magasin.application.dto.MagasinCountResponse(8L, 6L, 2L);
+        when(magasinDomainService.countAllStats()).thenReturn(stats);
+
+        assertThat(service.countAllStats()).isEqualTo(stats);
+    }
 }
