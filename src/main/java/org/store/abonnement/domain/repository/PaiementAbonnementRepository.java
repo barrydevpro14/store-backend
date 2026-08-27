@@ -96,6 +96,17 @@ public interface PaiementAbonnementRepository extends BaseRepository<PaiementAbo
                                         @Param("startDate") LocalDate startDate,
                                         @Param("endDate") LocalDate endDate);
 
+    /** All-time count of unpaid factures (FACTURE_GENEREE or EN_RETARD) — admin overview KPI. */
+    @Query("""
+            SELECT COUNT(paiement)
+            FROM PaiementAbonnement paiement
+            WHERE paiement.statut IN (
+                org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
+                org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_RETARD
+            )
+            """)
+    long countPendingFactures();
+
     /** Finds invoices that are overdue: FACTURE_GENEREE with dateEcheance < today. */
     @Query("""
             SELECT paiement FROM PaiementAbonnement paiement

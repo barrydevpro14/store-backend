@@ -35,6 +35,9 @@ public interface IPaiementAbonnementService {
 
     PaiementAbonnementStatsResponse getStatistiquesPaiement(String startDate, String endDate);
 
+    /** All-time count of unpaid factures (FACTURE_GENEREE or EN_RETARD) — admin overview KPI. */
+    long countPendingFactures();
+
     /**
      * Returns the caller's current unpaid facture (FACTURE_GENEREE or EN_RETARD) with its full
      * preuve history, or empty when none exists.

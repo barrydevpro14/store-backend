@@ -275,6 +275,13 @@ class PaiementAbonnementServiceImplTest {
     }
 
     @Test
+    void countPendingFactures_should_delegate_to_domain() {
+        when(paiementAbonnementDomainService.countPendingFactures()).thenReturn(4L);
+
+        assertThat(service.countPendingFactures()).isEqualTo(4L);
+    }
+
+    @Test
     void findFacturesAbonnementDues_should_delegate_to_domain() {
         List<LocalDate> dates = List.of(LocalDate.now(), LocalDate.now().plusDays(1));
         PaiementAbonnement facture = factureGeneree();

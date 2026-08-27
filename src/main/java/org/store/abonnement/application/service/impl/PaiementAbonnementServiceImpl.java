@@ -128,6 +128,11 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     @Override
+    public long countPendingFactures() {
+        return paiementAbonnementDomainService.countPendingFactures();
+    }
+
+    @Override
     public Optional<PaiementAbonnementDetailsResponse> findMyPending() {
         UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
         if (currentEntrepriseId == null) {

@@ -62,6 +62,10 @@ public class PaiementAbonnementDomainService extends GlobalService<PaiementAbonn
         return repository.getStatistiquesPaiement(startDate, endDate);
     }
 
+    public long countPendingFactures() {
+        return repository.countPendingFactures();
+    }
+
     /** Creates a FACTURE_GENEREE payment — stores tarif + coupon snapshots. */
     public PaiementAbonnement createFactureGeneree(FactureGenereeCommand command) {
         PaiementAbonnement paiement = new PaiementAbonnement();
