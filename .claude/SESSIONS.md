@@ -9,6 +9,47 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-25 (continued) — Audit/soft-delete frontend for platform expenses/categories + dedicated active-only category select + generic `DataSelect` DTO
+
+### Subject
+
+Picked up this same day's backend session's open frontend item, then two live follow-up corrections extended the scope: (1) explicit direction to mirror the "Comptes administrateurs" (Admin accounts) page's activate/deactivate pattern instead of the initially-drafted design, (2) a request that the category-selection combobox only ever offer active categories, which surfaced a design rule ("never mix the CRUD listing endpoint with a select endpoint") and, once built, a further correction to project the `{value, label}` shape from the backend via a new shared DTO instead of transforming on the frontend.
+
+### 1. Frontend — audit/soft-delete UI (activate/deactivate), inspired by Admin accounts
+
+Design decisions taken live with the user (not assumed):
+- Activate/deactivate is a **single context-sensitive row-action item** (not two separate items, not a form toggle): shows **"Désactiver"** on active rows, **"Réactiver"** on inactive rows — wording taken directly from the Admin accounts page precedent (which uses "Réactiver", not "Activer").
+- **Deactivate keeps a confirm dialog** (reworded to reflect it's a deactivation, not a permanent delete); **activate is a direct one-click action + toast, no dialog** — a deliberate split from Admin's "no dialog either way" pattern, since deactivate is still the destructive direction here.
+- Both directions go through the **existing generic PUT update endpoint** (`actif:true`/`false` in the payload) — the DELETE endpoint is no longer called by this UI at all (backend endpoint untouched, just unused here now).
+
+Implementation: `DepensePlateformeTable` + `CategoryDepensePlateformeTable` both gained a color-coded `actif` Badge column (emerald/destructive, matching Admin's coloring — Category's was previously a plain secondary/outline badge, restyled to match). `DepensePlateformeFilters` gained an `actif` status filter mirroring Category's existing one. Row-actions (`DepensePlateformeRowActions`, `CategoryDepensePlateformeRowActions`) rewritten with the context-sensitive item described above. Both edit forms stopped silently touching `actif` on save — `CategoryDepensePlateformeForm` used to hardcode `actif: true` on every save (undocumented side effect); both forms now preserve `target?.actif ?? true`. i18n: `confirmDelete` → `confirmDeactivate` (reworded FR+EN, both namespaces), new `activate`/`deactivate`/`activated`/`deactivated` keys. Two now-dead hooks deleted (`useDeleteDepensePlateforme`, `useDeleteCategoryDepensePlateforme` — no remaining callers after switching to PUT). **tsc clean, vitest 342/342 green.**
+
+### 2. Backend + frontend — active-only category select via a dedicated endpoint + generic `DataSelect` DTO
+
+Follow-up request: the category dropdown in the expense form/filters was bulk-fetching `{page:0, size:200}` off the CRUD listing endpoint with no `actif` filter — deactivated categories still showed up as selectable. First fix attempt (reuse the existing listing endpoint's `actif` query param) was explicitly rejected: **"c'est interdit — mélanger listing CRUD et sélection"**. Rebuilt as a genuinely separate endpoint instead:
+
+- New `GET /api/v1/admin/plateforme/expense-categories/select?q=&page=&size=`, mirroring the only existing precedent in the codebase (`Entreprise`'s `/select`), hardcoded server-side to `WHERE actif = true` (no `actif` query param — this endpoint never returns inactive rows), same `PLATFORM_EXPENSE_CATEGORY_READ` permission as the rest of the module.
+- **Live correction after the first pass**: response DTO generalized from a one-off `CategoryDepensePlateformeSelectItem(id, nom)` to a new **shared, reusable** `org.store.common.dto.DataSelect(String value, String label)` record — the repository JPQL projects straight into it (`CAST(c.id AS string)`), so the frontend consumes `{value, label}` with **zero client-side transform** (this is exactly the shape `ComboboxItem` expects). Mirrored on the frontend as `common/domain/dtos/data-select.ts`.
+- `useCategoryDepensePlateformeList` (the old bulk-fetch-200 hook) replaced by `useCategoryDepensePlateformeSelectList(q, page=0, size=10, enabled=true)`, mirroring `useEntrepriseSelectList`'s signature and behavior (`keepPreviousData`, no debounce — same convention). Both `DepensePlateformeForm`'s and `DepensePlateformeFilters`' category Combobox converted to genuine typeahead (`inputValue`/`onInputValueChange`, each owning its own local search state) — necessary because the Combobox can only display a label for an item present in the *current* fetched page, so the old "fetch 200 and hope everything's in there" hack had to go. The form seeds its initial search text with `target?.category.nom` when editing, so the row's current category is visible immediately without the user having to re-search for it.
+- The now-unnecessary `categories` prop dropped from `DepensePlateformeFormProps` / `FiltersProps` / `FormDialogProps` and their call sites — each consumer now fetches its own selection independently.
+- 2 new backend tests added (controller-level MockMvc + service-level delegation) for the `/select` endpoint — hit the same `Unpaged`/Jackson serialization pitfall noted in earlier sessions (`CaisseControllerTest`); fixed the same way, with a concrete `PageRequest` instead of a bare `PageImpl`.
+
+**Backend `./mvnw test`: 1055/1055 green. Frontend `tsc --noEmit` clean, `vitest run` 342/342 green.**
+
+### New TODO item added
+
+`Migrate existing selectors to the generic DataSelect backend DTO + frontend integration` — `EntrepriseSelectItem` predates the `DataSelect` pattern; audit whether it (and any other future per-entity select DTO) should be collapsed into `DataSelect` where the combobox only needs a flat single-field label. Entreprise's own select composes a multi-field label server-side already, so it may or may not qualify — needs a case-by-case look, not a blind migration.
+
+### Open follow-ups
+
+- **Nothing committed this session** (nor the backend-only session earlier the same day) — awaiting explicit commit authorization. Likely atomic themes: (1) backend audit+soft-delete merge from the morning session, (2) frontend activate/deactivate UI, (3) `/select` endpoint + `DataSelect` DTO (backend), (4) `/select` frontend integration + live-search conversion.
+- New TODO item above (`DataSelect` selector migration) is scoped but not started.
+- No manual browser QA this session — verification was `tsc`/`vitest`/`mvnw test` only. Worth a manual check of: the activate/deactivate row-action wording and dialog behavior, the category typeahead combobox (both create and edit flows), and that a deactivated category truly disappears from the expense form's dropdown.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-25 — Audit integration + soft delete for platform expenses/categories (backend, via subagent-driven-development)
 
 ### Subject
