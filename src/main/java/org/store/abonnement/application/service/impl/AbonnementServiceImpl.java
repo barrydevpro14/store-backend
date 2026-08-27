@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.abonnement.application.dto.AbonnementDetailsResponse;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.AbonnementStatsResponse;
 import org.store.abonnement.application.dto.ChangerPlanRequest;
 import org.store.abonnement.application.dto.CurrentAbonnementResponse;
 import org.store.abonnement.application.dto.PlanFeaturesResponse;
@@ -343,8 +344,8 @@ public class AbonnementServiceImpl implements IAbonnementService {
     }
 
     @Override
-    public long countByStatut(AbonnementStatut statut) {
-        return abonnementDomainService.countByStatut(statut);
+    public AbonnementStatsResponse countAllStats() {
+        return abonnementDomainService.countAllStats();
     }
 
 }

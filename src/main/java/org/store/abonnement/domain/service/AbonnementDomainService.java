@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.store.abonnement.application.dto.AbonnementFilter;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.AbonnementStatsResponse;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
@@ -103,9 +104,9 @@ public class AbonnementDomainService extends GlobalService<Abonnement, Abonnemen
         return repository.findPendingResponseByEntreprise(entrepriseId);
     }
 
-    /** Compte le nombre d'abonnements dans un statut donné. */
-    public long countByStatut(AbonnementStatut statut) {
-        return repository.countByStatut(statut);
+    /** Nombre d'abonnements par statut (actifs/trial/expirés/suspendus), en une seule requête — admin overview KPI. */
+    public AbonnementStatsResponse countAllStats() {
+        return repository.countAllStats();
     }
 
     /** Finds active/trial subscriptions expiring on the given date (for daily alert scheduler). */

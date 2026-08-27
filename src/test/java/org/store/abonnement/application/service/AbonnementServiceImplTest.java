@@ -476,6 +476,15 @@ class AbonnementServiceImplTest {
         assertThat(response.prix()).isEqualByComparingTo("0");
     }
 
+    @Test
+    void countAllStats_should_delegate_to_domain() {
+        org.store.abonnement.application.dto.AbonnementStatsResponse stats =
+                new org.store.abonnement.application.dto.AbonnementStatsResponse(4L, 1L, 2L, 0L);
+        when(abonnementDomainService.countAllStats()).thenReturn(stats);
+
+        assertThat(service.countAllStats()).isEqualTo(stats);
+    }
+
     private Abonnement pendingAbonnement() {
         Abonnement a = new Abonnement();
         a.setId(UUID.randomUUID());
