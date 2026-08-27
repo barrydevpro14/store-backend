@@ -9,6 +9,35 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-26/27 — PaiementAbonnement/PreuvePaiement model split (facture vs rejectable proof)
+
+### Subject
+
+Started as a bug report: `PATCH /paiements-abonnement/{id}/reject` threw HTTP 500 (`IncorrectResultSizeDataAccessException`) — root-caused to a coupon-scoping query bug during systematic debugging. Explaining the fix surfaced a deeper design flaw: rejecting a payment reset the whole invoice to `EN_ATTENTE` and released its reserved coupon, so a rejected owner had no way back onto the *same* facture. User redirected to a full model restructuring rather than patching the symptom: *"le plus simple est de restructurer le model. creer une table preuvePaiement qui sera rejeter ou accepte. en cas d'acceptation, le paiement est valider sinon il reste en attente."*
+
+### Design (via `superpowers:brainstorming`, architectural path)
+
+Split `PaiementAbonnement` into a permanent **facture** (statuts `FACTURE_GENEREE`/`EN_RETARD`/`VALIDE`) and a new **`PreuvePaiement`** entity per submission attempt (statuts `EN_ATTENTE_VALIDATION`/`VALIDEE`/`REJETEE`). Confirmed live with the user: only one `EN_ATTENTE_VALIDATION` preuve per facture at a time; coupon reservation stays on the facture through a rejection (no release); `datePaiement` on the facture takes the *winning preuve's own date* at validation, not `now()`; owner never enters a date on submission — server sets it; `PaiementAbonnementDetailsResponse` must be buildable directly via a `PaiementAbonnement`-entity constructor used in JPQL `SELECT NEW` (existing codebase convention), fed by a new `@OneToMany PaiementAbonnement.preuves` back-reference.
+
+### Execution — subagent-driven-development, two isolated worktrees
+
+Backend (`store`, `feature/preuve-paiement-refonte`, 10 tasks) and frontend (`store-frontend`, same branch name, 7 tasks) executed as one plan across two separate git repos (siblings, not nested — the harness's native worktree tool could only track the backend one; frontend worked via plain `cd` + absolute paths). 3 plan-gap fixes discovered mid-execution: an orphaned `AdminReportingServiceImpl`/`AbonnementRepository` reference to removed enum values (fixed after explicit user decision to drop two now-meaningless dashboard KPI counters), a dead frontend port type, and an orphaned mutation hook.
+
+**Final whole-branch review** (opus, one per repo) found real issues on both sides, all fixed in one consolidated wave per repo and re-reviewed clean:
+- **Backend** (5 Important, no Critical): an unsafe `LEFT JOIN FETCH` combined with a `SELECT NEW` constructor-expression query (`findCurrentUnpaidFacturesByEntreprise`) that could read the `preuves` collection before Hibernate populates it — removed in favor of the already-proven lazy-load pattern; missing `@OrderBy("createdAt DESC")` on `preuves`; stale coupon-release Javadoc describing removed behavior; a 4-layer dead-code chain (`countByStatut`, `decrementUsage`, coupon-usage lookup/delete) swept; `/paiements-abonnement/count?statut=` now returns 400 instead of an unhandled 500 on a stale enum value. Reference docs (`MODULES_OVERVIEW.md`, `FEATURES.md`) updated to match.
+- **Frontend** (1 Critical + 4 Important): the owner's "Voir la preuve" action was passing the wrong id (the attached-file id instead of the `PreuvePaiement` record id the backend endpoint actually expects) — broken on every row, a regression introduced by the prior task's own fix round; a cache write under the wrong key/id in `useSubmitPaiement`; a loading-state race in `PreuveDialog` that briefly showed "no proof attached" before data arrived; 4 stale i18n keys for removed facture statuts; a commented-out required-file guard reinstated.
+- One residual parked (not load-bearing): `PreuveDialog` still falls through to "no proof attached" rather than a real error state if the details query itself errors — narrow edge case, follow-up only.
+
+Discovered along the way and discarded before merge: an earlier, uncommitted point-fix for the original coupon bug (made directly on `dev-barry` before the redesign was chosen) — superseded by the redesign, which removes that code path entirely rather than patching it.
+
+### Result
+
+Backend **1058/1058 green**, frontend **tsc clean + vitest 342/342 green**, both re-verified on the merged `dev-barry` result before merging. Merged locally on both repos (backend `e042d15`, frontend `65a1d1a`) — **not pushed**. Both feature-branch worktrees and branches cleaned up. Manual testing and verification deferred to the next session.
+
+---
+
+## Archive
+
 **Date:** 2026-08-25 (continued) — Audit/soft-delete frontend for platform expenses/categories + dedicated active-only category select + generic `DataSelect` DTO
 
 ### Subject
