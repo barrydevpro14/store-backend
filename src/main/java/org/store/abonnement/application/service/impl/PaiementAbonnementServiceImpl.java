@@ -3,29 +3,18 @@ package org.store.abonnement.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import org.store.abonnement.application.dto.*;
-import org.store.abonnement.application.service.ICouponService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IRevenuService;
-import org.store.abonnement.application.service.IUtilisationCouponService;
 import org.store.abonnement.domain.enums.AbonnementStatut;
-import org.store.abonnement.domain.enums.PeriodiciteAbonnement;
 import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.abonnement.domain.model.Abonnement;
-import org.store.abonnement.domain.model.Coupon;
 import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.service.AbonnementDomainService;
 import org.store.abonnement.domain.service.PaiementAbonnementDomainService;
-import org.store.common.dto.ImageDownloadResponse;
 import org.store.common.exceptions.BadArgumentException;
-import org.store.common.exceptions.EntityException;
 import org.store.common.exceptions.ForbiddenException;
-import org.store.common.model.PieceJointe;
-import org.store.common.service.IUploadFileService;
 import org.store.common.service.ValidatorService;
-import org.store.notification.application.event.PaiementAbonnementRejectedEvent;
-import org.store.notification.application.event.PaiementAbonnementSubmittedEvent;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
 import org.store.audit.application.event.AuditEvent;
@@ -34,16 +23,17 @@ import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.enums.PermissionCode;
-import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Manual-payment workflow: the owner submits proof against a pre-generated FACTURE_GENEREE invoice;
- * the admin validates or rejects it. On validation, the Abonnement is activated (first payment) or
- * its dateFin extended by 1 month (renewal), with optional plan switch (prochainPlan).
+ * Manages FACTURE_GENEREE invoices: creation (billing scheduler), listing, overdue detection,
+ * and confirmation once a PreuvePaiement is validated (see IPreuvePaiementService.validate()).
  */
 @Service
 @Transactional(readOnly = true)
@@ -51,89 +41,38 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     private final PaiementAbonnementDomainService paiementAbonnementDomainService;
     private final AbonnementDomainService abonnementDomainService;
-    private final ICouponService couponService;
-    private final IUtilisationCouponService utilisationCouponService;
-    private final IUploadFileService uploadFileService;
-    private final SubscriptionAmountCalculator amountCalculator;
     private final ICurrentUserService currentUserService;
     private final ValidatorService validatorService;
     private final INotificationEventPublisher notificationEventPublisher;
     private final IAuditEventPublisher auditEventPublisher;
-    private final IMoyenPaiementService moyenPaiementService;
     private final IRevenuService revenuService;
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
-                                         ICouponService couponService,
-                                         IUtilisationCouponService utilisationCouponService,
-                                         IUploadFileService uploadFileService,
-                                         SubscriptionAmountCalculator amountCalculator,
                                          ICurrentUserService currentUserService,
                                          ValidatorService validatorService,
                                          INotificationEventPublisher notificationEventPublisher,
                                          IAuditEventPublisher auditEventPublisher,
-                                         IMoyenPaiementService moyenPaiementService,
                                          IRevenuService revenuService) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
-        this.couponService = couponService;
-        this.utilisationCouponService = utilisationCouponService;
-        this.uploadFileService = uploadFileService;
-        this.amountCalculator = amountCalculator;
         this.currentUserService = currentUserService;
         this.validatorService = validatorService;
         this.notificationEventPublisher = notificationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
-        this.moyenPaiementService = moyenPaiementService;
         this.revenuService = revenuService;
     }
 
-    /**
-     * OWNER submits proof against an existing FACTURE_GENEREE invoice. Transitions it to EN_ATTENTE_VALIDATION.
-     */
     @Override
     @Transactional
-    public PaiementAbonnementResponse payer(UUID paiementId,
-                                            PaiementAbonnementRequest paiementAbonnementRequest,
-                                            MultipartFile preuve) {
+    public PaiementAbonnementResponse confirmPaiement(UUID paiementId, LocalDate datePaiement) {
         PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
-        ensurePaiementAccessibleByCaller(paiement);
         ensurePaiementIsFactureGeneree(paiement);
-
-        if (preuve !=null && !preuve.isEmpty()){
-            PieceJointe preuveImage = uploadFileService.buildImage(preuve);
-            paiement.setPreuve(preuveImage);
-        }
-
-        paiement.setDatePaiement(paiementAbonnementRequest.datePaiement());
-        paiement.setMoyen(moyenPaiementService.findById(paiementAbonnementRequest.moyenPaiementId()));
-        paiement.setReferenceTransaction(paiementAbonnementRequest.referenceTransaction());
-        paiement.setStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-
-        PaiementAbonnement saved = paiementAbonnementDomainService.save(paiement);
-
-        String sigle = paiement.getAbonnement().getEntreprise() != null
-                ? paiement.getAbonnement().getEntreprise().getSigle() : null;
-        notificationEventPublisher.publishPaiementSubmitted(
-                new PaiementAbonnementSubmittedEvent(saved.getId(), sigle, saved.getMontantFinal()));
-
-        return new PaiementAbonnementResponse(saved);
-    }
-
-    /**
-     * Admin validates: first payment → activate (ACTIF, dateDebut=today, dateFin=today+1month);
-     * renewal → extend dateFin +1 month (with optional plan switch from prochainPlan).
-     */
-    @Override
-    @Transactional
-    public PaiementAbonnementResponse validate(UUID paiementId) {
-        PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
-        ensurePaiementIsPendingValidation(paiement);
 
         Abonnement abonnement = paiement.getAbonnement();
         activateOrExtend(abonnement);
 
-        PaiementAbonnement validatedPaiement = paiementAbonnementDomainService.markAsValide(paiement);
+        PaiementAbonnement validatedPaiement = paiementAbonnementDomainService.markAsValide(paiement, datePaiement);
 
         UUID entrepriseId = abonnement.getEntreprise().getId();
         String entrepriseSigle = abonnement.getEntreprise().getSigle();
@@ -155,40 +94,27 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return new PaiementAbonnementResponse(validatedPaiement);
     }
 
-    /**
-     * Admin rejects: marks REJETE with mandatory reason and releases the reserved coupon.
-     */
-    @Override
-    @Transactional
-    public PaiementAbonnementResponse reject(UUID paiementId, RejectPaiementRequest rejectPaiementRequest) {
-        PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
-        ensurePaiementIsPendingValidation(paiement);
-
-        releaseReservedCouponIfAny(paiement.getAbonnement().getId());
-
-        UUID rejectEntrepriseId = paiement.getAbonnement().getEntreprise().getId();
-        String rejectEntrepriseSigle = paiement.getAbonnement().getEntreprise().getSigle();
-
-        PaiementAbonnement rejectedPaiement = paiementAbonnementDomainService.markAsRejete(paiement, rejectPaiementRequest.motifRejet());
-
-        notificationEventPublisher.publishPaiementRejected(
-                new PaiementAbonnementRejectedEvent(rejectedPaiement.getId(), rejectEntrepriseId, rejectPaiementRequest.motifRejet()));
-
-        UserPrincipal caller = currentUserService.getCurrent();
-        auditEventPublisher.publish(new AuditEvent(
-                AuditAction.PAIEMENT_ABONNEMENT_REJECTED, AuditEntityType.PAIEMENT_ABONNEMENT,
-                rejectedPaiement.getId(), rejectEntrepriseSigle,
-                caller.accountId().toString(), caller.username(), caller.entrepriseId(), null, null));
-
-        return new PaiementAbonnementResponse(rejectedPaiement);
-    }
-
     @Override
     public long countByStatutAndCreatedBetween(String statut, LocalDate startDate, LocalDate endDate) {
-        StatutPaiementAbonnement statutEnum = (statut == null || statut.isBlank())
-                ? null
-                : StatutPaiementAbonnement.valueOf(statut);
+        StatutPaiementAbonnement statutEnum = parseStatutOrThrow(statut);
         return paiementAbonnementDomainService.countByStatutAndCreatedBetween(statutEnum, startDate, endDate);
+    }
+
+    /**
+     * Validates the raw statut string against the enum before parsing — same membership check as
+     * the {@code @EnumValue} annotation used on {@link PaiementAbonnementFilter#statut()} — and
+     * throws BadArgumentException (400) instead of letting an unguarded valueOf() surface as a 500.
+     */
+    private StatutPaiementAbonnement parseStatutOrThrow(String statut) {
+        if (statut == null || statut.isBlank()) {
+            return null;
+        }
+        boolean isValidStatut = Arrays.stream(StatutPaiementAbonnement.values())
+                .anyMatch(candidate -> candidate.name().equals(statut));
+        if (!isValidStatut) {
+            throw new BadArgumentException("paiementAbonnement.invalidStatut", statut);
+        }
+        return StatutPaiementAbonnement.valueOf(statut);
     }
 
     @Override
@@ -202,12 +128,17 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     @Override
-    public java.util.Optional<PaiementAbonnementResponse> findMyPending() {
+    public long countPendingFactures() {
+        return paiementAbonnementDomainService.countPendingFactures();
+    }
+
+    @Override
+    public Optional<PaiementAbonnementDetailsResponse> findMyPending() {
         UUID currentEntrepriseId = currentUserService.getCurrent().entrepriseId();
         if (currentEntrepriseId == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
-        return paiementAbonnementDomainService.findPendingResponseByEntreprise(currentEntrepriseId);
+        return paiementAbonnementDomainService.findCurrentUnpaidFactureByEntreprise(currentEntrepriseId);
     }
 
     @Override
@@ -217,26 +148,19 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return paiementAbonnementDomainService.findResponses(scoped);
     }
 
+    /**
+     * Plain entity fetch + lazy-loaded preuves within this method's open transaction — matches
+     * the PaiementAbonnementDetailsResponse(PaiementAbonnement) constructor pattern (Task 5)
+     * without needing a dedicated JPQL query for a single-id lookup.
+     */
     @Override
-    public PaiementAbonnementResponse findResponseById(UUID paiementId) {
+    public PaiementAbonnementDetailsResponse findDetailsById(UUID paiementId) {
         PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
         ensurePaiementAccessibleByCaller(paiement);
-        return new PaiementAbonnementResponse(paiement);
+        return new PaiementAbonnementDetailsResponse(paiement);
     }
 
     @Override
-    public ImageDownloadResponse getPreuve(UUID paiementId) {
-        PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
-        ensurePaiementAccessibleByCaller(paiement);
-
-        PieceJointe preuve = paiement.getPreuve();
-        if (preuve == null) {
-            throw new EntityException("paiementAbonnement.preuve.notFound");
-        }
-        return new ImageDownloadResponse(preuve.getDocument(), preuve.getContentType());
-    }
-
-    /** Throws BadArgumentException when the paiement cannot accept a proof (not FACTURE_GENEREE or EN_RETARD). */
     public void ensurePaiementIsFactureGeneree(PaiementAbonnement paiement) {
         boolean payable = paiement.getStatut() == StatutPaiementAbonnement.FACTURE_GENEREE
                        || paiement.getStatut() == StatutPaiementAbonnement.EN_RETARD;
@@ -245,18 +169,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         }
     }
 
-    /** Throws BadArgumentException when the paiement is not EN_ATTENTE_VALIDATION. */
-    public void ensurePaiementIsPendingValidation(PaiementAbonnement paiement) {
-        if (paiement.getStatut() != StatutPaiementAbonnement.EN_ATTENTE_VALIDATION) {
-            throw new BadArgumentException("paiementAbonnement.notPendingValidation");
-        }
-    }
-
-    /**
-     * First payment (EN_ATTENTE): expires any running TRIAL, then activates — dateDebut=today, dateFin=today+periodicite.
-     * Reactivation (SUSPENDU): activate without touching the TRIAL (already expired at first activation).
-     * Renewal (ACTIF): apply prochainPlan + prochainePeriodicite if set, then extend dateFin by periodicite.
-     */
+    @Override
     public void activateOrExtend(Abonnement abonnement) {
         if (abonnement.getStatut() == AbonnementStatut.EN_ATTENTE || abonnement.getStatut() == AbonnementStatut.SUSPENDU) {
             if (abonnement.getStatut() == AbonnementStatut.EN_ATTENTE) {
@@ -280,15 +193,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         }
     }
 
-    /** Releases the reserved coupon (decrement + delete UtilisationCoupon). */
-    public void releaseReservedCouponIfAny(UUID abonnementId) {
-        utilisationCouponService.findCouponIdByAbonnementId(abonnementId).ifPresent(couponId -> {
-            Coupon coupon = couponService.findById(couponId);
-            couponService.decrementUsage(coupon);
-            utilisationCouponService.deleteByAbonnementId(abonnementId);
-        });
-    }
-
+    @Override
     public PaiementAbonnementFilter scopeFilterForNonAdmin(PaiementAbonnementFilter filter) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         if (currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
@@ -307,11 +212,10 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     }
 
     @Override
-    public java.util.Optional<PaiementAbonnement> findFactureNonPayeeByAbonnement(UUID abonnementId) {
+    public Optional<PaiementAbonnement> findFactureNonPayeeByAbonnement(UUID abonnementId) {
         return paiementAbonnementDomainService.findFactureNonPayeeByAbonnement(abonnementId);
     }
 
-    /** Recalculates tarif, coupon and amounts on an unpaid invoice after a plan/periodicite change. */
     @Override
     @Transactional
     public void recalculerFactureNonPayee(PaiementAbonnement facture, SubscriptionAmountInputs inputs, SubscriptionAmountBreakdown breakdown) {
@@ -319,14 +223,13 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         paiementAbonnementDomainService.recalculer(facture, inputs, breakdown);
     }
 
-    /** Delegates to the domain service to fetch FACTURE_GENEREE invoices due on any of the given alert dates. */
     @Override
-    public java.util.List<PaiementAbonnement> findFacturesAbonnementDues(java.util.List<java.time.LocalDate> dates) {
+    public List<PaiementAbonnement> findFacturesAbonnementDues(List<LocalDate> dates) {
         return paiementAbonnementDomainService.findFacturesAbonnementDues(dates);
     }
 
     @Override
-    public java.util.List<PaiementAbonnement> findOverdueInvoices(java.time.LocalDate cutoffDate) {
+    public List<PaiementAbonnement> findOverdueInvoices(LocalDate cutoffDate) {
         return paiementAbonnementDomainService.findOverdueInvoices(cutoffDate);
     }
 
@@ -335,6 +238,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         return paiementAbonnementDomainService.markAsEnRetard(paiement);
     }
 
+    @Override
     public void ensurePaiementAccessibleByCaller(PaiementAbonnement paiement) {
         UserPrincipal currentUser = currentUserService.getCurrent();
         if (currentUser.hasPermission(PermissionCode.ADMIN_ACCESS)) {
@@ -343,11 +247,6 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         if (!paiement.getAbonnement().getEntreprise().getId().equals(currentUser.entrepriseId())) {
             throw new ForbiddenException("abonnement.notOwned");
         }
-    }
-
-    @Override
-    public long countByStatut(StatutPaiementAbonnement statut) {
-        return paiementAbonnementDomainService.countByStatut(statut);
     }
 
     @Override

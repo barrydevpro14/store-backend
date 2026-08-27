@@ -2,14 +2,15 @@ package org.store.reporting.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.abonnement.application.dto.AbonnementStatsResponse;
 import org.store.abonnement.application.dto.PaiementAbonnementStatsResponse;
 import org.store.abonnement.application.service.IAbonnementService;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
-import org.store.abonnement.domain.enums.AbonnementStatut;
-import org.store.abonnement.domain.enums.StatutPaiementAbonnement;
 import org.store.contact.application.service.IContactMessageService;
 import org.store.contact.domain.enums.ContactStatut;
+import org.store.entreprise.application.dto.EntrepriseCountResponse;
 import org.store.entreprise.application.service.IEntrepriseService;
+import org.store.magasin.application.dto.MagasinCountResponse;
 import org.store.magasin.application.dto.MagasinStatsRow;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.reporting.application.dto.AdminOverviewStatsResponse;
@@ -55,38 +56,29 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
     public AdminOverviewStatsResponse getOverviewStats() {
         int currentYear = LocalDate.now().getYear();
 
-        long totalEntreprisesActives   = entrepriseService.countByActif(true);
-        long totalEntreprisesInactives = entrepriseService.countByActif(false);
-        long totalEntreprises          = totalEntreprisesActives + totalEntreprisesInactives;
-        long totalMagasinsActifs       = magasinService.countByActif(true);
-        long totalMagasinsInactifs     = magasinService.countByActif(false);
-        long totalMagasins             = totalMagasinsActifs + totalMagasinsInactifs;
+        EntrepriseCountResponse entrepriseStats = entrepriseService.countAllStats();
+        MagasinCountResponse magasinStats       = magasinService.countAllStats();
+        AbonnementStatsResponse abonnementStats = abonnementService.countAllStats();
         long totalEmployes             = employeService.countAll();
-        long abonnementsActifs         = abonnementService.countByStatut(AbonnementStatut.ACTIF);
-        long abonnementsTrial          = abonnementService.countByStatut(AbonnementStatut.TRIAL);
-        long abonnementsExpires        = abonnementService.countByStatut(AbonnementStatut.EXPIRE);
-        long abonnementsSuspend        = abonnementService.countByStatut(AbonnementStatut.SUSPENDU);
-        long paiementsEnAttente        = paiementAbonnementService.countByStatut(StatutPaiementAbonnement.EN_ATTENTE_VALIDATION);
-        long paiementsRejetes          = paiementAbonnementService.countByStatut(StatutPaiementAbonnement.REJETE);
         long contactMessagesNouveaux   = contactMessageService.countByStatut(ContactStatut.NOUVEAU);
         BigDecimal revenueYtd          = paiementAbonnementService.sumValidatedRevenueForYear(currentYear);
+        long paiementsEnAttente        = paiementAbonnementService.countPendingFactures();
 
         return new AdminOverviewStatsResponse(
-                totalEntreprises,
-                totalEntreprisesActives,
-                totalEntreprisesInactives,
-                totalMagasins,
-                totalMagasinsActifs,
-                totalMagasinsInactifs,
+                entrepriseStats.total(),
+                entrepriseStats.actifs(),
+                entrepriseStats.inactifs(),
+                magasinStats.total(),
+                magasinStats.actifs(),
+                magasinStats.inactifs(),
                 totalEmployes,
-                abonnementsActifs,
-                abonnementsTrial,
-                abonnementsExpires,
-                abonnementsSuspend,
-                paiementsEnAttente,
-                paiementsRejetes,
+                abonnementStats.actifs(),
+                abonnementStats.trial(),
+                abonnementStats.expires(),
+                abonnementStats.suspendus(),
                 contactMessagesNouveaux,
-                revenueYtd != null ? revenueYtd : BigDecimal.ZERO
+                revenueYtd != null ? revenueYtd : BigDecimal.ZERO,
+                paiementsEnAttente
         );
     }
 
@@ -103,7 +95,6 @@ public class AdminReportingServiceImpl implements IAdminReportingService {
         return new PeriodReportResponse(
                 nouveauxAbonnements,
                 paiementAbonnementStats.valides(),
-                paiementAbonnementStats.rejetes(),
                 paiementAbonnementStats.revenu()
         );
     }

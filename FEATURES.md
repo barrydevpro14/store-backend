@@ -1034,65 +1034,52 @@ Limit via `Pageable` (= `PageRequest.of(0, nombre)`). The repo returns `List<Top
 
 ---
 
-## 41. Manual payment (PROPRIETAIRE) — `PaiementAbonnementServiceImpl.create`
+## 41. Proof-of-payment submission (PROPRIETAIRE) — `PreuvePaiementServiceImpl.create`
 
-**Endpoint** : `POST /api/v1/paiements-abonnement/abonnements/{abonnementId}` (perm `SUBSCRIPTION_PAY`). Multipart : `data` (JSON `PaiementAbonnementRequest(moyen, referenceTransaction, datePaiement)`) + `file` (image, **mandatory**). Status 201.
+**Model** : `PaiementAbonnement` (the **facture**, permanent, statut `FACTURE_GENEREE` → `EN_RETARD` → `VALIDE`) is generated automatically by `FacturationAbonnementScheduler`, not by the owner. The owner then attaches one or more `PreuvePaiement` (statut `EN_ATTENTE_VALIDATION` → `VALIDEE`/`REJETEE`) to that facture — a rejected preuve does not mutate the facture, so the owner can resubmit.
 
-**Business use case** : **no automatic payment integrator** in the project. The owner pays out-of-app (Wave/Orange Money/wire transfer/cash) then records the transaction in the app with a **mandatory image proof** (screenshot/photo of the receipt). The admin then validates (use case 42).
+**Endpoint** : `POST /api/v1/paiements-abonnement/{id}/payer` (`id` = facture id, perm `SUBSCRIPTION_PAY`). Multipart : `data` (JSON `PreuvePaiementRequest(moyenPaiementId, referenceTransaction)`) + `file` (image, optional). Status 201.
+
+**Business use case** : **no automatic payment integrator** in the project. The owner pays out-of-app (Wave/Orange Money/wire transfer/cash) then records the transaction in the app, optionally attaching an image proof (screenshot/photo of the receipt). The admin then validates or rejects (use case 42).
 
 **Logic** :
-1. Loads subscription + `ensureAbonnementBelongsToCurrentEntreprise` → `ForbiddenException` if another company.
-2. `ensureAbonnementIsPending(abonnement)` : status must be EN_ATTENTE (otherwise `abonnement.notPending`).
-3. `ensureNoPendingPayment(abonnementId)` : via `paiementAbonnementDomainService.existsPendingForAbonnement` (boolean projection, R7b) — otherwise `paiementAbonnement.alreadyPending`.
-4. **Recomputes** the breakdown via `recomputeBreakdown(abonnement)` :
-   - Active promotion at `today` (may differ from subscribe time).
-   - Coupon : `utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId)` (UUID projection, R7c) → `couponDomainService.findById(couponId)`.
-   - `amountCalculator.calculate(SubscriptionAmountInputs(plan, type, promotion, coupon))`.
-5. Builds the proof `PieceJointe` via `IUploadFileService.buildImage(file)` (MIME validation + blob + contentType).
-6. Creates `PaiementAbonnement` in EN_ATTENTE_VALIDATION via `paiementAbonnementDomainService.createPending(new PaiementAbonnementCreationContext(abonnement, request, breakdown, preuveImage))` (record context, R3 — rule 30 max 3 params).
-7. Returns `PaiementAbonnementResponse(paiement)` (without proof bytes, just `preuveId` — download via dedicated endpoint).
+1. Loads the facture + `ensurePaiementAccessibleByCaller` → `ForbiddenException` if another company.
+2. `ensurePaiementIsFactureGeneree(facture)` : statut must be FACTURE_GENEREE or EN_RETARD (otherwise `paiementAbonnement.notFactureGeneree`).
+3. `ensureNoPendingPreuve(factureId)` : via `preuvePaiementDomainService.existsPendingForFacture` — otherwise `paiementAbonnement.alreadyPending`.
+4. Builds the proof `PieceJointe` via `IUploadFileService.buildImage(file)` when a file is provided (MIME validation + blob + contentType).
+5. Creates a `PreuvePaiement` in EN_ATTENTE_VALIDATION linked to the facture.
+6. Publishes `PaiementAbonnementSubmittedEvent` (notification) and returns `PreuvePaiementResponse(preuve)`.
 
-**Server-side recomputed amount** : the owner does not enter an amount. The system recomputes at payment time (plan × duration − reductions). If the admin deems the paid amount incorrect, they reject (use case 42).
-
-**Migration** : V21 enriches `paiement_abonnement` with `statut` (NOT NULL default EN_ATTENTE_VALIDATION), `preuve_id` (FK piece_jointe), `motif_rejet` (TEXT).
-
-**i18n** : `abonnement.notPending`, `paiementAbonnement.alreadyPending`, `upload.file.empty`, `upload.file.invalidImageType`.
-
-**Tests** : 4 service (happy create + other company + non-pending subscription + payment already pending).
+**i18n** : `paiementAbonnement.notFactureGeneree`, `paiementAbonnement.alreadyPending`, `upload.file.empty`, `upload.file.invalidImageType`.
 
 ---
 
-## 42. Payment validation / rejection (ADMIN) — `PaiementAbonnementServiceImpl.validate/reject`
+## 42. Proof-of-payment validation / rejection (ADMIN) — `PreuvePaiementServiceImpl.validate/reject`
 
 **Endpoints** :
-- `PATCH /api/v1/paiements-abonnement/{id}/validate` (perm `SUBSCRIPTION_VALIDATE`). Empty body. Status 200.
-- `PATCH /api/v1/paiements-abonnement/{id}/reject` (perm `SUBSCRIPTION_VALIDATE`). Body `RejectPaiementRequest(motifRejet)`. Status 200.
+- `PATCH /api/v1/preuves-paiement/{id}/validate` (`id` = preuve id, perm `SUBSCRIPTION_VALIDATE`). Empty body. Status 200.
+- `PATCH /api/v1/preuves-paiement/{id}/reject` (`id` = preuve id, perm `SUBSCRIPTION_VALIDATE`). Body `RejectPaiementRequest(motifRejet)`. Status 200.
+- `GET /api/v1/preuves-paiement/{id}/preuve` (`id` = preuve id, perm `SUBSCRIPTION_READ`) — downloads the attached proof image.
 
-**Business use case** : the SaaS admin examines the image proof provided by the owner and :
-- **Validates** → the subscription moves to ACTIF with `dateDebut`/`dateFin` computed per the **replacement at `dateFin`** strategy.
-- **Rejects** with reason → the subscription stays EN_ATTENTE, the reserved coupon is **released** (rollback).
+**Business use case** : the SaaS admin examines the proof submitted by the owner and :
+- **Validates** → the preuve moves to VALIDEE, the facture moves to VALIDE (`IPaiementAbonnementService.confirmPaiement`), and the subscription is activated/extended.
+- **Rejects** with a reason → the preuve moves to REJETEE, the facture is left untouched (still FACTURE_GENEREE/EN_RETARD) so the owner can resubmit. The coupon reserved on the facture, if any, stays reserved — rejecting a preuve no longer releases it.
 
 **`validate` logic** :
-1. Loads payment + `ensurePaiementIsPendingValidation` (otherwise `paiementAbonnement.notPendingValidation`).
-2. `activateAbonnement(abonnement)` :
-   - `abonnementDomainService.findLatestActifDateFin(entrepriseId, abonnement.getId())` (JPQL `MAX(dateFin)`, R7a) → if present : `dateDebut = max+1`, otherwise `dateDebut = today`.
-   - `dateFin = dateDebut + typeAbonnement.dureeMois`.
-   - `abonnementDomainService.activate(abonnement, dateDebut, dateFin)` (rule 26 — setter+save in domain).
-3. Marks payment VALIDE via `paiementAbonnementDomainService.markAsValide(paiement)`.
+1. Loads the preuve + `ensurePreuveIsPendingValidation` (otherwise `paiementAbonnement.notPendingValidation`).
+2. Marks the preuve VALIDEE via `preuvePaiementDomainService.markAsValidee`.
+3. Calls `paiementAbonnementService.confirmPaiement(factureId, preuve.getDate())` : marks the facture VALIDE, activates/extends the subscription, records revenue, publishes notification + audit event.
 
 **`reject` logic** :
-1. Loads payment + `ensurePaiementIsPendingValidation`.
-2. `releaseReservedCouponIfAny(abonnementId)` :
-   - `utilisationCouponDomainService.findCouponIdByAbonnementId` → if present : `couponDomainService.findById(couponId)` + `couponDomainService.decrementUsage(coupon)` + `utilisationCouponDomainService.deleteByAbonnementId(abonnementId)` (bulk delete R7c).
-3. Marks payment REJETE with reason via `paiementAbonnementDomainService.markAsRejete(paiement, motifRejet)`.
+1. Loads the preuve + `ensurePreuveIsPendingValidation`.
+2. Marks the preuve REJETEE with reason via `preuvePaiementDomainService.markAsRejetee(preuve, motifRejet)`.
+3. Publishes `PaiementAbonnementRejectedEvent` (notification) + `PAIEMENT_ABONNEMENT_REJECTED` audit event.
 
 **Listing/read scoping** :
-- `findAll(filter)` : auto-scoped per company for non-ADMIN (`scopeFilterForNonAdmin`).
-- `findResponseById` + `getPreuve` : ADMIN everything, otherwise the caller's company (`ensurePaiementAccessibleByCaller`).
+- `IPaiementAbonnementService.findAll(filter)` : auto-scoped per company for non-ADMIN (`scopeFilterForNonAdmin`).
+- `findDetailsById` + `getImage` : ADMIN everything, otherwise the caller's company (`ensurePaiementAccessibleByCaller`).
 
 **i18n** : `paiementAbonnement.notPendingValidation`, `paiementAbonnement.preuve.notFound`.
-
-**Tests** : 4 validate/reject (activate dates today / dates currentActif+1 / already validated / release coupon / without coupon / reject without reason 400) + 5 controller (list / get / get preuve / validate / reject).
 
 ---
 

@@ -9,12 +9,9 @@ import org.store.abonnement.domain.model.PaiementAbonnement;
 import org.store.abonnement.domain.model.UtilisationCoupon;
 import org.store.abonnement.domain.service.UtilisationCouponDomainService;
 
-import java.util.Optional;
-import java.util.UUID;
-
 /**
- * Manages coupon usage records: creation at billing time, lookup for reservation checks, and deletion
- * on payment rejection.
+ * Manages coupon usage records: creation at billing time, linking the coupon application to the
+ * generated invoice (billing scheduler).
  */
 @Service
 @Transactional(readOnly = true)
@@ -31,18 +28,5 @@ public class UtilisationCouponServiceImpl implements IUtilisationCouponService {
     @Transactional
     public UtilisationCoupon createWithPaiement(Coupon coupon, Abonnement abonnement, PaiementAbonnement paiement) {
         return utilisationCouponDomainService.createWithPaiement(coupon, abonnement, paiement);
-    }
-
-    /** Returns the coupon ID reserved for the given abonnement, or empty when none. */
-    @Override
-    public Optional<UUID> findCouponIdByAbonnementId(UUID abonnementId) {
-        return utilisationCouponDomainService.findCouponIdByAbonnementId(abonnementId);
-    }
-
-    /** Deletes all coupon usage records for the given abonnement (coupon release on payment rejection). */
-    @Override
-    @Transactional
-    public void deleteByAbonnementId(UUID abonnementId) {
-        utilisationCouponDomainService.deleteByAbonnementId(abonnementId);
     }
 }

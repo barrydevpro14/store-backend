@@ -66,9 +66,6 @@ public interface ICouponService {
     /** Increments the coupon's usage counter and persists. */
     Coupon incrementUsage(Coupon coupon);
 
-    /** Decrements the coupon's usage counter and persists. */
-    Coupon decrementUsage(Coupon coupon);
-
     /** Deactivates the coupon when its usage quota is exhausted. */
     void deactivateIfExhausted(Coupon coupon);
 }

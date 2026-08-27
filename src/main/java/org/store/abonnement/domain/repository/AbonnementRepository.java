@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.abonnement.application.dto.AbonnementResponse;
+import org.store.abonnement.application.dto.AbonnementStatsResponse;
 import org.store.abonnement.domain.enums.AbonnementStatut;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.common.repository.BaseRepository;
@@ -16,8 +17,17 @@ import java.util.UUID;
 
 public interface AbonnementRepository extends BaseRepository<Abonnement> {
 
-    @Query("SELECT COUNT(abonnement) FROM Abonnement abonnement WHERE abonnement.statut = :statut")
-    long countByStatut(@Param("statut") AbonnementStatut statut);
+    /** Nombre d'abonnements par statut (actifs/trial/expirés/suspendus), en une seule requête — admin overview KPI. */
+    @Query("""
+            SELECT new org.store.abonnement.application.dto.AbonnementStatsResponse(
+                COUNT(CASE WHEN a.statut = org.store.abonnement.domain.enums.AbonnementStatut.ACTIF     THEN a.id END),
+                COUNT(CASE WHEN a.statut = org.store.abonnement.domain.enums.AbonnementStatut.TRIAL     THEN a.id END),
+                COUNT(CASE WHEN a.statut = org.store.abonnement.domain.enums.AbonnementStatut.EXPIRE    THEN a.id END),
+                COUNT(CASE WHEN a.statut = org.store.abonnement.domain.enums.AbonnementStatut.SUSPENDU  THEN a.id END)
+            )
+            FROM Abonnement a
+            """)
+    AbonnementStatsResponse countAllStats();
 
     @Query("SELECT COUNT(a) > 0 FROM Abonnement a WHERE a.entreprise.id = :entrepriseId AND a.statut = :statut")
     boolean existsByEntrepriseIdAndStatut(@Param("entrepriseId") UUID entrepriseId,
@@ -150,7 +160,7 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
             """)
     long countByCreatedBetween(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
-    /** Finds ACTIF abonnements whose dateFin = targetDate with no FACTURE_GENEREE/EN_ATTENTE_VALIDATION payment at that deadline (anti-duplicate guard). */
+    /** Finds ACTIF abonnements whose dateFin = targetDate with no FACTURE_GENEREE payment at that deadline (anti-duplicate guard). */
     @Query("""
             SELECT a FROM Abonnement a
             LEFT JOIN FETCH a.planAbonnement
@@ -161,10 +171,7 @@ public interface AbonnementRepository extends BaseRepository<Abonnement> {
                   SELECT 1 FROM PaiementAbonnement p
                   WHERE p.abonnement = a
                     AND p.dateEcheance = a.dateFin
-                    AND p.statut IN (
-                        org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE,
-                        org.store.abonnement.domain.enums.StatutPaiementAbonnement.EN_ATTENTE_VALIDATION
-                    )
+                    AND p.statut = org.store.abonnement.domain.enums.StatutPaiementAbonnement.FACTURE_GENEREE
               )
             """)
     List<Abonnement> findAbonnementsToFacture(@Param("targetDate") LocalDate targetDate);

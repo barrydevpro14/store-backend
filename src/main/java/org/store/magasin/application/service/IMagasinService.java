@@ -71,8 +71,8 @@ public interface IMagasinService {
     /** Supprime le logo du magasin (idempotent). */
     void deleteLogo(UUID id);
 
-    /** Returns the count of stores matching the given actif flag. */
-    long countByActif(boolean actif);
+    /** Total / actifs / inactifs, tous magasins confondus, en une seule requête — admin overview KPI. */
+    MagasinCountResponse countAllStats();
 
     /** Returns per-store employee stats (actifs/inactifs) for the given entreprise. */
     List<MagasinStatsRow> findStatsByEntrepriseId(UUID entrepriseId);

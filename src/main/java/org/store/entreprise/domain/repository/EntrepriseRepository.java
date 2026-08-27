@@ -5,14 +5,23 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.entreprise.application.dto.EntrepriseCountResponse;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.application.dto.EntrepriseSelectItem;
 import org.store.entreprise.domain.model.Entreprise;
 
 public interface EntrepriseRepository extends BaseRepository<Entreprise> {
 
-    @Query("SELECT COUNT(entreprise) FROM Entreprise entreprise WHERE entreprise.actif = :actif")
-    long countByActif(@Param("actif") boolean actif);
+    /** Total / actifs / inactifs, toutes entreprises confondues, en une seule requête — admin overview KPI. */
+    @Query("""
+            SELECT new org.store.entreprise.application.dto.EntrepriseCountResponse(
+                COUNT(e),
+                COUNT(CASE WHEN e.actif = true  THEN e.id ELSE null END),
+                COUNT(CASE WHEN e.actif = false THEN e.id ELSE null END)
+            )
+            FROM Entreprise e
+            """)
+    EntrepriseCountResponse countAllStats();
 
     @Query(value = """
             SELECT new org.store.entreprise.application.dto.EntrepriseSelectItem(

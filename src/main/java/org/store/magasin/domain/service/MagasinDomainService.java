@@ -71,9 +71,9 @@ public class MagasinDomainService extends GlobalService<Magasin, MagasinReposito
         return save(magasin);
     }
 
-    /** Compte les magasins actifs ou inactifs. */
-    public long countByActif(boolean actif) {
-        return repository.countByActif(actif);
+    /** Total / actifs / inactifs, tous magasins confondus, en une seule requête — admin overview KPI. */
+    public MagasinCountResponse countAllStats() {
+        return repository.countAllStats();
     }
 
     /** Compte tous les magasins d'une entreprise (pour contrôle de quota). */

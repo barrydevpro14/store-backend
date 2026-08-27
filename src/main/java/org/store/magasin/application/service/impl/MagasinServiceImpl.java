@@ -184,8 +184,8 @@ public class MagasinServiceImpl implements IMagasinService {
     }
 
     @Override
-    public long countByActif(boolean actif) {
-        return magasinDomainService.countByActif(actif);
+    public MagasinCountResponse countAllStats() {
+        return magasinDomainService.countAllStats();
     }
 
     @Override
