@@ -266,6 +266,15 @@ class PaiementAbonnementServiceImplTest {
     }
 
     @Test
+    void countByStatutAndCreatedBetween_should_throw_bad_argument_on_invalid_statut() {
+        LocalDate debut = LocalDate.of(2026, 1, 1);
+        LocalDate fin = LocalDate.of(2026, 12, 31);
+
+        assertThatThrownBy(() -> service.countByStatutAndCreatedBetween("EN_ATTENTE_VALIDATION", debut, fin))
+                .isInstanceOf(BadArgumentException.class);
+    }
+
+    @Test
     void findFacturesAbonnementDues_should_delegate_to_domain() {
         List<LocalDate> dates = List.of(LocalDate.now(), LocalDate.now().plusDays(1));
         PaiementAbonnement facture = factureGeneree();

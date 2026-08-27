@@ -26,6 +26,7 @@ import org.store.security.application.enums.PermissionCode;
 import org.store.security.application.service.ICurrentUserService;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -95,10 +96,25 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
 
     @Override
     public long countByStatutAndCreatedBetween(String statut, LocalDate startDate, LocalDate endDate) {
-        StatutPaiementAbonnement statutEnum = (statut == null || statut.isBlank())
-                ? null
-                : StatutPaiementAbonnement.valueOf(statut);
+        StatutPaiementAbonnement statutEnum = parseStatutOrThrow(statut);
         return paiementAbonnementDomainService.countByStatutAndCreatedBetween(statutEnum, startDate, endDate);
+    }
+
+    /**
+     * Validates the raw statut string against the enum before parsing — same membership check as
+     * the {@code @EnumValue} annotation used on {@link PaiementAbonnementFilter#statut()} — and
+     * throws BadArgumentException (400) instead of letting an unguarded valueOf() surface as a 500.
+     */
+    private StatutPaiementAbonnement parseStatutOrThrow(String statut) {
+        if (statut == null || statut.isBlank()) {
+            return null;
+        }
+        boolean isValidStatut = Arrays.stream(StatutPaiementAbonnement.values())
+                .anyMatch(candidate -> candidate.name().equals(statut));
+        if (!isValidStatut) {
+            throw new BadArgumentException("paiementAbonnement.invalidStatut", statut);
+        }
+        return StatutPaiementAbonnement.valueOf(statut);
     }
 
     @Override
