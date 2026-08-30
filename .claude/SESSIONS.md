@@ -9,6 +9,76 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-30 — Country-aware `MoyenPaiement` filtering (Task 1) — brainstorm resumption → plan → subagent-driven-development, both repos
+
+### Subject
+
+Resumed the 2026-08-29 brainstorm (paused mid-session), finished the design, wrote a 13-task implementation plan, and executed it end-to-end via `superpowers:subagent-driven-development` across both repos in isolated worktrees, then merged locally to `dev-barry` on both. Full session in one sitting: brainstorm → conventions review → plan → 12-task execution → 2 whole-branch final reviews → 1 fix wave per repo → a user-requested follow-up task → merge → cleanup.
+
+### Brainstorm resumption + design finalization
+
+Picked up from the two open questions the 2026-08-29 session had parked. Confirmed live: (1) no server-side write-time validation of a submitted `moyenPaiementId` — UI-list filtering is enough; (2) "Dépenses plateforme" (admin, global) IS filtered too, not left unchanged — no country selected shows everything, a country selected shows global + that country's moyens. Along the way, the original nullable-FK sketch for `MoyenPaiement`↔`Country` was replaced with **many-to-many** after the user pointed out a single FK would force duplicate entries ("Wave Sénégal" vs "Wave Guinée") for a payment method genuinely usable in several countries at once. Spec written to `.claude/2026-08-30-moyen-paiement-pays-facturation-design.md` (§1 = this session's scope, §2 = the still-separate future `Facturation` task).
+
+### Plan + conventions compliance pass
+
+Wrote a 13-task plan (`.claude/2026-08-30-moyen-paiement-pays-plan.md`). User then asked to re-read `BACKEND_CODING_CONVENTIONS.md`/`FRONTEND_CODING_CONVENTIONS.md` and apply them — found and fixed real violations in the plan's own draft code before any implementation started: rule 27 (no private business-logic methods on a `<X>ServiceImpl` — moved country resolution to a new public `IEntrepriseService.findCurrentUserCountryId()` and bulk id-resolution to `CountryDomainService.findAllByIds`), rule 32 (JPQL aliases must be explicit business names, not `m`/`p`), rule 33 (a listing endpoint with 2+ filter criteria needs a dedicated `<X>Filter` record — added `MoyenPaiementSelectFilter` instead of 4 raw parameters). User then asked for one more task: convert the 5 vente/achat `<Select>` payment-method fields to `<Combobox>` (rule 54), added as Task 12.
+
+### Execution — subagent-driven-development, two isolated worktrees
+
+Backend (`store`, `feature/moyen-paiement-pays`, 3 tasks) and frontend (`store-frontend`, same branch name, 9 tasks) — fresh implementer + task reviewer per task, all Approved on first or second pass (one fix round in Task 2 restoring Javadoc the plan's own code template had accidentally dropped — a plan-authoring bug, not an implementer error).
+
+**Two whole-branch final reviews** (opus, one per repo):
+- **Backend**: no Critical/Important code defects, but flagged that the new JPQL pattern (`LEFT JOIN … pays IS NULL` + `SELECT DISTINCT new(...)` under `Pageable`) had zero precedent in this codebase and was never actually executed against Postgres (only HQL-parsed at Spring context boot, since this project has no `@DataJpaTest`). Controller spun up an isolated, throwaway Postgres container (never the shared dev DB) and smoke-tested all three resolution branches live — confirmed correct. Also fixed: missing `@Transactional(readOnly = true)` on `findCurrentUserCountryId`, added a `MoyenPaiementDomainService`-level test.
+- **Frontend**: 3 Important findings — `MoyenPaiementSelect.tsx` had been missed by the Combobox conversion (still `<Select>`); a stale `moyenPaiementId` could silently survive a `countryId` change in "Dépenses plateforme" (no backend guard exists); and `SubmitPaiementForm` is now transitively country-filtered via the shared component (a business-rule question, not silently resolved). First two fixed in one wave + cache-invalidation and dead-code minors; third surfaced to the user.
+
+### User decisions after the final reviews
+
+Two open questions from the frontend review, resolved live: (1) the transitional country-filtering of `SubmitPaiementForm` is **acceptable** until the separate Facturation plan replaces that flow; (2) rather than changing the backend's `paysIds`-replace-on-update semantics, the user asked for a **UX-level fix instead** — split the admin "Moyens de paiement" form into libellé-only editing plus a new dedicated `MoyenPaiementCountriesDialog` (own "Gérer les pays" row action), so editing one field never silently resends a stale/empty value for the other. Implemented and reviewed clean as a follow-up task on the same branch before merging.
+
+### Merge + cleanup
+
+Both branches fast-forwarded cleanly onto `dev-barry` (no divergence), both merged results re-verified green (`1080/1080` backend, `342/342` + tsc clean frontend). Found and fixed an unrelated accident during cleanup: the main frontend `dev-barry` checkout had uncommitted changes to `DepensePlateformeFilters.tsx`/`Form.tsx` identical to this branch's own Task 11 diff — confirmed with the user it was a stray artifact (not their own in-progress work) and restored those 2 files to clean before merging. Worktrees held only scratch copies of the plan/design docs (originals already in the main checkouts) — force-removed after user confirmation. **Not pushed** — explicit instruction this session not to push or connect to GitLab/GitHub at all.
+
+### Result
+
+Backend `9777228..c323067` (6 commits), frontend `fbe1b8d..3fae06b` (12 commits), both on `dev-barry`, both green, neither pushed. `.claude/TODO.md` updated: Task 1 marked done with full detail, Task 2 (`Facturation`) kept as the next pending item with its design already captured in the spec doc — resume by writing its implementation plan directly, no further brainstorming needed.
+
+---
+
+## 🗂 Previous session
+
+**Date:** 2026-08-29 — Brainstorm: country-aware payment methods + subscription "Facturation" billing-number table (paused, no code)
+
+### Subject
+
+User asked for a new "Facturation" reference table (moyen de paiement + numéro + pays) to drive subscription-payment collection info. Ran `superpowers:brainstorming` (architectural path) — no implementation started; session paused by the user to rest before a design doc/plan was written.
+
+### What was explored
+
+- Current state confirmed via code search: `MoyenPaiement` (`org.store.paiement`) is already a DB-backed entity shared across vente/achat/depense/abonnement (`V41` migration), with no country awareness at all. `Country` already scopes `Entreprise` (mandatory FK). `PreuvePaiement.moyen` is a plain FK to `MoyenPaiement`, unfiltered by country.
+- User flagged a real gap while discussing this: today a Guinea-based entreprise's vente/achat/depense/abonnement payment-method pickers show ALL active `MoyenPaiement` rows (e.g. "Wave" shows up even where Wave isn't actually usable there) — the need is broader than just the subscription flow.
+
+### Decisions confirmed live
+
+1. The new billing-number config is a **global platform-level** reference (SaaS's own collection accounts per country), ADMIN-only — not per-Entreprise.
+2. Keep the entity name **"Facturation"** (user's own term, despite the naming-overlap risk with existing `Facture*` entities — explicitly chosen anyway).
+3. **One billing number per (moyen, pays) pair** — no duplicates.
+4. Country-aware filtering of `MoyenPaiement` must apply **everywhere** a payment method is picked — vente, achat, dépense, and abonnement alike — not just the subscription flow.
+5. **Split into 2 separate tasks** (user's explicit call): Task 1 = add a nullable `pays` (FK `Country`) to the existing `MoyenPaiement` entity + filter payment-method selection everywhere by the entreprise's country (moyens with `pays=null` stay global). Task 2 = new `Facturation` entity (`moyenPaiement` FK unique + `numeroFacturation` + `actif`), admin CRUD, country read through `moyenPaiement.pays`, wired into `SubmitPaiementForm` to filter choices + display the number to credit.
+
+### Still open — do not assume, ask before implementing (rule 44)
+
+- Should the backend also validate server-side (400) that a submitted `moyenPaiementId` is valid for the entreprise's country on every write path (vente/achat/depense/paiement-abonnement), or is client-side list filtering enough?
+- Should the "Dépenses plateforme" admin module (global, non-tenant) also be country-filtered, or stay unchanged (admin manages the platform's own expenses, not a client's)?
+
+### Result
+
+**No code written.** No design doc, no plan. TODO entry added (see `.claude/TODO.md`) so the next session can resume directly from `superpowers:brainstorming` with the two open questions above, without re-deriving the context.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-27 — Manual QA follow-up on preuve-paiement-refonte + admin overview KPI fixes (both repos)
 
 ### Subject

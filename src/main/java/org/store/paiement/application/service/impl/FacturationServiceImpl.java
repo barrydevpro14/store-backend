@@ -7,7 +7,6 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
-import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.paiement.application.dto.FacturationFilter;
 import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
@@ -18,12 +17,14 @@ import org.store.paiement.domain.model.Facturation;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.service.FacturationDomainService;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Orchestrates the Facturation CRUD: resolves the moyenPaiement/pays FKs, enforces the
- * unique (moyenPaiement, pays) pair invariant, and delegates persistence to the domain service.
+ * no-country-overlap invariant per moyen, and delegates persistence to the domain service.
  */
 @Service
 @Transactional(readOnly = true)
@@ -33,44 +34,41 @@ public class FacturationServiceImpl implements IFacturationService {
     private final IMoyenPaiementService moyenPaiementService;
     private final CountryDomainService countryDomainService;
     private final ValidatorService validatorService;
-    private final IEntrepriseService entrepriseService;
 
     public FacturationServiceImpl(FacturationDomainService domainService,
                                   IMoyenPaiementService moyenPaiementService,
                                   CountryDomainService countryDomainService,
-                                  ValidatorService validatorService,
-                                  IEntrepriseService entrepriseService) {
+                                  ValidatorService validatorService) {
         this.domainService = domainService;
         this.moyenPaiementService = moyenPaiementService;
         this.countryDomainService = countryDomainService;
         this.validatorService = validatorService;
-        this.entrepriseService = entrepriseService;
     }
 
-    /** Validates the request, checks the moyenPaiement/pays pair is unique, resolves both FKs, and creates the facturation. */
+    /** Validates the request, checks the moyen's countries don't overlap another facturation, resolves both FKs, and creates the facturation. */
     @Override
     @Transactional
     public FacturationResponse create(FacturationRequest request) {
         validatorService.validate(request);
-        domainService.ensureUniqueMoyenPaysPair(request.moyenPaiementId(), request.paysId(), null);
+        domainService.ensureNoCountryOverlap(request.moyenPaiementId(), request.paysIds(), null);
 
         MoyenPaiement moyenPaiement = resolveMoyenPaiement(request.moyenPaiementId());
-        Country pays = resolvePays(request.paysId());
+        Set<Country> pays = new HashSet<>(countryDomainService.findAllByIds(request.paysIds()));
         Facturation created = domainService.create(request, moyenPaiement, pays);
 
         return new FacturationResponse(created);
     }
 
-    /** Validates the request, checks the moyenPaiement/pays pair stays unique excluding the current id, then updates the facturation. */
+    /** Validates the request, checks the moyen's countries stay non-overlapping excluding the current id, then updates the facturation. */
     @Override
     @Transactional
     public FacturationResponse update(UUID id, FacturationRequest request) {
         validatorService.validate(request);
         Facturation facturation = domainService.findById(id);
-        domainService.ensureUniqueMoyenPaysPair(request.moyenPaiementId(), request.paysId(), id);
+        domainService.ensureNoCountryOverlap(request.moyenPaiementId(), request.paysIds(), id);
 
         MoyenPaiement moyenPaiement = resolveMoyenPaiement(request.moyenPaiementId());
-        Country pays = resolvePays(request.paysId());
+        Set<Country> pays = new HashSet<>(countryDomainService.findAllByIds(request.paysIds()));
 
         facturation.setMoyenPaiement(moyenPaiement);
         facturation.setPays(pays);
@@ -82,11 +80,6 @@ public class FacturationServiceImpl implements IFacturationService {
     /** Resolves the mandatory moyenPaiement FK from its id. */
     public MoyenPaiement resolveMoyenPaiement(UUID moyenPaiementId) {
         return moyenPaiementService.findById(moyenPaiementId);
-    }
-
-    /** Resolves the optional pays FK from its id, returning null when the request carries no paysId. */
-    public Country resolvePays(UUID paysId) {
-        return paysId != null ? countryDomainService.findById(paysId) : null;
     }
 
     /** Activates a disabled facturation. */
@@ -127,27 +120,25 @@ public class FacturationServiceImpl implements IFacturationService {
         return domainService.findResponsesByFilter(filter);
     }
 
-    /** Resolves the caller's entreprise country, then returns the matching active facturation options (global + country-specific). */
+    /** Returns the active facturation options (global + country-specific) available for the given country. */
     @Override
-    public List<FacturationOptionResponse> findSelectOptions() {
-        UUID countryId = entrepriseService.findCurrentUserCountryId();
+    public List<FacturationOptionResponse> findSelectOptions(UUID countryId) {
         return domainService.findSelectOptions(countryId);
     }
 
-    /** Resolves the facturation by id, enforcing it is active and, when country-specific, belongs to the current user's entreprise country. */
+    /** Resolves the facturation by id, enforcing it is active and, when country-specific, its pays set contains the given country. */
     @Override
-    public Facturation findByIdAvailableForCurrentCountry(UUID id) {
+    public Facturation findByIdAvailableForCountry(UUID id, UUID countryId) {
         Facturation facturation = domainService.findById(id);
         if (!facturation.isActif()) {
             throw new BadArgumentException("facturation.notAvailable");
         }
 
-        Country pays = facturation.getPays();
-        if (pays != null) {
-            UUID currentCountryId = entrepriseService.findCurrentUserCountryId();
-            if (!pays.getId().equals(currentCountryId)) {
-                throw new BadArgumentException("facturation.notAvailableForCountry");
-            }
+        Set<Country> pays = facturation.getPays();
+        boolean isRestrictedToOtherCountries = !pays.isEmpty()
+                && pays.stream().noneMatch(country -> country.getId().equals(countryId));
+        if (isRestrictedToOtherCountries) {
+            throw new BadArgumentException("facturation.notAvailableForCountry");
         }
         return facturation;
     }

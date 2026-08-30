@@ -12,9 +12,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
-import org.store.country.application.dto.CountryResponse;
 import org.store.paiement.application.dto.FacturationFilter;
-import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
@@ -53,7 +51,7 @@ class FacturationControllerTest {
     void create_should_return_201() throws Exception {
         FacturationRequest body = new FacturationRequest(UUID.randomUUID(), null, "77 000 00 00");
         MoyenPaiementResponse moyenPaiement = new MoyenPaiementResponse(UUID.randomUUID(), "Wave", true, List.of());
-        FacturationResponse response = new FacturationResponse(UUID.randomUUID(), moyenPaiement, (CountryResponse) null, "77 000 00 00", true);
+        FacturationResponse response = new FacturationResponse(UUID.randomUUID(), moyenPaiement, List.of(), "77 000 00 00", true);
         when(service.create(any(FacturationRequest.class))).thenReturn(response);
 
         mockMvc.perform(post(FacturationController.BASE_PATH)
@@ -88,7 +86,7 @@ class FacturationControllerTest {
     @Test
     void list_should_return_200_with_page() throws Exception {
         MoyenPaiementResponse moyenPaiement = new MoyenPaiementResponse(UUID.randomUUID(), "Wave", true, List.of());
-        FacturationResponse response = new FacturationResponse(UUID.randomUUID(), moyenPaiement, (CountryResponse) null, "77 000 00 00", true);
+        FacturationResponse response = new FacturationResponse(UUID.randomUUID(), moyenPaiement, List.of(), "77 000 00 00", true);
         when(service.findAll(any(FacturationFilter.class)))
                 .thenReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1));
 
@@ -97,14 +95,4 @@ class FacturationControllerTest {
                 .andExpect(jsonPath("$.content[0].numeroFacturation").value("77 000 00 00"));
     }
 
-    @Test
-    void select_should_return_200_with_options() throws Exception {
-        FacturationOptionResponse option = new FacturationOptionResponse(UUID.randomUUID(), "Wave", "77 000 00 00");
-        when(service.findSelectOptions()).thenReturn(List.of(option));
-
-        mockMvc.perform(get(FacturationController.BASE_PATH + "/select"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].moyenLibelle").value("Wave"))
-                .andExpect(jsonPath("$[0].numeroFacturation").value("77 000 00 00"));
-    }
 }

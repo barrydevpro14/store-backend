@@ -16,8 +16,10 @@ import org.store.abonnement.application.dto.PreuvePaiementResponse;
 import org.store.abonnement.application.service.IPaiementAbonnementService;
 import org.store.abonnement.application.service.IPreuvePaiementService;
 import org.store.common.dto.DataCountResponse;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -42,6 +44,12 @@ public class PaiementAbonnementController {
                                                         @RequestPart(value = "file", required = false) MultipartFile file) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(preuvePaiementService.create(id, preuvePaiementRequest, file));
+    }
+
+    @GetMapping("/{id}/facturation-options")
+    @PreAuthorize("hasAuthority('SUBSCRIPTION_PAY')")
+    public ResponseEntity<List<FacturationOptionResponse>> facturationOptions(@PathVariable UUID id) {
+        return ResponseEntity.ok(paiementAbonnementService.findFacturationOptions(id));
     }
 
     @GetMapping

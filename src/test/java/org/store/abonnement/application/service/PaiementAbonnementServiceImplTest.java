@@ -24,8 +24,11 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.entreprise.domain.model.Entreprise;
+import org.store.paiement.application.dto.FacturationOptionResponse;
+import org.store.paiement.application.service.IFacturationService;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
+import org.store.common.exceptions.ForbiddenException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,6 +56,7 @@ class PaiementAbonnementServiceImplTest {
     @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
     @Mock private IRevenuService revenuService;
+    @Mock private IFacturationService facturationService;
 
     @InjectMocks
     private PaiementAbonnementServiceImpl service;
@@ -337,5 +342,50 @@ class PaiementAbonnementServiceImplTest {
 
         assertThatThrownBy(() -> service.recalculerFactureNonPayee(paiement, inputs, breakdown))
                 .isInstanceOf(BadArgumentException.class);
+    }
+
+    @Test
+    void findFacturationOptions_should_resolve_country_from_the_factures_own_entreprise_for_the_owner() {
+        PaiementAbonnement facture = factureGeneree();
+        UUID countryId = entreprise.getCountry().getId();
+        FacturationOptionResponse option = new FacturationOptionResponse(UUID.randomUUID(), "Wave", "77 000 00 00");
+        when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(facture);
+        when(facturationService.findSelectOptions(countryId)).thenReturn(List.of(option));
+
+        List<FacturationOptionResponse> result = service.findFacturationOptions(paiementId);
+
+        assertThat(result).containsExactly(option);
+    }
+
+    @Test
+    void findFacturationOptions_should_resolve_the_target_entreprise_country_when_called_by_admin() {
+        currentUserService = mock(ICurrentUserService.class);
+        when(currentUserService.getCurrent()).thenReturn(admin());
+        service = new PaiementAbonnementServiceImpl(paiementAbonnementDomainService, abonnementDomainService,
+                currentUserService, validatorService, notificationEventPublisher, auditEventPublisher,
+                revenuService, facturationService);
+        PaiementAbonnement facture = factureGeneree();
+        UUID countryId = entreprise.getCountry().getId();
+        when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(facture);
+        when(facturationService.findSelectOptions(countryId)).thenReturn(List.of());
+
+        service.findFacturationOptions(paiementId);
+
+        verify(facturationService).findSelectOptions(countryId);
+    }
+
+    @Test
+    void findFacturationOptions_should_throw_when_caller_does_not_own_the_facture() {
+        currentUserService = mock(ICurrentUserService.class);
+        when(currentUserService.getCurrent()).thenReturn(new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), null, "other-owner", null, null, "OWNER", List.of("SUBSCRIPTION_PAY")));
+        service = new PaiementAbonnementServiceImpl(paiementAbonnementDomainService, abonnementDomainService,
+                currentUserService, validatorService, notificationEventPublisher, auditEventPublisher,
+                revenuService, facturationService);
+        PaiementAbonnement facture = factureGeneree();
+        when(paiementAbonnementDomainService.findById(paiementId)).thenReturn(facture);
+
+        assertThatThrownBy(() -> service.findFacturationOptions(paiementId))
+                .isInstanceOf(ForbiddenException.class);
     }
 }

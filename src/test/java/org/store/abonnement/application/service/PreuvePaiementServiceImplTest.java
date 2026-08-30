@@ -24,6 +24,7 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.exceptions.EntityException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
+import org.store.country.domain.model.Country;
 import org.store.entreprise.domain.model.Entreprise;
 import org.store.paiement.application.service.IFacturationService;
 import org.store.paiement.domain.model.Facturation;
@@ -62,6 +63,7 @@ class PreuvePaiementServiceImplTest {
     private UUID factureId;
     private UUID preuveId;
     private UUID entrepriseId;
+    private UUID countryId;
     private PaiementAbonnement facture;
 
     @BeforeEach
@@ -69,10 +71,15 @@ class PreuvePaiementServiceImplTest {
         factureId = UUID.randomUUID();
         preuveId = UUID.randomUUID();
         entrepriseId = UUID.randomUUID();
+        countryId = UUID.randomUUID();
+
+        Country country = new Country();
+        country.setId(countryId);
 
         Entreprise entreprise = new Entreprise();
         entreprise.setId(entrepriseId);
         entreprise.setSigle("ACME");
+        entreprise.setCountry(country);
 
         Abonnement abonnement = new Abonnement();
         abonnement.setId(UUID.randomUUID());
@@ -106,7 +113,7 @@ class PreuvePaiementServiceImplTest {
 
         when(paiementAbonnementDomainService.findById(factureId)).thenReturn(facture);
         when(preuvePaiementDomainService.existsPendingForFacture(factureId)).thenReturn(false);
-        when(facturationService.findByIdAvailableForCurrentCountry(facturationId)).thenReturn(facturation);
+        when(facturationService.findByIdAvailableForCountry(facturationId, countryId)).thenReturn(facturation);
         when(uploadFileService.buildImage(any())).thenReturn(new PieceJointe());
         when(preuvePaiementDomainService.save(any(PreuvePaiement.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -138,7 +145,7 @@ class PreuvePaiementServiceImplTest {
         PreuvePaiementRequest request = new PreuvePaiementRequest(facturationId, "TXN-123");
         when(paiementAbonnementDomainService.findById(factureId)).thenReturn(facture);
         when(preuvePaiementDomainService.existsPendingForFacture(factureId)).thenReturn(false);
-        when(facturationService.findByIdAvailableForCurrentCountry(facturationId))
+        when(facturationService.findByIdAvailableForCountry(facturationId, countryId))
                 .thenThrow(new BadArgumentException("facturation.notAvailableForCountry"));
 
         assertThatThrownBy(() -> service.create(factureId, request, null))

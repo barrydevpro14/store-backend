@@ -80,7 +80,9 @@ public class PreuvePaiementServiceImpl implements IPreuvePaiementService {
         PreuvePaiement preuve = new PreuvePaiement();
         preuve.setPaiementAbonnement(facture);
         preuve.setDate(LocalDate.now());
-        Facturation facturation = facturationService.findByIdAvailableForCurrentCountry(request.facturationId());
+        UUID countryId = facture.getAbonnement().getEntreprise() != null
+                ? facture.getAbonnement().getEntreprise().getCountry().getId() : null;
+        Facturation facturation = facturationService.findByIdAvailableForCountry(request.facturationId(), countryId);
         preuve.setMoyen(facturation.getMoyenPaiement());
         preuve.setReferenceTransaction(request.referenceTransaction());
         if (file != null && !file.isEmpty()) {

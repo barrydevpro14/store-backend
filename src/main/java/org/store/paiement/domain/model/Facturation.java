@@ -6,6 +6,9 @@ import lombok.Setter;
 import org.store.common.base.AuditableEntity;
 import org.store.country.domain.model.Country;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Getter
 @Setter
 @Entity
@@ -17,9 +20,14 @@ public class Facturation extends AuditableEntity {
     @JoinColumn(name = "moyen_paiement_id", nullable = false)
     private MoyenPaiement moyenPaiement;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pays_id")
-    private Country pays;
+    /** Empty set means the billing number is global (available in every country). */
+    @ManyToMany
+    @JoinTable(
+            name = "facturation_pays",
+            joinColumns = @JoinColumn(name = "facturation_id"),
+            inverseJoinColumns = @JoinColumn(name = "country_id")
+    )
+    private Set<Country> pays = new HashSet<>();
 
     @Column(name = "numero_facturation", nullable = false, length = 100)
     private String numeroFacturation;

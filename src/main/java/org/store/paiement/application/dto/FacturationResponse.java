@@ -3,12 +3,13 @@ package org.store.paiement.application.dto;
 import org.store.country.application.dto.CountryResponse;
 import org.store.paiement.domain.model.Facturation;
 
+import java.util.List;
 import java.util.UUID;
 
 public record FacturationResponse(
         UUID id,
         MoyenPaiementResponse moyenPaiement,
-        CountryResponse pays,
+        List<CountryResponse> pays,
         String numeroFacturation,
         boolean actif
 ) {
@@ -16,7 +17,7 @@ public record FacturationResponse(
         this(
                 facturation.getId(),
                 new MoyenPaiementResponse(facturation.getMoyenPaiement()),
-                facturation.getPays() != null ? new CountryResponse(facturation.getPays()) : null,
+                facturation.getPays().stream().map(CountryResponse::new).toList(),
                 facturation.getNumeroFacturation(),
                 facturation.isActif()
         );

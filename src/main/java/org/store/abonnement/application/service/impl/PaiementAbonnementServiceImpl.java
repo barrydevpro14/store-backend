@@ -17,6 +17,8 @@ import org.store.common.exceptions.ForbiddenException;
 import org.store.common.service.ValidatorService;
 import org.store.notification.application.event.PaiementAbonnementValidatedEvent;
 import org.store.notification.application.service.INotificationEventPublisher;
+import org.store.paiement.application.dto.FacturationOptionResponse;
+import org.store.paiement.application.service.IFacturationService;
 import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
@@ -46,6 +48,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
     private final INotificationEventPublisher notificationEventPublisher;
     private final IAuditEventPublisher auditEventPublisher;
     private final IRevenuService revenuService;
+    private final IFacturationService facturationService;
 
     public PaiementAbonnementServiceImpl(PaiementAbonnementDomainService paiementAbonnementDomainService,
                                          AbonnementDomainService abonnementDomainService,
@@ -53,7 +56,8 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
                                          ValidatorService validatorService,
                                          INotificationEventPublisher notificationEventPublisher,
                                          IAuditEventPublisher auditEventPublisher,
-                                         IRevenuService revenuService) {
+                                         IRevenuService revenuService,
+                                         IFacturationService facturationService) {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.abonnementDomainService = abonnementDomainService;
         this.currentUserService = currentUserService;
@@ -61,6 +65,7 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         this.notificationEventPublisher = notificationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
         this.revenuService = revenuService;
+        this.facturationService = facturationService;
     }
 
     @Override
@@ -158,6 +163,16 @@ public class PaiementAbonnementServiceImpl implements IPaiementAbonnementService
         PaiementAbonnement paiement = paiementAbonnementDomainService.findById(paiementId);
         ensurePaiementAccessibleByCaller(paiement);
         return new PaiementAbonnementDetailsResponse(paiement);
+    }
+
+    /** Resolves the facture's own entreprise country, then delegates to the facturation options lookup. */
+    @Override
+    public List<FacturationOptionResponse> findFacturationOptions(UUID paiementId) {
+        PaiementAbonnement facture = paiementAbonnementDomainService.findById(paiementId);
+        ensurePaiementAccessibleByCaller(facture);
+
+        UUID countryId = facture.getAbonnement().getEntreprise().getCountry().getId();
+        return facturationService.findSelectOptions(countryId);
     }
 
     @Override

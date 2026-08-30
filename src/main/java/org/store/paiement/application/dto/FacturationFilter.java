@@ -11,6 +11,7 @@ import java.util.UUID;
 public record FacturationFilter(
         UUID moyenPaiementId,
         UUID paysId,
+        String numeroFacturation,
         Boolean actif,
         LocalDate createdStartDate,
         LocalDate createdEndDate,

@@ -8,13 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.store.paiement.application.dto.FacturationFilter;
-import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.service.IFacturationService;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -33,19 +31,14 @@ public class FacturationController {
     @PreAuthorize("hasAuthority('FACTURATION_READ')")
     public ResponseEntity<Page<FacturationResponse>> list(@RequestParam(required = false) UUID moyenPaiementId,
                                                             @RequestParam(required = false) UUID paysId,
+                                                            @RequestParam(required = false) String numeroFacturation,
                                                             @RequestParam(required = false) Boolean actif,
                                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
                                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
-        FacturationFilter filter = new FacturationFilter(moyenPaiementId, paysId, actif, createdStartDate, createdEndDate, page, size);
+        FacturationFilter filter = new FacturationFilter(moyenPaiementId, paysId, numeroFacturation, actif, createdStartDate, createdEndDate, page, size);
         return ResponseEntity.ok(service.findAll(filter));
-    }
-
-    @GetMapping("/select")
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_PAY')")
-    public ResponseEntity<List<FacturationOptionResponse>> select() {
-        return ResponseEntity.ok(service.findSelectOptions());
     }
 
     @GetMapping("/{id}")

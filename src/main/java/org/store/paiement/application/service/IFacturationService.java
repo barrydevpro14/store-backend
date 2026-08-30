@@ -26,8 +26,9 @@ public interface IFacturationService {
 
     Page<FacturationResponse> findAll(FacturationFilter filter);
 
-    List<FacturationOptionResponse> findSelectOptions();
+    /** Returns the active facturation options (global + country-specific) available for the given country. */
+    List<FacturationOptionResponse> findSelectOptions(UUID countryId);
 
-    /** Resolves a Facturation by id and enforces it is available for the current user's entreprise country. */
-    Facturation findByIdAvailableForCurrentCountry(UUID id);
+    /** Resolves a Facturation by id and enforces it is active and available for the given country. */
+    Facturation findByIdAvailableForCountry(UUID id, UUID countryId);
 }

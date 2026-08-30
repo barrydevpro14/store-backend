@@ -138,4 +138,16 @@ class PaiementAbonnementControllerTest {
                 .andExpect(jsonPath("$.preuves").isArray())
                 .andExpect(jsonPath("$.preuves[0].referenceTransaction").value("TXN-001"));
     }
+
+    @Test
+    void should_return_200_with_facturation_options_for_the_given_paiement() throws Exception {
+        org.store.paiement.application.dto.FacturationOptionResponse option =
+                new org.store.paiement.application.dto.FacturationOptionResponse(UUID.randomUUID(), "Wave", "77 000 00 00");
+        when(paiementAbonnementService.findFacturationOptions(paiementId)).thenReturn(List.of(option));
+
+        mockMvc.perform(get(PaiementAbonnementController.BASE_PATH + "/" + paiementId + "/facturation-options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].moyenLibelle").value("Wave"))
+                .andExpect(jsonPath("$[0].numeroFacturation").value("77 000 00 00"));
+    }
 }

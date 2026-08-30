@@ -6,6 +6,7 @@ import org.store.abonnement.application.service.impl.FactureGenereeCommand;
 import org.store.abonnement.application.service.impl.SubscriptionAmountInputs;
 import org.store.abonnement.domain.model.Abonnement;
 import org.store.abonnement.domain.model.PaiementAbonnement;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -65,4 +66,10 @@ public interface IPaiementAbonnementService {
     void activateOrExtend(Abonnement abonnement);
 
     PaiementAbonnementFilter scopeFilterForNonAdmin(PaiementAbonnementFilter filter);
+
+    /**
+     * Returns the facturation options available for the facture's own entreprise country —
+     * usable both by the entreprise's own OWNER and by an ADMIN paying on its behalf.
+     */
+    List<FacturationOptionResponse> findFacturationOptions(UUID paiementId);
 }
