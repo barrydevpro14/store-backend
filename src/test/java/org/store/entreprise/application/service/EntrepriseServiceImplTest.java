@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.store.common.exceptions.ForbiddenException;
+import org.store.country.domain.model.Country;
 import org.store.entreprise.application.dto.EntrepriseRequest;
 import org.store.entreprise.application.dto.EntrepriseResponse;
 import org.store.entreprise.domain.model.Entreprise;
@@ -219,5 +220,30 @@ class EntrepriseServiceImplTest {
         when(entrepriseDomainService.countAllStats()).thenReturn(stats);
 
         assertThat(service.countAllStats()).isEqualTo(stats);
+    }
+
+    @Test
+    void findCurrentUserCountryId_should_resolve_country_of_current_entreprise() {
+        UUID countryId = UUID.randomUUID();
+        Country country = new Country();
+        country.setId(countryId);
+        entreprise.setCountry(country);
+        when(currentUserService.getCurrent()).thenReturn(proprietaire(entrepriseId));
+        when(entrepriseDomainService.findById(entrepriseId)).thenReturn(entreprise);
+
+        UUID result = service.findCurrentUserCountryId();
+
+        assertThat(result).isEqualTo(countryId);
+    }
+
+    @Test
+    void findCurrentUserCountryId_should_return_null_when_current_user_has_no_entreprise() {
+        UserPrincipal adminPrincipal = new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "admin", null, null, "ADMIN", List.of("ADMIN_ACCESS"));
+        when(currentUserService.getCurrent()).thenReturn(adminPrincipal);
+
+        UUID result = service.findCurrentUserCountryId();
+
+        assertThat(result).isNull();
     }
 }

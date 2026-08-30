@@ -83,6 +83,17 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public UUID findCurrentUserCountryId() {
+        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
+        if (entrepriseId == null) {
+            return null;
+        }
+
+        return entrepriseDomainService.findById(entrepriseId).getCountry().getId();
+    }
+
+    @Override
     public Page<EntrepriseResponse> findAll(EntrepriseFilter filter) {
         validatorService.validate(filter);
         return entrepriseDomainService.findResponsesByFilter(filter);

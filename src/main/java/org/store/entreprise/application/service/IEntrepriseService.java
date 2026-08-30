@@ -35,6 +35,12 @@ public interface IEntrepriseService {
     EntrepriseResponse findCurrentUserEntreprise();
 
     /**
+     * Résout l'id du pays de l'entreprise de l'utilisateur courant. Retourne
+     * {@code null} si l'utilisateur courant n'a pas d'entreprise (ex. ADMIN).
+     */
+    UUID findCurrentUserCountryId();
+
+    /**
      * Modification par le propriétaire des infos de sa propre entreprise.
      */
     EntrepriseResponse updateCurrentUserEntreprise(EntrepriseRequest entrepriseRequest);

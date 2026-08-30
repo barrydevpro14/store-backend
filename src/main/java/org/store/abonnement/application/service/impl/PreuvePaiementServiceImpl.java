@@ -25,7 +25,8 @@ import org.store.audit.application.event.AuditEvent;
 import org.store.audit.application.service.IAuditEventPublisher;
 import org.store.audit.domain.enums.AuditAction;
 import org.store.audit.domain.enums.AuditEntityType;
-import org.store.paiement.application.service.IMoyenPaiementService;
+import org.store.paiement.application.service.IFacturationService;
+import org.store.paiement.domain.model.Facturation;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
 
@@ -45,7 +46,7 @@ public class PreuvePaiementServiceImpl implements IPreuvePaiementService {
     private final PaiementAbonnementDomainService paiementAbonnementDomainService;
     private final IPaiementAbonnementService paiementAbonnementService;
     private final IUploadFileService uploadFileService;
-    private final IMoyenPaiementService moyenPaiementService;
+    private final IFacturationService facturationService;
     private final ICurrentUserService currentUserService;
     private final INotificationEventPublisher notificationEventPublisher;
     private final IAuditEventPublisher auditEventPublisher;
@@ -54,7 +55,7 @@ public class PreuvePaiementServiceImpl implements IPreuvePaiementService {
                                      PaiementAbonnementDomainService paiementAbonnementDomainService,
                                      IPaiementAbonnementService paiementAbonnementService,
                                      IUploadFileService uploadFileService,
-                                     IMoyenPaiementService moyenPaiementService,
+                                     IFacturationService facturationService,
                                      ICurrentUserService currentUserService,
                                      INotificationEventPublisher notificationEventPublisher,
                                      IAuditEventPublisher auditEventPublisher) {
@@ -62,7 +63,7 @@ public class PreuvePaiementServiceImpl implements IPreuvePaiementService {
         this.paiementAbonnementDomainService = paiementAbonnementDomainService;
         this.paiementAbonnementService = paiementAbonnementService;
         this.uploadFileService = uploadFileService;
-        this.moyenPaiementService = moyenPaiementService;
+        this.facturationService = facturationService;
         this.currentUserService = currentUserService;
         this.notificationEventPublisher = notificationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
@@ -79,7 +80,10 @@ public class PreuvePaiementServiceImpl implements IPreuvePaiementService {
         PreuvePaiement preuve = new PreuvePaiement();
         preuve.setPaiementAbonnement(facture);
         preuve.setDate(LocalDate.now());
-        preuve.setMoyen(moyenPaiementService.findById(request.moyenPaiementId()));
+        UUID countryId = facture.getAbonnement().getEntreprise() != null
+                ? facture.getAbonnement().getEntreprise().getCountry().getId() : null;
+        Facturation facturation = facturationService.findByIdAvailableForCountry(request.facturationId(), countryId);
+        preuve.setMoyen(facturation.getMoyenPaiement());
         preuve.setReferenceTransaction(request.referenceTransaction());
         if (file != null && !file.isEmpty()) {
             PieceJointe image = uploadFileService.buildImage(file);

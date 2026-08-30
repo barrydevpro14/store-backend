@@ -1,7 +1,11 @@
 package org.store.paiement.domain.service;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.store.common.dto.DataSelect;
 import org.store.common.exceptions.EntityException;
+import org.store.common.tools.LikePatternHelper;
+import org.store.paiement.application.dto.MoyenPaiementSelectFilter;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.repository.MoyenPaiementRepository;
 
@@ -44,5 +48,11 @@ public class MoyenPaiementDomainService {
 
     public void delete(MoyenPaiement moyenPaiement) {
         repository.delete(moyenPaiement);
+    }
+
+    public Page<DataSelect> findSelectItems(MoyenPaiementSelectFilter filter) {
+        String searchPattern = LikePatternHelper.toLikePattern(filter.searchTerm());
+
+        return repository.findSelectItems(filter.countryId(), filter.searchTerm(), searchPattern, filter.toPageable());
     }
 }

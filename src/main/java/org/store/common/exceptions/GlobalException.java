@@ -99,12 +99,14 @@ public class GlobalException {
      * Mapping connu nom-de-contrainte-DB → clé i18n. Étendre au cas
      * par cas quand un nouveau cas de race condition apparaît.
      */
-    private static final Map<String, String> CONSTRAINT_MESSAGE_KEYS = Map.of(
-            "facture_achat_numero_key",   "factureAchat.numero.alreadyExists",
-            "person_telephone_unique",    "person.telephone.alreadyExists",
-            "person_email_unique",        "person.email.alreadyExists",
-            "account_username_key",             "account.username.alreadyExists",
-            "pf_product_fournisseur_quality_unique", "productFournisseur.alreadyExists"
+    private static final Map<String, String> CONSTRAINT_MESSAGE_KEYS = Map.ofEntries(
+            Map.entry("facture_achat_numero_key",   "factureAchat.numero.alreadyExists"),
+            Map.entry("person_telephone_unique",    "person.telephone.alreadyExists"),
+            Map.entry("person_email_unique",        "person.email.alreadyExists"),
+            Map.entry("account_username_key",             "account.username.alreadyExists"),
+            Map.entry("pf_product_fournisseur_quality_unique", "productFournisseur.alreadyExists"),
+            Map.entry("facturation_moyen_pays_key", "facturation.alreadyExists"),
+            Map.entry("facturation_moyen_global_key", "facturation.alreadyExists")
     );
 
     private String extractConstraintName(DataIntegrityViolationException ex) {
