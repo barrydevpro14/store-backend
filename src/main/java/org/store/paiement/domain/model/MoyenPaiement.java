@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.store.common.base.AuditableEntity;
+import org.store.country.domain.model.Country;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -21,4 +25,12 @@ public class MoyenPaiement extends AuditableEntity {
 
     @Column(nullable = false)
     private boolean actif = true;
+
+    @ManyToMany
+    @JoinTable(
+            name = "moyen_paiement_pays",
+            joinColumns = @JoinColumn(name = "moyen_paiement_id"),
+            inverseJoinColumns = @JoinColumn(name = "country_id")
+    )
+    private Set<Country> pays = new HashSet<>();
 }
