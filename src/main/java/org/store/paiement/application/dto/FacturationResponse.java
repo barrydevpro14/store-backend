@@ -15,7 +15,7 @@ public record FacturationResponse(
     public FacturationResponse(Facturation facturation) {
         this(
                 facturation.getId(),
-                facturation.getMoyenPaiement() != null ? new MoyenPaiementResponse(facturation.getMoyenPaiement()) : null,
+                new MoyenPaiementResponse(facturation.getMoyenPaiement()),
                 facturation.getPays() != null ? new CountryResponse(facturation.getPays()) : null,
                 facturation.getNumeroFacturation(),
                 facturation.isActif()

@@ -117,8 +117,11 @@ class FacturationServiceImplTest {
     @Test
     void activate_should_set_actif_true() {
         UUID id = UUID.randomUUID();
+        MoyenPaiement moyenPaiement = new MoyenPaiement();
+        moyenPaiement.setId(UUID.randomUUID());
         Facturation facturation = new Facturation();
         facturation.setId(id);
+        facturation.setMoyenPaiement(moyenPaiement);
         facturation.setActif(false);
         when(domainService.findById(id)).thenReturn(facturation);
         when(domainService.save(facturation)).thenReturn(facturation);
@@ -131,8 +134,11 @@ class FacturationServiceImplTest {
     @Test
     void deactivate_should_set_actif_false() {
         UUID id = UUID.randomUUID();
+        MoyenPaiement moyenPaiement = new MoyenPaiement();
+        moyenPaiement.setId(UUID.randomUUID());
         Facturation facturation = new Facturation();
         facturation.setId(id);
+        facturation.setMoyenPaiement(moyenPaiement);
         facturation.setActif(true);
         when(domainService.findById(id)).thenReturn(facturation);
         when(domainService.save(facturation)).thenReturn(facturation);
@@ -145,8 +151,11 @@ class FacturationServiceImplTest {
     @Test
     void delete_should_delegate_to_domain_service() {
         UUID id = UUID.randomUUID();
+        MoyenPaiement moyenPaiement = new MoyenPaiement();
+        moyenPaiement.setId(UUID.randomUUID());
         Facturation facturation = new Facturation();
         facturation.setId(id);
+        facturation.setMoyenPaiement(moyenPaiement);
         when(domainService.findById(id)).thenReturn(facturation);
 
         service.delete(id);

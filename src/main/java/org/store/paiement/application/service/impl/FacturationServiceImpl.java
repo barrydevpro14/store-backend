@@ -45,8 +45,8 @@ public class FacturationServiceImpl implements IFacturationService {
         validatorService.validate(request);
         domainService.ensureUniqueMoyenPaysPair(request.moyenPaiementId(), request.paysId(), null);
 
-        MoyenPaiement moyenPaiement = moyenPaiementService.findById(request.moyenPaiementId());
-        Country pays = request.paysId() != null ? countryDomainService.findById(request.paysId()) : null;
+        MoyenPaiement moyenPaiement = resolveMoyenPaiement(request.moyenPaiementId());
+        Country pays = resolvePays(request.paysId());
         Facturation created = domainService.create(request, moyenPaiement, pays);
 
         return new FacturationResponse(created);
@@ -60,14 +60,24 @@ public class FacturationServiceImpl implements IFacturationService {
         Facturation facturation = domainService.findById(id);
         domainService.ensureUniqueMoyenPaysPair(request.moyenPaiementId(), request.paysId(), id);
 
-        MoyenPaiement moyenPaiement = moyenPaiementService.findById(request.moyenPaiementId());
-        Country pays = request.paysId() != null ? countryDomainService.findById(request.paysId()) : null;
+        MoyenPaiement moyenPaiement = resolveMoyenPaiement(request.moyenPaiementId());
+        Country pays = resolvePays(request.paysId());
 
         facturation.setMoyenPaiement(moyenPaiement);
         facturation.setPays(pays);
         facturation.setNumeroFacturation(request.numeroFacturation());
 
         return new FacturationResponse(domainService.save(facturation));
+    }
+
+    /** Resolves the mandatory moyenPaiement FK from its id. */
+    private MoyenPaiement resolveMoyenPaiement(UUID moyenPaiementId) {
+        return moyenPaiementService.findById(moyenPaiementId);
+    }
+
+    /** Resolves the optional pays FK from its id, returning null when the request carries no paysId. */
+    private Country resolvePays(UUID paysId) {
+        return paysId != null ? countryDomainService.findById(paysId) : null;
     }
 
     /** Activates a disabled facturation. */
