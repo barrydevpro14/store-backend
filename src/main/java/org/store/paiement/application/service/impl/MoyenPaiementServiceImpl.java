@@ -15,6 +15,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Gère le CRUD des moyens de paiement globaux (ADMIN uniquement).
+ */
 @Service
 @Transactional(readOnly = true)
 public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
@@ -31,6 +34,7 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
         this.countryDomainService = countryDomainService;
     }
 
+    /** Retourne tous les moyens de paiement (actifs et inactifs). */
     @Override
     public List<MoyenPaiementResponse> findAll() {
         return domainService.findAll().stream()
@@ -38,11 +42,13 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
                 .toList();
     }
 
+    /** Retourne l'entité par id — utilisée par les autres services pour résoudre l'UUID. */
     @Override
     public MoyenPaiement findById(UUID id) {
         return domainService.findById(id);
     }
 
+    /** Crée un nouveau moyen de paiement et résout ses pays depuis paysIds, après vérification d'unicité du libellé. */
     @Override
     @Transactional
     public MoyenPaiementResponse create(MoyenPaiementRequest request) {
@@ -57,6 +63,7 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
         return new MoyenPaiementResponse(domainService.save(moyen));
     }
 
+    /** Met à jour le libellé et les pays d'un moyen de paiement existant. */
     @Override
     @Transactional
     public MoyenPaiementResponse update(UUID id, MoyenPaiementRequest request) {
@@ -70,6 +77,7 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
         return new MoyenPaiementResponse(domainService.save(moyen));
     }
 
+    /** Active un moyen de paiement désactivé. */
     @Override
     @Transactional
     public MoyenPaiementResponse activate(UUID id) {
@@ -78,6 +86,7 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
         return new MoyenPaiementResponse(domainService.save(moyen));
     }
 
+    /** Désactive un moyen de paiement (soft-disable — garde l'historique). */
     @Override
     @Transactional
     public MoyenPaiementResponse deactivate(UUID id) {
@@ -86,12 +95,14 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
         return new MoyenPaiementResponse(domainService.save(moyen));
     }
 
+    /** Supprime définitivement un moyen de paiement. */
     @Override
     @Transactional
     public void delete(UUID id) {
         domainService.delete(domainService.findById(id));
     }
 
+    /** Vérifie que le libellé n'est pas déjà utilisé par un autre moyen de paiement. */
     private void ensureLibelleUnique(String libelle, UUID excludeId) {
         boolean conflict = domainService.findAll().stream()
                 .anyMatch(m -> m.getLibelle().equalsIgnoreCase(libelle)
