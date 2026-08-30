@@ -52,12 +52,30 @@ public interface FacturationRepository extends BaseRepository<Facturation> {
                                                       @Param("createdEnd") LocalDateTime createdEnd,
                                                       Pageable pageable);
 
+    /**
+     * Returns the active facturation options visible for the given country: country-specific
+     * facturations for that country, plus global facturations whose moyenPaiement has no active
+     * country-specific override for that same country (country-specific overrides global).
+     */
     @Query("""
             SELECT new org.store.paiement.application.dto.FacturationOptionResponse(
                 facturation.id, facturation.moyenPaiement.libelle, facturation.numeroFacturation)
             FROM Facturation facturation
             WHERE facturation.actif = true
-              AND (facturation.pays IS NULL OR facturation.pays.id = :countryId)
+              AND facturation.moyenPaiement.actif = true
+              AND (
+                    facturation.pays.id = :countryId
+                    OR (
+                         facturation.pays IS NULL
+                         AND NOT EXISTS (
+                             SELECT 1
+                             FROM Facturation countryOverride
+                             WHERE countryOverride.moyenPaiement = facturation.moyenPaiement
+                               AND countryOverride.pays.id = :countryId
+                               AND countryOverride.actif = true
+                         )
+                       )
+                  )
             ORDER BY facturation.moyenPaiement.libelle ASC
             """)
     List<FacturationOptionResponse> findSelectOptions(@Param("countryId") UUID countryId);

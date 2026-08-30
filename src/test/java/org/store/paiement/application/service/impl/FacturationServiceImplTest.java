@@ -247,4 +247,18 @@ class FacturationServiceImplTest {
         assertThatThrownBy(() -> service.findByIdAvailableForCurrentCountry(id))
                 .isInstanceOf(BadArgumentException.class);
     }
+
+    @Test
+    void findByIdAvailableForCurrentCountry_should_throw_when_facturation_is_inactive() {
+        UUID id = UUID.randomUUID();
+        Facturation facturation = new Facturation();
+        facturation.setId(id);
+        facturation.setActif(false);
+        when(domainService.findById(id)).thenReturn(facturation);
+
+        assertThatThrownBy(() -> service.findByIdAvailableForCurrentCountry(id))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(entrepriseService, org.mockito.Mockito.never()).findCurrentUserCountryId();
+    }
 }

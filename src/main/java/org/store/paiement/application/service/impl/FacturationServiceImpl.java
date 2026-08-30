@@ -80,12 +80,12 @@ public class FacturationServiceImpl implements IFacturationService {
     }
 
     /** Resolves the mandatory moyenPaiement FK from its id. */
-    private MoyenPaiement resolveMoyenPaiement(UUID moyenPaiementId) {
+    public MoyenPaiement resolveMoyenPaiement(UUID moyenPaiementId) {
         return moyenPaiementService.findById(moyenPaiementId);
     }
 
     /** Resolves the optional pays FK from its id, returning null when the request carries no paysId. */
-    private Country resolvePays(UUID paysId) {
+    public Country resolvePays(UUID paysId) {
         return paysId != null ? countryDomainService.findById(paysId) : null;
     }
 
@@ -134,10 +134,14 @@ public class FacturationServiceImpl implements IFacturationService {
         return domainService.findSelectOptions(countryId);
     }
 
-    /** Resolves the facturation by id, enforcing it belongs to the current user's entreprise country when it is country-specific. */
+    /** Resolves the facturation by id, enforcing it is active and, when country-specific, belongs to the current user's entreprise country. */
     @Override
     public Facturation findByIdAvailableForCurrentCountry(UUID id) {
         Facturation facturation = domainService.findById(id);
+        if (!facturation.isActif()) {
+            throw new BadArgumentException("facturation.notAvailable");
+        }
+
         Country pays = facturation.getPays();
         if (pays != null) {
             UUID currentCountryId = entrepriseService.findCurrentUserCountryId();
