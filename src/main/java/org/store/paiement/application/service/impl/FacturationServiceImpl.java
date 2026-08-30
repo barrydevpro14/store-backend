@@ -3,6 +3,7 @@ package org.store.paiement.application.service.impl;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
@@ -131,5 +132,19 @@ public class FacturationServiceImpl implements IFacturationService {
     public List<FacturationOptionResponse> findSelectOptions() {
         UUID countryId = entrepriseService.findCurrentUserCountryId();
         return domainService.findSelectOptions(countryId);
+    }
+
+    /** Resolves the facturation by id, enforcing it belongs to the current user's entreprise country when it is country-specific. */
+    @Override
+    public Facturation findByIdAvailableForCurrentCountry(UUID id) {
+        Facturation facturation = domainService.findById(id);
+        Country pays = facturation.getPays();
+        if (pays != null) {
+            UUID currentCountryId = entrepriseService.findCurrentUserCountryId();
+            if (!pays.getId().equals(currentCountryId)) {
+                throw new BadArgumentException("facturation.notAvailableForCountry");
+            }
+        }
+        return facturation;
     }
 }

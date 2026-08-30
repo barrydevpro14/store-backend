@@ -202,4 +202,49 @@ class FacturationServiceImplTest {
 
         assertThat(result).isEmpty();
     }
+
+    @Test
+    void findByIdAvailableForCurrentCountry_should_return_facturation_when_global() {
+        UUID id = UUID.randomUUID();
+        Facturation facturation = new Facturation();
+        facturation.setId(id);
+        when(domainService.findById(id)).thenReturn(facturation);
+
+        Facturation result = service.findByIdAvailableForCurrentCountry(id);
+
+        assertThat(result).isEqualTo(facturation);
+        verify(entrepriseService, org.mockito.Mockito.never()).findCurrentUserCountryId();
+    }
+
+    @Test
+    void findByIdAvailableForCurrentCountry_should_return_facturation_when_pays_matches_current_country() {
+        UUID id = UUID.randomUUID();
+        UUID countryId = UUID.randomUUID();
+        Country pays = new Country();
+        pays.setId(countryId);
+        Facturation facturation = new Facturation();
+        facturation.setId(id);
+        facturation.setPays(pays);
+        when(domainService.findById(id)).thenReturn(facturation);
+        when(entrepriseService.findCurrentUserCountryId()).thenReturn(countryId);
+
+        Facturation result = service.findByIdAvailableForCurrentCountry(id);
+
+        assertThat(result).isEqualTo(facturation);
+    }
+
+    @Test
+    void findByIdAvailableForCurrentCountry_should_throw_when_pays_does_not_match_current_country() {
+        UUID id = UUID.randomUUID();
+        Country pays = new Country();
+        pays.setId(UUID.randomUUID());
+        Facturation facturation = new Facturation();
+        facturation.setId(id);
+        facturation.setPays(pays);
+        when(domainService.findById(id)).thenReturn(facturation);
+        when(entrepriseService.findCurrentUserCountryId()).thenReturn(UUID.randomUUID());
+
+        assertThatThrownBy(() -> service.findByIdAvailableForCurrentCountry(id))
+                .isInstanceOf(BadArgumentException.class);
+    }
 }
