@@ -2,10 +2,12 @@ package org.store.paiement.application.service.impl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.paiement.application.dto.FacturationFilter;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.service.IMoyenPaiementService;
@@ -161,5 +163,16 @@ class FacturationServiceImplTest {
         service.delete(id);
 
         verify(domainService).delete(facturation);
+    }
+
+    @Test
+    void findAll_should_validate_and_delegate_to_domain_service() {
+        FacturationFilter filter = new FacturationFilter(null, null, null, null, null, 0, 10);
+        when(domainService.findResponsesByFilter(filter)).thenReturn(Page.empty());
+
+        service.findAll(filter);
+
+        verify(validatorService).validate(filter);
+        verify(domainService).findResponsesByFilter(filter);
     }
 }

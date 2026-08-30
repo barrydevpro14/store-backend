@@ -3,6 +3,9 @@ package org.store.paiement.presentation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -10,6 +13,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.country.application.dto.CountryResponse;
+import org.store.paiement.application.dto.FacturationFilter;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
@@ -21,6 +25,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,5 +82,17 @@ class FacturationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyWithoutMoyen))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void list_should_return_200_with_page() throws Exception {
+        MoyenPaiementResponse moyenPaiement = new MoyenPaiementResponse(UUID.randomUUID(), "Wave", true, List.of());
+        FacturationResponse response = new FacturationResponse(UUID.randomUUID(), moyenPaiement, (CountryResponse) null, "77 000 00 00", true);
+        when(service.findAll(any(FacturationFilter.class)))
+                .thenReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1));
+
+        mockMvc.perform(get(FacturationController.BASE_PATH))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].numeroFacturation").value("77 000 00 00"));
     }
 }

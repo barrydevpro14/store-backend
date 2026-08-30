@@ -1,10 +1,12 @@
 package org.store.paiement.application.service.impl;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.paiement.application.dto.FacturationFilter;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.service.IFacturationService;
@@ -109,5 +111,12 @@ public class FacturationServiceImpl implements IFacturationService {
     @Override
     public FacturationResponse findResponseById(UUID id) {
         return new FacturationResponse(domainService.findById(id));
+    }
+
+    /** Validates the filter, then delegates the paginated lookup to the domain service. */
+    @Override
+    public Page<FacturationResponse> findAll(FacturationFilter filter) {
+        validatorService.validate(filter);
+        return domainService.findResponsesByFilter(filter);
     }
 }

@@ -1,14 +1,18 @@
 package org.store.paiement.presentation;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.store.paiement.application.dto.FacturationFilter;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.service.IFacturationService;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -21,6 +25,19 @@ public class FacturationController {
 
     public FacturationController(IFacturationService service) {
         this.service = service;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('FACTURATION_READ')")
+    public ResponseEntity<Page<FacturationResponse>> list(@RequestParam(required = false) UUID moyenPaiementId,
+                                                            @RequestParam(required = false) UUID paysId,
+                                                            @RequestParam(required = false) Boolean actif,
+                                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+                                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
+                                                            @RequestParam(defaultValue = "0") int page,
+                                                            @RequestParam(defaultValue = "10") int size) {
+        FacturationFilter filter = new FacturationFilter(moyenPaiementId, paysId, actif, createdStartDate, createdEndDate, page, size);
+        return ResponseEntity.ok(service.findAll(filter));
     }
 
     @GetMapping("/{id}")

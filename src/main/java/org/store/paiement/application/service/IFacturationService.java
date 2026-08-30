@@ -1,5 +1,7 @@
 package org.store.paiement.application.service;
 
+import org.springframework.data.domain.Page;
+import org.store.paiement.application.dto.FacturationFilter;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 
@@ -18,4 +20,6 @@ public interface IFacturationService {
     void delete(UUID id);
 
     FacturationResponse findResponseById(UUID id);
+
+    Page<FacturationResponse> findAll(FacturationFilter filter);
 }
