@@ -83,6 +83,7 @@ public class EntrepriseServiceImpl implements IEntrepriseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UUID findCurrentUserCountryId() {
         UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
         if (entrepriseId == null) {
