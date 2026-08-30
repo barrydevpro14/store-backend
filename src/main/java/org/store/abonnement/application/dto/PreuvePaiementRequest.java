@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public record PreuvePaiementRequest(
-        @NotNull UUID moyenPaiementId,
+        @NotNull UUID facturationId,
         @NotBlank @Size(max = 255) String referenceTransaction
 ) {
 }

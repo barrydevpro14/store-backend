@@ -25,7 +25,8 @@ import org.store.common.exceptions.EntityException;
 import org.store.common.model.PieceJointe;
 import org.store.common.service.IUploadFileService;
 import org.store.entreprise.domain.model.Entreprise;
-import org.store.paiement.application.service.IMoyenPaiementService;
+import org.store.paiement.application.service.IFacturationService;
+import org.store.paiement.domain.model.Facturation;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.security.application.dto.UserPrincipal;
 import org.store.security.application.service.ICurrentUserService;
@@ -50,7 +51,7 @@ class PreuvePaiementServiceImplTest {
     @Mock private PaiementAbonnementDomainService paiementAbonnementDomainService;
     @Mock private IPaiementAbonnementService paiementAbonnementService;
     @Mock private IUploadFileService uploadFileService;
-    @Mock private IMoyenPaiementService moyenPaiementService;
+    @Mock private IFacturationService facturationService;
     @Mock private ICurrentUserService currentUserService;
     @Mock private org.store.notification.application.service.INotificationEventPublisher notificationEventPublisher;
     @Mock private org.store.audit.application.service.IAuditEventPublisher auditEventPublisher;
@@ -95,13 +96,17 @@ class PreuvePaiementServiceImplTest {
 
     @Test
     void create_should_persist_preuve_en_attente_validation() {
-        PreuvePaiementRequest request = new PreuvePaiementRequest(UUID.randomUUID(), "TXN-123");
+        UUID facturationId = UUID.randomUUID();
+        PreuvePaiementRequest request = new PreuvePaiementRequest(facturationId, "TXN-123");
         MoyenPaiement moyen = new MoyenPaiement();
-        moyen.setId(request.moyenPaiementId());
+        moyen.setId(UUID.randomUUID());
+        Facturation facturation = new Facturation();
+        facturation.setId(facturationId);
+        facturation.setMoyenPaiement(moyen);
 
         when(paiementAbonnementDomainService.findById(factureId)).thenReturn(facture);
         when(preuvePaiementDomainService.existsPendingForFacture(factureId)).thenReturn(false);
-        when(moyenPaiementService.findById(request.moyenPaiementId())).thenReturn(moyen);
+        when(facturationService.findByIdAvailableForCurrentCountry(facturationId)).thenReturn(facturation);
         when(uploadFileService.buildImage(any())).thenReturn(new PieceJointe());
         when(preuvePaiementDomainService.save(any(PreuvePaiement.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -120,6 +125,21 @@ class PreuvePaiementServiceImplTest {
         PreuvePaiementRequest request = new PreuvePaiementRequest(UUID.randomUUID(), "TXN-123");
         when(paiementAbonnementDomainService.findById(factureId)).thenReturn(facture);
         when(preuvePaiementDomainService.existsPendingForFacture(factureId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(factureId, request, null))
+                .isInstanceOf(BadArgumentException.class);
+
+        verify(preuvePaiementDomainService, never()).save(any());
+    }
+
+    @Test
+    void create_should_propagate_badArgument_when_facturation_not_available_for_country() {
+        UUID facturationId = UUID.randomUUID();
+        PreuvePaiementRequest request = new PreuvePaiementRequest(facturationId, "TXN-123");
+        when(paiementAbonnementDomainService.findById(factureId)).thenReturn(facture);
+        when(preuvePaiementDomainService.existsPendingForFacture(factureId)).thenReturn(false);
+        when(facturationService.findByIdAvailableForCurrentCountry(facturationId))
+                .thenThrow(new BadArgumentException("facturation.notAvailableForCountry"));
 
         assertThatThrownBy(() -> service.create(factureId, request, null))
                 .isInstanceOf(BadArgumentException.class);
