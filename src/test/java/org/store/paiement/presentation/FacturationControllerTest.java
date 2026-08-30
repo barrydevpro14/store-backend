@@ -14,6 +14,7 @@ import org.store.common.exceptions.GlobalException;
 import org.store.common.i18n.IMessageSourceService;
 import org.store.country.application.dto.CountryResponse;
 import org.store.paiement.application.dto.FacturationFilter;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
@@ -94,5 +95,16 @@ class FacturationControllerTest {
         mockMvc.perform(get(FacturationController.BASE_PATH))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].numeroFacturation").value("77 000 00 00"));
+    }
+
+    @Test
+    void select_should_return_200_with_options() throws Exception {
+        FacturationOptionResponse option = new FacturationOptionResponse(UUID.randomUUID(), "Wave", "77 000 00 00");
+        when(service.findSelectOptions()).thenReturn(List.of(option));
+
+        mockMvc.perform(get(FacturationController.BASE_PATH + "/select"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].moyenLibelle").value("Wave"))
+                .andExpect(jsonPath("$[0].numeroFacturation").value("77 000 00 00"));
     }
 }

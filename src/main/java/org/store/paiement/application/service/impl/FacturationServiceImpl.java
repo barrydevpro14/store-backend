@@ -6,7 +6,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.paiement.application.dto.FacturationFilter;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.service.IFacturationService;
@@ -15,6 +17,7 @@ import org.store.paiement.domain.model.Facturation;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.service.FacturationDomainService;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,15 +32,18 @@ public class FacturationServiceImpl implements IFacturationService {
     private final IMoyenPaiementService moyenPaiementService;
     private final CountryDomainService countryDomainService;
     private final ValidatorService validatorService;
+    private final IEntrepriseService entrepriseService;
 
     public FacturationServiceImpl(FacturationDomainService domainService,
                                   IMoyenPaiementService moyenPaiementService,
                                   CountryDomainService countryDomainService,
-                                  ValidatorService validatorService) {
+                                  ValidatorService validatorService,
+                                  IEntrepriseService entrepriseService) {
         this.domainService = domainService;
         this.moyenPaiementService = moyenPaiementService;
         this.countryDomainService = countryDomainService;
         this.validatorService = validatorService;
+        this.entrepriseService = entrepriseService;
     }
 
     /** Validates the request, checks the moyenPaiement/pays pair is unique, resolves both FKs, and creates the facturation. */
@@ -118,5 +124,12 @@ public class FacturationServiceImpl implements IFacturationService {
     public Page<FacturationResponse> findAll(FacturationFilter filter) {
         validatorService.validate(filter);
         return domainService.findResponsesByFilter(filter);
+    }
+
+    /** Resolves the caller's entreprise country, then returns the matching active facturation options (global + country-specific). */
+    @Override
+    public List<FacturationOptionResponse> findSelectOptions() {
+        UUID countryId = entrepriseService.findCurrentUserCountryId();
+        return domainService.findSelectOptions(countryId);
     }
 }

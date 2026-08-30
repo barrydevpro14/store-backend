@@ -7,7 +7,9 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.paiement.application.dto.FacturationFilter;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.application.service.IMoyenPaiementService;
@@ -15,6 +17,7 @@ import org.store.paiement.domain.model.Facturation;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.service.FacturationDomainService;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +35,7 @@ class FacturationServiceImplTest {
     private IMoyenPaiementService moyenPaiementService;
     private CountryDomainService countryDomainService;
     private ValidatorService validatorService;
+    private IEntrepriseService entrepriseService;
     private FacturationServiceImpl service;
 
     @BeforeEach
@@ -40,7 +44,8 @@ class FacturationServiceImplTest {
         moyenPaiementService = mock(IMoyenPaiementService.class);
         countryDomainService = mock(CountryDomainService.class);
         validatorService = mock(ValidatorService.class);
-        service = new FacturationServiceImpl(domainService, moyenPaiementService, countryDomainService, validatorService);
+        entrepriseService = mock(IEntrepriseService.class);
+        service = new FacturationServiceImpl(domainService, moyenPaiementService, countryDomainService, validatorService, entrepriseService);
     }
 
     @Test
@@ -174,5 +179,27 @@ class FacturationServiceImplTest {
 
         verify(validatorService).validate(filter);
         verify(domainService).findResponsesByFilter(filter);
+    }
+
+    @Test
+    void findSelectOptions_should_resolve_current_country_and_return_matching_options() {
+        UUID countryId = UUID.randomUUID();
+        when(entrepriseService.findCurrentUserCountryId()).thenReturn(countryId);
+        FacturationOptionResponse option = new FacturationOptionResponse(UUID.randomUUID(), "Wave", "77 000 00 00");
+        when(domainService.findSelectOptions(countryId)).thenReturn(List.of(option));
+
+        List<FacturationOptionResponse> result = service.findSelectOptions();
+
+        assertThat(result).containsExactly(option);
+    }
+
+    @Test
+    void findSelectOptions_should_pass_null_when_current_user_has_no_entreprise() {
+        when(entrepriseService.findCurrentUserCountryId()).thenReturn(null);
+        when(domainService.findSelectOptions(null)).thenReturn(List.of());
+
+        List<FacturationOptionResponse> result = service.findSelectOptions();
+
+        assertThat(result).isEmpty();
     }
 }

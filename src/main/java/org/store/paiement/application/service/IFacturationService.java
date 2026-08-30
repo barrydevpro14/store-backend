@@ -2,9 +2,11 @@ package org.store.paiement.application.service;
 
 import org.springframework.data.domain.Page;
 import org.store.paiement.application.dto.FacturationFilter;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IFacturationService {
@@ -22,4 +24,6 @@ public interface IFacturationService {
     FacturationResponse findResponseById(UUID id);
 
     Page<FacturationResponse> findAll(FacturationFilter filter);
+
+    List<FacturationOptionResponse> findSelectOptions();
 }

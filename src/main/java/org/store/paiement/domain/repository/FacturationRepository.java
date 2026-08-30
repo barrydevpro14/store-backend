@@ -5,10 +5,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.store.common.repository.BaseRepository;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.domain.model.Facturation;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public interface FacturationRepository extends BaseRepository<Facturation> {
@@ -49,4 +51,14 @@ public interface FacturationRepository extends BaseRepository<Facturation> {
                                                       @Param("createdStart") LocalDateTime createdStart,
                                                       @Param("createdEnd") LocalDateTime createdEnd,
                                                       Pageable pageable);
+
+    @Query("""
+            SELECT new org.store.paiement.application.dto.FacturationOptionResponse(
+                facturation.id, facturation.moyenPaiement.libelle, facturation.numeroFacturation)
+            FROM Facturation facturation
+            WHERE facturation.actif = true
+              AND (facturation.pays IS NULL OR facturation.pays.id = :countryId)
+            ORDER BY facturation.moyenPaiement.libelle ASC
+            """)
+    List<FacturationOptionResponse> findSelectOptions(@Param("countryId") UUID countryId);
 }

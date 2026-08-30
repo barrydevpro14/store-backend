@@ -6,12 +6,14 @@ import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.GlobalService;
 import org.store.country.domain.model.Country;
 import org.store.paiement.application.dto.FacturationFilter;
+import org.store.paiement.application.dto.FacturationOptionResponse;
 import org.store.paiement.application.dto.FacturationRequest;
 import org.store.paiement.application.dto.FacturationResponse;
 import org.store.paiement.domain.model.Facturation;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.repository.FacturationRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -41,5 +43,9 @@ public class FacturationDomainService extends GlobalService<Facturation, Factura
                 filter.moyenPaiementId(), filter.paysId(), filter.actif(),
                 filter.createdStartDateTime(), filter.createdEndDateTime(),
                 filter.toPageable());
+    }
+
+    public List<FacturationOptionResponse> findSelectOptions(UUID countryId) {
+        return repository.findSelectOptions(countryId);
     }
 }
