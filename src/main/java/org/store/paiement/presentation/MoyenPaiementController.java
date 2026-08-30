@@ -1,12 +1,15 @@
 package org.store.paiement.presentation;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.store.common.dto.DataSelect;
 import org.store.paiement.application.dto.MoyenPaiementRequest;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
+import org.store.paiement.application.dto.MoyenPaiementSelectFilter;
 import org.store.paiement.application.service.IMoyenPaiementService;
 
 import java.util.List;
@@ -27,6 +30,15 @@ public class MoyenPaiementController {
     @GetMapping
     public ResponseEntity<List<MoyenPaiementResponse>> list() {
         return ResponseEntity.ok(service.findAll());
+    }
+
+    @GetMapping("/select")
+    public ResponseEntity<Page<DataSelect>> select(@RequestParam(required = false) UUID countryId,
+                                                     @RequestParam(value = "q", required = false) String searchTerm,
+                                                     @RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "10") int size) {
+        MoyenPaiementSelectFilter filter = new MoyenPaiementSelectFilter(countryId, searchTerm, page, size);
+        return ResponseEntity.ok(service.findSelectItems(filter));
     }
 
     @PostMapping

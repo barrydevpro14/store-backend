@@ -1,12 +1,16 @@
 package org.store.paiement.application.service.impl;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.dto.DataSelect;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.paiement.application.dto.MoyenPaiementRequest;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
+import org.store.paiement.application.dto.MoyenPaiementSelectFilter;
 import org.store.paiement.application.service.IMoyenPaiementService;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.service.MoyenPaiementDomainService;
@@ -25,13 +29,16 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
     private final MoyenPaiementDomainService domainService;
     private final ValidatorService validatorService;
     private final CountryDomainService countryDomainService;
+    private final IEntrepriseService entrepriseService;
 
     public MoyenPaiementServiceImpl(MoyenPaiementDomainService domainService,
                                     ValidatorService validatorService,
-                                    CountryDomainService countryDomainService) {
+                                    CountryDomainService countryDomainService,
+                                    IEntrepriseService entrepriseService) {
         this.domainService = domainService;
         this.validatorService = validatorService;
         this.countryDomainService = countryDomainService;
+        this.entrepriseService = entrepriseService;
     }
 
     /** Retourne tous les moyens de paiement (actifs et inactifs). */
@@ -46,6 +53,20 @@ public class MoyenPaiementServiceImpl implements IMoyenPaiementService {
     @Override
     public MoyenPaiement findById(UUID id) {
         return domainService.findById(id);
+    }
+
+    /**
+     * Listing filtré pour combobox. Si aucun {@code countryId} n'est fourni,
+     * résout le pays de l'entreprise de l'utilisateur courant.
+     */
+    @Override
+    public Page<DataSelect> findSelectItems(MoyenPaiementSelectFilter filter) {
+        validatorService.validate(filter);
+
+        UUID resolvedCountryId = filter.countryId() != null ? filter.countryId() : entrepriseService.findCurrentUserCountryId();
+        MoyenPaiementSelectFilter effectiveFilter = new MoyenPaiementSelectFilter(resolvedCountryId, filter.searchTerm(), filter.page(), filter.size());
+
+        return domainService.findSelectItems(effectiveFilter);
     }
 
     /** Crée un nouveau moyen de paiement et résout ses pays depuis paysIds, après vérification d'unicité du libellé. */

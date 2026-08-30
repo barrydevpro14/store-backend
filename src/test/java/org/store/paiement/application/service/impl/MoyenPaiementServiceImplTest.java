@@ -2,12 +2,16 @@ package org.store.paiement.application.service.impl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.service.ValidatorService;
 import org.store.country.domain.model.Country;
 import org.store.country.domain.service.CountryDomainService;
+import org.store.entreprise.application.service.IEntrepriseService;
 import org.store.paiement.application.dto.MoyenPaiementRequest;
 import org.store.paiement.application.dto.MoyenPaiementResponse;
+import org.store.paiement.application.dto.MoyenPaiementSelectFilter;
 import org.store.paiement.domain.model.MoyenPaiement;
 import org.store.paiement.domain.service.MoyenPaiementDomainService;
 
@@ -19,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +32,7 @@ class MoyenPaiementServiceImplTest {
     private MoyenPaiementDomainService domainService;
     private ValidatorService validatorService;
     private CountryDomainService countryDomainService;
+    private IEntrepriseService entrepriseService;
     private MoyenPaiementServiceImpl service;
 
     @BeforeEach
@@ -34,7 +40,8 @@ class MoyenPaiementServiceImplTest {
         domainService = mock(MoyenPaiementDomainService.class);
         validatorService = mock(ValidatorService.class);
         countryDomainService = mock(CountryDomainService.class);
-        service = new MoyenPaiementServiceImpl(domainService, validatorService, countryDomainService);
+        entrepriseService = mock(IEntrepriseService.class);
+        service = new MoyenPaiementServiceImpl(domainService, validatorService, countryDomainService, entrepriseService);
         when(domainService.save(any(MoyenPaiement.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -90,5 +97,43 @@ class MoyenPaiementServiceImplTest {
         MoyenPaiementResponse response = service.update(id, new MoyenPaiementRequest("Wave", Set.of(guineeId)));
 
         assertThat(response.pays()).extracting("id").containsExactly(guineeId);
+    }
+
+    @Test
+    void findSelectItems_should_use_explicit_countryId_when_provided() {
+        UUID countryId = UUID.randomUUID();
+        when(domainService.findSelectItems(any(MoyenPaiementSelectFilter.class))).thenReturn(Page.empty());
+
+        service.findSelectItems(new MoyenPaiementSelectFilter(countryId, null, 0, 10));
+
+        ArgumentCaptor<MoyenPaiementSelectFilter> captor = ArgumentCaptor.forClass(MoyenPaiementSelectFilter.class);
+        verify(domainService).findSelectItems(captor.capture());
+        assertThat(captor.getValue().countryId()).isEqualTo(countryId);
+        verifyNoInteractions(entrepriseService);
+    }
+
+    @Test
+    void findSelectItems_should_resolve_country_from_current_entreprise_when_countryId_absent() {
+        UUID resolvedCountryId = UUID.randomUUID();
+        when(entrepriseService.findCurrentUserCountryId()).thenReturn(resolvedCountryId);
+        when(domainService.findSelectItems(any(MoyenPaiementSelectFilter.class))).thenReturn(Page.empty());
+
+        service.findSelectItems(new MoyenPaiementSelectFilter(null, null, 0, 10));
+
+        ArgumentCaptor<MoyenPaiementSelectFilter> captor = ArgumentCaptor.forClass(MoyenPaiementSelectFilter.class);
+        verify(domainService).findSelectItems(captor.capture());
+        assertThat(captor.getValue().countryId()).isEqualTo(resolvedCountryId);
+    }
+
+    @Test
+    void findSelectItems_should_return_unfiltered_when_no_countryId_and_no_current_entreprise() {
+        when(entrepriseService.findCurrentUserCountryId()).thenReturn(null);
+        when(domainService.findSelectItems(any(MoyenPaiementSelectFilter.class))).thenReturn(Page.empty());
+
+        service.findSelectItems(new MoyenPaiementSelectFilter(null, null, 0, 10));
+
+        ArgumentCaptor<MoyenPaiementSelectFilter> captor = ArgumentCaptor.forClass(MoyenPaiementSelectFilter.class);
+        verify(domainService).findSelectItems(captor.capture());
+        assertThat(captor.getValue().countryId()).isNull();
     }
 }
