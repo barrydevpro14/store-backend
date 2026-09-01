@@ -42,4 +42,18 @@ public final class LikePatternHelper {
         }
         return "%" + term.toLowerCase() + "%";
     }
+
+    /**
+     * Normalise un terme pour une comparaison d'égalité exacte insensible à la
+     * casse (trim + lower-case). Retourne `null` si l'input est `null` ou blank,
+     * pour un usage symétrique à {@link #toLikePattern(String)} dans un
+     * `ORDER BY CASE WHEN col = :exactTerm THEN 0 ELSE 1 END` (tri par
+     * pertinence : match exact en premier).
+     */
+    public static String toExactMatchTerm(String term) {
+        if (term == null || term.isBlank()) {
+            return null;
+        }
+        return term.trim().toLowerCase();
+    }
 }
