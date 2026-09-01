@@ -59,6 +59,8 @@ public interface ProductRepository extends BaseRepository<Product> {
      * Retourne un DTO plat avec label pré-construit (sans le suffixe "(N dispo)" laissé au frontend).
      * Pattern LIKE PRÉ-CONSTRUIT via {@link org.store.common.tools.LikePatternHelper} — workaround
      * Hibernate 7/PostgreSQL bytea type-inference sur paramètres liés deux fois.
+     * Tri par pertinence : un produit dont la {@code reference} matche exactement le
+     * terme recherché sort en premier, avant les matches partiels.
      */
     @Query(value = """
             SELECT new org.store.produit.application.dto.ProductVariantSearchResponse(
@@ -92,7 +94,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                    OR LOWER(produit.nom) LIKE :searchPattern
                    OR LOWER(produit.reference) LIKE :searchPattern
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
-            ORDER BY produit.nom ASC, quality.libelle ASC
+            ORDER BY CASE WHEN LOWER(produit.reference) = :exactTerm THEN 0 ELSE 1 END, produit.nom ASC, quality.libelle ASC
             """,
            countQuery = """
             SELECT COUNT(pf.id)
@@ -110,6 +112,7 @@ public interface ProductRepository extends BaseRepository<Product> {
             """)
     Page<ProductVariantSearchResponse> searchVariantsByEntrepriseWithStock(
             @Param("searchPattern") String searchPattern,
+            @Param("exactTerm") String exactTerm,
             @Param("magasinId") UUID magasinId,
             @Param("entrepriseId") UUID entrepriseId,
             Pageable pageable);
@@ -119,6 +122,10 @@ public interface ProductRepository extends BaseRepository<Product> {
      * filtre de stock. Utilisé par les contextes d'ajout de stock
      * (achat, entrée stock initiale) où l'absence de stock est justement
      * la raison d'ajouter le produit.
+     *
+     * <p>Tri par pertinence : un produit dont la {@code reference} matche
+     * exactement le terme recherché sort en premier, avant les matches
+     * partiels sur nom/référence/catégorie, puis tri alphabétique par nom.
      */
     @Query(value = """
             SELECT new org.store.produit.application.dto.ProductSelectorResponse(produit)
@@ -128,7 +135,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                    OR LOWER(produit.nom) LIKE :searchPattern
                    OR LOWER(produit.reference) LIKE :searchPattern
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
-            ORDER BY produit.nom ASC
+            ORDER BY CASE WHEN LOWER(produit.reference) = :exactTerm THEN 0 ELSE 1 END, produit.nom ASC
             """,
            countQuery = """
             SELECT COUNT(produit)
@@ -140,6 +147,7 @@ public interface ProductRepository extends BaseRepository<Product> {
                    OR LOWER(produit.categoryProduct.libelle) LIKE :searchPattern)
             """)
     Page<ProductSelectorResponse> searchResponsesByEntreprise(@Param("searchPattern") String searchPattern,
+                                                              @Param("exactTerm") String exactTerm,
                                                               @Param("entrepriseId") UUID entrepriseId,
                                                               Pageable pageable);
 }

@@ -68,7 +68,7 @@ public class ProductController {
     public ResponseEntity<Page<ProductVariantSearchResponse>> search(@RequestParam(value = "q", required = false) String searchTerm,
                                                                      @RequestParam(required = false) UUID magasinId,
                                                                      @RequestParam(defaultValue = "0") int page,
-                                                                     @RequestParam(defaultValue = "10") int size) {
+                                                                     @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(productSearchService.search(searchTerm, magasinId, PageRequest.of(page, size)));
     }
 
@@ -77,7 +77,7 @@ public class ProductController {
     public ResponseEntity<Page<ProductSelectorResponse>> searchAll(@RequestParam(value = "q", required = false) String searchTerm,
                                                                    @RequestParam(required = false) UUID magasinId,
                                                                    @RequestParam(defaultValue = "0") int page,
-                                                                   @RequestParam(defaultValue = "10") int size) {
+                                                                   @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(productSearchService.searchAll(searchTerm, magasinId, PageRequest.of(page, size)));
     }
 

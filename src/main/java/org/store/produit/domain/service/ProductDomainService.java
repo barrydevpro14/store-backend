@@ -57,6 +57,7 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
     public Page<ProductVariantSearchResponse> searchVariants(String searchTerm, UUID magasinId, UUID entrepriseId, Pageable pageable) {
         return repository.searchVariantsByEntrepriseWithStock(
                 LikePatternHelper.toLikePattern(searchTerm),
+                LikePatternHelper.toExactMatchTerm(searchTerm),
                 magasinId,
                 entrepriseId,
                 pageable);
@@ -65,6 +66,7 @@ public class ProductDomainService extends GlobalService<Product, ProductReposito
     public Page<ProductSelectorResponse> searchResponsesByEntreprise(String searchTerm, UUID entrepriseId, Pageable pageable) {
         return repository.searchResponsesByEntreprise(
                 LikePatternHelper.toLikePattern(searchTerm),
+                LikePatternHelper.toExactMatchTerm(searchTerm),
                 entrepriseId,
                 pageable);
     }
