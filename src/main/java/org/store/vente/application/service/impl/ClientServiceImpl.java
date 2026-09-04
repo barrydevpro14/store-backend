@@ -45,9 +45,6 @@ public class ClientServiceImpl implements IClientService {
     @Override
     @Transactional
     public ClientResponse create(ClientRequest clientRequest) {
-        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        clientDomainService.ensureOptionalContactsInEntreprise(
-                clientRequest.email(), clientRequest.telephone(), entrepriseId);
         Magasin magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(clientRequest.magasinId()));
         return new ClientResponse(clientDomainService.create(clientRequest, magasin));
     }
@@ -95,10 +92,6 @@ public class ClientServiceImpl implements IClientService {
         if (!magasin.getId().equals(clientRequest.magasinId())) {
             magasin = magasinService.ensureAccessibleByCurrentUser(magasinService.findById(clientRequest.magasinId()));
         }
-
-        UUID entrepriseId = currentUserService.getCurrent().entrepriseId();
-        clientDomainService.ensureOptionalContactsForUpdateInEntreprise(
-                clientRequest.email(), clientRequest.telephone(), entrepriseId, client.getId());
 
         client.setNom(clientRequest.nom());
         client.setPrenom(clientRequest.prenom());

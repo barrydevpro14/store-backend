@@ -93,7 +93,6 @@ class ClientServiceImplTest {
                 "+221770000001", "Dakar", magasinId);
         Client created = sample(magasin);
 
-        when(currentUserService.getCurrent()).thenReturn(proprietaire());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
         when(clientDomainService.create(request, magasin)).thenReturn(created);
@@ -109,7 +108,6 @@ class ClientServiceImplTest {
     void create_should_propagate_forbidden_when_magasin_not_accessible() {
         ClientRequest request = new ClientRequest("Diallo", null, null, null, null, magasinId);
 
-        when(currentUserService.getCurrent()).thenReturn(vendeur());
         when(magasinService.findById(magasinId)).thenReturn(magasin);
         when(magasinService.ensureAccessibleByCurrentUser(magasin))
                 .thenThrow(new ForbiddenException("magasin.notOwned"));
