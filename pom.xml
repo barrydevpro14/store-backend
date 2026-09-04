@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.7</version>
+        <version>4.0.8</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.store</groupId>
@@ -29,6 +29,9 @@
     <properties>
         <java.version>21</java.version>
         <postgresql.version>42.7.12</postgresql.version>
+        <!-- Override: Spring Boot 4.0.8's BOM still pins 11.0.24, which stays below the fixed 11.0.25
+             (CVE-2026-65182, CVE-2026-65905, CVE-2026-68525). -->
+        <tomcat.version>11.0.25</tomcat.version>
 
         <!-- Versions des plugins (config Sonar/JaCoCo : voir sonar-project.properties) -->
         <jacoco.version>0.8.13</jacoco.version>
