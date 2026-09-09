@@ -9,6 +9,52 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-09 — Bug fix: DRAFT sale line deletion silently reverted at flush, both repos
+
+### Subject
+
+User reported: validating an anonymous-client sale rejected the payment with "montant doit être égal au total" even though the amount entered exactly matched the total displayed. Ran `superpowers:systematic-debugging` end-to-end, escalating from static code review to live production debugging when the code looked correct on paper.
+
+### Investigation — from a rounding hypothesis to a live Hibernate anomaly
+
+Initial research agents found several *plausible* candidates (a backend "sum-then-round vs round-then-sum" discrepancy between `create()` and `validate()`, a `MoneyInput` integer-only precision bug, XOF currency display hiding decimals) — none of them panned out once the user supplied a concrete repro: *"l'utilisateur a ajouté 3 lignes, supprimé 1. mais le detail affiche toujours 3 ligne et le montant de la vente est seule la somme de 2 lignes."*
+
+Traced the actual delete flow live:
+1. Direct `psql` query on the real order confirmed the "deleted" line's row still existed in `ligne_commande_vente`, while `commande_vente.montant_total` had already been correctly decremented — proving the DB delete never happened despite a clean `204` response.
+2. Confirmed the running backend wasn't serving stale bytecode (compiled `.class` postdated the last source edit).
+3. User live-debugged in IntelliJ and pointed at `ligneCommandeVenteDomainService.delete(ligne)` specifically.
+4. Added temporary Hibernate `SQL`/`jdbc.bind` DEBUG logging (`application-dev.yml`) — the SQL trace showed the `UPDATE commande_vente` firing but **no `DELETE FROM ligne_commande_vente` at all**, ever, for that request.
+5. Added a temporary `EntityManager`-backed diagnostic directly in `GlobalService.delete()`: `entityManager.contains(entity)` was `true` before the call and `false` after (Hibernate *did* mark it REMOVED) — yet an explicit `entityManager.flush()` called immediately after threw no exception and still produced no `DELETE`, and `existsById` kept returning `true`.
+
+At that point the user supplied the missing piece: achat's own `AchatServiceImpl.deleteLigne` (which works correctly) calls `commande.getLignes().remove(ligne)` **before** deleting the entity — vente's `deleteLigne` never did. `CommandeVente.lignes` is `@OneToMany(cascade = CascadeType.ALL)`; since the parent's in-memory collection still referenced the "removed" child, the preceding `commandeVenteDomainService.updateMontantTotal()` → `save(commande)` cascaded a MERGE that kept the child alive through the flush that produced the `UPDATE`, silently discarding the pending removal.
+
+### Fix + verification
+
+Mirrored achat's pattern exactly: `commande.getLignes().remove(ligne)` before `ligneCommandeVenteDomainService.delete(ligne)`, reordered so `updateMontantTotal` runs last (using the line's total captured beforehand, matching achat). All temporary diagnostics (Hibernate SQL logging, the `EntityManager`-injected `GlobalService.delete()` instrumentation, an earlier JPQL bulk-delete workaround that was tried and discarded once the real root cause was found) were fully reverted — only the real fix remains.
+
+`VenteServiceImplTest`'s `deleteLigne_should_remove_ligne_when_draft_and_not_last` used an immutable `List.of(...)` fixture for `commande.setLignes(...)`, which threw `UnsupportedOperationException` against the fix's new `.remove()` call — switched to `new ArrayList<>(...)` (matching what Hibernate actually returns in production) and added an assertion on the resulting collection state. **Backend 1111/1111 green** (clean `mvnw clean test`).
+
+Migration `V94` backfills `commande_vente.montant_total` for the 3 existing DRAFT orders left desynced by the bug (recomputed as `SUM(ligne_commande_vente.montant_total)`; previewed via a read-only aggregate query before writing the migration, confirming the 3 affected rows and their expected corrected values).
+
+### Frontend — two follow-up asks from the same session
+
+1. **Delete-line action added to `VenteDetailsContent.tsx`** — the screen shown when reopening an *existing* DRAFT order from the list. The action already existed in `VenteForm.tsx` (the create-sale form) but was never built into the details view, which only offered an Edit action. Mirrors achat's `AchatDetailsContent.tsx` pattern: icon-only trash button, hidden when only one line remains (backend already rejects deleting the last line), `ConfirmDialog` before the mutation, reusing the existing `useDeleteLigneVente` hook (its cache invalidation already targets the same query key `useVenteDetails` subscribes to, so no manual refetch was needed).
+2. **"Montant total à payer" row added to the lines table footer** — for both DRAFT and VALIDATE orders, mirroring achat's own `totalHt` footer row (achat has one, vente didn't; for a DRAFT sale with no facture yet, there was previously no visible total anywhere in the details view).
+
+Frontend `tsc --noEmit` clean.
+
+### Commits
+
+Backend (`store`), 3 atomic commits: the `deleteLigne` fix + test, the `V94` migration, plus a docs commit catching up `.claude/TODO.md`/`SESSIONS.md` to the already-committed 2026-08-30 Facturation work (that session's code was committed at the time but its documentation entry had been left uncommitted). Frontend (`store-frontend`), 1 commit for the delete-line action + total-to-pay display (both were small, done in immediate succession on the same screen, and touched the same two i18n files in non-overlapping keys — bundled rather than artificially split). **Not pushed** on either repo.
+
+### Result
+
+Bug fixed and verified end-to-end (backend tests green, user confirmed live in the app: *"ça fonctionne, la ligne disparaît bien"*). Both frontend follow-ups (delete button, total display) shipped in the same session. No open follow-ups.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-30 (continued) — `Facturation` billing-number table (Task 2) — plan → subagent-driven-development → merge → live-QA fix arc, both repos
 
 ### Subject
