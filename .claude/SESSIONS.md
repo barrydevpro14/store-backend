@@ -9,6 +9,41 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-08-30 (continued) — `Facturation` billing-number table (Task 2) — plan → subagent-driven-development → merge → live-QA fix arc, both repos
+
+### Subject
+
+Wrote and executed the 9-task `Facturation` implementation plan (the second half of the 2026-08-30 Task 1/Task 2 split), merged it to `dev-barry` on both repos, then spent the rest of the session live-fixing what manual QA turned up — a real production crash, missing admin filters, a genuine architecture gap in how the country was resolved for subscription-payment submission, and a user-requested schema rework (single-country → multi-country per billing number).
+
+### Plan + subagent-driven-development execution
+
+Plan at `.claude/2026-08-30-facturation-plan.md`. A pre-dispatch conflict scan (mandatory before Task 1 dispatch) caught a real plan defect before any code was written: an earlier draft added `IEntrepriseService`/`findByIdAvailableForCurrentCountry` to Task 2, which would have collided with Task 4's later, legitimate addition of the same dependency — fixed in the plan text itself. All 8 backend + 3 frontend tasks Approved (one fix round in Task 2: implementer correctly reverted an unnecessary null-guard the brief's own code had introduced and extracted duplicated FK-resolution logic per rule 39).
+
+**Two whole-branch final reviews** (opus, one per repo) each found real cross-task issues no per-task review could see:
+- **Backend**: `resolveMoyenPaiement`/`resolvePays` were left `private` (rule 27), `findByIdAvailableForCurrentCountry` didn't reject a **deactivated** `Facturation`, `/select` silently bypassed Task 1's `moyenPaiement.actif` filtering and had no tie-break when a moyen had both a global and a country-specific option, and the two new partial-unique-index names weren't wired into `GlobalException`'s race-condition message map.
+- **Frontend**: a **Critical** bug — `SubmitPaiementForm`'s payment Combobox always showed "No method available" regardless of actual availability (a `Combobox` placeholder-visibility quirk, not implementer error) — plus DTO/prop-type duplication, a missing rule-47/48 search-prompt + pagination on the admin page, and zero test coverage across 11 files (the plan's "matches moyen-paiement's own untested precedent" justification was independently disputed and rejected by the reviewer, which proved right: the fix wave's own new `FacturationFormDialog` render test caught a real, unrelated pre-existing i18n nesting bug on the spot).
+
+User resolved the ambiguous findings live: deactivated Facturation must simply never be usable (new dedicated `facturation.notAvailable` key, not reused wording); country-specific silently overrides global in `/select`; frontend tests added now, not deferred; pagination/filters added now, not deferred. Both fix waves re-reviewed clean. Merged fast-forward to `dev-barry` on both repos (backend `229047b..2d71e75`, frontend `5d0d846..4e5b8d6`), worktrees cleaned up, nothing pushed.
+
+### Live-QA fix arc (post-merge, same session)
+
+Manual testing against the merged result surfaced four more issues, fixed in sequence directly on `dev-barry` (no new worktree — small enough to iterate live with the user testing in parallel):
+
+1. **`GET /api/v1/facturations` 500'd** the first time it hit real Postgres (`could not determine data type of parameter $7`) — no test in the whole plan ever exercised the real DB, only mocks. Root cause: a `LocalDateTime` bound only inside `? IS NULL` can't have its type inferred by Postgres when actually null. Fixed by adopting `ClientRepository`/`ClientDomainService`'s existing proven pattern (`DateHelper.coalesceStart/coalesceEnd` sentinel substitution) instead of the `IS NULL OR` guard — this exact bug class is why `LikePatternHelper` already existed in this codebase for a different field.
+2. **Added the `numeroFacturation` search + `pays`/`moyenPaiementId` admin filters** the frontend had never exposed (backend already supported the latter two from Task 3).
+3. **Country-resolution architecture gap**: `findSelectOptions`/`findByIdAvailableForCurrentCountry` resolved the country from the *caller's own* entreprise — always null for an ADMIN (who has none), completely breaking the pre-existing "ADMIN pays on behalf of any entreprise" capability (`PaiementsAdminPage` reuses the same `SubmitPaiementDialog`). Redesigned to resolve the country from the *target facture's own entreprise* instead: new `IPaiementAbonnementService.findFacturationOptions(paiementId)` (reuses the existing `ensurePaiementAccessibleByCaller` check, closing a real authorization gap the old endpoint had) replaces `GET /api/v1/facturations/select` with `GET /api/v1/paiements-abonnement/{id}/facturation-options`.
+4. **`Facturation.pays` reworked from a single-country FK to many-to-many** (explicit user ask: one Wave number needed to cover several countries at once) — mirrors `MoyenPaiement.pays` exactly (empty = global). New migration `V93` (join table + backfill, `V92` untouched). Uniqueness generalized from a pairwise DB-adjacent check to an application-level set-overlap invariant (no two active facturations per moyen may share a country; at most one may be global; global and country-specific may coexist). Frontend form's country picker became a searchable multi-select (mirrors `MoyenPaiementCountriesDialog`); the admin table's Pays cell was further updated, per explicit request, to match `MoyenPaiementTable`'s own compact "Global"/"N pays" button + read-only details dialog pattern instead of listing names inline.
+
+Backend ended at 1111/1111 green, frontend at tsc clean + 356/356. **None of this live-QA fix arc is committed** — sitting uncommitted on `dev-barry` at session close, alongside the also-still-uncommitted `MoyenPaiement` UX follow-ups from earlier the same day (FormProvider fix, country search/select-all, details dialog, tab-permission removal, table delegation). Migration `V93` needs a backend restart to apply.
+
+### Result
+
+Full detail in `.claude/TODO.md`'s Task 2 entry. Next session: decide whether to commit the accumulated uncommitted work (both the Facturation live-QA fixes and the older MoyenPaiement UX follow-ups) — user was asked and hadn't answered before this session closed.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-08-30 — Country-aware `MoyenPaiement` filtering (Task 1) — brainstorm resumption → plan → subagent-driven-development, both repos
 
 ### Subject
