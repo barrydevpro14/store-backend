@@ -477,7 +477,7 @@ class VenteServiceImplTest {
         LigneCommandeVente ligne1 = sampleLigne(quantite, new BigDecimal("10.00"));
         LigneCommandeVente ligne2 = sampleLigne(new BigDecimal(50), new BigDecimal("12.00"));
         ligne2.setId(UUID.randomUUID());
-        commande.setLignes(List.of(ligne1, ligne2));
+        commande.setLignes(new ArrayList<>(List.of(ligne1, ligne2)));
 
         when(commandeVenteDomainService.findById(commandeId)).thenReturn(commande);
         when(currentUserService.getCurrent()).thenReturn(proprietaire());
@@ -486,6 +486,7 @@ class VenteServiceImplTest {
         service.deleteLigne(commandeId, ligneId);
 
         verify(ligneCommandeVenteDomainService).delete(ligne1);
+        assertThat(commande.getLignes()).containsExactly(ligne2);
     }
 
     @Test
