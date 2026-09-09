@@ -307,8 +307,10 @@ public class VenteServiceImpl implements IVenteService {
         LigneCommandeVente ligne = ensureLigneBelongsToCommande(ligneCommandeVenteDomainService.findById(ligneId), commande);
         ensureNotLastLigne(commande);
 
-        commandeVenteDomainService.updateMontantTotal(commande, commande.getMontantTotal().subtract(ligne.getMontantTotal()));
+        BigDecimal lineTotal = ligne.getMontantTotal();
+        commande.getLignes().remove(ligne);
         ligneCommandeVenteDomainService.delete(ligne);
+        commandeVenteDomainService.updateMontantTotal(commande, commande.getMontantTotal().subtract(lineTotal));
     }
 
     /** Met à jour la quantité livrée d'une ligne d'une vente VALIDATE et publie l'event audit. */
