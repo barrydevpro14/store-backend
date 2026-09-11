@@ -9,6 +9,50 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-11 — Fix stale "Store" brand placeholder, DRY brand references, hide unfinished contact email (frontend only)
+
+### Subject
+
+User reported the browser tab title still showed "Store" on dashboard/profil and other pages. Investigation (via a research subagent) found the root layout composed the title correctly from `common.appName` ("BHANTIC") — the actual leak was a stale, never-renamed placeholder baked directly into the translation strings themselves. Fixing it properly surfaced three follow-up rounds, each triggered by a live user correction, plus two small unrelated content fixes requested along the way.
+
+### Round 1 — page titles
+
+`src/app/layout.tsx`'s `generateMetadata` used a plain `title` string; converted to a Next.js metadata `title: { default, template: '%s — ' + appName }` object so every child route's title is composed centrally. The real bug was elsewhere: ~37 per-page `metaTitle` keys in `src/messages/{fr,en}.json` (dashboard, profil, and nearly every other route) ended in a hardcoded, never-renamed `" — Store"` suffix — stripped so the template supplies the real brand. Two fully-hardcoded titles (`pricing/page.tsx`, `dashboard/depenses/reporting/page.tsx`) fixed the same way.
+
+### Round 2 — metaDescription, then "Bhantic ne doit pas être en dur, ça viole le principe DRY"
+
+Same placeholder bug existed in `metaDescription` (pricing/about/contact: "... Store ERP.") — first fix attempt hardcoded "BHANTIC ERP" as the replacement text, which the user immediately rejected as violating DRY (the brand string would now be duplicated across ~6 translation keys instead of deriving from the single `common.appName` source). Redesigned using next-intl's existing ICU-placeholder convention (already used for `{year}`/`{trialDays}`/`{name}`): translations now hold `{appName}`, resolved at call sites via `t(key, { appName: common('appName') })` — mirroring the existing `Navbar.tsx`/`Footer.tsx` pattern of calling `getTranslations('common')` a second time. `pricing/page.tsx` had no `generateMetadata` at all (a fully static, French-only object) — converted to a real async function in the process, so it finally localizes to English like every other public page.
+
+An initial blanket `"Store ERP" → "{appName}"` replacement accidentally touched 2 out-of-scope lines (`about.values.subtitle`/`p3`, body copy explicitly flagged as not part of the approved plan) — caught via diff review before verification and reverted immediately.
+
+### Round 3 — "enlève le code en dur partout"
+
+Broadened per explicit user instruction: the about-page body copy (`hero.subtitle`, `story.p3`) and the footer copyright (`"Bhantic ERP"` hardcoded, independent of `common.appName`) got the same `{appName}` treatment. One more hardcoded spot found — `manifest.ts` (PWA install name) — flagged rather than silently fixed, since branching it on `common.appName` ("BHANTIC") would visibly change the PWA icon's display casing versus the existing title-case "Bhantic". User's resolution: derive it from `appName` but through a capitalize-first-letter-only transform — new `capitalizeFirst()` helper added to `common/tools/stringHelpers.ts`, applied in `manifest.ts` (converted to async to call `getTranslations`).
+
+### Unrelated small fixes (same session, explicit asks)
+
+- Contact email (footer mailto link + contact page's channel list) commented out — not deleted — pending a professional email address; the `NEXT_PUBLIC_CONTACT_EMAIL` env var and its i18n keys stay in place for a one-line revert later.
+- Phone-support availability changed from "Lundi au vendredi, 9h-18h" to "Tous les jours, 9h-20h" (`contact.channels.phone.description`, FR+EN).
+
+### Commits — 5 atomic commits, reconstructed post-hoc via a HEAD-based replay technique
+
+The session's edits landed on disk in a different order than the logical commit boundaries (e.g. the phone-hours JSON line and the title-suffix JSON lines shared the same 2 files as the DRY appName lines). Rather than `git add -p` (not scriptable non-interactively) or losing the split entirely, used a safe replay: backed up both the pre-session `HEAD` version and the final session-end version of every touched file to the scratchpad, then for each intended commit reconstructed the exact intermediate file content (HEAD + only that commit's edits) via targeted Python string replacements, staged, committed, and moved to the next commit's edits — verifying at the end that the fully-replayed result matched the original final diff byte-for-byte (`diff` per file) before considering it safe. One edit (the phone-hours change) was transiently dropped mid-replay when a JSON file was rebuilt from `HEAD` without re-applying it — caught immediately by the final verification pass and reapplied before the last commit.
+
+Commits (`store-frontend`, `dev-barry`, pushed `bc69081..6ccbc4c`):
+1. `8fc50d9` — Fix page titles showing stale "Store" placeholder
+2. `aaca2ff` — Reference common.appName instead of hardcoding brand text (DRY)
+3. `b95e1d3` — Derive PWA manifest name from common.appName (DRY)
+4. `3d481cf` — Hide phone-support email pending a professional address
+5. `6ccbc4c` — Extend phone-support availability to every day, 9am-8pm
+
+### Result
+
+`tsc --noEmit` clean and JSON validated after every step. No manual browser QA this session (headless browser tooling unavailable in this environment — no `chromium-cli`, Claude in Chrome extension declined by the user, `playwright install` interrupted) — worth a manual check of: dashboard/profil/pricing/about/contact tab titles in both FR and EN, the about page body text, footer copyright, and that the contact email is indeed gone from both the footer and the contact page.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-09 — Bug fix: DRAFT sale line deletion silently reverted at flush, both repos
 
 ### Subject
