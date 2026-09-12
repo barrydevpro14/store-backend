@@ -2,6 +2,7 @@ package org.store.produit.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +13,7 @@ import org.store.produit.application.dto.UniteMesureResponse;
 import org.store.produit.application.dto.UniteMesureSummaryResponse;
 import org.store.produit.application.service.IUniteMesureService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,10 +45,12 @@ public class UniteMesureController {
     public ResponseEntity<Page<UniteMesureResponse>> list(
             @RequestParam(required = false) String libelle,
             @RequestParam(required = false) String code,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdStartDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdEndDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(uniteMesureService.findAll(
-                new UniteMesureFilter(libelle, code, page, size)));
+                new UniteMesureFilter(libelle, code, createdStartDate, createdEndDate, page, size)));
     }
 
     @GetMapping("/{id}")
