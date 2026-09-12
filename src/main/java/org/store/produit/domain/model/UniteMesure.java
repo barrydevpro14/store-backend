@@ -3,13 +3,13 @@ package org.store.produit.domain.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.store.common.base.BaseEntity;
+import org.store.common.base.AuditableEntity;
 
 @Getter
 @Setter
 @Entity
 @Table(name = UniteMesure.TABLE_NAME)
-public class UniteMesure extends BaseEntity {
+public class UniteMesure extends AuditableEntity {
 
     public static final String TABLE_NAME = "unites_mesure";
 

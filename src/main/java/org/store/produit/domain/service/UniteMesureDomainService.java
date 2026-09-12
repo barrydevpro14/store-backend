@@ -3,6 +3,7 @@ package org.store.produit.domain.service;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
+import org.store.common.tools.DateHelper;
 import org.store.common.tools.LikePatternHelper;
 import org.store.produit.application.dto.UniteMesureFilter;
 import org.store.produit.application.dto.UniteMesureRequest;
@@ -35,6 +36,8 @@ public class UniteMesureDomainService extends GlobalService<UniteMesure, UniteMe
                 LikePatternHelper.toLikePattern(filter.libelle()),
                 filter.code(),
                 LikePatternHelper.toLikePattern(filter.code()),
+                DateHelper.coalesceStart(filter.createdStartDateTime()),
+                DateHelper.coalesceEnd(filter.createdEndDateTime()),
                 filter.toPageable()
         );
     }
