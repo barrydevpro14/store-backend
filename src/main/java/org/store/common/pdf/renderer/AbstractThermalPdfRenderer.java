@@ -176,7 +176,7 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
             cell.addElement(centeredParagraph(e.getActiviteEconomique().getLibelle(),
                     new Font(Font.HELVETICA, normalSize, Font.BOLD, primary)));
 
-        Font infoFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.DARK_GRAY);
+        Font infoFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
         if (pdf.isNotBlank(e.getAdresse()))
             cell.addElement(centeredParagraph(e.getAdresse(), infoFont));
@@ -202,7 +202,7 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
 
         PdfPCell cell = new PdfPCell(new Phrase(
                 ctx.documentLabel(),
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.DARK_GRAY)
+                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)
         ));
         cell.setPadding(4);
         cell.setBorder(Rectangle.BOTTOM);
@@ -239,11 +239,11 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         cell.setBorderColor(PdfColor.BORDER.color());
         cell.setBackgroundColor(ctx.colors().lightBg());
         cell.addElement(new Paragraph(pdf.msg("pdf.label.dateHeure"),
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.DARK_GRAY)));
+                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
         cell.addElement(new Paragraph(date,
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.DARK_GRAY)));
+                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
         cell.addElement(new Paragraph(heure,
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.DARK_GRAY)));
+                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
         return cell;
     }
 
@@ -254,8 +254,8 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         cell.setPadding(4);
         cell.setBorderColor(PdfColor.BORDER.color());
         cell.setBackgroundColor(ctx.colors().lightBg());
-        cell.addElement(new Paragraph(header, new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.DARK_GRAY)));
-        cell.addElement(new Paragraph(value,  new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.DARK_GRAY)));
+        cell.addElement(new Paragraph(header, new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK)));
+        cell.addElement(new Paragraph(value,  new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK)));
         return cell;
     }
 
@@ -269,10 +269,10 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         cell.setBackgroundColor(ctx.colors().lightBg());
 
         cell.addElement(new Paragraph(pdf.msg("pdf.label.magasin"),
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.DARK_GRAY)));
+                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
 
-        Font valueFont  = new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.DARK_GRAY);
-        Font detailFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.DARK_GRAY);
+        Font valueFont  = new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK);
+        Font detailFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
         if (pdf.isNotBlank(magasin.getNom()))
             cell.addElement(new Paragraph(magasin.getNom(), valueFont));
@@ -294,7 +294,7 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
 
         String text = pdf.msg("pdf.label.client") + " : " + ctx.clientLabel();
         PdfPCell cell = new PdfPCell(new Phrase(text,
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.DARK_GRAY)));
+                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
         cell.setPadding(4);
         cell.setBorder(Rectangle.BOX);
         cell.setBorderColor(PdfColor.BORDER.color());
