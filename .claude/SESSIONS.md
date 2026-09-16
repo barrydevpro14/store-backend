@@ -9,6 +9,49 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-12 — 5 new units of measure + `UniteMesure` CRUD brought to full parity (backend + frontend), code review, live-QA bug fix, atomic commits + push
+
+### Subject
+
+Started as a small ask — "add a migration for 5 units of measure: cube, sachet, centimetre, millimetre, gramme" — but investigation showed the `UniteMesure` CRUD backend already existed end-to-end (create/list/get/update/delete + `UNITE_MESURE_*` permissions, ADMIN-only global reference table) with zero tests and no rule-40 compliance (no `createdStartDate`/`createdEndDate` filter, no `createdAt` ordering), and no frontend at all beyond the read-only product-form selector. User chose the full-parity option (backend tests + rule 40 + migration) over a frontend-only fix, then asked for the frontend CRUD page too.
+
+### Migration — 5 new units
+
+`V95` seeds `METRE_CUBE`/`SACHET`/`CENTIMETRE`/`MILLIMETRE`/`GRAMME` (after clarifying live that "cube" meant **mètre cube (m³)**, not cm³ or a packaging unit), extends `UniteMesureEnum` accordingly. Compiled and verified; user committed this small piece independently mid-session (`2a57513`, outside this session's own commits).
+
+### Backend — rule-40 parity + tests
+
+`V96` adds `created_at/updated_at/created_by/updated_by` to `unites_mesure` (mirrors `V12`'s treatment of `CategoryProduct`/`Quality`); `UniteMesure` now `extends AuditableEntity`. `UniteMesureFilter` gained `createdStartDate`/`createdEndDate` (`ClientFilter` shape); the paginated list query orders `createdAt DESC` while the product-form `/all` selector (`findAllOrdered`) keeps its libellé ordering, untouched. Added `UniteMesureServiceImplTest` (10 tests) + `UniteMesureControllerTest` (7 tests). **Backend 1128/1128 green.**
+
+### Frontend — new admin CRUD page
+
+New page at `/dashboard/administration/unites-mesure` (ADMIN-only, `UNITE_MESURE_READ` tab), mirroring the `Facturation`/`Quality` pattern exactly: full `features/unite-mesure/` slice (DTOs, repository port, api adapter, query keys, create/update/delete/paginated-list hooks, table/filters/form/form-dialog), new admin tab + icon, i18n namespace `dashboard.administration.uniteMesure` (fr/en). The pre-existing `useUniteMesureList`/`listAll()` (product-form unit selector) kept functionally untouched — only its query-key name changed (`list()` → `listAll()`) to free the name for the new paginated hook. Also dropped a dead `precisionAffichage` field from the frontend `UniteMesureSummary` DTO (and its test mock) — never existed on the backend.
+
+### Code review — 4 findings, 3 fixed
+
+Ran `/code-review` explicitly checked against `BACKEND_CODING_CONVENTIONS.md`/`FRONTEND_CODING_CONVENTIONS.md`:
+1. **Fixed** — `V96`'s new audit columns had no backfill; Postgres's `NULLS FIRST` default on `ORDER BY createdAt DESC` would've surfaced every legacy/seeded unit ahead of new ones. Editing `V96` in place was tried first but broke Flyway's checksum (already applied to the dev DB) — reverted `V96` to its applied content and added a new **`V97`** backfill migration instead.
+2. **Fixed** — zero tests on the entire new frontend slice (rule 39). Added `unite-mesure-api.test.ts` + `UniteMesureTable.test.tsx` + `UniteMesureFormDialog.test.tsx` (15 tests). `UniteMesureTable.test.tsx` needed every query scoped to the desktop `<table>` role, since the shared `DataTable` dual-renders a mobile-card view *and* a desktop table simultaneously (no CSS engine in jsdom to hide either) — the first test written against a `DataTable`-based component in this codebase, so this pitfall had no prior precedent to copy.
+3. **Fixed** — none of the 3 mandatory `FormField`s carried `required` (rule 51, red asterisk) — added, plus `aria-required` on the custom-rendered `code` field.
+4. **Flagged, not fixed** — `UniteMesureFilters` auto-searches on every filter change instead of via a dedicated "Rechercher" button (rule 47), but this is the exact pattern already shipped by `QualityFilters`/`FacturationFilters`/`CategoryDepenseFilters` (all mirrored faithfully) — fixing it here alone would deviate from every other admin screen. Parked as a cross-cutting item for a future decision, not fixed in this session.
+
+### Live-QA bug (user manual test, post-review)
+
+`GET /api/v1/unites-mesure` 500'd: `could not determine data type of parameter $7` — same bug class already hit and fixed on `Facturation` (2026-08-30 session): `createdStart`/`createdEnd` bound only inside `(:param IS NULL OR ...)` can't have their type inferred by PostgreSQL. Fixed by adopting `ClientRepository`/`DateHelper.coalesceStart/coalesceEnd`'s proven sentinel-substitution pattern (2000-01-01/2099-12-31) instead of the `IS NULL OR` guard. Verified directly against the real dev Postgres via a hand-built prepared-statement `psql` reproduction of the exact Hibernate-generated SQL, before declaring it fixed (mock-based backend tests alone would not have caught this). Also diagnosed along the way: the running dev backend was simply suspended (`-agentlib:jdwp=...,suspend=y`) waiting on an IntelliJ debugger attach — unrelated to the code, but the reason nothing responded at all before the real bug was found.
+
+### Commits — 4 atomic, pushed to `dev-barry` on both repos
+
+- Backend (`2a57513..6e00eef`): `e3c0ec2` (feat: rule-40 parity + tests) + `6e00eef` (docs: TODO.md).
+- Frontend (`6ccbc4c..c316561`): `76cc1d3` (feat: admin CRUD page) + `c316561` (fix: dead `precisionAffichage` field).
+
+### Result
+
+Backend **1128/1128 green**, frontend **tsc clean, eslint clean, vitest 371/371 green**. Both repos pushed to `dev-barry` — explicit push authorization given this session (previous sessions had generally held off pushing).
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-11 — Fix stale "Store" brand placeholder, DRY brand references, hide unfinished contact email (frontend only)
 
 ### Subject

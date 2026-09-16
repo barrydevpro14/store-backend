@@ -72,7 +72,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
 
     private void addSeparator(Document doc, PdfHeaderContext ctx) throws DocumentException {
         float smallSize = ctx.config().getFontSizeSmall().floatValue();
-        Font sepFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.GRAY);
+        Font sepFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
         doc.add(new Paragraph("--------------------------------", sepFont));
     }
 
@@ -99,7 +99,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
                 + "\n" + ligne.getQuantite() + " " + symbole
                 + " × " + pdf.formatAmount(ligne.getPrixAchat());
 
-        Font lineFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.DARK_GRAY);
+        Font lineFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
 
         PdfPCell descCell = new PdfPCell(new Phrase(desc, lineFont));
         descCell.setBorder(Rectangle.NO_BORDER);
