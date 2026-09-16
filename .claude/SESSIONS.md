@@ -9,6 +9,33 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-16 — Fix thermal receipt legibility (58mm font size + gray print contrast), backend only
+
+### Subject
+
+User reported: printed thermal invoices "ne sortent pas bien" (don't come out well). Session opened with a photo of a physical 58mm receipt (`Documents/barry/documents/BHANTIC/facture thermique.jpeg`) showing text cut off mid-word at a consistent right margin across several lines — initially read as a possible page-width/roll-width mismatch. A research subagent located the whole thermal PDF stack (`AbstractThermalPdfRenderer` + `ThermalInvoicePdfRenderer` + achat's `ThermalBonCommandePdfRenderer`, all OpenPDF/`com.lowagie.text`, DB-driven page/margin/font config via `pdf_format_config` from `V79`) and flagged a 4-column meta table with no explicit `setWidths()` as the likely culprit for the header cutoff. Before touching any code, the client sent the real complaint directly: the 58mm font is too small and the print color is too faint/gray to read — a different (and more precise) root cause than the initial visual hypothesis from the photo.
+
+### Root cause + fix
+
+Every thermal renderer used `Color.DARK_GRAY`/`Color.GRAY` for body text — thermal printers dither non-pure-black colors into a faint halftone pattern, which matches "presque transparent" exactly. Asked the user (via `AskUserQuestion`) whether the black-text fix should apply to 58mm only (as literally requested) or to all thermal output, since 80mm and achat's thermal purchase orders share the exact same gray and would have the same problem even though unreported — user chose **all thermal formats**. Font size was separately too small only on 58mm (config-driven, not hardcoded): bumped `pdf_format_config`'s `THERMAL_58MM` row from `9/7/6` to `10/8/7` pt (title/normal/small) via `V98`, matching the sizes already used on 80mm; 80mm/A4/A5 untouched.
+
+### Changes
+
+- `V98__increase_thermal_58mm_font_size.sql` (new) — `UPDATE pdf_format_config SET font_size_* WHERE code = 'THERMAL_58MM'`.
+- `AbstractThermalPdfRenderer.java` — all 11 `Color.DARK_GRAY` occurrences (shared header/meta layout) → `Color.BLACK`.
+- `ThermalInvoicePdfRenderer.java` — separator + line items + totals labels, gray → black.
+- `ThermalBonCommandePdfRenderer.java` (achat) — same gray → black fix, same shared header.
+
+No frontend change (backend-only PDF generation via OpenPDF, no print CSS/HTML template in this repo). No new tests needed — pure constant/config change, no new logic — verified via a clean full `./mvnw test` run.
+
+### Result
+
+**Backend 1128/1128 green.** 1 atomic commit `74d653e` ("Fix thermal receipt legibility (58mm font size + gray print contrast)"), pushed to `dev-barry` per explicit request (commit and push each separately authorized, per the project's git rule). Not yet confirmed by the client on real hardware — worth a follow-up print test on both 58mm and 80mm.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-12 — 5 new units of measure + `UniteMesure` CRUD brought to full parity (backend + frontend), code review, live-QA bug fix, atomic commits + push
 
 ### Subject
