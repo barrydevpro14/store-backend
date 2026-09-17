@@ -104,6 +104,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell descCell = new PdfPCell(new Phrase(desc, lineFont));
         descCell.setBorder(Rectangle.NO_BORDER);
         descCell.setPadding(3);
+        descCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(descCell);
 
         PdfPCell amountCell = new PdfPCell(new Phrase(pdf.formatAmount(ligne.getPrixAchat()), lineFont));

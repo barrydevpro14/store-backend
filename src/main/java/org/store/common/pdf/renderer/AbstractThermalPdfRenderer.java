@@ -212,12 +212,12 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         return table;
     }
 
-    /* ── Meta table (NUMÉRO | DATE/HEURE | ÉCHÉANCE | MAGASIN) ─────────── */
+    /* ── Meta block (NUMÉRO, DATE/HEURE, ÉCHÉANCE, MAGASIN) ─────────────── */
 
     private PdfPTable buildMetaTable(PdfHeaderContext ctx) {
         String echeance = ctx.dateEcheance() != null ? DateHelper.formatDisplay(ctx.dateEcheance()) : "—";
 
-        PdfPTable table = new PdfPTable(4);
+        PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(100);
 
         table.addCell(buildMetaCell(ctx, pdf.msg("pdf.label.numero"), ctx.numeroDoc()));
@@ -233,29 +233,20 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
 
         String date  = ctx.dateDoc()  != null ? DateHelper.formatDisplay(ctx.dateDoc()) : "—";
         String heure = ctx.heureDoc() != null ? ctx.heureDoc().format(TIME_FORMAT) : "—";
+        Font boldFont = new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK);
 
-        PdfPCell cell = new PdfPCell();
-        cell.setPadding(4);
-        cell.setBorderColor(PdfColor.BORDER.color());
-        cell.setBackgroundColor(ctx.colors().lightBg());
-        cell.addElement(new Paragraph(pdf.msg("pdf.label.dateHeure"),
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
-        cell.addElement(new Paragraph(date,
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
-        cell.addElement(new Paragraph(heure,
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
+        PdfPCell cell = newMetaCell();
+        cell.addElement(centeredParagraph(pdf.msg("pdf.label.dateHeure"), boldFont));
+        cell.addElement(centeredParagraph(date + " " + heure, boldFont));
         return cell;
     }
 
     private PdfPCell buildMetaCell(PdfHeaderContext ctx, String header, String value) {
         float smallSize = ctx.config().getFontSizeSmall().floatValue();
 
-        PdfPCell cell = new PdfPCell();
-        cell.setPadding(4);
-        cell.setBorderColor(PdfColor.BORDER.color());
-        cell.setBackgroundColor(ctx.colors().lightBg());
-        cell.addElement(new Paragraph(header, new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK)));
-        cell.addElement(new Paragraph(value,  new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK)));
+        PdfPCell cell = newMetaCell();
+        cell.addElement(centeredParagraph(header, new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK)));
+        cell.addElement(centeredParagraph(value,  new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK)));
         return cell;
     }
 
@@ -263,24 +254,28 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         float smallSize = ctx.config().getFontSizeSmall().floatValue();
         Magasin magasin = ctx.magasin();
 
-        PdfPCell cell = new PdfPCell();
-        cell.setPadding(4);
-        cell.setBorderColor(PdfColor.BORDER.color());
-        cell.setBackgroundColor(ctx.colors().lightBg());
-
-        cell.addElement(new Paragraph(pdf.msg("pdf.label.magasin"),
+        PdfPCell cell = newMetaCell();
+        cell.addElement(centeredParagraph(pdf.msg("pdf.label.magasin"),
                 new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
 
         Font valueFont  = new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK);
         Font detailFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
         if (pdf.isNotBlank(magasin.getNom()))
-            cell.addElement(new Paragraph(magasin.getNom(), valueFont));
+            cell.addElement(centeredParagraph(magasin.getNom(), valueFont));
         if (pdf.isNotBlank(magasin.getAdresse()))
-            cell.addElement(new Paragraph(magasin.getAdresse(), detailFont));
+            cell.addElement(centeredParagraph(magasin.getAdresse(), detailFont));
         if (pdf.isNotBlank(magasin.getTelephone()))
-            cell.addElement(new Paragraph(magasin.getTelephone(), detailFont));
+            cell.addElement(centeredParagraph(magasin.getTelephone(), detailFont));
 
+        return cell;
+    }
+
+    private PdfPCell newMetaCell() {
+        PdfPCell cell = new PdfPCell();
+        cell.setPadding(4);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         return cell;
     }
 
