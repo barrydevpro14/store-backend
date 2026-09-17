@@ -110,7 +110,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell amountCell = new PdfPCell(new Phrase(pdf.formatAmount(ligne.getPrixAchat()), lineFont));
         amountCell.setBorder(Rectangle.NO_BORDER);
         amountCell.setPadding(3);
-        amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        amountCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(amountCell);
     }
 
@@ -134,7 +134,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell vc = new PdfPCell(new Phrase(pdf.formatAmount(commande.getMontantTotal()), boldFont));
         vc.setBorder(Rectangle.NO_BORDER);
         vc.setPadding(3);
-        vc.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        vc.setHorizontalAlignment(Element.ALIGN_CENTER);
         totals.addCell(vc);
 
         doc.add(totals);

@@ -212,17 +212,14 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         return table;
     }
 
-    /* ── Meta block (NUMÉRO, DATE/HEURE, ÉCHÉANCE, MAGASIN) ─────────────── */
+    /* ── Meta block (NUMÉRO, DATE/HEURE, MAGASIN) ────────────────────────── */
 
     private PdfPTable buildMetaTable(PdfHeaderContext ctx) {
-        String echeance = ctx.dateEcheance() != null ? DateHelper.formatDisplay(ctx.dateEcheance()) : "—";
-
         PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(100);
 
         table.addCell(buildMetaCell(ctx, pdf.msg("pdf.label.numero"), ctx.numeroDoc()));
         table.addCell(buildDateHeureMetaCell(ctx));
-        table.addCell(buildMetaCell(ctx, pdf.msg("pdf.label.echeance"), echeance));
         table.addCell(buildMagasinMetaCell(ctx));
 
         return table;
