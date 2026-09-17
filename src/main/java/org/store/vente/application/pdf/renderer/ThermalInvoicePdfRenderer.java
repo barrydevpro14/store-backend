@@ -145,12 +145,13 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell descCell = new PdfPCell(new Phrase(desc, lineFont));
         descCell.setBorder(Rectangle.NO_BORDER);
         descCell.setPadding(3);
+        descCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(descCell);
 
         PdfPCell amountCell = new PdfPCell(new Phrase(pdf.formatAmount(ligne.getMontantTotal()), lineFont));
         amountCell.setBorder(Rectangle.NO_BORDER);
         amountCell.setPadding(3);
-        amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        amountCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(amountCell);
     }
 
@@ -223,7 +224,7 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell vc = new PdfPCell(new Phrase(value, font));
         vc.setBorder(Rectangle.NO_BORDER);
         vc.setPadding(3);
-        vc.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        vc.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(vc);
     }
 }

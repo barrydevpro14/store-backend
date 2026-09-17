@@ -9,6 +9,68 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-17 — Thermal receipt layout: center meta block + articles, drop ÉCHÉANCE, tighter margins, backend only
+
+### Subject
+
+Follow-up to the previous session's legibility fix. Client sent a real print photo (`Documents/barry/documents/BHANTIC/last impression.jpeg`) of a 58mm receipt: the store header at the top was fine (already centered), but the `NUMÉRO / DATE-HEURE / ÉCHÉANCE / MAGASIN` meta table below it was wrapping letter-by-letter and word-by-word ("MAGASIN" split into "MAGASI"/"N", "QUINCAILLERIE" one word per line down the column) — root cause: a 4-column `PdfPTable` in `AbstractThermalPdfRenderer.buildMetaTable()` with no explicit `setWidths()`, leaving each column only ~13mm wide on 58mm paper. Client asked for everything to be centered like the top header, margins reduced, and (mid-session) for all montants to be centered and the ÉCHÉANCE field dropped entirely.
+
+### Design decision — asked before implementing (rule 44)
+
+Rather than assume, used `AskUserQuestion` with 3 questions + ASCII previews before touching code:
+1. **Meta table restructuring**: stack the 4 fields vertically into a single borderless centered block (chosen) vs. keep the 4-column table and just center text within it (rejected — columns stay too narrow, long words would still wrap, just centered instead of left-aligned). Only the stacked layout actually fixes the reported bug.
+2. **Articles alignment**: center the description, keep the amount right-aligned (chosen, matches usual receipt scanning convention) vs. center everything.
+3. **Scope**: apply to both 58mm and 80mm thermal formats (chosen, shared renderer code, same precedent as the 2026-09-16 gray→black fix) vs. 58mm only.
+
+### Round 1 — meta block restructure + centered articles + reduced margins
+
+- `AbstractThermalPdfRenderer.buildMetaTable()`: 4-column `PdfPTable(4)` → single-column `PdfPTable(1)`, each field (NUMÉRO, DATE/HEURE, ÉCHÉANCE, MAGASIN) as its own borderless centered cell via the existing `centeredParagraph()` helper — reuses the same visual language as the store-header block above it. New `newMetaCell()` helper (no border, `ALIGN_CENTER`) replaces the old bordered/gray-background cell style.
+- `addLigneCompactRow` in both `ThermalInvoicePdfRenderer` (vente) and `ThermalBonCommandePdfRenderer` (achat): description cell centered, amount cell still right-aligned at this point.
+- New `V99__reduce_thermal_margins.sql`: `THERMAL_58MM` margins 8→4, `THERMAL_80MM` margins 10→5.
+
+### Round 2 — live correction: center all montants, drop ÉCHÉANCE
+
+User came back with two more asks on the same screen: fully center the amounts (overriding round 1's "keep amount right-aligned" choice — applied to both the line-item amount **and** the totals rows, Total HT / Paiement / Solde restant, for full consistency) and remove the ÉCHÉANCE field from the meta block entirely (not needed on the printed ticket). `buildMetaTable()` now emits NUMÉRO → DATE/HEURE → MAGASIN only (the `echeance` local variable and its cell removed); `PdfHeaderContext.dateEcheance()` is no longer read anywhere in the thermal renderers — A4/A5 (`AbstractStandardPdfRenderer`) untouched, out of scope for this session.
+
+### Commits — 2 atomic, reconstructed via intermediate-state replay, not pushed
+
+Both rounds landed on disk in sequence on the same files, so the round-1 state was reconstructed by temporarily reverting round 2's edits (echeance cell restored, amounts back to right-aligned), verified it still compiled, committed, then round 2's edits were reapplied and committed separately — same safe-replay technique used in the 2026-09-11 session.
+
+### Result
+
+**Backend 1128/1128 green** after each round (clean `./mvnw test`). 2 atomic commits on `dev-barry`, **not pushed** — awaiting explicit push authorization. Not yet confirmed by the client on real hardware — worth a fresh print test on both 58mm and 80mm.
+
+---
+
+## 🗂 Previous session
+
+**Date:** 2026-09-16 — Fix thermal receipt legibility (58mm font size + gray print contrast), backend only
+
+### Subject
+
+User reported: printed thermal invoices "ne sortent pas bien" (don't come out well). Session opened with a photo of a physical 58mm receipt (`Documents/barry/documents/BHANTIC/facture thermique.jpeg`) showing text cut off mid-word at a consistent right margin across several lines — initially read as a possible page-width/roll-width mismatch. A research subagent located the whole thermal PDF stack (`AbstractThermalPdfRenderer` + `ThermalInvoicePdfRenderer` + achat's `ThermalBonCommandePdfRenderer`, all OpenPDF/`com.lowagie.text`, DB-driven page/margin/font config via `pdf_format_config` from `V79`) and flagged a 4-column meta table with no explicit `setWidths()` as the likely culprit for the header cutoff. Before touching any code, the client sent the real complaint directly: the 58mm font is too small and the print color is too faint/gray to read — a different (and more precise) root cause than the initial visual hypothesis from the photo.
+
+### Root cause + fix
+
+Every thermal renderer used `Color.DARK_GRAY`/`Color.GRAY` for body text — thermal printers dither non-pure-black colors into a faint halftone pattern, which matches "presque transparent" exactly. Asked the user (via `AskUserQuestion`) whether the black-text fix should apply to 58mm only (as literally requested) or to all thermal output, since 80mm and achat's thermal purchase orders share the exact same gray and would have the same problem even though unreported — user chose **all thermal formats**. Font size was separately too small only on 58mm (config-driven, not hardcoded): bumped `pdf_format_config`'s `THERMAL_58MM` row from `9/7/6` to `10/8/7` pt (title/normal/small) via `V98`, matching the sizes already used on 80mm; 80mm/A4/A5 untouched.
+
+### Changes
+
+- `V98__increase_thermal_58mm_font_size.sql` (new) — `UPDATE pdf_format_config SET font_size_* WHERE code = 'THERMAL_58MM'`.
+- `AbstractThermalPdfRenderer.java` — all 11 `Color.DARK_GRAY` occurrences (shared header/meta layout) → `Color.BLACK`.
+- `ThermalInvoicePdfRenderer.java` — separator + line items + totals labels, gray → black.
+- `ThermalBonCommandePdfRenderer.java` (achat) — same gray → black fix, same shared header.
+
+No frontend change (backend-only PDF generation via OpenPDF, no print CSS/HTML template in this repo). No new tests needed — pure constant/config change, no new logic — verified via a clean full `./mvnw test` run.
+
+### Result
+
+**Backend 1128/1128 green.** 1 atomic commit `74d653e` ("Fix thermal receipt legibility (58mm font size + gray print contrast)"), pushed to `dev-barry` per explicit request (commit and push each separately authorized, per the project's git rule). Not yet confirmed by the client on real hardware — worth a follow-up print test on both 58mm and 80mm.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-12 — 5 new units of measure + `UniteMesure` CRUD brought to full parity (backend + frontend), code review, live-QA bug fix, atomic commits + push
 
 ### Subject
