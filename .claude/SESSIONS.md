@@ -9,6 +9,41 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-17 — Thermal receipt layout: center meta block + articles, drop ÉCHÉANCE, tighter margins, backend only
+
+### Subject
+
+Follow-up to the previous session's legibility fix. Client sent a real print photo (`Documents/barry/documents/BHANTIC/last impression.jpeg`) of a 58mm receipt: the store header at the top was fine (already centered), but the `NUMÉRO / DATE-HEURE / ÉCHÉANCE / MAGASIN` meta table below it was wrapping letter-by-letter and word-by-word ("MAGASIN" split into "MAGASI"/"N", "QUINCAILLERIE" one word per line down the column) — root cause: a 4-column `PdfPTable` in `AbstractThermalPdfRenderer.buildMetaTable()` with no explicit `setWidths()`, leaving each column only ~13mm wide on 58mm paper. Client asked for everything to be centered like the top header, margins reduced, and (mid-session) for all montants to be centered and the ÉCHÉANCE field dropped entirely.
+
+### Design decision — asked before implementing (rule 44)
+
+Rather than assume, used `AskUserQuestion` with 3 questions + ASCII previews before touching code:
+1. **Meta table restructuring**: stack the 4 fields vertically into a single borderless centered block (chosen) vs. keep the 4-column table and just center text within it (rejected — columns stay too narrow, long words would still wrap, just centered instead of left-aligned). Only the stacked layout actually fixes the reported bug.
+2. **Articles alignment**: center the description, keep the amount right-aligned (chosen, matches usual receipt scanning convention) vs. center everything.
+3. **Scope**: apply to both 58mm and 80mm thermal formats (chosen, shared renderer code, same precedent as the 2026-09-16 gray→black fix) vs. 58mm only.
+
+### Round 1 — meta block restructure + centered articles + reduced margins
+
+- `AbstractThermalPdfRenderer.buildMetaTable()`: 4-column `PdfPTable(4)` → single-column `PdfPTable(1)`, each field (NUMÉRO, DATE/HEURE, ÉCHÉANCE, MAGASIN) as its own borderless centered cell via the existing `centeredParagraph()` helper — reuses the same visual language as the store-header block above it. New `newMetaCell()` helper (no border, `ALIGN_CENTER`) replaces the old bordered/gray-background cell style.
+- `addLigneCompactRow` in both `ThermalInvoicePdfRenderer` (vente) and `ThermalBonCommandePdfRenderer` (achat): description cell centered, amount cell still right-aligned at this point.
+- New `V99__reduce_thermal_margins.sql`: `THERMAL_58MM` margins 8→4, `THERMAL_80MM` margins 10→5.
+
+### Round 2 — live correction: center all montants, drop ÉCHÉANCE
+
+User came back with two more asks on the same screen: fully center the amounts (overriding round 1's "keep amount right-aligned" choice — applied to both the line-item amount **and** the totals rows, Total HT / Paiement / Solde restant, for full consistency) and remove the ÉCHÉANCE field from the meta block entirely (not needed on the printed ticket). `buildMetaTable()` now emits NUMÉRO → DATE/HEURE → MAGASIN only (the `echeance` local variable and its cell removed); `PdfHeaderContext.dateEcheance()` is no longer read anywhere in the thermal renderers — A4/A5 (`AbstractStandardPdfRenderer`) untouched, out of scope for this session.
+
+### Commits — 2 atomic, reconstructed via intermediate-state replay, not pushed
+
+Both rounds landed on disk in sequence on the same files, so the round-1 state was reconstructed by temporarily reverting round 2's edits (echeance cell restored, amounts back to right-aligned), verified it still compiled, committed, then round 2's edits were reapplied and committed separately — same safe-replay technique used in the 2026-09-11 session.
+
+### Result
+
+**Backend 1128/1128 green** after each round (clean `./mvnw test`). 2 atomic commits on `dev-barry`, **not pushed** — awaiting explicit push authorization. Not yet confirmed by the client on real hardware — worth a fresh print test on both 58mm and 80mm.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-16 — Fix thermal receipt legibility (58mm font size + gray print contrast), backend only
 
 ### Subject
