@@ -9,6 +9,33 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-18 — Vente product search: remove 10-item frontend cap, raise search default 50→100, both repos
+
+### Subject
+
+User asked to verify whether the product search in the vente form's "add line" combobox was capped at 10 results. Investigation found `AddVenteLineRow.tsx` passed a literal `size: 10` to `useProductSearch`, overriding the hook's own default of 50 — the only call site in the codebase doing this (achat's and stock's line-item rows, via `useProductSearchAll`, were unaffected).
+
+### Fix 1 — drop the frontend override
+
+Removed the `size: 10` line from `AddVenteLineRow.tsx` so the vente form's search falls back to the shared default (50 at the time). Verified no other product-search call site had a similar override (`grep` across `useProductSearch`/`useProductSearchAll` callers). `tsc --noEmit` clean. 1 commit, pushed to `dev-barry` (frontend `c316561..74aa3c4`).
+
+### Fix 2 — raise the shared default 50 → 100
+
+Separate explicit user ask: bump the product-search default page size itself, backend and frontend. Changed `ProductController`'s `/search` and `/search/all` endpoints (`@RequestParam(defaultValue = "50")` → `"100"`) and the matching frontend hooks `useProductSearch.ts` / `useProductSearchAll.ts` (default parameter `50` → `100`). Confirmed via the existing test suites that no test asserted the specific default (`ProductControllerTest`/`ProductSearchServiceImplTest` all pass their own explicit `Pageable`/mock) — no test changes needed. **Backend 1128/1128 green, frontend tsc clean + vitest 371/371 green.**
+
+### Commits — 2 more atomic commits, pushed to `dev-barry` on both repos
+
+- Backend: `892068b` (feat: raise product-search default page size from 50 to 100), pushed `45712cc..892068b`.
+- Frontend: `a52645e` (feat: raise product-search default page size from 50 to 100), pushed `74aa3c4..a52645e`.
+
+### Result
+
+4 atomic commits total this session across both repos, all pushed. No open follow-ups — user hadn't yet had a chance to manually confirm the wider result set in the vente form.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-17 — Thermal receipt layout: center meta block + articles, drop ÉCHÉANCE, tighter margins, backend only
 
 ### Subject
