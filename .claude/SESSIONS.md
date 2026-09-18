@@ -9,6 +9,44 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-18 (continued) — 58mm + 80mm thermal page-width fixes + line-item alignment, vente details mobile-responsive fix, TODO backlog entry
+
+### Subject
+
+Continuation of the same day's earlier session. Three separate, unrelated fixes requested in sequence.
+
+### Fix 1 — 58mm thermal printable width (backend)
+
+User pasted the physical printer's own datasheet: 58mm **paper** but only **48mm printable width** at 203dpi (print head narrower than the roll). `pdf_format_config.THERMAL_58MM.page_width` was `164pt` (~58mm, the full paper) — meaning content past ~48mm was always being clipped by the printer regardless of any PDF margin, independent of the font-size/color/margin fixes shipped in the 2026-09-16 and 2026-09-17 sessions. Very likely the real root cause those two sessions were only partially working around. New `V100__fix_thermal_58mm_printable_width.sql` lowers `page_width` to `136pt` (48mm) — no Java changes needed since every thermal element (`AbstractThermalPdfRenderer`, `ThermalInvoicePdfRenderer`, `ThermalBonCommandePdfRenderer`) lays out at `widthPercentage(100)` relative to this single config value.
+
+Same request bundled a second, independent ask: remove the 2026-09-17 session's centering on line-item ("articles") cells specifically (totals rows explicitly left untouched, still centered). `addLigneCompactRow` in both thermal renderers reverted description → `ALIGN_LEFT`, amount → `ALIGN_RIGHT` (standard receipt convention).
+
+**Backend 1128/1128 green.** 2 atomic commits, pushed to `dev-barry` (`670f92f..ed2d1ed`): `0b895d7` (page-width fix) + `ed2d1ed` (alignment revert). Not yet confirmed by the client on real hardware.
+
+### Fix 2 — vente details page mobile responsiveness (frontend, two rounds)
+
+User reported the sale-order details page ("VenteDetailsContent") stopped being responsive on mobile since the `PdfDownloadControl` (printer/PDF-format selector + download button) was added to its header row. A research subagent traced it to `VenteDetailsContent.tsx:128`'s header row (`flex items-start justify-between gap-4`, no wrap) plus `PdfDownloadControl.tsx`'s fixed `w-44` selector width — confirmed `PdfDownloadControl` is used **only** by the vente details page (achat's own PDF-selector usage is a separate, unaffected layout), keeping the fix in scope.
+
+**Round 1** (`flex-wrap` + `w-full sm:w-44`) did not fix it on the user's device — reported "toujours" (still) broken. **Round 2**: replaced the wrap-heuristic approach with a guaranteed layout — `VenteDetailsContent.tsx`'s header is now `flex-col` by default, only `sm:flex-row` at ≥640px (always stacks below that breakpoint, no conditional wrapping decision involved), plus `min-w-0` on the info grid as a safety net; `PdfDownloadControl.tsx`'s root became `w-full sm:w-auto` so its inner `w-full` selector resolves against a real width instead of a shrink-to-fit ambiguous parent. `tsc --noEmit` clean both rounds. User confirmed fixed live on round 2. No browser tooling available this session (Claude in Chrome declined) — verified by reasoning about the flex algorithm plus the user's own live check, not a visual screenshot.
+
+1 commit (final state only, round 1 was never committed), pushed to `dev-barry` (frontend `a52645e..ee09609`): `ee09609`.
+
+### TODO backlog entry
+
+Added a new 🟡 Normal priority backend item: per-`Entreprise` default PDF-format configuration (today `PdfFormatSelector` always starts unselected, no persisted preference) — current no-default behavior stays as fallback until implemented.
+
+### Fix 4 — 80mm thermal printable width (backend)
+
+Same day, separate ask: user pasted a second printer datasheet (Xprinter X80IIT, 80mm). Unlike the 58mm printer's clear-cut gap, this one gives a **range** — printable width ≈ 72 to 79.5mm depending on the exact model variant, versus paper width 79.5±0.5mm. `pdf_format_config.THERMAL_80MM.page_width` was already `226pt` (≈79.5mm, the top of that range) — not a clear bug like the 58mm case. Per rule 44, asked the user (`AskUserQuestion`) how to proceed rather than assuming a value: leave unchanged / apply the conservative low end (72mm) / wait for the user to check the printer's label for the exact model. User chose the **conservative 72mm** option. New `V101__reduce_thermal_80mm_printable_width.sql` lowers `page_width` to `204pt` (72mm) — same no-Java-change pattern as the 58mm fix. **Backend 1128/1128 green.**
+
+### Result
+
+Backend **1128/1128 green**, frontend **tsc clean**. No open follow-ups except the still-pending real-hardware print confirmation for both the 58mm and 80mm width fixes.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-18 — Vente product search: remove 10-item frontend cap, raise search default 50→100, both repos
 
 ### Subject
