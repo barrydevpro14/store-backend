@@ -9,6 +9,40 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-19 — Per-magasin PDF printer parametrage (format/parametrage split), both repos, 2 code-review passes
+
+### Subject
+
+User asked for "le paramétrage de l'imprimante par magasin" — configuring page width, margins and font sizes per **store**, not globally. Directly motivated by the 2026-09-16/17/18 sessions, which kept having to fix `pdf_format_config`'s single global width via one-off migrations every time a client's physical printer turned out to differ from what was assumed. Design discussion happened live before any code (rule 44): a first draft adding a nullable `magasin_id` column directly on `pdf_format_config` was rejected after the user pointed out it would produce duplicate rows in the format selector (two rows sharing the same `code`, global + override). Landed instead on dissociating the format identity from its parametrage — a new `PdfFormatSetting(pdfFormatConfigId, magasinId)` entity, the exact shape the user specified once the duplicate-row problem was raised.
+
+### Backend
+
+New `org.store.pdf` additions: `PdfFormatSetting` entity (page width/height, 4 margins, 3 font sizes) keyed by `(pdfFormatConfig, magasin nullable)` — `magasin = null` is the global default (one per format, enforced via a partial unique index), a set `magasin` is a per-store override that falls back to the global row when absent (`PdfFormatSettingDomainService.findEffective`). `PdfFormatConfig` stays the pure catalog (code/label/format/enabled) but keeps its old numeric fields as `@Transient` — a "merged view" populated by `applySetting()` at resolution time. This was a deliberate choice over rewriting all ~20 renderer/strategy files to take `PdfFormatSetting` directly; the user was asked explicitly ("PdfFormatConfig garde toujours les anciens colonnes") and confirmed keeping the merged view. `InvoicePdfServiceImpl`/`BonCommandeAchatPdfServiceImpl` now resolve the effective parametrage from the commande's own magasin automatically — the existing print/download flow and its frontend selector needed zero changes. New `GET/PUT/DELETE /api/v1/pdf-format-settings`, gated `PDF_FORMAT_SETTING_MANAGE` (OWNER + MANAGER).
+
+Migrations `V102` (creates `pdf_format_setting`, backfills from the old `pdf_format_config` columns, drops those columns) + `V103` (relaxes `NOT NULL` on `page_width`/`font_size_*` after a code-review catch found the migration could fail on legacy nullable data) — `V102` was already applied to the dev Postgres by the time that finding landed, so it had to be a follow-up migration rather than an in-place edit (same Flyway-checksum constraint as the `V96` incident from 2026-09-12).
+
+**Code review (backend, opus, high effort)** — 6 findings, all fixed in one pass: (1) `GET /pdf-format-settings` had no `@PreAuthorize` unlike its sibling PUT/DELETE — added; (2) the `V102` NOT NULL mismatch above; (3) `createOrUpdateOverride`'s find-then-save has an unhandled concurrent-insert race — mapped `ux_pdf_format_setting_magasin` into `GlobalException`'s existing race-condition message map instead of adding ad-hoc locking; (4) `findEffectiveForMagasin` threw for the whole listing if one format's global row was missing — now resolves via `findEffectiveOptional` + `flatMap`, skipping just that entry; (5) new service Javadoc was in French, translated to English (rule 29); (6) the listing's `.map()` lambda did two logical steps inline — extracted `resolveSettingResponse` (rule 36). **Backend 1137/1137 green.**
+
+### Frontend
+
+New "Imprimante" tab living **inside the existing Settings module** (`/dashboard/settings/impression`) — first built as a new top-level sidebar item, then moved per explicit user correction ("l'imprimante doit etre dans module parametres"), mirroring `DocumentSequencePage`'s exact shape (`SETTINGS_TABS` entry, tab icon, `useDeferredSearch`/"Rechercher" gate). Full `features/pdf-format-setting/` slice: DTOs, api adapter, query keys, 3 hooks (list + 2 mutations), a table (format/width/status badge/row actions) and an edit dialog (RHF + zod via the shared `FormField`, rule 57).
+
+Two follow-up UX asks from the user, both live in this session:
+- **mm hints** — after the user asked "pt c'est quel unité de mesure ?" and pointed out merchants only know mm (what's printed on the physical printer), added a live "≈ X.X mm" hint under every pt field (new pure `formatMillimeterHint` util, 1mm ≈ 2.83pt) plus a static conversion reminder in the dialog description and a `(≈ X mm)` hint in the table's width column.
+- **Thermal height** — the "Hauteur (pt)" field is hidden for thermal formats and `pageHeight` is force-set to `0` on submit, since `AbstractThermalPdfRenderer` never reads it (crops the PDF to actual content height — continuous-roll printing has no fixed page height, unlike A4/A5).
+
+**Code review (frontend, opus, high effort)** — 3 findings, all fixed: (1) the page fetched on mount instead of gating behind the mandatory `useDeferredSearch`/"Rechercher" pattern (rule 47, no exception clause) — fixed to match every sibling Settings tab; (2) the new `ImpressionMagasinSelect` was a near line-for-line duplicate of the pre-existing `DocumentSequenceMagasinSelect` (rule 45) — extracted a shared `common/presentation/shared/MagasinSelect.tsx` (label/placeholder passed by the caller), `DocumentSequenceMagasinSelect` now delegates to it instead of duplicating; (3) an inline arrow handler on the dialog's Cancel button (rule 42) — extracted `handleCancel`. **Frontend 399/399 green.**
+
+**Font size labels** — one more live UX round: the user flagged the "Titre"/"Normal"/"Petit" font-size labels as unclear ("difficilement compréhensible par les users"). First iteration added an explanatory hint under each field (Nom du magasin / Totaux et informations générales / Lignes d'articles et détails, derived from tracing which renderer element actually consumes each of `fontSizeTitle`/`Normal`/`Small` across `AbstractStandardPdfRenderer` and `AbstractThermalPdfRenderer`). User then asked for explicit **labels** instead of a vague label + hint — renamed the fields themselves to **Nom du magasin** / **Totaux** / **Articles** and dropped the now-redundant `fieldHints` i18n block.
+
+### Result
+
+Backend **1137/1137 green**, frontend **399/399 green**, `tsc`/`eslint` clean on both. Nothing committed on either repo — no commit/push authorization given this session. `.claude/TODO.md`'s pre-existing "Per-company default printer/PDF format configuration" entry (2026-09-18) stays open — it's a distinct frontend preselect-convenience feature, not addressed by this session's per-magasin parametrage work.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-18 (continued) — 58mm + 80mm thermal page-width fixes + line-item alignment, vente details mobile-responsive fix, TODO backlog entry
 
 ### Subject

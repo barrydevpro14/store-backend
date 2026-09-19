@@ -11,4 +11,7 @@ public interface PdfFormatConfigRepository extends BaseRepository<PdfFormatConfi
 
     @Query("SELECT new org.store.pdf.application.dto.PdfFormatConfigResponse(c) FROM PdfFormatConfig c WHERE c.enabled = true ORDER BY c.label ASC")
     List<PdfFormatConfigResponse> findAllEnabled();
+
+    @Query("SELECT c FROM PdfFormatConfig c WHERE c.enabled = true ORDER BY c.label ASC")
+    List<PdfFormatConfig> findAllEnabledEntities();
 }

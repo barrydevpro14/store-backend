@@ -29,4 +29,8 @@ public class PdfFormatConfigDomainService {
     public List<PdfFormatConfigResponse> findAllEnabled() {
         return repository.findAllEnabled();
     }
+
+    public List<PdfFormatConfig> findAllEnabledEntities() {
+        return repository.findAllEnabledEntities();
+    }
 }

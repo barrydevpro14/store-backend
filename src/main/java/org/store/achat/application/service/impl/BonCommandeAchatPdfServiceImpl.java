@@ -8,7 +8,7 @@ import org.store.achat.application.service.IBonCommandeAchatPdfService;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.domain.model.CommandeAchat;
 import org.store.common.tools.OwnershipHelper;
-import org.store.pdf.application.service.IPdfFormatConfigService;
+import org.store.pdf.application.service.IPdfFormatSettingService;
 import org.store.pdf.domain.model.PdfFormatConfig;
 import org.store.security.application.service.ICurrentUserService;
 
@@ -23,16 +23,16 @@ import java.util.UUID;
 public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfService {
 
     private final ICommandeAchatService commandeAchatService;
-    private final IPdfFormatConfigService pdfFormatConfigService;
+    private final IPdfFormatSettingService pdfFormatSettingService;
     private final BonCommandePdfStrategyResolver strategyResolver;
     private final ICurrentUserService currentUserService;
 
     public BonCommandeAchatPdfServiceImpl(ICommandeAchatService commandeAchatService,
-                                           IPdfFormatConfigService pdfFormatConfigService,
+                                           IPdfFormatSettingService pdfFormatSettingService,
                                            BonCommandePdfStrategyResolver strategyResolver,
                                            ICurrentUserService currentUserService) {
         this.commandeAchatService = commandeAchatService;
-        this.pdfFormatConfigService = pdfFormatConfigService;
+        this.pdfFormatSettingService = pdfFormatSettingService;
         this.strategyResolver = strategyResolver;
         this.currentUserService = currentUserService;
     }
@@ -49,7 +49,7 @@ public class BonCommandeAchatPdfServiceImpl implements IBonCommandeAchatPdfServi
                 "commandeAchat.notOwned"
         );
 
-        PdfFormatConfig config = pdfFormatConfigService.findById(configId);
+        PdfFormatConfig config = pdfFormatSettingService.resolveEffectiveConfig(configId, commande.getMagasin().getId());
         BonCommandePdfStrategy strategy = strategyResolver.resolve(config.getFormat());
 
         return strategy.generate(commande, commande.getMagasin(), config);

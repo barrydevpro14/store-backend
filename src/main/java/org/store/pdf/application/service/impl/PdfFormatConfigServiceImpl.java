@@ -42,4 +42,10 @@ public class PdfFormatConfigServiceImpl implements IPdfFormatConfigService {
 
         return config;
     }
+
+    /** Retourne les entités complètes de chaque format activé. */
+    @Override
+    public List<PdfFormatConfig> findAllEnabledEntities() {
+        return domainService.findAllEnabledEntities();
+    }
 }

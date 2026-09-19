@@ -8,6 +8,12 @@ import org.store.pdf.domain.enums.PdfFormat;
 
 import java.math.BigDecimal;
 
+/**
+ * Catalogue des formats PDF (identité : code, libellé, type de rendu).
+ * Les valeurs de paramétrage (largeur, marges, tailles de police) sont dissociées
+ * dans {@link PdfFormatSetting} — les champs ci-dessous sont transients, remplis
+ * à la résolution effective (globale ou surchargée par magasin).
+ */
 @Getter
 @Setter
 @Entity
@@ -26,33 +32,46 @@ public class PdfFormatConfig extends AuditableEntity {
     @Column(nullable = false, length = 50)
     private PdfFormat format;
 
-    @Column(precision = 10, scale = 2)
-    private BigDecimal pageWidth;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal pageHeight;
-
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal marginLeft;
-
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal marginRight;
-
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal marginTop;
-
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal marginBottom;
-
-    @Column(precision = 5, scale = 2)
-    private BigDecimal fontSizeTitle;
-
-    @Column(precision = 5, scale = 2)
-    private BigDecimal fontSizeNormal;
-
-    @Column(precision = 5, scale = 2)
-    private BigDecimal fontSizeSmall;
-
     @Column(nullable = false)
     private boolean enabled = true;
+
+    @Transient
+    private BigDecimal pageWidth;
+
+    @Transient
+    private BigDecimal pageHeight;
+
+    @Transient
+    private BigDecimal marginLeft;
+
+    @Transient
+    private BigDecimal marginRight;
+
+    @Transient
+    private BigDecimal marginTop;
+
+    @Transient
+    private BigDecimal marginBottom;
+
+    @Transient
+    private BigDecimal fontSizeTitle;
+
+    @Transient
+    private BigDecimal fontSizeNormal;
+
+    @Transient
+    private BigDecimal fontSizeSmall;
+
+    /** Copies the effective numeric parametrage values from the resolved setting onto this transient view. */
+    public void applySetting(PdfFormatSetting setting) {
+        this.pageWidth = setting.getPageWidth();
+        this.pageHeight = setting.getPageHeight();
+        this.marginLeft = setting.getMarginLeft();
+        this.marginRight = setting.getMarginRight();
+        this.marginTop = setting.getMarginTop();
+        this.marginBottom = setting.getMarginBottom();
+        this.fontSizeTitle = setting.getFontSizeTitle();
+        this.fontSizeNormal = setting.getFontSizeNormal();
+        this.fontSizeSmall = setting.getFontSizeSmall();
+    }
 }
