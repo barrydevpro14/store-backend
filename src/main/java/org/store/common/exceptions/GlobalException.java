@@ -106,7 +106,8 @@ public class GlobalException {
             Map.entry("account_username_key",             "account.username.alreadyExists"),
             Map.entry("pf_product_fournisseur_quality_unique", "productFournisseur.alreadyExists"),
             Map.entry("facturation_moyen_pays_key", "facturation.alreadyExists"),
-            Map.entry("facturation_moyen_global_key", "facturation.alreadyExists")
+            Map.entry("facturation_moyen_global_key", "facturation.alreadyExists"),
+            Map.entry("ux_pdf_format_setting_magasin", "pdfFormatSetting.alreadyExists")
     );
 
     private String extractConstraintName(DataIntegrityViolationException ex) {

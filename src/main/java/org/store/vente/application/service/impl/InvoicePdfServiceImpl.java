@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.store.common.exceptions.BadArgumentException;
 import org.store.common.tools.OwnershipHelper;
-import org.store.pdf.application.service.IPdfFormatConfigService;
+import org.store.pdf.application.service.IPdfFormatSettingService;
 import org.store.pdf.domain.model.PdfFormatConfig;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.pdf.strategy.InvoicePdfStrategy;
@@ -28,18 +28,18 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
 
     private final IFactureClientService factureClientService;
     private final CommandeVenteDomainService commandeVenteDomainService;
-    private final IPdfFormatConfigService pdfFormatConfigService;
+    private final IPdfFormatSettingService pdfFormatSettingService;
     private final InvoicePdfStrategyResolver strategyResolver;
     private final ICurrentUserService currentUserService;
 
     public InvoicePdfServiceImpl(IFactureClientService factureClientService,
                                   CommandeVenteDomainService commandeVenteDomainService,
-                                  IPdfFormatConfigService pdfFormatConfigService,
+                                  IPdfFormatSettingService pdfFormatSettingService,
                                   InvoicePdfStrategyResolver strategyResolver,
                                   ICurrentUserService currentUserService) {
         this.factureClientService = factureClientService;
         this.commandeVenteDomainService = commandeVenteDomainService;
-        this.pdfFormatConfigService = pdfFormatConfigService;
+        this.pdfFormatSettingService = pdfFormatSettingService;
         this.strategyResolver = strategyResolver;
         this.currentUserService = currentUserService;
     }
@@ -56,7 +56,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
                 "factureClient.notOwned"
         );
 
-        PdfFormatConfig config = pdfFormatConfigService.findById(configId);
+        PdfFormatConfig config = pdfFormatSettingService.resolveEffectiveConfig(configId, facture.getCommande().getMagasin().getId());
         InvoicePdfStrategy strategy = strategyResolver.resolve(config.getFormat());
 
         return strategy.generate(facture, facture.getCommande().getMagasin(), config);
@@ -78,7 +78,7 @@ public class InvoicePdfServiceImpl implements IInvoicePdfService {
             throw new BadArgumentException("commandeVente.cancel.alreadyCancelled");
         }
 
-        PdfFormatConfig config = pdfFormatConfigService.findById(configId);
+        PdfFormatConfig config = pdfFormatSettingService.resolveEffectiveConfig(configId, commande.getMagasin().getId());
         InvoicePdfStrategy strategy = strategyResolver.resolve(config.getFormat());
 
         if (commande.getFacture() != null) {

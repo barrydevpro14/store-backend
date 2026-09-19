@@ -13,4 +13,7 @@ public interface IPdfFormatConfigService {
 
     /** Résout la configuration par UUID — lève EntityException si absente ou désactivée. */
     PdfFormatConfig findById(UUID id);
+
+    /** Retourne les entités complètes de chaque format activé — usage interne (résolution de paramétrage). */
+    List<PdfFormatConfig> findAllEnabledEntities();
 }
