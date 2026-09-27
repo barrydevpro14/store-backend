@@ -9,6 +9,26 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-27 — Thermal PDFs: single black color + centered logo, backend only
+
+### Subject
+
+User asked: "mettre les pdf thermique en unique couleur noire et center le logo". Investigated before touching code (rule 44 doesn't strictly apply here — a mechanical fix, not a design decision — but still scoped it precisely first).
+
+### Findings + fix
+
+The 2026-09-16 session had already swept `Color.DARK_GRAY`/`Color.GRAY` → `Color.BLACK` across the thermal renderers, but 3 non-black colors survived that pass because they came from a different source: `ctx.colors().primary()` (the tenant's configurable brand color, resolved from `EntrepriseSetting.couleurPrimaire`) still drove the store `sigle`, `raisonSociale`/`activité` title text, the document-label bottom border, and the bold "Total"/"Solde restant" rows on vente invoice, vente devis and achat bon de commande. `PdfColor.BORDER` (a light gray constant, `229,231,235`) still drove the client-row box border. All switched to `Color.BLACK` in `AbstractThermalPdfRenderer` (shared header/meta/client-row code for both vente and achat) + `ThermalInvoicePdfRenderer` + `ThermalBonCommandePdfRenderer`. Removed the now-dead `PdfColors colors = ctx.colors();` locals and the unused `PdfColor` import. **A4/A5 (`AbstractStandardPdfRenderer`, `StandardInvoicePdfRenderer`) intentionally untouched** — user asked for thermal only, brand color stays there.
+
+Logo centering was a real, separate bug: `buildLogoCell()` sets `cell.setHorizontalAlignment(Element.ALIGN_CENTER)`, but the `sigle` text right next to the image already needed its own explicit `sigle.setAlignment(Element.ALIGN_CENTER)` despite that cell-level setting — a tell that OpenPDF's `PdfPCell` horizontal alignment doesn't propagate to every element added via `addElement(...)`, and in particular not to `Image` (unlike `Paragraph`/`Phrase`, which do respect it here). The image itself had no `setAlignment` call, so it was rendering left-aligned regardless of the cell setting. Added `img.setAlignment(Element.ALIGN_CENTER)` right after `img.scaleToFit(65, 52)`.
+
+### Result
+
+**Backend 1137/1137 green** (`./mvnw test`, clean). 3 files touched, no migration, no test changes needed (pure rendering constants, no new logic). Not yet confirmed by the client on real hardware. Commit pending user go-ahead on push.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-19 — Per-magasin PDF printer parametrage (format/parametrage split), both repos, 2 code-review passes
 
 ### Subject
@@ -35,9 +55,11 @@ Two follow-up UX asks from the user, both live in this session:
 
 **Font size labels** — one more live UX round: the user flagged the "Titre"/"Normal"/"Petit" font-size labels as unclear ("difficilement compréhensible par les users"). First iteration added an explanatory hint under each field (Nom du magasin / Totaux et informations générales / Lignes d'articles et détails, derived from tracing which renderer element actually consumes each of `fontSizeTitle`/`Normal`/`Small` across `AbstractStandardPdfRenderer` and `AbstractThermalPdfRenderer`). User then asked for explicit **labels** instead of a vague label + hint — renamed the fields themselves to **Nom du magasin** / **Totaux** / **Articles** and dropped the now-redundant `fieldHints` i18n block.
 
+**Unrelated follow-up, same session** — user asked to shrink the pre-existing PDF format selector + download button on the vente/achat details pages (`PdfDownloadControl.tsx`/`PdfFormatSelector.tsx`/`AchatDetailsContent.tsx`, not part of the new per-magasin feature). Vente's button had no `size` prop (default `h-10`); achat's own inline button was already `size="sm"` (`h-7`) but neither page's Combobox selector had a way to shrink (no `className` passthrough on `PdfFormatSelector`). Added the passthrough, shrank both selectors to `h-8`/`text-sm`, and matched vente's button to achat's existing `size="sm"` compact style. Frontend 399/399 green, `tsc`/`eslint` clean. Commit `d5fc23b`, pushed to `dev-barry` (`bf63c9a..d5fc23b`).
+
 ### Result
 
-Backend **1137/1137 green**, frontend **399/399 green**, `tsc`/`eslint` clean on both. Nothing committed on either repo — no commit/push authorization given this session. `.claude/TODO.md`'s pre-existing "Per-company default printer/PDF format configuration" entry (2026-09-18) stays open — it's a distinct frontend preselect-convenience feature, not addressed by this session's per-magasin parametrage work.
+Backend **1137/1137 green**, frontend **399/399 green**, `tsc`/`eslint` clean on both. **4 atomic commits, all pushed to `dev-barry`**: backend `2cdc9e3` (feature) + `b1bbc1c` (docs), pushed `b3cc3df..b1bbc1c`; frontend `ecafd76` (shared `MagasinSelect` extraction) + `bf63c9a` (feature), pushed `ee09609..bf63c9a`. Plus the unrelated PDF-control sizing follow-up above, frontend `d5fc23b`, pushed `bf63c9a..d5fc23b`. `.claude/TODO.md`'s pre-existing "Per-company default printer/PDF format configuration" entry (2026-09-18) stays open — it's a distinct frontend preselect-convenience feature, not addressed by this session's per-magasin parametrage work.
 
 ---
 

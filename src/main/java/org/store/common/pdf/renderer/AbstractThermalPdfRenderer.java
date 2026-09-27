@@ -5,7 +5,6 @@ import com.lowagie.text.Font;
 import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.*;
-import org.store.common.dto.PdfColor;
 import org.store.common.pdf.PdfHeaderContext;
 import org.store.common.service.IPdfService;
 import org.store.common.tools.DateHelper;
@@ -141,13 +140,14 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
             try {
                 Image img = Image.getInstance(e.getLogo().getDocument());
                 img.scaleToFit(65, 52);
+                img.setAlignment(Element.ALIGN_CENTER);
                 cell.addElement(img);
             } catch (Exception ignored) {
             }
 
             if (pdf.isNotBlank(e.getSigle())) {
                 Paragraph sigle = new Paragraph(e.getSigle(),
-                        new Font(Font.HELVETICA, normalSize, Font.BOLD, ctx.colors().primary()));
+                        new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK));
                 sigle.setAlignment(Element.ALIGN_CENTER);
                 cell.addElement(sigle);
             }
@@ -160,7 +160,6 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         float titleSize  = ctx.config().getFontSizeTitle().floatValue();
         float normalSize = ctx.config().getFontSizeNormal().floatValue();
         float smallSize  = ctx.config().getFontSizeSmall().floatValue();
-        Color primary    = ctx.colors().primary();
         Entreprise e     = ctx.magasin().getEntreprise();
 
         PdfPCell cell = new PdfPCell();
@@ -170,11 +169,11 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
 
         if (pdf.isNotBlank(e.getRaisonSociale()))
             cell.addElement(centeredParagraph(e.getRaisonSociale(),
-                    new Font(Font.HELVETICA, titleSize, Font.BOLD, primary)));
+                    new Font(Font.HELVETICA, titleSize, Font.BOLD, Color.BLACK)));
 
         if (e.getActiviteEconomique() != null && pdf.isNotBlank(e.getActiviteEconomique().getLibelle()))
             cell.addElement(centeredParagraph(e.getActiviteEconomique().getLibelle(),
-                    new Font(Font.HELVETICA, normalSize, Font.BOLD, primary)));
+                    new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK)));
 
         Font infoFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
@@ -206,7 +205,7 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
         ));
         cell.setPadding(4);
         cell.setBorder(Rectangle.BOTTOM);
-        cell.setBorderColor(ctx.colors().primary());
+        cell.setBorderColor(Color.BLACK);
         table.addCell(cell);
 
         return table;
@@ -289,7 +288,7 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
                 new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
         cell.setPadding(4);
         cell.setBorder(Rectangle.BOX);
-        cell.setBorderColor(PdfColor.BORDER.color());
+        cell.setBorderColor(Color.BLACK);
         table.addCell(cell);
 
         return table;
