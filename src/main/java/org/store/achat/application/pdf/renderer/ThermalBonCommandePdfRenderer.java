@@ -118,13 +118,12 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
 
     private void addTotalCompact(Document doc, CommandeAchat commande, PdfHeaderContext ctx) throws DocumentException {
         float normalSize = ctx.config().getFontSizeNormal().floatValue();
-        PdfColors colors = ctx.colors();
 
         PdfPTable totals = new PdfPTable(2);
         totals.setWidthPercentage(100);
         totals.setWidths(new float[]{60, 40});
 
-        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, colors.primary());
+        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, Color.BLACK);
 
         PdfPCell lc = new PdfPCell(new Phrase(pdf.msg("pdf.achat.total"), boldFont));
         lc.setBorder(Rectangle.NO_BORDER);

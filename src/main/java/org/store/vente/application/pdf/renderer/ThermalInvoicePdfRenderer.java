@@ -159,14 +159,13 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
 
     private void addTotalsCompact(Document doc, FactureClient facture, PdfHeaderContext ctx) throws DocumentException {
         float normalSize = ctx.config().getFontSizeNormal().floatValue();
-        PdfColors colors = ctx.colors();
 
         PdfPTable totals = new PdfPTable(2);
         totals.setWidthPercentage(100);
         totals.setWidths(new float[]{60, 40});
 
         Font labelFont = new Font(Font.COURIER, normalSize, Font.NORMAL, Color.BLACK);
-        Font boldFont  = new Font(Font.COURIER, normalSize, Font.BOLD, colors.primary());
+        Font boldFont  = new Font(Font.COURIER, normalSize, Font.BOLD, Color.BLACK);
 
         addCompactRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(facture.getMontantTotal()), labelFont);
 
@@ -201,13 +200,12 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
 
     private void addDevisTotalsCompact(Document doc, CommandeVente commande, PdfHeaderContext ctx) throws DocumentException {
         float normalSize = ctx.config().getFontSizeNormal().floatValue();
-        PdfColors colors = ctx.colors();
 
         PdfPTable totals = new PdfPTable(2);
         totals.setWidthPercentage(100);
         totals.setWidths(new float[]{60, 40});
 
-        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, colors.primary());
+        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, Color.BLACK);
 
         BigDecimal montant = commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO;
         addCompactRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(montant), boldFont);
