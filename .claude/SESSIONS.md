@@ -9,6 +9,26 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-09-27 — Thermal PDFs: single black color + centered logo, backend only
+
+### Subject
+
+User asked: "mettre les pdf thermique en unique couleur noire et center le logo". Investigated before touching code (rule 44 doesn't strictly apply here — a mechanical fix, not a design decision — but still scoped it precisely first).
+
+### Findings + fix
+
+The 2026-09-16 session had already swept `Color.DARK_GRAY`/`Color.GRAY` → `Color.BLACK` across the thermal renderers, but 3 non-black colors survived that pass because they came from a different source: `ctx.colors().primary()` (the tenant's configurable brand color, resolved from `EntrepriseSetting.couleurPrimaire`) still drove the store `sigle`, `raisonSociale`/`activité` title text, the document-label bottom border, and the bold "Total"/"Solde restant" rows on vente invoice, vente devis and achat bon de commande. `PdfColor.BORDER` (a light gray constant, `229,231,235`) still drove the client-row box border. All switched to `Color.BLACK` in `AbstractThermalPdfRenderer` (shared header/meta/client-row code for both vente and achat) + `ThermalInvoicePdfRenderer` + `ThermalBonCommandePdfRenderer`. Removed the now-dead `PdfColors colors = ctx.colors();` locals and the unused `PdfColor` import. **A4/A5 (`AbstractStandardPdfRenderer`, `StandardInvoicePdfRenderer`) intentionally untouched** — user asked for thermal only, brand color stays there.
+
+Logo centering was a real, separate bug: `buildLogoCell()` sets `cell.setHorizontalAlignment(Element.ALIGN_CENTER)`, but the `sigle` text right next to the image already needed its own explicit `sigle.setAlignment(Element.ALIGN_CENTER)` despite that cell-level setting — a tell that OpenPDF's `PdfPCell` horizontal alignment doesn't propagate to every element added via `addElement(...)`, and in particular not to `Image` (unlike `Paragraph`/`Phrase`, which do respect it here). The image itself had no `setAlignment` call, so it was rendering left-aligned regardless of the cell setting. Added `img.setAlignment(Element.ALIGN_CENTER)` right after `img.scaleToFit(65, 52)`.
+
+### Result
+
+**Backend 1137/1137 green** (`./mvnw test`, clean). 3 files touched, no migration, no test changes needed (pure rendering constants, no new logic). Not yet confirmed by the client on real hardware. Commit pending user go-ahead on push.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-19 — Per-magasin PDF printer parametrage (format/parametrage split), both repos, 2 code-review passes
 
 ### Subject
