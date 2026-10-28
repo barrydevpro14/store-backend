@@ -2,7 +2,9 @@ package org.store.depense.presentation;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,13 +16,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.common.tools.PdfResponseHelper;
 import org.store.depense.application.dto.DepenseFilter;
 import org.store.depense.application.dto.DepenseParCategorieResponse;
 import org.store.depense.application.dto.DepenseRequest;
 import org.store.depense.application.dto.DepenseResponse;
 import org.store.depense.application.dto.DepenseTotalResponse;
 import org.store.depense.application.service.IDepenseService;
+import org.store.reporting.application.dto.ReportPdfFilter;
+import org.store.reporting.application.service.IReportPdfService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,9 +37,11 @@ public class DepenseController {
     public static final String BASE_PATH = "/api/v1/depenses";
 
     private final IDepenseService depenseService;
+    private final IReportPdfService reportPdfService;
 
-    public DepenseController(IDepenseService depenseService) {
+    public DepenseController(IDepenseService depenseService, IReportPdfService reportPdfService) {
         this.depenseService = depenseService;
+        this.reportPdfService = reportPdfService;
     }
 
     @PostMapping
@@ -79,6 +87,20 @@ public class DepenseController {
         return ResponseEntity.ok(depenseService.computeByCategory(
                 new DepenseFilter(magasinId, null, null, null, startDate, endDate, 0, 1)
         ));
+    }
+
+    @GetMapping(value = "/report/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAuthority('REPORT_EXPORT')")
+    public ResponseEntity<byte[]> reportPdf(
+            @RequestParam UUID magasinId,
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam UUID configId) {
+
+        ReportPdfFilter reportPdfFilter = new ReportPdfFilter(magasinId, startDate, endDate, configId);
+
+        return PdfResponseHelper.attachment("rapport-depenses-" + startDate + "_" + endDate,
+                reportPdfService.generateDepenses(reportPdfFilter));
     }
 
     @GetMapping("/{id}")

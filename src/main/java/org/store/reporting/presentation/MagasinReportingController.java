@@ -1,17 +1,21 @@
 package org.store.reporting.presentation;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.store.common.tools.PdfResponseHelper;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
 import org.store.reporting.application.dto.MagasinVentesStatsResponse;
+import org.store.reporting.application.dto.ReportPdfFilter;
 import org.store.reporting.application.service.IMagasinReportingService;
+import org.store.reporting.application.service.IReportPdfService;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -26,9 +30,12 @@ public class MagasinReportingController {
     public static final String VENTES_PATH    = BASE_PATH + "/magasin-ventes";
 
     private final IMagasinReportingService magasinReportingService;
+    private final IReportPdfService reportPdfService;
 
-    public MagasinReportingController(IMagasinReportingService magasinReportingService) {
+    public MagasinReportingController(IMagasinReportingService magasinReportingService,
+                                      IReportPdfService reportPdfService) {
         this.magasinReportingService = magasinReportingService;
+        this.reportPdfService = reportPdfService;
     }
 
     @GetMapping("/magasin-overview")
@@ -53,6 +60,34 @@ public class MagasinReportingController {
         MagasinOverviewFilter filter = new MagasinOverviewFilter(magasinId, startDate, endDate);
 
         return ResponseEntity.ok(magasinReportingService.getVentesStats(filter));
+    }
+
+    @GetMapping(value = "/magasin-overview/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAuthority('REPORT_EXPORT')")
+    public ResponseEntity<byte[]> overviewPdf(
+            @RequestParam UUID magasinId,
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam UUID configId) {
+
+        ReportPdfFilter reportPdfFilter = new ReportPdfFilter(magasinId, startDate, endDate, configId);
+
+        return PdfResponseHelper.attachment("rapport-activite-" + startDate + "_" + endDate,
+                reportPdfService.generateOverview(reportPdfFilter));
+    }
+
+    @GetMapping(value = "/magasin-ventes/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAuthority('REPORT_EXPORT')")
+    public ResponseEntity<byte[]> ventesPdf(
+            @RequestParam UUID magasinId,
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam UUID configId) {
+
+        ReportPdfFilter reportPdfFilter = new ReportPdfFilter(magasinId, startDate, endDate, configId);
+
+        return PdfResponseHelper.attachment("rapport-ventes-" + startDate + "_" + endDate,
+                reportPdfService.generateVentes(reportPdfFilter));
     }
 
     @GetMapping("/magasin-dashboard")
