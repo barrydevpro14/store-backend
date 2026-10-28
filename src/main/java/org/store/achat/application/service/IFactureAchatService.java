@@ -1,5 +1,6 @@
 package org.store.achat.application.service;
 
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.repository.query.Param;
 import org.store.achat.application.dto.FactureAchatEcheanceFilter;
@@ -34,6 +35,6 @@ public interface IFactureAchatService {
     /** Compte les factures achat impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) pour un magasin. */
     long countUnpaidByMagasin(UUID magasinId);
 
-    /** Compte les factures achat impayées d'un magasin dans la plage de dates métier (KPI reporting). */
-    long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to);
+    /** Nombre et reste à payer des factures achat impayées d'un magasin dans la plage de dates métier (KPI reporting). */
+    UnpaidInvoicesSummaryResponse summarizeUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to);
 }

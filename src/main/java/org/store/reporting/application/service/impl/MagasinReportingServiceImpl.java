@@ -2,6 +2,7 @@ package org.store.reporting.application.service.impl;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.application.service.IFactureAchatService;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
@@ -65,8 +66,8 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 : BigDecimal.ZERO;
 
         long achatsEnAttente      = commandeAchatService.countDraftByMagasinAndDateBetween(magasinId, from, to);
-        long facturesVenteImpayees = factureClientService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
-        long facturesAchatImpayees = factureAchatService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        UnpaidInvoicesSummaryResponse facturesVenteImpayees = factureClientService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        UnpaidInvoicesSummaryResponse facturesAchatImpayees = factureAchatService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
 
         return new MagasinOverviewStatsResponse(
                 nombreCommandeVentes,
@@ -74,8 +75,10 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 totalPaiementVentes,
                 ticketMoyen,
                 achatsEnAttente,
-                facturesVenteImpayees,
-                facturesAchatImpayees
+                facturesVenteImpayees.nombre(),
+                facturesAchatImpayees.nombre(),
+                facturesVenteImpayees.montantRestant(),
+                facturesAchatImpayees.montantRestant()
         );
     }
 
@@ -97,14 +100,15 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 ? montantTotalCommandeVentes.divide(BigDecimal.valueOf(nombreCommandeVentes), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
-        long facturesVenteImpayees = factureClientService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        UnpaidInvoicesSummaryResponse facturesVenteImpayees = factureClientService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
 
         return new MagasinVentesStatsResponse(
                 nombreCommandeVentes,
                 montantTotalCommandeVentes,
                 totalPaiementVentes,
                 ticketMoyen,
-                facturesVenteImpayees
+                facturesVenteImpayees.nombre(),
+                facturesVenteImpayees.montantRestant()
         );
     }
 

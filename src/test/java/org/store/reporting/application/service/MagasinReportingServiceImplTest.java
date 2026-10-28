@@ -6,6 +6,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.application.service.IFactureAchatService;
 import org.store.common.dto.DataCountResponse;
@@ -60,8 +61,10 @@ class MagasinReportingServiceImplTest {
                               long achats, long facturesVente, long facturesAchat) {
         when(caisseService.getResume(any())).thenReturn(resume(n, total, paiements));
         when(commandeAchatService.countDraftByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(achats);
-        when(factureClientService.countUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(facturesVente);
-        when(factureAchatService.countUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(facturesAchat);
+        when(factureClientService.summarizeUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to)))
+                .thenReturn(new UnpaidInvoicesSummaryResponse(facturesVente, new BigDecimal("1500.00")));
+        when(factureAchatService.summarizeUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to)))
+                .thenReturn(new UnpaidInvoicesSummaryResponse(facturesAchat, new BigDecimal("700.00")));
     }
 
     // ── getOverview ──────────────────────────────────────────────────────────
@@ -79,6 +82,8 @@ class MagasinReportingServiceImplTest {
         assertThat(result.achatsEnAttente()).isEqualTo(2L);
         assertThat(result.facturesVenteImpayees()).isEqualTo(3L);
         assertThat(result.facturesAchatImpayees()).isEqualTo(1L);
+        assertThat(result.montantFacturesVenteImpayees()).isEqualByComparingTo("1500.00");
+        assertThat(result.montantFacturesAchatImpayees()).isEqualByComparingTo("700.00");
     }
 
     @Test
@@ -111,8 +116,8 @@ class MagasinReportingServiceImplTest {
         service.getOverview(sampleFilter());
 
         verify(commandeAchatService).countDraftByMagasinAndDateBetween(magasinId, from, to);
-        verify(factureClientService).countUnpaidByMagasinAndDateBetween(magasinId, from, to);
-        verify(factureAchatService).countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        verify(factureClientService).summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        verify(factureAchatService).summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
     }
 
     // ── getVentesStats ───────────────────────────────────────────────────────
@@ -120,7 +125,8 @@ class MagasinReportingServiceImplTest {
     @Test
     void getVentesStats_should_return_vente_kpis_without_achat_data() {
         when(caisseService.getResume(any())).thenReturn(resume(4L, new BigDecimal("200.00"), new BigDecimal("180.00")));
-        when(factureClientService.countUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(3L);
+        when(factureClientService.summarizeUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to)))
+                .thenReturn(new UnpaidInvoicesSummaryResponse(3L, new BigDecimal("900.00")));
 
         MagasinVentesStatsResponse result = service.getVentesStats(sampleFilter());
 
@@ -129,12 +135,14 @@ class MagasinReportingServiceImplTest {
         assertThat(result.totalPaiementVentes()).isEqualByComparingTo("180.00");
         assertThat(result.ticketMoyen()).isEqualByComparingTo("50.00");
         assertThat(result.facturesVenteImpayees()).isEqualTo(3L);
+        assertThat(result.montantFacturesVenteImpayees()).isEqualByComparingTo("900.00");
     }
 
     @Test
     void getVentesStats_should_return_zero_ticket_moyen_when_no_commandes() {
         when(caisseService.getResume(any())).thenReturn(resume(0L, BigDecimal.ZERO, BigDecimal.ZERO));
-        when(factureClientService.countUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to))).thenReturn(0L);
+        when(factureClientService.summarizeUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to)))
+                .thenReturn(new UnpaidInvoicesSummaryResponse(0L, BigDecimal.ZERO));
 
         MagasinVentesStatsResponse result = service.getVentesStats(sampleFilter());
 

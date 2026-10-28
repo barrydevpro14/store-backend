@@ -1,5 +1,6 @@
 package org.store.achat.domain.repository;
 
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -88,14 +89,17 @@ public interface FactureAchatRepository extends BaseRepository<FactureAchat> {
     long countUnpaidByMagasin(@Param("magasinId") UUID magasinId);
 
     @Query("""
-            SELECT COUNT(f)
-            FROM FactureAchat f
-            WHERE f.commande.magasin.id = :magasinId
-              AND f.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE,
-                               org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
-              AND f.date BETWEEN :from AND :to
+            SELECT new org.store.common.dto.UnpaidInvoicesSummaryResponse(
+                COUNT(facture),
+                COALESCE(SUM(facture.montantTotal - facture.montantPaye), 0)
+            )
+            FROM FactureAchat facture
+            WHERE facture.commande.magasin.id = :magasinId
+              AND facture.statut IN (org.store.achat.domain.enums.StatutFacture.NON_PAYEE,
+                                     org.store.achat.domain.enums.StatutFacture.PARTIELLEMENT_PAYEE)
+              AND facture.date BETWEEN :from AND :to
             """)
-    long countUnpaidByMagasinAndDateBetween(@Param("magasinId") UUID magasinId,
-                                             @Param("from") LocalDate from,
-                                             @Param("to") LocalDate to);
+    UnpaidInvoicesSummaryResponse summarizeUnpaidByMagasinAndDateBetween(@Param("magasinId") UUID magasinId,
+                                                                        @Param("from") LocalDate from,
+                                                                        @Param("to") LocalDate to);
 }

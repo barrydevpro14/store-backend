@@ -55,7 +55,9 @@ class MagasinReportingControllerTest {
                 new BigDecimal("50.00"),
                 3L,
                 4L,
-                2L
+                2L,
+                new BigDecimal("1500.00"),
+                new BigDecimal("700.00")
         );
     }
 
@@ -88,7 +90,9 @@ class MagasinReportingControllerTest {
                 .andExpect(jsonPath("$.ticketMoyen").value(50.00))
                 .andExpect(jsonPath("$.achatsEnAttente").value(3))
                 .andExpect(jsonPath("$.facturesVenteImpayees").value(4))
-                .andExpect(jsonPath("$.facturesAchatImpayees").value(2));
+                .andExpect(jsonPath("$.facturesAchatImpayees").value(2))
+                .andExpect(jsonPath("$.montantFacturesVenteImpayees").value(1500.00))
+                .andExpect(jsonPath("$.montantFacturesAchatImpayees").value(700.00));
     }
 
     @Test
@@ -151,7 +155,8 @@ class MagasinReportingControllerTest {
                 new BigDecimal("200.00"),
                 new BigDecimal("180.00"),
                 new BigDecimal("50.00"),
-                3L
+                3L,
+                new BigDecimal("900.00")
         );
         when(magasinReportingService.getVentesStats(any(MagasinOverviewFilter.class)))
                 .thenReturn(response);
@@ -166,7 +171,8 @@ class MagasinReportingControllerTest {
                 .andExpect(jsonPath("$.montantTotalCommandeVentes").value(200.00))
                 .andExpect(jsonPath("$.totalPaiementVentes").value(180.00))
                 .andExpect(jsonPath("$.ticketMoyen").value(50.00))
-                .andExpect(jsonPath("$.facturesVenteImpayees").value(3));
+                .andExpect(jsonPath("$.facturesVenteImpayees").value(3))
+                .andExpect(jsonPath("$.montantFacturesVenteImpayees").value(900.00));
     }
 
     @Test

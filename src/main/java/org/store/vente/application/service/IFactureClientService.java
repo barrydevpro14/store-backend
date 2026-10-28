@@ -1,5 +1,6 @@
 package org.store.vente.application.service;
 
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.repository.query.Param;
 import org.store.achat.domain.enums.StatutFacture;
@@ -32,6 +33,6 @@ public interface IFactureClientService {
     /** Nombre de factures NON_PAYEE ou PARTIELLEMENT_PAYEE pour toute l'entreprise. */
     long countUnpaidByEntreprise(UUID entrepriseId);
 
-    /** Nombre de factures impayées d'un magasin dans la plage de dates métier (KPI reporting). */
-    long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to);
+    /** Nombre et reste à payer des factures impayées d'un magasin dans la plage de dates métier (KPI reporting). */
+    UnpaidInvoicesSummaryResponse summarizeUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to);
 }

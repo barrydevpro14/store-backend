@@ -68,8 +68,10 @@ public class ReportPdfServiceImpl implements IReportPdfService {
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.nombreVentes"), String.valueOf(stats.nombreCommandeVentes())),
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.ticketMoyen"), pdf.formatAmount(stats.ticketMoyen())),
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesVenteImpayees"), String.valueOf(stats.facturesVenteImpayees())),
+                new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesVenteImpayees"), pdf.formatAmount(stats.montantFacturesVenteImpayees())),
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.achatsEnAttente"), String.valueOf(stats.achatsEnAttente())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesAchatImpayees"), String.valueOf(stats.facturesAchatImpayees()))
+                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesAchatImpayees"), String.valueOf(stats.facturesAchatImpayees())),
+                new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesAchatImpayees"), pdf.formatAmount(stats.montantFacturesAchatImpayees()))
         );
 
         ReportPdfDocument reportPdfDocument = new ReportPdfDocument(
@@ -93,7 +95,8 @@ public class ReportPdfServiceImpl implements IReportPdfService {
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.paiementsEncaisses"), pdf.formatAmount(stats.totalPaiementVentes())),
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.nombreVentes"), String.valueOf(stats.nombreCommandeVentes())),
                 new ReportPdfLine(pdf.msg("pdf.report.kpi.ticketMoyen"), pdf.formatAmount(stats.ticketMoyen())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesVenteImpayees"), String.valueOf(stats.facturesVenteImpayees()))
+                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesImpayees"), String.valueOf(stats.facturesVenteImpayees())),
+                new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesImpayees"), pdf.formatAmount(stats.montantFacturesVenteImpayees()))
         );
 
         ReportPdfDocument reportPdfDocument = new ReportPdfDocument(

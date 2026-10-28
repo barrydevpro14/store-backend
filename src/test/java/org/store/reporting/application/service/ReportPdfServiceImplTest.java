@@ -96,11 +96,11 @@ class ReportPdfServiceImplTest {
     }
 
     @Test
-    void generateOverview_should_render_the_seven_kpis_for_the_period() {
+    void generateOverview_should_render_the_nine_kpis_for_the_period() {
         stubAccessAndRendering();
         when(magasinReportingService.getOverview(new MagasinOverviewFilter(magasinId, reportPdfFilter.startDate(), reportPdfFilter.endDate())))
                 .thenReturn(new MagasinOverviewStatsResponse(10L, new BigDecimal("500"), new BigDecimal("480"),
-                        new BigDecimal("50"), 3L, 4L, 2L));
+                        new BigDecimal("50"), 3L, 4L, 2L, new BigDecimal("1500"), new BigDecimal("700")));
 
         byte[] result = reportPdfService.generateOverview(reportPdfFilter);
 
@@ -117,23 +117,27 @@ class ReportPdfServiceImplTest {
                         tuple("pdf.report.kpi.nombreVentes", "10"),
                         tuple("pdf.report.kpi.ticketMoyen", "50"),
                         tuple("pdf.report.kpi.facturesVenteImpayees", "4"),
+                        tuple("pdf.report.kpi.montantFacturesVenteImpayees", "1500"),
                         tuple("pdf.report.kpi.achatsEnAttente", "3"),
-                        tuple("pdf.report.kpi.facturesAchatImpayees", "2")
+                        tuple("pdf.report.kpi.facturesAchatImpayees", "2"),
+                        tuple("pdf.report.kpi.montantFacturesAchatImpayees", "700")
                 );
     }
 
     @Test
-    void generateVentes_should_render_the_five_sales_kpis() {
+    void generateVentes_should_render_the_six_sales_kpis() {
         stubAccessAndRendering();
         when(magasinReportingService.getVentesStats(any(MagasinOverviewFilter.class)))
                 .thenReturn(new MagasinVentesStatsResponse(5L, new BigDecimal("1000"), new BigDecimal("900"),
-                        new BigDecimal("200"), 1L));
+                        new BigDecimal("200"), 1L, new BigDecimal("300")));
 
         reportPdfService.generateVentes(reportPdfFilter);
 
         ReportPdfDocument document = captureRenderedDocument();
         assertThat(document.title()).isEqualTo("pdf.report.ventes.title");
-        assertThat(document.sections().getFirst().lines()).hasSize(5);
+        assertThat(document.sections().getFirst().lines())
+                .extracting(ReportPdfLine::label)
+                .endsWith("pdf.report.kpi.facturesImpayees", "pdf.report.kpi.montantFacturesImpayees");
     }
 
     @Test

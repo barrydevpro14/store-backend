@@ -10,5 +10,7 @@ public record MagasinOverviewStatsResponse(
         BigDecimal ticketMoyen,
         long achatsEnAttente,
         long facturesVenteImpayees,
-        long facturesAchatImpayees
+        long facturesAchatImpayees,
+        BigDecimal montantFacturesVenteImpayees,
+        BigDecimal montantFacturesAchatImpayees
 ) {}
