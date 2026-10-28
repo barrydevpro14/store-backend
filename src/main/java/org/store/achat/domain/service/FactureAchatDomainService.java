@@ -1,5 +1,6 @@
 package org.store.achat.domain.service;
 
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
@@ -103,8 +104,8 @@ public class FactureAchatDomainService extends GlobalService<FactureAchat, Factu
         return repository.countUnpaidByMagasin(magasinId);
     }
 
-    /** Compte les factures achat impayées pour un magasin sur une plage de dates métier. */
-    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
-        return repository.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+    /** Nombre et reste à payer des factures achat impayées pour un magasin sur une plage de dates métier. */
+    public UnpaidInvoicesSummaryResponse summarizeUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return repository.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
     }
 }

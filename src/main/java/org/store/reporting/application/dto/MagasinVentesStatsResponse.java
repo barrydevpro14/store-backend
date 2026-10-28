@@ -8,5 +8,6 @@ public record MagasinVentesStatsResponse(
         BigDecimal montantTotalCommandeVentes,
         BigDecimal totalPaiementVentes,
         BigDecimal ticketMoyen,
-        long facturesVenteImpayees
+        long facturesVenteImpayees,
+        BigDecimal montantFacturesVenteImpayees
 ) {}

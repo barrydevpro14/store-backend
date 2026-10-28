@@ -11,7 +11,9 @@ import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
 import org.store.reporting.application.dto.MagasinVentesStatsResponse;
+import org.store.reporting.application.dto.ReportPdfFilter;
 import org.store.reporting.application.service.IMagasinReportingService;
+import org.store.reporting.application.service.IReportPdfService;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -20,6 +22,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,16 +31,18 @@ class MagasinReportingControllerTest {
 
     private MockMvc mockMvc;
     private IMagasinReportingService magasinReportingService;
+    private IReportPdfService reportPdfService;
 
     private final UUID magasinId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
         magasinReportingService = mock(IMagasinReportingService.class);
+        reportPdfService = mock(IReportPdfService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new MagasinReportingController(magasinReportingService))
+                .standaloneSetup(new MagasinReportingController(magasinReportingService, reportPdfService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .build();
     }
@@ -49,7 +55,9 @@ class MagasinReportingControllerTest {
                 new BigDecimal("50.00"),
                 3L,
                 4L,
-                2L
+                2L,
+                new BigDecimal("1500.00"),
+                new BigDecimal("700.00")
         );
     }
 
@@ -82,7 +90,9 @@ class MagasinReportingControllerTest {
                 .andExpect(jsonPath("$.ticketMoyen").value(50.00))
                 .andExpect(jsonPath("$.achatsEnAttente").value(3))
                 .andExpect(jsonPath("$.facturesVenteImpayees").value(4))
-                .andExpect(jsonPath("$.facturesAchatImpayees").value(2));
+                .andExpect(jsonPath("$.facturesAchatImpayees").value(2))
+                .andExpect(jsonPath("$.montantFacturesVenteImpayees").value(1500.00))
+                .andExpect(jsonPath("$.montantFacturesAchatImpayees").value(700.00));
     }
 
     @Test
@@ -145,7 +155,8 @@ class MagasinReportingControllerTest {
                 new BigDecimal("200.00"),
                 new BigDecimal("180.00"),
                 new BigDecimal("50.00"),
-                3L
+                3L,
+                new BigDecimal("900.00")
         );
         when(magasinReportingService.getVentesStats(any(MagasinOverviewFilter.class)))
                 .thenReturn(response);
@@ -160,7 +171,8 @@ class MagasinReportingControllerTest {
                 .andExpect(jsonPath("$.montantTotalCommandeVentes").value(200.00))
                 .andExpect(jsonPath("$.totalPaiementVentes").value(180.00))
                 .andExpect(jsonPath("$.ticketMoyen").value(50.00))
-                .andExpect(jsonPath("$.facturesVenteImpayees").value(3));
+                .andExpect(jsonPath("$.facturesVenteImpayees").value(3))
+                .andExpect(jsonPath("$.montantFacturesVenteImpayees").value(900.00));
     }
 
     @Test
@@ -169,6 +181,51 @@ class MagasinReportingControllerTest {
                         .param("from", "2025-07-01")
                         .param("to", "2025-07-31")
                         .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── PDF exports ──────────────────────────────────────────────────────────
+
+    @Test
+    void overviewPdf_should_return_pdf_attachment_for_period() throws Exception {
+        byte[] pdfBytes = "%PDF-overview".getBytes();
+        when(reportPdfService.generateOverview(any(ReportPdfFilter.class))).thenReturn(pdfBytes);
+
+        mockMvc.perform(get(MagasinReportingController.OVERVIEW_PATH + "/pdf")
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2026-10-01")
+                        .param("to", "2026-10-28")
+                        .param("configId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"rapport-activite-2026-10-01_2026-10-28.pdf\""))
+                .andExpect(content().bytes(pdfBytes));
+    }
+
+    @Test
+    void ventesPdf_should_return_pdf_attachment_for_period() throws Exception {
+        byte[] pdfBytes = "%PDF-ventes".getBytes();
+        when(reportPdfService.generateVentes(any(ReportPdfFilter.class))).thenReturn(pdfBytes);
+
+        mockMvc.perform(get(MagasinReportingController.VENTES_PATH + "/pdf")
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2026-10-28")
+                        .param("to", "2026-10-28")
+                        .param("configId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"rapport-ventes-2026-10-28_2026-10-28.pdf\""))
+                .andExpect(content().bytes(pdfBytes));
+    }
+
+    @Test
+    void overviewPdf_should_return_400_when_configId_missing() throws Exception {
+        mockMvc.perform(get(MagasinReportingController.OVERVIEW_PATH + "/pdf")
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2026-10-01")
+                        .param("to", "2026-10-28"))
                 .andExpect(status().isBadRequest());
     }
 }

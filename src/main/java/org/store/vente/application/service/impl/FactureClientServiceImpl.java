@@ -1,5 +1,6 @@
 package org.store.vente.application.service.impl;
 
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,9 +91,9 @@ public class FactureClientServiceImpl implements IFactureClientService {
         return factureClientDomainService.countUnpaidByEntreprise(entrepriseId);
     }
 
-    /** Délègue le comptage des factures impayées d'un magasin sur une plage de dates au domain. */
+    /** Délègue au domain le nombre et le reste à payer des factures impayées d'un magasin sur une plage de dates. */
     @Override
-    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
-        return factureClientDomainService.countUnpaidByMagasinAndDateBetween(magasinId, from, to);
+    public UnpaidInvoicesSummaryResponse summarizeUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return factureClientDomainService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
     }
 }

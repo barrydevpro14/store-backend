@@ -9,6 +9,28 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-10-28 (cont.) — Jackson CVE fix, printable reporting PDFs, unpaid invoices amount KPIs (both repos)
+
+### 1. Jackson CVE (backend)
+
+User reported "le build a échoué" and pasted the GitLab log: it was the Trivy `scan` job on `main` (not tests — local `clean verify` 1138/1138 green). Jackson 2.21.5 / 3.1.5 from the Spring Boot 4.0.8 BOM had 5 HIGH CVEs. Fixed by overriding `jackson-2-bom.version` / `jackson-bom.version` (2.21.7 / 3.1.7) in `pom.xml`, mirroring the existing Tomcat override. Commit `b921840`, pushed. Scan on `main` will only re-run after a `dev-barry` → `main` MR.
+
+### 2. Printable reporting PDFs (both repos)
+
+Ask: "ajoute l'impression des reportings pour OWNER et EMPLOYE". Decisions taken live: 3 reports (Reporting page, Ventes reporting, Dépenses reporting); KPIs only with the chosen period (top-produits explicitly excluded), Dépenses keeps the breakdown by category; backend generation like invoices; all formats A4/A5/thermal; one permission `REPORT_EXPORT`. Discovered mid-implementation that **SELLER was removed from `roles-permissions.yml` in `cb9d877`** — user chose: YAML grants MANAGER only, sellers get it through the roles UI. Thermal header later changed per user: the title is replaced by `PÉRIODE <dates>` on tickets (all 3 reports), A4/A5 keep the title. Architecture: `ReportPdfStrategy` ×4 + resolver, generic `ReportPdfDocument/Section/Line`, `StandardReportPdfRenderer` + `ThermalReportPdfRenderer`, `ReportPdfServiceImpl` (validate → magasin access → existing services → render), `addReportHeader` on `AbstractStandardPdfRenderer`, `PdfResponseHelper`. Frontend: `features/reporting` slice (type, endpoints constant, period DTO, `useDownloadReportPdf`, `ReportPdfDownloadControl`) placed right of the period line on the 3 pages. User asked to verify i18n: all 18 backend keys present in FR + EN, apostrophes safe (no MessageFormat without args).
+
+### 3. Unpaid invoices amount KPIs (both repos)
+
+Ask: add amounts for unpaid sale/purchase invoices on screen and in PDFs. Decisions: amount = remaining due (total − paid); Reporting + Ventes pages; sale amount card reuses the NON_PAYEE link. User pushed back on adding new queries ("pourquoi nouvelle requête ?") → the existing count queries now return count + amount in one JPQL constructor projection (`UnpaidInvoicesSummaryResponse`). Then, on request, PDF KPI labels were aligned on the on-screen labels (Revenu, Ventes, Vente moyenne, Factures vente impayées…; Ventes PDF uses its own page's "Factures impayées").
+
+### Result
+
+Backend **1153/1153 green**, frontend **405/405 vitest**, tsc clean, no new eslint warning. Commits pushed to `dev-barry`: backend `b921840`, `4fbb7d1`, `675c09a`; frontend `1d5b2b5`. Not verified in a browser nor on a real printer; the new SUM queries were only validated at Spring context startup.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-10-28 — Compact thermal receipt layout (client feedback), backend only
 
 ### Subject

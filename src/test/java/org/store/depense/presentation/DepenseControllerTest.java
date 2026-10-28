@@ -21,6 +21,8 @@ import org.store.depense.application.dto.DepenseResponse;
 import org.store.depense.application.dto.DepenseTotalResponse;
 import org.store.depense.application.service.IDepenseService;
 import org.store.magasin.application.dto.MagasinSummaryResponse;
+import org.store.reporting.application.dto.ReportPdfFilter;
+import org.store.reporting.application.service.IReportPdfService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,6 +34,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +43,7 @@ class DepenseControllerTest {
 
     private MockMvc mockMvc;
     private IDepenseService depenseService;
+    private IReportPdfService reportPdfService;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private UUID magasinId;
@@ -47,12 +52,13 @@ class DepenseControllerTest {
     @BeforeEach
     void setUp() {
         depenseService = mock(IDepenseService.class);
+        reportPdfService = mock(IReportPdfService.class);
         IMessageSourceService messageSourceService = mock(IMessageSourceService.class);
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new DepenseController(depenseService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new DepenseController(depenseService, reportPdfService))
                 .setControllerAdvice(new GlobalException(messageSourceService))
                 .setValidator(validator)
                 .build();
@@ -124,5 +130,31 @@ class DepenseControllerTest {
         mockMvc.perform(get(DepenseController.BASE_PATH).param("magasinId", magasinId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].libelle").value("Loyer mai"));
+    }
+
+    @Test
+    void reportPdf_should_return_pdf_attachment_for_period() throws Exception {
+        byte[] pdfBytes = "%PDF-report".getBytes();
+        when(reportPdfService.generateDepenses(any(ReportPdfFilter.class))).thenReturn(pdfBytes);
+
+        mockMvc.perform(get(DepenseController.BASE_PATH + "/report/pdf")
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2026-10-01")
+                        .param("to", "2026-10-28")
+                        .param("configId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"rapport-depenses-2026-10-01_2026-10-28.pdf\""))
+                .andExpect(content().bytes(pdfBytes));
+    }
+
+    @Test
+    void reportPdf_should_return_400_when_configId_missing() throws Exception {
+        mockMvc.perform(get(DepenseController.BASE_PATH + "/report/pdf")
+                        .param("magasinId", magasinId.toString())
+                        .param("from", "2026-10-01")
+                        .param("to", "2026-10-28"))
+                .andExpect(status().isBadRequest());
     }
 }

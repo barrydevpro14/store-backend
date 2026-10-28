@@ -67,6 +67,22 @@ public abstract class AbstractStandardPdfRenderer extends AbstractPdfRenderer {
         }
     }
 
+    /**
+     * Header A4/A5 des rapports : bloc entreprise, titre, puis PÉRIODE | DATE/HEURE | MAGASIN.
+     * La période est portée par {@code ctx.numeroDoc()}.
+     */
+    protected void addReportHeader(Document doc, PdfHeaderContext ctx) throws DocumentException {
+        doc.add(buildStoreRow(ctx));
+        doc.add(buildDocumentLabelRow(ctx));
+
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.addCell(buildMetaCell(ctx, pdf.msg("pdf.label.periode"), ctx.numeroDoc()));
+        table.addCell(buildDateHeureMetaCell(ctx));
+        table.addCell(buildMagasinMetaCell(ctx));
+        doc.add(table);
+    }
+
     /* ── Store row ─────────────────────────────────────────────────────── */
 
     private PdfPTable buildStoreRow(PdfHeaderContext ctx) throws DocumentException {

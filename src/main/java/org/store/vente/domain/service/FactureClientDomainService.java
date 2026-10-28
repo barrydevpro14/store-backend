@@ -1,5 +1,6 @@
 package org.store.vente.domain.service;
 
+import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
@@ -118,9 +119,9 @@ public class FactureClientDomainService extends GlobalService<FactureClient, Fac
                 List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE));
     }
 
-    /** Nombre de factures impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) pour un magasin sur une plage de dates métier. */
-    public long countUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
-        return repository.countByMagasinIdAndStatutAndDateBetween(magasinId,
+    /** Nombre et reste à payer des factures impayées (NON_PAYEE + PARTIELLEMENT_PAYEE) d'un magasin sur une plage de dates métier. */
+    public UnpaidInvoicesSummaryResponse summarizeUnpaidByMagasinAndDateBetween(UUID magasinId, LocalDate from, LocalDate to) {
+        return repository.summarizeByMagasinIdAndStatutAndDateBetween(magasinId,
                 List.of(StatutFacture.NON_PAYEE, StatutFacture.PARTIELLEMENT_PAYEE), from, to);
     }
 
