@@ -9,6 +9,32 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-10-28 — Compact thermal receipt layout (client feedback), backend only
+
+### Subject
+
+Client (BQG) sent a WhatsApp photo of a thermal invoice (`~/Downloads/WhatsApp Image 2026-10-26 at 17.16.36.jpeg`) with the message: the receipt is too long and uses a lot of paper — use the full width instead of one line per info, remove the logo and company info, keep just the company name at the top, put the number + address at the bottom (1–2 lines), date/time + client name on one line.
+
+### Decisions (taken live with the user)
+
+- Scope: **all thermal docs** (sale invoice, sale quote, purchase order — they share `AbstractThermalPdfRenderer.addHeader`), **new standard for all tenants** (no per-company option).
+- Header, **no labels** ("enlève les libellés pour avoir plus d'espace"): raison sociale → `NINEA / RCCM` on one line right after the name (user asked to keep them, then to move them to the top) → `FACTURE <numero>` (document type kept to distinguish invoice/quote/PO) → `<date heure> / <client>`. Separator is `/` (user replaced `·`); a known client renders `date / Nom Prénom / tel` — user said keep it.
+- Footer: **magasin** address + phone (not entreprise), centered.
+- Removed: logo, sigle, activité, pays, store name, NUMÉRO/DATE-HEURE/MAGASIN meta table, boxed CLIENT row.
+- Lines/totals Courier → Helvetica (Courier printed faint on the client's printer, visible on the photo). Totals 60/40 → 70/30 right-aligned so "Paiement Espèces" no longer wraps.
+
+### Implementation
+
+`AbstractThermalPdfRenderer`: `addHeader` rewritten (4 paragraphs), new protected `addFooter`, `addSeparator` moved up as protected (was duplicated in both subclasses — rule 39), all old header blocks deleted. `ThermalInvoicePdfRenderer` + `ThermalBonCommandePdfRenderer`: call `addFooter` after totals, Helvetica, 70/30 right-aligned totals. New `ThermalInvoicePdfRendererTest` extracts the PDF text (OpenPDF `PdfTextExtractor`) and asserts values present / labels and removed info absent. Standard A4/A5 renderers untouched (they still use the `pdf.label.*` keys).
+
+### Result
+
+**Backend 1138/1138 green.** Commit `e2e87f0`, pushed to `dev-barry`. Layout not yet visually checked on the client's printer — to confirm with BQG.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-09-27 — Thermal PDFs: single black color + centered logo, backend only
 
 ### Subject
