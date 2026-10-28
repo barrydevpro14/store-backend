@@ -32,6 +32,10 @@
         <!-- Override: Spring Boot 4.0.8's BOM still pins 11.0.24, which stays below the fixed 11.0.25
              (CVE-2026-65182, CVE-2026-65905, CVE-2026-68525). -->
         <tomcat.version>11.0.25</tomcat.version>
+        <!-- Override: Spring Boot 4.0.8's BOM pins Jackson 2.21.5 / 3.1.5, below the fixed 2.21.7 / 3.1.7
+             (CVE-2026-89407, CVE-2026-89425, CVE-2026-68497, CVE-2026-91776, CVE-2026-91777). -->
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
 
         <!-- Versions des plugins (config Sonar/JaCoCo : voir sonar-project.properties) -->
         <jacoco.version>0.8.13</jacoco.version>
