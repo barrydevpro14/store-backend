@@ -57,6 +57,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
             addLignesCompact(doc, commande, ctx);
             addSeparator(doc, ctx);
             addTotalCompact(doc, commande, ctx);
+            addFooter(doc, ctx);
         });
     }
 
@@ -66,14 +67,6 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
         if (commande.getFournisseur() == null) return "";
         var f = commande.getFournisseur();
         return joinNonBlank(" ", f.getNom(), f.getPrenom());
-    }
-
-    /* ── Separator ─────────────────────────────────────────────────────── */
-
-    private void addSeparator(Document doc, PdfHeaderContext ctx) throws DocumentException {
-        float smallSize = ctx.config().getFontSizeSmall().floatValue();
-        Font sepFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
-        doc.add(new Paragraph("--------------------------------", sepFont));
     }
 
     /* ── Compact lines ─────────────────────────────────────────────────── */
@@ -99,7 +92,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
                 + "\n" + ligne.getQuantite() + " " + symbole
                 + " × " + pdf.formatAmount(ligne.getPrixAchat());
 
-        Font lineFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
+        Font lineFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
         PdfPCell descCell = new PdfPCell(new Phrase(desc, lineFont));
         descCell.setBorder(Rectangle.NO_BORDER);
@@ -121,9 +114,9 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
 
         PdfPTable totals = new PdfPTable(2);
         totals.setWidthPercentage(100);
-        totals.setWidths(new float[]{60, 40});
+        totals.setWidths(new float[]{70, 30});
 
-        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, Color.BLACK);
+        Font boldFont = new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK);
 
         PdfPCell lc = new PdfPCell(new Phrase(pdf.msg("pdf.achat.total"), boldFont));
         lc.setBorder(Rectangle.NO_BORDER);
@@ -133,7 +126,7 @@ public class ThermalBonCommandePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell vc = new PdfPCell(new Phrase(pdf.formatAmount(commande.getMontantTotal()), boldFont));
         vc.setBorder(Rectangle.NO_BORDER);
         vc.setPadding(3);
-        vc.setHorizontalAlignment(Element.ALIGN_CENTER);
+        vc.setHorizontalAlignment(Element.ALIGN_RIGHT);
         totals.addCell(vc);
 
         doc.add(totals);

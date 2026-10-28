@@ -64,6 +64,7 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
             addLignesCompact(doc, facture, ctx);
             addSeparator(doc, ctx);
             addTotalsCompact(doc, facture, ctx);
+            addFooter(doc, ctx);
         });
     }
 
@@ -90,6 +91,7 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
             addDevisLignesCompact(doc, commande, ctx);
             addSeparator(doc, ctx);
             addDevisTotalsCompact(doc, commande, ctx);
+            addFooter(doc, ctx);
         });
     }
 
@@ -107,14 +109,6 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
         if (client == null) return pdf.msg("pdf.vente.client.anonyme");
         String identity = joinNonBlank(" ", client.getNom(), client.getPrenom());
         return joinNonBlank(" / ", identity, client.getTelephone());
-    }
-
-    /* ── Separator ─────────────────────────────────────────────────────── */
-
-    private void addSeparator(Document doc, PdfHeaderContext ctx) throws DocumentException {
-        float smallSize = ctx.config().getFontSizeSmall().floatValue();
-        Font sepFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
-        doc.add(new Paragraph("--------------------------------", sepFont));
     }
 
     /* ── Compact lines ─────────────────────────────────────────────────── */
@@ -140,7 +134,7 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
                 + "\n" + ligne.getQuantite() + " " + symbole
                 + " × " + pdf.formatAmount(ligne.getPrixUnitaire());
 
-        Font lineFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
+        Font lineFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
         PdfPCell descCell = new PdfPCell(new Phrase(desc, lineFont));
         descCell.setBorder(Rectangle.NO_BORDER);
@@ -162,10 +156,10 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
 
         PdfPTable totals = new PdfPTable(2);
         totals.setWidthPercentage(100);
-        totals.setWidths(new float[]{60, 40});
+        totals.setWidths(new float[]{70, 30});
 
-        Font labelFont = new Font(Font.COURIER, normalSize, Font.NORMAL, Color.BLACK);
-        Font boldFont  = new Font(Font.COURIER, normalSize, Font.BOLD, Color.BLACK);
+        Font labelFont = new Font(Font.HELVETICA, normalSize, Font.NORMAL, Color.BLACK);
+        Font boldFont  = new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK);
 
         addCompactRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(facture.getMontantTotal()), labelFont);
 
@@ -203,9 +197,9 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
 
         PdfPTable totals = new PdfPTable(2);
         totals.setWidthPercentage(100);
-        totals.setWidths(new float[]{60, 40});
+        totals.setWidths(new float[]{70, 30});
 
-        Font boldFont = new Font(Font.COURIER, normalSize, Font.BOLD, Color.BLACK);
+        Font boldFont = new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK);
 
         BigDecimal montant = commande.getMontantTotal() != null ? commande.getMontantTotal() : BigDecimal.ZERO;
         addCompactRow(totals, pdf.msg("pdf.vente.totals.totalHt"), pdf.formatAmount(montant), boldFont);
@@ -222,7 +216,7 @@ public class ThermalInvoicePdfRenderer extends AbstractThermalPdfRenderer {
         PdfPCell vc = new PdfPCell(new Phrase(value, font));
         vc.setBorder(Rectangle.NO_BORDER);
         vc.setPadding(3);
-        vc.setHorizontalAlignment(Element.ALIGN_CENTER);
+        vc.setHorizontalAlignment(Element.ALIGN_RIGHT);
         table.addCell(vc);
     }
 }

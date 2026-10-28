@@ -2,7 +2,6 @@ package org.store.common.pdf.renderer;
 
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
-import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.*;
 import org.store.common.pdf.PdfHeaderContext;
@@ -18,7 +17,7 @@ import java.io.ByteArrayOutputStream;
 /**
  * Classe de base pour les renderers thermiques (80mm, 58mm).
  * Génère le document sur une hauteur maximale, puis le rogne à la hauteur du contenu via PdfStamper.
- * Pas de footer (inutile sur ticket de caisse).
+ * Pas de footer de page : seules l'adresse et le téléphone du magasin terminent le ticket.
  */
 public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
 
@@ -96,201 +95,58 @@ public abstract class AbstractThermalPdfRenderer extends AbstractPdfRenderer {
     /* ── Header ────────────────────────────────────────────────────────── */
 
     /**
-     * Header compact thermique :
-     *   1. Logo (si présent) puis infos entreprise empilées
-     *   2. Label du document
-     *   3. Tableau méta : NUMÉRO | DATE/HEURE | ÉCHÉANCE | MAGASIN
-     *   4. Ligne CLIENT (si non vide)
+     * Header compact thermique, sans libellés ni logo :
+     *   1. Raison sociale
+     *   2. NINEA / RCCM
+     *   3. Type de document + numéro
+     *   4. Date heure / tiers (client / fournisseur)
      */
     protected void addHeader(Document doc, PdfHeaderContext ctx) throws DocumentException {
-        doc.add(buildStoreSection(ctx));
-        doc.add(buildDocumentLabelRow(ctx));
-        doc.add(buildMetaTable(ctx));
-        if (pdf.isNotBlank(ctx.clientLabel())) {
-            doc.add(buildClientRow(ctx));
-        }
-    }
-
-    /* ── Store section (empilée : logo puis infos) ─────────────────────── */
-
-    private PdfPTable buildStoreSection(PdfHeaderContext ctx) {
-        Entreprise e = ctx.magasin().getEntreprise();
-        boolean hasLogo = e.getLogo() != null && e.getLogo().getDocument() != null;
-
-        PdfPTable table = new PdfPTable(1);
-        table.setWidthPercentage(100);
-
-        if (hasLogo) {
-            table.addCell(buildLogoCell(ctx));
-        }
-        table.addCell(buildEnterpriseInfoCell(ctx));
-        return table;
-    }
-
-    private PdfPCell buildLogoCell(PdfHeaderContext ctx) {
-        Entreprise e = ctx.magasin().getEntreprise();
-        float normalSize = ctx.config().getFontSizeNormal().floatValue();
-
-        PdfPCell cell = new PdfPCell();
-        cell.setBorder(Rectangle.NO_BORDER);
-        cell.setPadding(4);
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-
-        if (e.getLogo() != null && e.getLogo().getDocument() != null) {
-            try {
-                Image img = Image.getInstance(e.getLogo().getDocument());
-                img.scaleToFit(65, 52);
-                img.setAlignment(Element.ALIGN_CENTER);
-                cell.addElement(img);
-            } catch (Exception ignored) {
-            }
-
-            if (pdf.isNotBlank(e.getSigle())) {
-                Paragraph sigle = new Paragraph(e.getSigle(),
-                        new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK));
-                sigle.setAlignment(Element.ALIGN_CENTER);
-                cell.addElement(sigle);
-            }
-        }
-
-        return cell;
-    }
-
-    private PdfPCell buildEnterpriseInfoCell(PdfHeaderContext ctx) {
         float titleSize  = ctx.config().getFontSizeTitle().floatValue();
         float normalSize = ctx.config().getFontSizeNormal().floatValue();
         float smallSize  = ctx.config().getFontSizeSmall().floatValue();
         Entreprise e     = ctx.magasin().getEntreprise();
 
-        PdfPCell cell = new PdfPCell();
-        cell.setBorder(Rectangle.NO_BORDER);
-        cell.setPadding(4);
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-
         if (pdf.isNotBlank(e.getRaisonSociale()))
-            cell.addElement(centeredParagraph(e.getRaisonSociale(),
+            doc.add(centeredParagraph(e.getRaisonSociale(),
                     new Font(Font.HELVETICA, titleSize, Font.BOLD, Color.BLACK)));
 
-        if (e.getActiviteEconomique() != null && pdf.isNotBlank(e.getActiviteEconomique().getLibelle()))
-            cell.addElement(centeredParagraph(e.getActiviteEconomique().getLibelle(),
-                    new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK)));
+        String legalLine = joinNonBlank(" / ", e.getNinea(), e.getRccm());
+        if (pdf.isNotBlank(legalLine))
+            doc.add(centeredParagraph(legalLine, new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK)));
 
-        Font infoFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
+        doc.add(new Paragraph(joinNonBlank(" ", ctx.documentLabel(), ctx.numeroDoc()),
+                new Font(Font.HELVETICA, normalSize, Font.BOLD, Color.BLACK)));
 
-        if (pdf.isNotBlank(e.getAdresse()))
-            cell.addElement(centeredParagraph(e.getAdresse(), infoFont));
-        if (pdf.isNotBlank(e.getTelephone()))
-            cell.addElement(centeredParagraph(e.getTelephone(), infoFont));
-        if (e.getCountry() != null && pdf.isNotBlank(e.getCountry().getName()))
-            cell.addElement(centeredParagraph(e.getCountry().getName(), infoFont));
-        if (pdf.isNotBlank(e.getNinea()))
-            cell.addElement(centeredParagraph(pdf.msg("pdf.label.ninea") + " : " + e.getNinea(), infoFont));
-        if (pdf.isNotBlank(e.getRccm()))
-            cell.addElement(centeredParagraph(pdf.msg("pdf.label.rccm") + " : " + e.getRccm(), infoFont));
-
-        return cell;
+        doc.add(new Paragraph(joinNonBlank(" / ", buildDateHeure(ctx), ctx.clientLabel()),
+                new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK)));
     }
 
-    /* ── Document label row ────────────────────────────────────────────── */
-
-    private PdfPTable buildDocumentLabelRow(PdfHeaderContext ctx) {
-        float smallSize = ctx.config().getFontSizeSmall().floatValue();
-
-        PdfPTable table = new PdfPTable(1);
-        table.setWidthPercentage(100);
-
-        PdfPCell cell = new PdfPCell(new Phrase(
-                ctx.documentLabel(),
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)
-        ));
-        cell.setPadding(4);
-        cell.setBorder(Rectangle.BOTTOM);
-        cell.setBorderColor(Color.BLACK);
-        table.addCell(cell);
-
-        return table;
-    }
-
-    /* ── Meta block (NUMÉRO, DATE/HEURE, MAGASIN) ────────────────────────── */
-
-    private PdfPTable buildMetaTable(PdfHeaderContext ctx) {
-        PdfPTable table = new PdfPTable(1);
-        table.setWidthPercentage(100);
-
-        table.addCell(buildMetaCell(ctx, pdf.msg("pdf.label.numero"), ctx.numeroDoc()));
-        table.addCell(buildDateHeureMetaCell(ctx));
-        table.addCell(buildMagasinMetaCell(ctx));
-
-        return table;
-    }
-
-    private PdfPCell buildDateHeureMetaCell(PdfHeaderContext ctx) {
-        float smallSize = ctx.config().getFontSizeSmall().floatValue();
-
+    private String buildDateHeure(PdfHeaderContext ctx) {
         String date  = ctx.dateDoc()  != null ? DateHelper.formatDisplay(ctx.dateDoc()) : "—";
         String heure = ctx.heureDoc() != null ? ctx.heureDoc().format(TIME_FORMAT) : "—";
-        Font boldFont = new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK);
-
-        PdfPCell cell = newMetaCell();
-        cell.addElement(centeredParagraph(pdf.msg("pdf.label.dateHeure"), boldFont));
-        cell.addElement(centeredParagraph(date + " " + heure, boldFont));
-        return cell;
+        return date + " " + heure;
     }
 
-    private PdfPCell buildMetaCell(PdfHeaderContext ctx, String header, String value) {
-        float smallSize = ctx.config().getFontSizeSmall().floatValue();
+    /* ── Footer (adresse + téléphone du magasin) ───────────────────────── */
 
-        PdfPCell cell = newMetaCell();
-        cell.addElement(centeredParagraph(header, new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK)));
-        cell.addElement(centeredParagraph(value,  new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK)));
-        return cell;
-    }
-
-    private PdfPCell buildMagasinMetaCell(PdfHeaderContext ctx) {
+    protected void addFooter(Document doc, PdfHeaderContext ctx) throws DocumentException {
         float smallSize = ctx.config().getFontSizeSmall().floatValue();
         Magasin magasin = ctx.magasin();
+        Font footerFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
 
-        PdfPCell cell = newMetaCell();
-        cell.addElement(centeredParagraph(pdf.msg("pdf.label.magasin"),
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
-
-        Font valueFont  = new Font(Font.HELVETICA, smallSize, Font.BOLD,   Color.BLACK);
-        Font detailFont = new Font(Font.HELVETICA, smallSize, Font.NORMAL, Color.BLACK);
-
-        if (pdf.isNotBlank(magasin.getNom()))
-            cell.addElement(centeredParagraph(magasin.getNom(), valueFont));
+        addSeparator(doc, ctx);
         if (pdf.isNotBlank(magasin.getAdresse()))
-            cell.addElement(centeredParagraph(magasin.getAdresse(), detailFont));
+            doc.add(centeredParagraph(magasin.getAdresse(), footerFont));
         if (pdf.isNotBlank(magasin.getTelephone()))
-            cell.addElement(centeredParagraph(magasin.getTelephone(), detailFont));
-
-        return cell;
+            doc.add(centeredParagraph(magasin.getTelephone(), footerFont));
     }
 
-    private PdfPCell newMetaCell() {
-        PdfPCell cell = new PdfPCell();
-        cell.setPadding(4);
-        cell.setBorder(Rectangle.NO_BORDER);
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        return cell;
-    }
+    /* ── Separator ─────────────────────────────────────────────────────── */
 
-    /* ── Client row ────────────────────────────────────────────────────── */
-
-    private PdfPTable buildClientRow(PdfHeaderContext ctx) {
+    protected void addSeparator(Document doc, PdfHeaderContext ctx) throws DocumentException {
         float smallSize = ctx.config().getFontSizeSmall().floatValue();
-
-        PdfPTable table = new PdfPTable(1);
-        table.setWidthPercentage(100);
-
-        String text = pdf.msg("pdf.label.client") + " : " + ctx.clientLabel();
-        PdfPCell cell = new PdfPCell(new Phrase(text,
-                new Font(Font.HELVETICA, smallSize, Font.BOLD, Color.BLACK)));
-        cell.setPadding(4);
-        cell.setBorder(Rectangle.BOX);
-        cell.setBorderColor(Color.BLACK);
-        table.addCell(cell);
-
-        return table;
+        Font sepFont = new Font(Font.COURIER, smallSize, Font.NORMAL, Color.BLACK);
+        doc.add(new Paragraph("--------------------------------", sepFont));
     }
 }
