@@ -9,6 +9,11 @@ public record TopProduitResponse(
         String reference,
         BigDecimal quantiteVendue,
         BigDecimal chiffreAffaires,
-        String uniteMesure
+        String uniteMesure,
+        BigDecimal benefice
 ) {
+    /** Copie sans le bénéfice, pour les utilisateurs sans REPORT_FINANCIAL. */
+    public TopProduitResponse withoutBenefice() {
+        return new TopProduitResponse(productId, nom, reference, quantiteVendue, chiffreAffaires, uniteMesure, null);
+    }
 }

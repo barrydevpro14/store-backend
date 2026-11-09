@@ -10,6 +10,8 @@ import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.application.service.IFactureAchatService;
 import org.store.common.dto.DataCountResponse;
+import org.store.depense.application.dto.DepenseTotalResponse;
+import org.store.depense.application.service.IDepenseService;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
@@ -30,6 +32,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,6 +44,7 @@ class MagasinReportingServiceImplTest {
     @Mock private ICommandeAchatService commandeAchatService;
     @Mock private IFactureClientService factureClientService;
     @Mock private IFactureAchatService factureAchatService;
+    @Mock private IDepenseService depenseService;
 
     @InjectMocks
     private MagasinReportingServiceImpl service;
@@ -84,6 +88,29 @@ class MagasinReportingServiceImplTest {
         assertThat(result.facturesAchatImpayees()).isEqualTo(1L);
         assertThat(result.montantFacturesVenteImpayees()).isEqualByComparingTo("1500.00");
         assertThat(result.montantFacturesAchatImpayees()).isEqualByComparingTo("700.00");
+        assertThat(result.benefice()).isNull();
+        assertThat(result.beneficeNet()).isNull();
+    }
+
+    @Test
+    void getOverview_should_compute_benefice_net_as_benefice_minus_depenses() {
+        stubOverview(4L, new BigDecimal("200.00"), new BigDecimal("180.00"), 2L, 3L, 1L);
+        when(caisseService.findBenefice(any())).thenReturn(new BigDecimal("80.00"));
+        when(depenseService.computeTotal(any())).thenReturn(new DepenseTotalResponse(magasinId, new BigDecimal("30.00"), 2L));
+
+        MagasinOverviewStatsResponse result = service.getOverview(sampleFilter());
+
+        assertThat(result.benefice()).isEqualByComparingTo("80.00");
+        assertThat(result.beneficeNet()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void getOverview_should_skip_depenses_when_benefice_hidden() {
+        stubOverview(4L, new BigDecimal("200.00"), new BigDecimal("180.00"), 2L, 3L, 1L);
+
+        service.getOverview(sampleFilter());
+
+        verify(depenseService, never()).computeTotal(any());
     }
 
     @Test
@@ -127,6 +154,8 @@ class MagasinReportingServiceImplTest {
         when(caisseService.getResume(any())).thenReturn(resume(4L, new BigDecimal("200.00"), new BigDecimal("180.00")));
         when(factureClientService.summarizeUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to)))
                 .thenReturn(new UnpaidInvoicesSummaryResponse(3L, new BigDecimal("900.00")));
+        when(caisseService.findBenefice(any())).thenReturn(new BigDecimal("60.00"));
+        when(depenseService.computeTotal(any())).thenReturn(new DepenseTotalResponse(magasinId, new BigDecimal("45.00"), 1L));
 
         MagasinVentesStatsResponse result = service.getVentesStats(sampleFilter());
 
@@ -136,6 +165,21 @@ class MagasinReportingServiceImplTest {
         assertThat(result.ticketMoyen()).isEqualByComparingTo("50.00");
         assertThat(result.facturesVenteImpayees()).isEqualTo(3L);
         assertThat(result.montantFacturesVenteImpayees()).isEqualByComparingTo("900.00");
+        assertThat(result.benefice()).isEqualByComparingTo("60.00");
+        assertThat(result.beneficeNet()).isEqualByComparingTo("15.00");
+    }
+
+    @Test
+    void getVentesStats_should_return_null_benefice_net_and_skip_depenses_when_benefice_hidden() {
+        when(caisseService.getResume(any())).thenReturn(resume(4L, new BigDecimal("200.00"), new BigDecimal("180.00")));
+        when(factureClientService.summarizeUnpaidByMagasinAndDateBetween(eq(magasinId), eq(from), eq(to)))
+                .thenReturn(new UnpaidInvoicesSummaryResponse(3L, new BigDecimal("900.00")));
+
+        MagasinVentesStatsResponse result = service.getVentesStats(sampleFilter());
+
+        assertThat(result.benefice()).isNull();
+        assertThat(result.beneficeNet()).isNull();
+        verify(depenseService, never()).computeTotal(any());
     }
 
     @Test

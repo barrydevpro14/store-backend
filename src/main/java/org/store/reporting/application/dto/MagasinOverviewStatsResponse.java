@@ -2,7 +2,7 @@ package org.store.reporting.application.dto;
 
 import java.math.BigDecimal;
 
-/** KPIs du magasin filtrés par plage de dates métier, pour la page Reporting. */
+/** KPIs du magasin filtrés par plage de dates métier, pour la page Reporting ; benefice / beneficeNet null sans REPORT_FINANCIAL. */
 public record MagasinOverviewStatsResponse(
         long nombreCommandeVentes,
         BigDecimal montantTotalCommandeVentes,
@@ -12,5 +12,7 @@ public record MagasinOverviewStatsResponse(
         long facturesVenteImpayees,
         long facturesAchatImpayees,
         BigDecimal montantFacturesVenteImpayees,
-        BigDecimal montantFacturesAchatImpayees
+        BigDecimal montantFacturesAchatImpayees,
+        BigDecimal benefice,
+        BigDecimal beneficeNet
 ) {}

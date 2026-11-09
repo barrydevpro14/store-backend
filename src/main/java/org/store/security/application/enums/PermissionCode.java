@@ -117,5 +117,6 @@ public enum PermissionCode {
 
     PDF_FORMAT_SETTING_MANAGE,
 
-    REPORT_EXPORT
+    REPORT_EXPORT,
+    REPORT_FINANCIAL
 }
