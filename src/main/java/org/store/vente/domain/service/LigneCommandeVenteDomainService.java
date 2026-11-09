@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.store.common.service.GlobalService;
 import org.store.produit.domain.model.ProductFournisseur;
+import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.LigneCommandeVenteCreate;
 import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
@@ -50,6 +51,12 @@ public class LigneCommandeVenteDomainService extends GlobalService<LigneCommande
     public Page<TopProduitResponse> findTopProduitsForCaisse(TopProduitsFilter filter, UUID entrepriseId) {
         return repository.findTopProduitsByMagasinAndDay(filter.magasinId(), entrepriseId,
                 filter.startOfDay(), filter.endOfDay(), filter.toPageable());
+    }
+
+    /** Bénéfice réel (somme des marges FIFO des sorties non annulées) des ventes du magasin sur la plage du filter. */
+    public BigDecimal sumBeneficeForCaisse(CaisseResumeFilter filter, UUID entrepriseId) {
+        return repository.sumBeneficeByMagasinAndDay(filter.magasinId(), entrepriseId,
+                filter.startOfPeriod(), filter.endOfPeriod());
     }
 
     /** Met à jour quantité et prix unitaire d'une ligne en DRAFT (recalcule montantTotal, livraison inchangée). */

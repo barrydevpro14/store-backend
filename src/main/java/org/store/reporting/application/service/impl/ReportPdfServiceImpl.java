@@ -20,6 +20,7 @@ import org.store.reporting.application.pdf.strategy.ReportPdfStrategyResolver;
 import org.store.reporting.application.service.IMagasinReportingService;
 import org.store.reporting.application.service.IReportPdfService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,24 +56,27 @@ public class ReportPdfServiceImpl implements IReportPdfService {
         this.validatorService = validatorService;
     }
 
-    /** Generates the PDF of the Reporting page KPIs for the chosen magasin and period. */
+    /** Generates the PDF of the Reporting page KPIs for the chosen magasin and period (profit lines only with REPORT_FINANCIAL). */
     @Override
     public byte[] generateOverview(ReportPdfFilter reportPdfFilter) {
         Magasin magasin = resolveAccessibleMagasin(reportPdfFilter);
 
         MagasinOverviewStatsResponse stats = magasinReportingService.getOverview(reportPdfFilter.toMagasinOverviewFilter());
 
-        List<ReportPdfLine> kpis = List.of(
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.chiffreAffaires"), pdf.formatAmount(stats.montantTotalCommandeVentes())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.paiementsEncaisses"), pdf.formatAmount(stats.totalPaiementVentes())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.nombreVentes"), String.valueOf(stats.nombreCommandeVentes())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.ticketMoyen"), pdf.formatAmount(stats.ticketMoyen())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesVenteImpayees"), String.valueOf(stats.facturesVenteImpayees())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesVenteImpayees"), pdf.formatAmount(stats.montantFacturesVenteImpayees())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.achatsEnAttente"), String.valueOf(stats.achatsEnAttente())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesAchatImpayees"), String.valueOf(stats.facturesAchatImpayees())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesAchatImpayees"), pdf.formatAmount(stats.montantFacturesAchatImpayees()))
-        );
+        List<ReportPdfLine> kpis = new ArrayList<>();
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.chiffreAffaires"), pdf.formatAmount(stats.montantTotalCommandeVentes())));
+        if (stats.benefice() != null) {
+            kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.benefice"), pdf.formatAmount(stats.benefice())));
+            kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.beneficeNet"), pdf.formatAmount(stats.beneficeNet())));
+        }
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.paiementsEncaisses"), pdf.formatAmount(stats.totalPaiementVentes())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.nombreVentes"), String.valueOf(stats.nombreCommandeVentes())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.ticketMoyen"), pdf.formatAmount(stats.ticketMoyen())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesVenteImpayees"), String.valueOf(stats.facturesVenteImpayees())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesVenteImpayees"), pdf.formatAmount(stats.montantFacturesVenteImpayees())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.achatsEnAttente"), String.valueOf(stats.achatsEnAttente())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesAchatImpayees"), String.valueOf(stats.facturesAchatImpayees())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesAchatImpayees"), pdf.formatAmount(stats.montantFacturesAchatImpayees())));
 
         ReportPdfDocument reportPdfDocument = new ReportPdfDocument(
                 pdf.msg("pdf.report.overview.title"),
@@ -83,21 +87,24 @@ public class ReportPdfServiceImpl implements IReportPdfService {
         return render(reportPdfDocument, magasin, reportPdfFilter.configId());
     }
 
-    /** Generates the PDF of the sales reporting KPIs for the chosen magasin and period. */
+    /** Generates the PDF of the sales reporting KPIs for the chosen magasin and period (profit line only with REPORT_FINANCIAL). */
     @Override
     public byte[] generateVentes(ReportPdfFilter reportPdfFilter) {
         Magasin magasin = resolveAccessibleMagasin(reportPdfFilter);
 
         MagasinVentesStatsResponse stats = magasinReportingService.getVentesStats(reportPdfFilter.toMagasinOverviewFilter());
 
-        List<ReportPdfLine> kpis = List.of(
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.chiffreAffaires"), pdf.formatAmount(stats.montantTotalCommandeVentes())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.paiementsEncaisses"), pdf.formatAmount(stats.totalPaiementVentes())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.nombreVentes"), String.valueOf(stats.nombreCommandeVentes())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.ticketMoyen"), pdf.formatAmount(stats.ticketMoyen())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesImpayees"), String.valueOf(stats.facturesVenteImpayees())),
-                new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesImpayees"), pdf.formatAmount(stats.montantFacturesVenteImpayees()))
-        );
+        List<ReportPdfLine> kpis = new ArrayList<>();
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.chiffreAffaires"), pdf.formatAmount(stats.montantTotalCommandeVentes())));
+        if (stats.benefice() != null) {
+            kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.benefice"), pdf.formatAmount(stats.benefice())));
+            kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.beneficeNet"), pdf.formatAmount(stats.beneficeNet())));
+        }
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.paiementsEncaisses"), pdf.formatAmount(stats.totalPaiementVentes())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.nombreVentes"), String.valueOf(stats.nombreCommandeVentes())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.ticketMoyen"), pdf.formatAmount(stats.ticketMoyen())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.facturesImpayees"), String.valueOf(stats.facturesVenteImpayees())));
+        kpis.add(new ReportPdfLine(pdf.msg("pdf.report.kpi.montantFacturesImpayees"), pdf.formatAmount(stats.montantFacturesVenteImpayees())));
 
         ReportPdfDocument reportPdfDocument = new ReportPdfDocument(
                 pdf.msg("pdf.report.ventes.title"),

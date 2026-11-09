@@ -6,9 +6,13 @@ import org.store.vente.application.dto.CaisseResumeResponse;
 import org.store.vente.application.dto.TopProduitResponse;
 import org.store.vente.application.dto.TopProduitsFilter;
 
+import java.math.BigDecimal;
+
 public interface ICaisseService {
 
     CaisseResumeResponse getResume(CaisseResumeFilter filter);
 
     Page<TopProduitResponse> findTopProduits(TopProduitsFilter filter);
+
+    BigDecimal findBenefice(CaisseResumeFilter filter);
 }

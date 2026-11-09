@@ -5,6 +5,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.dto.UnpaidInvoicesSummaryResponse;
 import org.store.achat.application.service.ICommandeAchatService;
 import org.store.achat.application.service.IFactureAchatService;
+import org.store.depense.application.dto.DepenseFilter;
+import org.store.depense.application.service.IDepenseService;
 import org.store.reporting.application.dto.MagasinDashboardStatsResponse;
 import org.store.reporting.application.dto.MagasinOverviewFilter;
 import org.store.reporting.application.dto.MagasinOverviewStatsResponse;
@@ -34,17 +36,20 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
     private final ICommandeAchatService commandeAchatService;
     private final IFactureClientService factureClientService;
     private final IFactureAchatService factureAchatService;
+    private final IDepenseService depenseService;
 
     public MagasinReportingServiceImpl(ICaisseService caisseService,
                                        IStockService stockService,
                                        ICommandeAchatService commandeAchatService,
                                        IFactureClientService factureClientService,
-                                       IFactureAchatService factureAchatService) {
+                                       IFactureAchatService factureAchatService,
+                                       IDepenseService depenseService) {
         this.caisseService = caisseService;
         this.stockService = stockService;
         this.commandeAchatService = commandeAchatService;
         this.factureClientService = factureClientService;
         this.factureAchatService = factureAchatService;
+        this.depenseService = depenseService;
     }
 
     @Override
@@ -68,6 +73,10 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
         long achatsEnAttente      = commandeAchatService.countDraftByMagasinAndDateBetween(magasinId, from, to);
         UnpaidInvoicesSummaryResponse facturesVenteImpayees = factureClientService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
         UnpaidInvoicesSummaryResponse facturesAchatImpayees = factureAchatService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        BigDecimal benefice = caisseService.findBenefice(
+                new CaisseResumeFilter(magasinId, filter.startDateAsString(), filter.endDateAsString())
+        );
+        BigDecimal beneficeNet = computeBeneficeNet(filter, benefice);
 
         return new MagasinOverviewStatsResponse(
                 nombreCommandeVentes,
@@ -78,7 +87,9 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 facturesVenteImpayees.nombre(),
                 facturesAchatImpayees.nombre(),
                 facturesVenteImpayees.montantRestant(),
-                facturesAchatImpayees.montantRestant()
+                facturesAchatImpayees.montantRestant(),
+                benefice,
+                beneficeNet
         );
     }
 
@@ -101,6 +112,10 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 : BigDecimal.ZERO;
 
         UnpaidInvoicesSummaryResponse facturesVenteImpayees = factureClientService.summarizeUnpaidByMagasinAndDateBetween(magasinId, from, to);
+        BigDecimal benefice = caisseService.findBenefice(
+                new CaisseResumeFilter(magasinId, filter.startDateAsString(), filter.endDateAsString())
+        );
+        BigDecimal beneficeNet = computeBeneficeNet(filter, benefice);
 
         return new MagasinVentesStatsResponse(
                 nombreCommandeVentes,
@@ -108,7 +123,9 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 totalPaiementVentes,
                 ticketMoyen,
                 facturesVenteImpayees.nombre(),
-                facturesVenteImpayees.montantRestant()
+                facturesVenteImpayees.montantRestant(),
+                benefice,
+                beneficeNet
         );
     }
 
@@ -128,5 +145,15 @@ public class MagasinReportingServiceImpl implements IMagasinReportingService {
                 facturesVenteImpayees,
                 facturesAchatImpayees
         );
+    }
+
+    /** Bénéfice net = bénéfice − total des dépenses de la période ; null quand le bénéfice est masqué. */
+    private BigDecimal computeBeneficeNet(MagasinOverviewFilter filter, BigDecimal benefice) {
+        if (benefice == null) {
+            return null;
+        }
+        DepenseFilter depenseFilter = new DepenseFilter(filter.magasinId(), null, null, null,
+                filter.startDateAsString(), filter.endDateAsString(), 0, 1);
+        return benefice.subtract(depenseService.computeTotal(depenseFilter).montantTotal());
     }
 }

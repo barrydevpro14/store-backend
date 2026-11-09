@@ -34,6 +34,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,6 +73,11 @@ class CaisseServiceImplTest {
     private UserPrincipal currentUser() {
         return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
                 "vendeur1", null, null, "SELLER", List.of("SALE_READ"));
+    }
+
+    private UserPrincipal financialUser() {
+        return new UserPrincipal(UUID.randomUUID(), UUID.randomUUID(), entrepriseId, magasinId,
+                "manager1", null, null, "MANAGER", List.of("SALE_READ", "REPORT_FINANCIAL"));
     }
 
     @Test
@@ -137,9 +144,9 @@ class CaisseServiceImplTest {
     void findTopProduits_should_delegate_and_return_page() {
         TopProduitsFilter filter = new TopProduitsFilter(magasinId, "2026-05-16", 10);
         List<TopProduitResponse> top = List.of(
-                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", new BigDecimal("250"), new BigDecimal("12500.00") , "PIECE"),
-                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", new BigDecimal("180"), new BigDecimal("9000.00") , "PIECE"),
-                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", new BigDecimal("95"), new BigDecimal("4750.00"), "PIECE")
+                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", new BigDecimal("250"), new BigDecimal("12500.00") , "PIECE", new BigDecimal("2500.00")),
+                new TopProduitResponse(UUID.randomUUID(), "Vis M6", "VS-M6", new BigDecimal("180"), new BigDecimal("9000.00") , "PIECE", new BigDecimal("1800.00")),
+                new TopProduitResponse(UUID.randomUUID(), "Boulon 8mm", "BL-08", new BigDecimal("95"), new BigDecimal("4750.00"), "PIECE", new BigDecimal("950.00"))
         );
 
         when(currentUserService.getCurrent()).thenReturn(currentUser());
@@ -152,7 +159,50 @@ class CaisseServiceImplTest {
         assertThat(result.getContent()).hasSize(3);
         assertThat(result.getContent().get(0).quantiteVendue()).isEqualByComparingTo(new BigDecimal("250"));
         assertThat(result.getContent().get(0).nom()).isEqualTo("Clou 10mm");
+        assertThat(result.getContent()).allMatch(p -> p.benefice() == null);
         verify(validatorService).validate(filter);
+    }
+
+    @Test
+    void findTopProduits_should_keep_benefice_with_report_financial() {
+        TopProduitsFilter filter = new TopProduitsFilter(magasinId, "2026-05-16", 10);
+        List<TopProduitResponse> top = List.of(
+                new TopProduitResponse(UUID.randomUUID(), "Clou 10mm", "CL-10", new BigDecimal("250"), new BigDecimal("12500.00"), "PIECE", new BigDecimal("2500.00"))
+        );
+
+        when(currentUserService.getCurrent()).thenReturn(financialUser());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, entrepriseId)).thenReturn(new PageImpl<>(top));
+
+        Page<TopProduitResponse> result = service.findTopProduits(filter);
+
+        assertThat(result.getContent().getFirst().benefice()).isEqualByComparingTo("2500.00");
+    }
+
+    @Test
+    void findBenefice_should_return_sum_with_report_financial() {
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-01", "2026-05-31");
+
+        when(currentUserService.getCurrent()).thenReturn(financialUser());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+        when(ligneCommandeVenteDomainService.sumBeneficeForCaisse(filter, entrepriseId)).thenReturn(new BigDecimal("5250.00"));
+
+        assertThat(service.findBenefice(filter)).isEqualByComparingTo("5250.00");
+        verify(validatorService).validate(filter);
+    }
+
+    @Test
+    void findBenefice_should_return_null_without_report_financial() {
+        CaisseResumeFilter filter = new CaisseResumeFilter(magasinId, "2026-05-01", "2026-05-31");
+
+        when(currentUserService.getCurrent()).thenReturn(currentUser());
+        when(magasinService.findById(magasinId)).thenReturn(magasin);
+        when(magasinService.ensureAccessibleByCurrentUser(magasin)).thenReturn(magasin);
+
+        assertThat(service.findBenefice(filter)).isNull();
+        verify(ligneCommandeVenteDomainService, never()).sumBeneficeForCaisse(any(), any());
     }
 
     @Test

@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.store.common.service.ValidatorService;
 import org.store.magasin.application.service.IMagasinService;
 import org.store.security.application.dto.UserPrincipal;
+import org.store.security.application.enums.PermissionCode;
 import org.store.security.application.service.ICurrentUserService;
 import org.store.vente.application.dto.CaisseResumeFilter;
 import org.store.vente.application.dto.CaisseResumeResponse;
@@ -78,12 +79,27 @@ public class CaisseServiceImpl implements ICaisseService {
         );
     }
 
-    /** Top N produits les plus vendus (par quantité) dans le magasin sur la plage du filter, paginés. */
+    /** Top N produits les plus vendus (par quantité) dans le magasin sur la plage du filter, paginés ; bénéfice masqué sans REPORT_FINANCIAL. */
     @Override
     public Page<TopProduitResponse> findTopProduits(TopProduitsFilter filter) {
         validatorService.validate(filter);
         UserPrincipal currentUser = currentUserService.getCurrent();
         magasinService.ensureAccessibleByCurrentUser(magasinService.findById(filter.magasinId()));
-        return ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, currentUser.entrepriseId());
+        Page<TopProduitResponse> topProduits = ligneCommandeVenteDomainService.findTopProduitsForCaisse(filter, currentUser.entrepriseId());
+        return currentUser.hasPermission(PermissionCode.REPORT_FINANCIAL)
+                ? topProduits
+                : topProduits.map(TopProduitResponse::withoutBenefice);
+    }
+
+    /** Bénéfice réel (marges FIFO) des ventes du magasin sur la plage du filter ; null sans REPORT_FINANCIAL. */
+    @Override
+    public BigDecimal findBenefice(CaisseResumeFilter filter) {
+        validatorService.validate(filter);
+        UserPrincipal currentUser = currentUserService.getCurrent();
+        magasinService.ensureAccessibleByCurrentUser(magasinService.findById(filter.magasinId()));
+        if (!currentUser.hasPermission(PermissionCode.REPORT_FINANCIAL)) {
+            return null;
+        }
+        return ligneCommandeVenteDomainService.sumBeneficeForCaisse(filter, currentUser.entrepriseId());
     }
 }

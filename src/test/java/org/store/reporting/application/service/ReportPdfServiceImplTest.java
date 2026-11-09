@@ -100,7 +100,7 @@ class ReportPdfServiceImplTest {
         stubAccessAndRendering();
         when(magasinReportingService.getOverview(new MagasinOverviewFilter(magasinId, reportPdfFilter.startDate(), reportPdfFilter.endDate())))
                 .thenReturn(new MagasinOverviewStatsResponse(10L, new BigDecimal("500"), new BigDecimal("480"),
-                        new BigDecimal("50"), 3L, 4L, 2L, new BigDecimal("1500"), new BigDecimal("700")));
+                        new BigDecimal("50"), 3L, 4L, 2L, new BigDecimal("1500"), new BigDecimal("700"), null, null));
 
         byte[] result = reportPdfService.generateOverview(reportPdfFilter);
 
@@ -125,19 +125,60 @@ class ReportPdfServiceImplTest {
     }
 
     @Test
+    void generateOverview_should_render_benefice_and_benefice_net_after_chiffre_affaires_when_present() {
+        stubAccessAndRendering();
+        when(magasinReportingService.getOverview(new MagasinOverviewFilter(magasinId, reportPdfFilter.startDate(), reportPdfFilter.endDate())))
+                .thenReturn(new MagasinOverviewStatsResponse(10L, new BigDecimal("500"), new BigDecimal("480"),
+                        new BigDecimal("50"), 3L, 4L, 2L, new BigDecimal("1500"), new BigDecimal("700"),
+                        new BigDecimal("120"), new BigDecimal("90")));
+
+        reportPdfService.generateOverview(reportPdfFilter);
+
+        assertThat(captureRenderedDocument().sections().getFirst().lines())
+                .hasSize(11)
+                .extracting(ReportPdfLine::label, ReportPdfLine::value)
+                .startsWith(
+                        tuple("pdf.report.kpi.chiffreAffaires", "500"),
+                        tuple("pdf.report.kpi.benefice", "120"),
+                        tuple("pdf.report.kpi.beneficeNet", "90")
+                );
+    }
+
+    @Test
     void generateVentes_should_render_the_six_sales_kpis() {
         stubAccessAndRendering();
         when(magasinReportingService.getVentesStats(any(MagasinOverviewFilter.class)))
                 .thenReturn(new MagasinVentesStatsResponse(5L, new BigDecimal("1000"), new BigDecimal("900"),
-                        new BigDecimal("200"), 1L, new BigDecimal("300")));
+                        new BigDecimal("200"), 1L, new BigDecimal("300"), null, null));
 
         reportPdfService.generateVentes(reportPdfFilter);
 
         ReportPdfDocument document = captureRenderedDocument();
         assertThat(document.title()).isEqualTo("pdf.report.ventes.title");
         assertThat(document.sections().getFirst().lines())
+                .hasSize(6)
                 .extracting(ReportPdfLine::label)
+                .doesNotContain("pdf.report.kpi.benefice")
                 .endsWith("pdf.report.kpi.facturesImpayees", "pdf.report.kpi.montantFacturesImpayees");
+    }
+
+    @Test
+    void generateVentes_should_render_benefice_and_benefice_net_after_chiffre_affaires_when_present() {
+        stubAccessAndRendering();
+        when(magasinReportingService.getVentesStats(any(MagasinOverviewFilter.class)))
+                .thenReturn(new MagasinVentesStatsResponse(5L, new BigDecimal("1000"), new BigDecimal("900"),
+                        new BigDecimal("200"), 1L, new BigDecimal("300"), new BigDecimal("250"), new BigDecimal("180")));
+
+        reportPdfService.generateVentes(reportPdfFilter);
+
+        assertThat(captureRenderedDocument().sections().getFirst().lines())
+                .hasSize(8)
+                .extracting(ReportPdfLine::label, ReportPdfLine::value)
+                .startsWith(
+                        tuple("pdf.report.kpi.chiffreAffaires", "1000"),
+                        tuple("pdf.report.kpi.benefice", "250"),
+                        tuple("pdf.report.kpi.beneficeNet", "180")
+                );
     }
 
     @Test
