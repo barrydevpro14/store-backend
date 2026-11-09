@@ -15,6 +15,11 @@ RUN ./mvnw package -DskipTests -q && \
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-noble AS runtime
 
+# Apply published Ubuntu security fixes not yet in the base image (Trivy gate)
+RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system store && \
     useradd --system --no-create-home --gid store store && \
     mkdir -p /app && chown store:store /app

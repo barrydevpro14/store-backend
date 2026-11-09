@@ -9,6 +9,28 @@
 
 ## 📌 Latest session
 
+**Date:** 2026-11-09 — Top products Top 100/500 + search, real profit and net profit on reporting (both repos)
+
+### 1. Top products: Top 100/500 + search (frontend)
+
+Ask: "ajouter top 100, top 500 sur le reporting" → added to the Ventes > Reporting Top N selector; backend already accepts any `nombre ≥ 1`. Flagged that `nombre` has no upper bound — user hasn't decided on a `@Max(500)` yet. Then "ajoute un champ de recherche produit": user chose client-side filtering (option 1) over a server-side `q`. Rank badges now show the real ranking position (`rang` set before filtering) instead of the row index. Commit `7a18133`.
+
+### 2. Real profit (both repos)
+
+Ask: "ajoutons bénéfice". Found that `SortieStock` already stores the FIFO margin per exit and links to `ligneVente`. Decisions: show it everywhere (top products column + KPI card + Ventes PDF) — option c; **real** profit (sum of non-cancelled `SortieStock.marge`) rather than estimated from current purchase price; visibility **A** — only with `REPORT_FINANCIAL` (backend returns null and skips the query; frontend hides card/column). `REPORT_FINANCIAL` existed in the YAML but not in `PermissionCode` → added. Per-product profit uses a correlated subquery to avoid inflating `SUM(ligne.quantite)` when a line consumed several lots.
+
+### 3. Profit + net profit on the Reporting module, then net profit on Ventes reporting
+
+"ajoute benefice dans le module reporting" → user chose option 2: gross profit + **net profit = profit − period expenses** on the Reporting page and its PDF. Then "comme pour reporting, ajoute le bénéfice net dans sale reporting" → same on Ventes reporting; the net computation was extracted into a shared private `computeBeneficeNet` in `MagasinReportingServiceImpl`.
+
+### Result
+
+Backend **1161/1161 green** (incl. Spring context startup, which validates the new HQL), frontend **405/405 vitest**, tsc clean, no new eslint warning. Pushed to `dev-barry`: frontend `7a18133`, `37d82b7`; backend `3362a4b`. Not verified on real data nor in a browser. Open points: `@Max` cap on top products `nombre` (undecided); KPI grids now wrap (Ventes: 8 cards on a 6-col grid, Reporting: 11 cards on a 4-col grid) — to review visually; `docs/2026-10-03-coupon-utilisation-plan.md` still untracked.
+
+---
+
+## 🗂 Previous session
+
 **Date:** 2026-10-28 (cont.) — Jackson CVE fix, printable reporting PDFs, unpaid invoices amount KPIs (both repos)
 
 ### 1. Jackson CVE (backend)
